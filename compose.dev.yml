@@ -1,0 +1,23 @@
+# PokéPrices workstation dev stack. Dev only; nothing here is a server setting.
+name: pokeprices
+
+services:
+  postgres:
+    image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    environment:
+      POSTGRES_USER: pokeprices
+      POSTGRES_DB: pokeprices
+      # Unpublished compose network only: no password exists anywhere (open question 11).
+      POSTGRES_HOST_AUTH_METHOD: trust
+    shm_size: 256m
+    mem_limit: 1g
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pokeprices -d pokeprices"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  pgdata:

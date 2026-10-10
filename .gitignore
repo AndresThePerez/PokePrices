@@ -1,0 +1,11 @@
+# PokéPrices: never tracked
+.superpowers/
+.data/
+.gates/
+.env
+.env.*
+!.env.example
+api/.env
+api/vendor/
+web/node_modules/
+web/dist/
