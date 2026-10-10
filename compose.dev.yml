@@ -86,6 +86,21 @@ services:
       timeout: 3s
       retries: 30
 
+  node:
+    image: node:22-slim@sha256:c3de60bf2f9dd0ac6370e6117950ff62d6e339527e7472301c9c78a017978392
+    # Web tooling and the scaffolder run here (R6, R27); glibc matches the host's optional binaries.
+    user: "0:0"
+    working_dir: /workspace/web
+    volumes:
+      - ./:/workspace
+    command: ["sleep", "infinity"]
+    mem_limit: 1g
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('fs').accessSync('/workspace/web')"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
 volumes:
   pgdata:
   redisqueue:
