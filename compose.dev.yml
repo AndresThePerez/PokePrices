@@ -43,6 +43,49 @@ services:
       timeout: 3s
       retries: 30
 
+  api:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+      target: dev
+    user: "0:0"
+    working_dir: /workspace/api
+    volumes:
+      - ./:/workspace
+    environment: &api-env
+      APP_NAME: PokéPrices
+      APP_ENV: local
+      APP_DEBUG: "true"
+      APP_URL: http://pokeprices.localhost:${PP_HTTP_PORT:-8095}
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_DATABASE: pokeprices
+      DB_USERNAME: pokeprices
+      DB_PASSWORD: ""
+      REDIS_CLIENT: phpredis
+      REDIS_HOST: redis-queue
+      REDIS_CACHE_HOST: redis-cache
+      REDIS_PORT: "6379"
+      QUEUE_CONNECTION: redis
+      CACHE_STORE: redis
+      SESSION_DRIVER: database
+      LOG_CHANNEL: stderr
+      SANCTUM_STATEFUL_DOMAINS: pokeprices.localhost:8095
+    mem_limit: 384m
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis-queue:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "SCRIPT_NAME=/ping SCRIPT_FILENAME=/ping REQUEST_METHOD=GET cgi-fcgi -bind -connect 127.0.0.1:9000 | grep -q pong"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
 volumes:
   pgdata:
   redisqueue:
