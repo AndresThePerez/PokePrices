@@ -85,7 +85,8 @@ check "ensure-databases recreates a missing gate database" sh -c '
   scripts/dev/ensure-databases.sh >/dev/null 2>&1 &&
   [ "$(docker compose -f compose.dev.yml exec -T postgres psql -U pokeprices -d pokeprices -tAc "SELECT count(*) FROM pg_database WHERE datname = '"'"'pokeprices_gate'"'"'")" = 1 ]'
 check_out "test and gate databases are owned by pokeprices" "pokeprices|pokeprices" sh -c "$DC exec -T postgres psql -U pokeprices -d pokeprices -tAc \"SELECT string_agg(pg_get_userbyid(datdba), '|' ORDER BY datname) FROM pg_database WHERE datname IN ('pokeprices_gate','pokeprices_test')\""
-check_out "ensure-databases only creates the two names (no stray databases)" "pokeprices,pokeprices_gate,pokeprices_test,postgres" sh -c "$DC exec -T postgres psql -U pokeprices -d pokeprices -tAc \"SELECT string_agg(datname, ',' ORDER BY datname) FROM pg_database WHERE NOT datistemplate\""
+# pest --parallel (T07) leaves Laravel's per-worker databases pokeprices_test_test_N behind; they are not created by ensure-databases.
+check_out "ensure-databases only creates the two names (no stray databases)" "pokeprices,pokeprices_gate,pokeprices_test,postgres" sh -c "$DC exec -T postgres psql -U pokeprices -d pokeprices -tAc \"SELECT string_agg(datname, ',' ORDER BY datname) FROM pg_database WHERE NOT datistemplate AND datname !~ '^pokeprices_test_test_[0-9]+\\$'\""
 check "ensure-databases exits non-zero when it cannot reach the compose project (no masking)" sh -c '
   cd "$(mktemp -d)" && ! /bin/sh "$OLDPWD/scripts/dev/ensure-databases.sh" >/dev/null 2>&1'
 finish
