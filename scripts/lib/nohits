@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# nohits FINDER [ARGS...]: 0 when the finder finds nothing (finder exit 1),
+# 1 on hits (printed), 2 on a finder error (missing path, bad pattern) or no finder.
+if [ "$#" -eq 0 ]; then
+  echo "FINDER ERROR no finder given"
+  exit 2
+fi
+out=$("$@" 2>&1)
+rc=$?
+case $rc in
+  1) echo "CLEAN"; status=0 ;;
+  0) printf '%s\n' "$out"; echo "HITS"; status=1 ;;
+  *) printf '%s\n' "$out"; echo "FINDER ERROR rc=$rc"; status=2 ;;
+esac
+exit "$status"

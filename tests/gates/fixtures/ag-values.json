@@ -1,0 +1,36 @@
+{
+  "good": {
+    "phpstan_params": {"level": 8, "ignoreErrors": [], "reportUnmatchedIgnoredErrors": true},
+    "phpstan_neon_text": "includes:\n    - vendor/larastan/larastan/extension.neon\nparameters:\n    level: 8\n",
+    "baseline_exists": false,
+    "pint": {"preset": "laravel"},
+    "phpunit_xml": "<phpunit failOnEmptyTestSuite=\"true\" failOnRisky=\"true\" failOnWarning=\"true\" failOnSkipped=\"true\" failOnIncomplete=\"true\" beStrictAboutTestsThatDoNotTestAnything=\"true\"><source><include><directory>app</directory></include><exclude><directory>app/Providers</directory></exclude></source><php><env name=\"DB_CONNECTION\" value=\"pgsql\" force=\"true\"/></php></phpunit>",
+    "tsconfig_app": {"compilerOptions": {"strict": true, "noUncheckedIndexedAccess": true, "exactOptionalPropertyTypes": true}},
+    "tsconfig_node": {"compilerOptions": {"strict": true, "noUncheckedIndexedAccess": true, "exactOptionalPropertyTypes": true}},
+    "eslint_evaluated": {"config_names": ["typescript-eslint/base", "typescript-eslint/eslint-recommended", "typescript-eslint/strict-type-checked"], "linterOptions": {"noInlineConfig": true, "reportUnusedDisableDirectives": 2}},
+    "eslint_rules": {"@typescript-eslint/no-explicit-any": [2], "@typescript-eslint/no-floating-promises": [2], "@typescript-eslint/no-unsafe-assignment": [2], "@typescript-eslint/no-unsafe-member-access": [2], "@typescript-eslint/no-unsafe-call": [2], "@typescript-eslint/no-unsafe-return": [2], "@typescript-eslint/no-misused-promises": [2], "@typescript-eslint/restrict-template-expressions": [2], "@typescript-eslint/no-unnecessary-condition": [2], "@typescript-eslint/no-non-null-assertion": [2]},
+    "vitest_test": {"passWithNoTests": false, "coverage": {"include": ["src/**"], "thresholds": {"lines": 80, "branches": 70}}},
+    "spectral_yaml": "extends: [\"spectral:oas\"]\nrules:\n  pp-a: {}\n  pp-b: {}\n  pp-c: {}\n  pp-d: {}\n  pp-e: {}\n"
+  },
+  "mutations": [
+    {"name": "phpstan level 7", "path": ["phpstan_params", "level"], "value": 7},
+    {"name": "phpstan ignoreErrors", "path": ["phpstan_params", "ignoreErrors"], "value": ["#x#"]},
+    {"name": "phpstan baseline file", "path": ["baseline_exists"], "value": true},
+    {"name": "phpstan baseline include", "path": ["phpstan_neon_text"], "value": "includes:\n    - phpstan-baseline.neon\nparameters:\n    level: 8\n"},
+    {"name": "unmatched ignores not reported", "path": ["phpstan_params", "reportUnmatchedIgnoredErrors"], "value": false},
+    {"name": "pint preset", "path": ["pint", "preset"], "value": "psr12"},
+    {"name": "phpunit failOnRisky false", "path": ["phpunit_xml"], "value": "<phpunit failOnEmptyTestSuite=\"true\" failOnRisky=\"false\" failOnWarning=\"true\" failOnSkipped=\"true\" failOnIncomplete=\"true\" beStrictAboutTestsThatDoNotTestAnything=\"true\"><source><include><directory>app</directory></include></source><php><env name=\"DB_CONNECTION\" value=\"pgsql\"/></php></phpunit>"},
+    {"name": "phpunit extra exclude", "path": ["phpunit_xml"], "value": "<phpunit failOnEmptyTestSuite=\"true\" failOnRisky=\"true\" failOnWarning=\"true\" failOnSkipped=\"true\" failOnIncomplete=\"true\" beStrictAboutTestsThatDoNotTestAnything=\"true\"><source><include><directory>app</directory></include><exclude><directory>app/Http</directory></exclude></source><php><env name=\"DB_CONNECTION\" value=\"pgsql\"/></php></phpunit>"},
+    {"name": "phpunit sqlite", "path": ["phpunit_xml"], "value": "<phpunit failOnEmptyTestSuite=\"true\" failOnRisky=\"true\" failOnWarning=\"true\" failOnSkipped=\"true\" failOnIncomplete=\"true\" beStrictAboutTestsThatDoNotTestAnything=\"true\"><source><include><directory>app</directory></include></source><php><env name=\"DB_CONNECTION\" value=\"sqlite\"/></php></phpunit>"},
+    {"name": "tsconfig app missing noUncheckedIndexedAccess", "path": ["tsconfig_app", "compilerOptions", "noUncheckedIndexedAccess"], "value": null},
+    {"name": "tsconfig node strict false", "path": ["tsconfig_node", "compilerOptions", "strict"], "value": false},
+    {"name": "eslint recommended only", "path": ["eslint_evaluated", "config_names"], "value": ["typescript-eslint/base", "typescript-eslint/eslint-recommended", "typescript-eslint/recommended"]},
+    {"name": "eslint inline config allowed", "path": ["eslint_evaluated", "linterOptions"], "value": {}},
+    {"name": "eslint strict rule off", "path": ["eslint_rules", "@typescript-eslint/no-unnecessary-condition"], "value": [0]},
+    {"name": "vitest include narrowed", "path": ["vitest_test", "coverage", "include"], "value": ["src/lib/**"]},
+    {"name": "vitest lines 79", "path": ["vitest_test", "coverage", "thresholds", "lines"], "value": 79},
+    {"name": "vitest branches 69", "path": ["vitest_test", "coverage", "thresholds", "branches"], "value": 69},
+    {"name": "vitest passWithNoTests", "path": ["vitest_test", "passWithNoTests"], "value": true},
+    {"name": "spectral four rules", "path": ["spectral_yaml"], "value": "extends: [\"spectral:oas\"]\nrules:\n  pp-a: {}\n  pp-b: {}\n  pp-c: {}\n  pp-d: {}\n"}
+  ]
+}
