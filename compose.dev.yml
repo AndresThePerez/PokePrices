@@ -19,5 +19,30 @@ services:
       timeout: 3s
       retries: 30
 
+  redis-queue:
+    image: redis:8-alpine@sha256:3811787313eba226a2ef38658c6ccb91cd5e110edc89c37767de373120a0e5a0
+    # Queue, locks, unique jobs and the rate limiter (R13): never evict, persist the queue.
+    command: ["redis-server", "--maxmemory", "48mb", "--maxmemory-policy", "noeviction", "--appendonly", "yes", "--save", ""]
+    mem_limit: 64m
+    volumes:
+      - redisqueue:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
+  redis-cache:
+    image: redis:8-alpine@sha256:3811787313eba226a2ef38658c6ccb91cd5e110edc89c37767de373120a0e5a0
+    # Cache only (R13): evict least recently used at 75% of the cap, no persistence.
+    command: ["redis-server", "--maxmemory", "96mb", "--maxmemory-policy", "allkeys-lru", "--appendonly", "no", "--save", ""]
+    mem_limit: 128m
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+
 volumes:
   pgdata:
+  redisqueue:
