@@ -86,7 +86,7 @@ it('gives two sequential requests distinct ids and a duration with at most 3 dec
     expect($requests)->toHaveCount(2)
         ->and($requests[0]['request_id'])->not->toBe($requests[1]['request_id'])
         ->and($requests[0]['route'])->toBe('up')
-        ->and(strlen(substr((string) $requests[0]['duration_ms'], (int) strpos((string) $requests[0]['duration_ms'].'.', '.') + 1)))->toBeLessThanOrEqual(3);
+        ->and(strlen(substr((string) $requests[0]['duration_ms'], (int) strpos($requests[0]['duration_ms'].'.', '.') + 1)))->toBeLessThanOrEqual(3);
 })->group('O2');
 
 it('substitutes U+FFFD for an invalid byte and keeps valid multibyte text raw', function (): void {
