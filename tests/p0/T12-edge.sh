@@ -36,9 +36,10 @@ check_out "misformatted files under web/dist and web/coverage are not listed" 0 
 rm -f $W/dist/zz_edge.ts $W/coverage/zz_edge.ts
 [ "$D_PRE" -eq 0 ] && rmdir $W/dist
 [ "$C_PRE" -eq 0 ] && rmdir $W/coverage
-check_out ".prettierignore is exactly dist, coverage, node_modules, package-lock.json" "dist coverage node_modules package-lock.json" \
+# T23 appends the generated web/src/api/schema.d.ts (C6 compares it byte-for-byte with a fresh openapi-typescript run); a later task that ignores more edits this list.
+check_out ".prettierignore is exactly dist, coverage, node_modules, package-lock.json and the T23 generated src/api/schema.d.ts" "dist coverage node_modules package-lock.json src/api/schema.d.ts" \
   sh -c "tr '\n' ' ' < $W/.prettierignore | sed 's/ \$//'"
-check "ignore file has no src or tsx pattern (cannot hide sources)" sh -c "! /usr/bin/grep -Eq 'src|tsx|ts\$|\*' $W/.prettierignore"
+check "ignore file has no src or tsx pattern besides the exact generated src/api/schema.d.ts line (cannot hide sources)" sh -c "! /usr/bin/grep -vx 'src/api/schema.d.ts' $W/.prettierignore | /usr/bin/grep -Eq 'src|tsx|ts\$|\*'"
 check "prettier is not told to skip via a package.json prettier key or .editorconfig override" sh -c "! /usr/bin/grep -q '\"prettier\": *{' $W/package.json && [ ! -e $W/.editorconfig ]"
 check "no competing prettier config files besides .prettierrc.json" sh -c "[ -z \"\$(ls -A $W | /usr/bin/grep -E '^(\.prettierrc\.(js|cjs|mjs|yaml|yml|toml)|prettier\.config\..*|\.prettierrc)\$')\" ]"
 
