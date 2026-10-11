@@ -88,3 +88,13 @@ it('gives two sequential requests distinct ids and a duration with at most 3 dec
         ->and($requests[0]['route'])->toBe('up')
         ->and(strlen(substr((string) $requests[0]['duration_ms'], (int) strpos((string) $requests[0]['duration_ms'].'.', '.') + 1)))->toBeLessThanOrEqual(3);
 })->group('O2');
+
+it('substitutes U+FFFD for an invalid byte and keeps valid multibyte text raw', function (): void {
+    Log::info("PokéPrices \xB1 end", ['c' => "é\xB1"]);
+    $raw = (string) file_get_contents($this->edgeFile);
+    $lines = edgeLines($this->edgeFile);
+    expect($lines)->toHaveCount(1)
+        ->and($lines[0]['message'])->toBe("PokéPrices \u{FFFD} end")
+        ->and($raw)->toContain('PokéPrices')
+        ->and($raw)->not->toContain("\xB1");
+})->group('O2');
