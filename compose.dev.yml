@@ -73,6 +73,7 @@ services:
       LOG_CHANNEL: stderr_json
       SANCTUM_STATEFUL_DOMAINS: pokeprices.localhost:8095
     mem_limit: 384m
+    dns_opt: ["timeout:1", "attempts:1"]
     depends_on:
       postgres:
         condition: service_healthy
