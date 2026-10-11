@@ -129,12 +129,12 @@
     {
       "id": "EC-X9",
       "text": "CI is a workflow that only calls make gates",
-      "check": "same check as D4's workflow half, run by scripts/verdict"
+      "check": "mkdir -p .gates/manual && GATES_OUT=.gates/manual sh scripts/gates/d4.sh"
     },
     {
       "id": "EC-X10",
       "text": "make gates green on the skeleton",
-      "check": "the scorecard's make_exit == 0, every hard gate pass, run_context primary"
+      "check": "scripts/verdict --gates-only --manifest gates/manifest-P0.json --scorecard .gates/latest/scorecard.json"
     }
   ],
   "exit_criteria_runner": "scripts/verdict (full mode) runs these checks itself, logs each to <scorecard dir>/exit/<id>.log ending EXIT n, and blocks with exit:<id>; make gates never runs them because a CI checkout has a different origin URL (R22).",
@@ -302,7 +302,7 @@
       "hard": true,
       "scope": "any",
       "runs_in": "api",
-      "command": "docker compose -f compose.dev.yml exec -T -w /workspace/api api vendor/bin/pest -c phpunit.xml --parallel --order-by=random --log-junit=\"/workspace/$GATES_OUT/T1.junit.xml\"",
+      "command": "docker compose -f compose.dev.yml exec -T -w /workspace/api api vendor/bin/pest -c phpunit.xml --parallel --processes=4 --order-by=random --log-junit=\"/workspace/$GATES_OUT/T1.junit.xml\"",
       "banner_cmd": "docker compose -f compose.dev.yml exec -T -w /workspace/api api vendor/bin/pest --version",
       "banner_re": "Pest",
       "artifact": "$GATES_OUT/T1.junit.xml",

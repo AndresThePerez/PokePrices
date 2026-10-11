@@ -114,7 +114,7 @@ This file renders exactly the fields of `manifest-P0.json`; the JSON is the mach
 ### T1: Pest suite passes, parallel, random order, nothing skipped
 
 - hard: true; scope: any; runs_in: api; timeout_s: 1200; built_by: P0-i1-T25
-- command: `docker compose -f compose.dev.yml exec -T -w /workspace/api api vendor/bin/pest -c phpunit.xml --parallel --order-by=random --log-junit="/workspace/$GATES_OUT/T1.junit.xml"`
+- command: `docker compose -f compose.dev.yml exec -T -w /workspace/api api vendor/bin/pest -c phpunit.xml --parallel --processes=4 --order-by=random --log-junit="/workspace/$GATES_OUT/T1.junit.xml"`
 - banner_cmd: `docker compose -f compose.dev.yml exec -T -w /workspace/api api vendor/bin/pest --version`; banner_re: `Pest`
 - artifact: `$GATES_OUT/T1.junit.xml`
 - value_parser: `python3 -I scripts/lib/junit.py "$GATES_OUT/T1.junit.xml" --tests-dir api/tests --field bad`
@@ -510,8 +510,8 @@ scripts/verdict (full mode) runs these checks itself, logs each to <scorecard di
 - EC-X6 (compose services and the single loopback port): `test "$(docker compose -f compose.dev.yml config --services | sort | tr '\n' ' ')" = 'api node postgres redis-cache redis-queue scheduler tools web worker ' && docker compose -f compose.dev.yml config --format json | jq -e '[.services[] | (.ports // [])[]] | length == 1 and .[0].host_ip == "127.0.0.1" and .[0].target == 8095'`
 - EC-X7 (api/ is Laravel 13): `jq -e '[.packages[] | select(.name == "laravel/framework") | .version | startswith("v13.")] == [true]' api/composer.lock`
 - EC-X8 (web/ is React 19 + Vite 8 + TypeScript 6.0 + Tailwind v4): `jq -e '(.dependencies.react | startswith("19.")) and (.devDependencies.vite | startswith("8.")) and (.devDependencies.typescript | startswith("6.0.")) and (.devDependencies.tailwindcss | startswith("4."))' web/package.json`
-- EC-X9 (CI is a workflow that only calls make gates): `same check as D4's workflow half, run by scripts/verdict`
-- EC-X10 (make gates green on the skeleton): `the scorecard's make_exit == 0, every hard gate pass, run_context primary`
+- EC-X9 (CI is a workflow that only calls make gates): `mkdir -p .gates/manual && GATES_OUT=.gates/manual sh scripts/gates/d4.sh`
+- EC-X10 (make gates green on the skeleton): `scripts/verdict --gates-only --manifest gates/manifest-P0.json --scorecard .gates/latest/scorecard.json`
 
 ## Frozen files
 

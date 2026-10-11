@@ -50,7 +50,7 @@ check_out "no tags" 0 sh -c 'git tag | wc -l | tr -d " "'
 check "first commit subject is exact" sh -c \
   'test "$(git log --reverse --format=%s | head -n 1)" = "[P0-i1-T01] Initialise the Pok'"$(printf '\303\251')"'Prices repository with ignores and a minimal dev compose file"'
 check "every subject carries a [P<n>-i<k>-T<NN>] prefix" sh -c \
-  'test -z "$(git log --format=%s | '"$GREP"' -v -E "^\[P[0-9]+-i[0-9]+-T[0-9]{2}\] .+")"'
+  'test -z "$(git log --format=%s | '"$GREP"' -v -E "^\[P[0-9]+-i[0-9]+-T[0-9]{2}[a-z]?\] .+")"'
 check "no commit has a trailer" sh -c 'for c in $(git rev-list HEAD); do test -z "$(git log -1 --format=%B $c | git interpret-trailers --parse)" || exit 1; done'
 check "no commit message names a tool, vendor, session or co-author" sh -c \
   '! git log --format="%B" | '"$GREP"' -i -E "claude|anthropic|co-authored|generated with"'

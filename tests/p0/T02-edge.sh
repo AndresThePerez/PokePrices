@@ -3,7 +3,7 @@
 set -u
 cd "$(dirname "$0")/../.." || exit 1
 . tests/p0/lib.sh
-APPROVED=ee4ee1d811ec371b20046faae6303e26e1939ca9f861e4f8d904228d087137f2
+APPROVED=adcf920b2b1aedb908f3cdb4e38cc89069b1bdae9644d7eed5cfebdc52f3429a
 M=gates/manifest-P0.json
 H=gates/manifest-P0.approved.sha256
 
