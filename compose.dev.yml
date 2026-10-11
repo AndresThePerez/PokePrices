@@ -166,6 +166,28 @@ services:
       timeout: 3s
       retries: 30
 
+  tools:
+    build:
+      context: .
+      dockerfile: docker/tools/Dockerfile
+    working_dir: /repo
+    volumes:
+      - type: bind
+        source: ./
+        target: /repo
+        read_only: true
+      - type: bind
+        source: ./.gates
+        target: /repo/.gates
+      - trivy-cache:/root/.cache/trivy
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "gitleaks version >/dev/null && trivy --version >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
 volumes:
   pgdata:
   redisqueue:
+  trivy-cache:
