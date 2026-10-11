@@ -68,7 +68,7 @@ done
 
 # --- 4. shell page honesty and encoding ---------------------------------------------------------------
 check "index.html title carries the accent as raw UTF-8 bytes C3 A9" sh -c "grep '<title>' $W/index.html | od -An -tx1 | tr -d ' \n' | grep -q '506f6bc3a9507269636573'"
-check "App.tsx h1 carries the accent as raw UTF-8 bytes C3 A9" sh -c "grep '<h1>' $W/src/App.tsx | od -An -tx1 | tr -d ' \n' | grep -q '506f6bc3a9507269636573'"
+check "App.tsx h1 carries the accent as raw UTF-8 bytes C3 A9" sh -c "grep '<h1' $W/src/App.tsx | od -An -tx1 | tr -d ' \n' | grep -q '506f6bc3a9507269636573'"
 check "no combining acute accent (CC 81) anywhere in the shell sources" sh -c "! od -An -tx1 -v $W/index.html $W/src/App.tsx | tr -d ' \n' | grep -q 'cc81'"
 check "App.tsx never says real-time, realtime or live price (any case)" sh -c "! grep -qiE 'real-?time|live price' $W/src/App.tsx $W/index.html"
 check "App.tsx says daily close and mentions source and as-of" sh -c "grep -qi 'daily close' $W/src/App.tsx && grep -qi 'source' $W/src/App.tsx && grep -qi 'as of' $W/src/App.tsx"
