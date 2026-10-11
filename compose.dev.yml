@@ -86,6 +86,50 @@ services:
       timeout: 3s
       retries: 30
 
+  worker:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+      target: dev
+    user: "0:0"
+    working_dir: /workspace/api
+    volumes:
+      - ./:/workspace
+    environment: *api-env
+    command: ["php", "artisan", "queue:work", "redis", "--queue=default", "--sleep=1", "--tries=3", "--max-time=3600", "--memory=256"]
+    restart: unless-stopped
+    mem_limit: 384m
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'artisan queue:work' >/dev/null"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+
+  scheduler:
+    build:
+      context: .
+      dockerfile: docker/api/Dockerfile
+      target: dev
+    user: "0:0"
+    working_dir: /workspace/api
+    volumes:
+      - ./:/workspace
+    environment: *api-env
+    command: ["php", "artisan", "schedule:work"]
+    restart: unless-stopped
+    mem_limit: 128m
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'artisan schedule:work' >/dev/null"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+
   node:
     image: node:22-slim@sha256:c3de60bf2f9dd0ac6370e6117950ff62d6e339527e7472301c9c78a017978392
     # Web tooling and the scaffolder run here (R6, R27); glibc matches the host's optional binaries.
