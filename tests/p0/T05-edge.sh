@@ -17,12 +17,15 @@ $DC up -d --wait node >/dev/null 2>&1
 
 # --- 1. every package.json pin equals the plan table (and nothing extra) -------------------------
 check "dependencies are exactly react and react-dom" jq -e '(.dependencies|keys) == ["react","react-dom"]' $P
-check "devDependencies are exactly the plan's six packages" jq -e '(.devDependencies|keys) == ["@types/node","@types/react","@types/react-dom","@vitejs/plugin-react","typescript","vite"]' $P
+# T09 added the six ESLint packages (exact pins checked in T09); a later task that adds packages edits this list.
+check "devDependencies are exactly the plan's six T05 packages plus the six T09 ESLint packages" jq -e '(.devDependencies|keys) == ["@eslint/js","@types/node","@types/react","@types/react-dom","@vitejs/plugin-react","eslint","eslint-plugin-react-hooks","eslint-plugin-react-refresh","globals","typescript","typescript-eslint","vite"]' $P
 check_out "react-dom equals react" 19.3.0 jq -r '.dependencies["react-dom"]' $P
 check "@types/node stays on the node 24 line" jq -e '.devDependencies["@types/node"] | test("^24\\.[0-9]+\\.[0-9]+$")' $P
 check "every pin is strictly MAJOR.MINOR.PATCH (no range, tag, prerelease or url)" jq -e '[(.dependencies // {})[], (.devDependencies // {})[]] | all(test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))' $P
 check "no peer, optional or override dependency blocks sneak in" jq -e '[has("peerDependencies"), has("optionalDependencies"), has("overrides"), has("resolutions")] | any | not' $P
-check "scripts are exactly dev, build, preview (lint returns in T09)" jq -e '(.scripts|keys) == ["build","dev","preview"]' $P
+check "scripts are exactly dev, build, preview, typecheck, lint (T09 added the last two)" jq -e '(.scripts|keys) == ["build","dev","lint","preview","typecheck"]' $P
+check_out "typecheck script is tsc -b" 'tsc -b' jq -r .scripts.typecheck $P
+check_out "lint script runs ESLint with zero warnings allowed" 'eslint -c eslint.config.js --max-warnings=0 .' jq -r .scripts.lint $P
 check "no install lifecycle hooks in package.json" jq -e '[.scripts|keys[]|select(test("^(pre|post)?(install|prepare|publish)$"))]|length==0' $P
 check_out "build script type-checks before bundling" 'tsc -b && vite build' jq -r .scripts.build $P
 
