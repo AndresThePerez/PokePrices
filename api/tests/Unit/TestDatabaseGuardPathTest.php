@@ -9,20 +9,18 @@ use Tests\TestCase;
  * Boots the probe and checks the guard. Serial runs must throw before the migration step.
  * Under --parallel, Laravel renames the database to <name>_test_<token> before the guard
  * runs, so the invariant that always holds is: RefreshDatabase never ran against a name
- * outside pokeprices_test*.
+ * outside pokeprices_test*. Returns the violated part of the invariant, or '' when it held.
  *
  * @param  array<string, mixed>  $override
  */
-function assertGuardHolds(array $override): void
+function guardViolation(array $override): string
 {
     $serial = getenv('TEST_TOKEN') === false;
 
     // Under --parallel, Laravel creates a database named from any overridden name (for example
     // pokeprices_test_2) before the guard runs. The serial run covers these cases without leaking one.
     if (! $serial && array_key_exists('database.connections.pgsql.database', $override)) {
-        expect($serial)->toBeFalse();
-
-        return;
+        return '';
     }
 
     $probe = guardedProbe($override);
@@ -36,9 +34,19 @@ function assertGuardHolds(array $override): void
         $probe->shutdown();
     }
 
-    expect($serial ? $thrown : true)->toBeTrue()
-        ->and($serial ? $probe->migrated : false)->toBeFalse()
-        ->and($probe->migrated ? $probe->migratedDatabase : 'pokeprices_test')->toStartWith('pokeprices_test');
+    if ($serial && ! $thrown) {
+        return 'the guard did not refuse with "expected pokeprices_test*"';
+    }
+
+    if ($serial && $probe->migrated) {
+        return 'RefreshDatabase reached its migration step';
+    }
+
+    if ($probe->migrated && ! str_starts_with($probe->migratedDatabase, 'pokeprices_test')) {
+        return 'RefreshDatabase migrated '.$probe->migratedDatabase;
+    }
+
+    return '';
 }
 
 /**
@@ -88,15 +96,15 @@ function guardedProbe(array $override): object
 }
 
 it('refuses before RefreshDatabase runs when the database lacks the pokeprices_test prefix', function (): void {
-    assertGuardHolds(['database.connections.pgsql.database' => 'pokeprices']);
+    expect(guardViolation(['database.connections.pgsql.database' => 'pokeprices']))->toBe('');
 });
 
 it('refuses before RefreshDatabase runs when the default connection is not pgsql (mysql)', function (): void {
-    assertGuardHolds(['database.default' => 'mysql']);
+    expect(guardViolation(['database.default' => 'mysql']))->toBe('');
 });
 
 it('refuses before RefreshDatabase runs when the database value is not a string', function (mixed $value): void {
-    assertGuardHolds(['database.connections.pgsql.database' => $value]);
+    expect(guardViolation(['database.connections.pgsql.database' => $value]))->toBe('');
 })->with([[['pokeprices_test']], [42], [null]]);
 
 it('lets the per-worker database name through to RefreshDatabase', function (): void {
