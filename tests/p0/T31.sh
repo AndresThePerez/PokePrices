@@ -17,5 +17,5 @@ make gates > .gates/T31-make-gates.log 2>&1; rc=$?
 check "make gates produced a scorecard" test -f .gates/latest/scorecard.json
 check "the scorecard was written by this make gates run (not a stale one)" test .gates/latest/scorecard.json -nt .gates/T31-start.marker
 check_out "the scorecard holds all 39 manifest gates" 39 jq '.gates | length' .gates/latest/scorecard.json
-check "make gates fails now only because AG1 has no anchor (DEN flags it, EC-ci-parity's nested run fails on it)" sh -c 'test "$0" -ne 0 && jq -e "[.gates[] | select(.hard and .status != \"pass\") | .id] | sort == [\"AG1\",\"DEN\",\"EC-ci-parity\"]" .gates/latest/scorecard.json' "$rc"
+check "make gates exits 0 and every hard gate passes (the gate set is frozen since T36)" sh -c 'test "$0" -eq 0 && jq -e "[.gates[] | select(.hard and .status != \"pass\") | .id] == []" .gates/latest/scorecard.json' "$rc"
 finish

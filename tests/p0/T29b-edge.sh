@@ -4,13 +4,14 @@ set -u
 cd "$(dirname "$0")/../.." || exit 1
 . tests/p0/lib.sh
 BASE=191b1a9
+T29B=ab06f7a   # the T29b amendment commit; its manifest is what this file judges (P0-i2-T01 later changed Q8, S1 and the frozen list)
 M=gates/manifest-P0.json
 GREP=/usr/bin/grep
 
 # 1. gate-by-gate and key-by-key: only T1.command, EC-X9.check, EC-X10.check differ from the base manifest
 D=$(mktemp -d)
 git show "$BASE:$M" > "$D/old.json"
-cp "$M" "$D/new.json"
+git show "$T29B:$M" > "$D/new.json"
 paths() { jq -c '[paths(scalars)] | .[]' "$1" | sort; }
 paths "$D/old.json" > "$D/op"; paths "$D/new.json" > "$D/np"
 check "scalar key paths are identical to the base manifest" cmp -s "$D/op" "$D/np"
@@ -25,7 +26,7 @@ check "floor, thresholds and exit_criteria_runner unchanged" sh -c "[ \"\$(jq -c
 check "exit criteria other than X9/X10 unchanged" sh -c "[ \"\$(jq -cS '[.exit_criteria[]|select(.id!=\"EC-X9\" and .id!=\"EC-X10\")]' $D/old.json)\" = \"\$(jq -cS '[.exit_criteria[]|select(.id!=\"EC-X9\" and .id!=\"EC-X10\")]' $D/new.json)\" ]"
 
 # 2. byte stability: the diff touches exactly 3 lines, 4-space indent kept, no trailing whitespace/CR/tabs
-check_out "json diff vs base is 3 added + 3 removed lines" 6 sh -c "git diff -U0 $BASE HEAD -- $M | $GREP -c -E '^[+-][^+-]'"
+check_out "json diff vs base is 3 added + 3 removed lines" 6 sh -c "git diff -U0 $BASE $T29B -- $M |$GREP -c -E '^[+-][^+-]'"
 check "no tab, CR or trailing space in the json" sh -c "! $GREP -q -P '\t|\r| \$' $M"
 check "file ends with exactly one newline" sh -c "[ \"\$(tail -c1 $M | od -An -tx1 | tr -d ' ')\" = 0a ] && [ \"\$(tail -c2 $M | od -An -tx1 | tr -d ' ')\" != 0a0a ]"
 check "new json keeps 2-space base indentation of the base file" sh -c "[ \"\$(git show $BASE:$M | $GREP -c '^  \"')\" = \"\$($GREP -c '^  \"' $M)\" ]"
@@ -40,7 +41,7 @@ for id in EC-X9 EC-X10; do
 done
 check "md has no stale --parallel --order-by T1 command" sh -c "! $GREP -F -- 'pest -c phpunit.xml --parallel --order-by' $MD"
 check "md has no stale prose EC-X9/X10 checks" sh -c "! $GREP -E -- 'same check as D4|the scorecard.s make_exit' $MD"
-check "md diff vs base is 3 lines changed" sh -c "[ \"\$(git diff -U0 $BASE HEAD -- $MD | $GREP -v -E '^(\+\+\+|---)' | $GREP -c -E '^[+-]')\" = 6 ]"
+check "md diff vs base is 3 lines changed" sh -c "[ \"\$(git diff -U0 $BASE $T29B -- $MD |$GREP -v -E '^(\+\+\+|---)' | $GREP -c -E '^[+-]')\" = 6 ]"
 check "T07 edge mirrors the 4-worker command" sh -c "$GREP -q -- '--parallel --processes=4 --order-by=random' tests/p0/T07-edge.sh"
 
 # 4. approved hash matches the blob, and a stale hash is rejected

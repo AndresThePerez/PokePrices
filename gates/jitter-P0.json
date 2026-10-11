@@ -1,0 +1,13 @@
+{
+  "phase": "P0",
+  "source": "deterministic",
+  "tolerance": {
+    "Q2": 0,
+    "Q5": 0,
+    "S7": 0,
+    "D4": 0,
+    "S10": 0
+  },
+  "calibration_runs": [],
+  "note": "Tolerance stays 0 until three Stage D calibration runs exist at one HEAD; any change needs a new Andres-approved hash."
+}

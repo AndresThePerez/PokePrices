@@ -63,6 +63,8 @@
     "web/vitest.config.mjs",
     "web/vitest.workspace.ts",
     ".spectral.yml",
-    ".spectral.json"
+    ".spectral.json",
+    "trivy.yaml",
+    "web/.npmrc"
   ]
 }

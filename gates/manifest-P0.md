@@ -103,7 +103,7 @@ This file renders exactly the fields of `manifest-P0.json`; the JSON is the mach
 ### Q8: Prettier clean
 
 - hard: true; scope: any; runs_in: node; timeout_s: 900; built_by: P0-i1-T12
-- command: `docker compose -f compose.dev.yml exec -T -w /workspace/web node ./node_modules/.bin/prettier --config .prettierrc.json --ignore-path .prettierignore --list-different . > "$GATES_OUT/Q8.prettier.txt"`
+- command: `docker compose -f compose.dev.yml exec -T -w /workspace/web node ./node_modules/.bin/prettier --config .prettierrc.json --no-editorconfig --ignore-path .prettierignore --list-different . > "$GATES_OUT/Q8.prettier.txt"`
 - banner_cmd: `docker compose -f compose.dev.yml exec -T -w /workspace/web node ./node_modules/.bin/prettier --version`; banner_re: `^3\.9\.`
 - artifact: `$GATES_OUT/Q8.prettier.txt`
 - value_parser: `awk 'NF{n++} END{print n+0}' "$GATES_OUT/Q8.prettier.txt"`
@@ -207,7 +207,7 @@ This file renders exactly the fields of `manifest-P0.json`; the JSON is the mach
 ### S1: composer audit: 0 advisories (abandoned reported only)
 
 - hard: true; scope: any; runs_in: api; timeout_s: 900; built_by: P0-i1-T08
-- command: `docker compose -f compose.dev.yml exec -T -w /workspace/api api composer audit --locked --abandoned=report --format=json --no-interaction > "$GATES_OUT/S1.audit.json"`
+- command: `docker compose -f compose.dev.yml exec -T -w /workspace/api api composer audit --locked --abandoned=report --format=json --no-interaction > "$GATES_OUT/S1.audit.json" && jq -e 'has("repositories") | not' api/composer.json > /dev/null`
 - banner_cmd: `docker compose -f compose.dev.yml exec -T -w /workspace/api api composer --version`; banner_re: `^Composer version 2\.10\.3`
 - artifact: `$GATES_OUT/S1.audit.json`
 - value_parser: `jq -e '[.advisories[]?[]?] | length' "$GATES_OUT/S1.audit.json"`
@@ -515,7 +515,7 @@ scripts/verdict (full mode) runs these checks itself, logs each to <scorecard di
 
 ## Frozen files
 
-- list: `Makefile`, `scripts/scorecard`, `scripts/verdict`, `scripts/lib/*`, `scripts/gates/*`, `gates/*`, `gates/fixtures/**`, `.gitignore`, `.dockerignore`, `compose.dev.yml`, `docker/api/Dockerfile`, `docker/api/zz-pokeprices.conf`, `docker/web/Dockerfile`, `docker/tools/Dockerfile`, `docker/nginx/pokeprices.conf`, `scripts/dev/*`, `.github/workflows/*`, `.spectral.yaml`, `api/composer.json#.scripts`, `api/composer.json#.config`, `api/phpstan.neon`, `api/pint.json`, `api/rector.php`, `api/phpunit.xml`, `api/tests/Pest.php`, `api/tests/TestCase.php`, `web/package.json#.scripts`, `web/package.json#.engines`, `web/package.json#.overrides`, `web/eslint.config.js`, `web/tsconfig.json`, `web/tsconfig.app.json`, `web/tsconfig.node.json`, `web/vitest.config.ts`, `web/.prettierrc.json`, `web/.prettierignore`
+- list: `Makefile`, `scripts/scorecard`, `scripts/verdict`, `scripts/lib/*`, `scripts/gates/*`, `gates/*`, `gates/fixtures/**`, `.gitignore`, `api/.gitignore`, `web/.gitignore`, `.dockerignore`, `compose.dev.yml`, `docker/api/Dockerfile`, `docker/api/zz-pokeprices.conf`, `docker/web/Dockerfile`, `docker/tools/Dockerfile`, `docker/nginx/pokeprices.conf`, `scripts/dev/*`, `.github/workflows/*`, `.spectral.yaml`, `api/composer.json#.scripts`, `api/composer.json#.config`, `api/phpstan.neon`, `api/pint.json`, `api/rector.php`, `api/phpunit.xml`, `api/tests/Pest.php`, `api/tests/TestCase.php`, `api/tests/Support/*`, `web/package.json#.scripts`, `web/package.json#.engines`, `web/package.json#.overrides`, `web/eslint.config.js`, `web/tsconfig.json`, `web/tsconfig.app.json`, `web/tsconfig.node.json`, `web/vitest.config.ts`, `web/.prettierrc.json`, `web/.prettierignore`
 - record: gates/frozen.sha256 lists one line per concrete path (glob entries expanded at freeze time; #subtree entries hash jq -S of that subtree); anchored at the first commit that adds it
 - comparators: gates/ratchet.json maps each path to one kind of a closed set: hash, phpstan-params, phpunit-xml, tsconfig, vitest, json-subtree, ignore-lines; anything a comparator does not decide is a loosening and needs a new Andres-approved hash (R11)
 - config_discovery_globs: listed in gates/ratchet.json under discovery; git ls-files matches must equal the frozen list

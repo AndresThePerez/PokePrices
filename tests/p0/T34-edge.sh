@@ -45,26 +45,34 @@ build dirtybefore '.clean_before = false' "$I" "$I"
 expect_flip dirtybefore "primary context, clean before and after"
 build linked '.run_context = "linked"' "$I" "$I"
 expect_flip linked "primary context, clean before and after"
+# Since the T36 freeze every hard gate passes; the doctored variants below fail one gate each, or
+# restore the pre-freeze failure set (AG1 without an anchor, DEN and EC-ci-parity through it).
 build smuggled '(.gates[] | select(.id == "Q1")) |= (.status = "fail")' "$I" "$I"
-expect_flip smuggled "every hard gate except AG1, DEN and EC-ci-parity passes (exactly those three fail)"
+expect_flip smuggled "every hard gate passes"
 build notrun '(.gates[] | select(.id == "Q1")) |= (.status = "not_run")' "$I" "$I"
-expect_flip notrun "every hard gate except AG1, DEN and EC-ci-parity passes (exactly those three fail)"
+expect_flip notrun "every hard gate passes"
+build prefreeze '(.gates[] | select(.id == "AG1" or .id == "DEN" or .id == "EC-ci-parity")) |= (.status = "fail")' "$I" "$I"
+expect_flip prefreeze "every hard gate passes"
 build agvalues '(.gates[] | select(.id == "AG-values")) |= (.status = "fail")' "$I" "$I"
 expect_flip agvalues "AG-values clean on every group"
 build soft3 '(.gates[] | select(.id == "Q5")) |= (.status = "fail")' "$I" "$I"
 expect_flip soft3 "at least 4 of 5 soft gates pass"
 build ag1two "$I" '.details += [{"check":"x","reason":"hash_mismatch","violation":true}]' "$I"
-expect_flip ag1two "AG1 fails only for the missing anchor"
-build ag1other "$I" '.details |= map(.reason = "hash_mismatch")' "$I"
-expect_flip ag1other "AG1 fails only for the missing anchor"
-build ag1none "$I" '.details |= map(.violation = false)' "$I"
-expect_flip ag1none "AG1 fails only for the missing anchor"
-build denextra "$I" "$I" '.details += [{"gate":"Q1","rule":"zero_denominator","status":"fail","denominator":0}]'
-expect_flip denextra "DEN fails only on AG1"
-build denmissing "$I" "$I" '.details |= map(select(.gate != "AG1"))'
-expect_flip denmissing "DEN fails only on AG1"
+expect_flip ag1two "AG1 shows no violations against the anchor"
+build ag1value "$I" '.value = 1' "$I"
+expect_flip ag1value "AG1 shows no violations against the anchor"
+build ag1none "$I" '.value = 1 | .denominator = 0 | .details = [{"check":"ii","reason":"anchor_absent","path":"gates/frozen.sha256","violation":true}]' "$I"
+expect_flip ag1none "AG1 shows no violations against the anchor"
+build denextra "$I" "$I" '.details += [{"gate":"Q1","rule":"zero_denominator","status":"fail","denominator":0}] | .value = (.details | length)'
+expect_flip denextra "DEN shows no failing details"
+build denvalue "$I" "$I" '.value = 1'
+expect_flip denvalue "DEN shows no failing details"
+build denprefreeze "$I" "$I" '.details = [{"gate":"AG1","rule":"zero_denominator","status":"fail","denominator":0}] | .value = 1'
+expect_flip denprefreeze "DEN shows no failing details"
 build nestedextra "$I" "$I" "$I" '(.gates[] | select(.id == "Q1")) |= (.status = "fail")'
-expect_flip nestedextra "EC-ci-parity's nested run fails only on AG1 and DEN"
+expect_flip nestedextra "EC-ci-parity's nested run passes every in-scope hard gate"
+build nestedprefreeze "$I" "$I" "$I" '(.gates[] | select(.id == "AG1" or .id == "DEN")) |= (.status = "fail")'
+expect_flip nestedprefreeze "EC-ci-parity's nested run passes every in-scope hard gate"
 
 # Rector edits must keep QueueProbe's command surface (T18).
 QP="$DC exec -T -w /workspace/api api php artisan"

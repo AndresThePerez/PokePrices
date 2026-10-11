@@ -48,6 +48,6 @@ d=$(new); freeze "$d"; ( cd "$d" && printf '{}\n' >> gates/manifest-P0.json && g
 check "an edited manifest fails the approval check" sh -c 'cd "$0" && ! GATES_OUT=.gates python3 -I "$1" && jq -e "[.details[] | select(.reason == \"manifest_unapproved\")] | length > 0" .gates/AG1.json' "$d" "$A"
 d=$(new); freeze "$d"; ( cd "$d" && sed -i '1d' gates/frozen.sha256 && git commit -qam "Shrink" )
 check "dropping a line from frozen.sha256 after the anchor fails" sh -c 'cd "$0" && ! GATES_OUT=.gates python3 -I "$1" && jq -e "[.details[] | select(.reason == \"lock_entry_dropped\")] | length == 1" .gates/AG1.json' "$d" "$A"
-check "live repo: approval passes, anchor absent until T36" sh -c '! GATES_OUT="$0" python3 -I scripts/gates/ag1.py && jq -e "[.details[] | select(.reason == \"manifest_unapproved\" or .reason == \"hash_mismatch\")] | length == 0" "$0/AG1.json"' "$O"
-check "live repo: anchor_absent is the only violation until T36" jq -e '[.details[] | select(.violation) | .reason] == ["anchor_absent"] and .denominator == 0' "$O/AG1.json"
+check "live repo: approval passes and AG1 passes against the T36 anchor" sh -c 'GATES_OUT="$0" python3 -I scripts/gates/ag1.py && jq -e "[.details[] | select(.reason == \"manifest_unapproved\" or .reason == \"hash_mismatch\")] | length == 0" "$0/AG1.json"' "$O"
+check "live repo: no AG1 violation and every anchor lock entry evaluated" jq -e '[.details[] | select(.violation)] == [] and .value == 0 and .denominator > 0' "$O/AG1.json"
 finish

@@ -11,7 +11,7 @@ BASE=7908ea4
 T12=421d9f4
 $DC up -d --wait node >/dev/null 2>&1
 mkdir -p .gates/tmp
-PRETTIER="./node_modules/.bin/prettier --config .prettierrc.json --ignore-path .prettierignore --list-different ."
+PRETTIER="./node_modules/.bin/prettier --config .prettierrc.json --no-editorconfig --ignore-path .prettierignore --list-different ."
 count() { awk 'NF{n++} END{print n+0}'; }
 
 # --- 1. the gate is real ---------------------------------------------------------------------------
