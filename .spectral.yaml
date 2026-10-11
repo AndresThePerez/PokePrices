@@ -1,0 +1,62 @@
+# PokéPrices contract rules (Research 11 C2, A2 C1 row). Frozen at P0; only additions or stricter severities later.
+extends: ["spectral:oas"]
+rules:
+  pp-operation-id:
+    description: Every operation has an operationId.
+    severity: error
+    given: "$.paths[*][get,put,post,delete,patch]"
+    then:
+      field: operationId
+      function: truthy
+  pp-operation-summary:
+    description: Every operation has a summary.
+    severity: error
+    given: "$.paths[*][get,put,post,delete,patch]"
+    then:
+      field: summary
+      function: truthy
+  pp-error-response:
+    description: Every operation documents at least one 4xx or 5xx response.
+    severity: error
+    given: "$.paths[*][get,put,post,delete,patch].responses"
+    then:
+      function: schema
+      functionOptions:
+        schema:
+          type: object
+          not:
+            propertyNames:
+              pattern: "^[123]"
+  pp-error-problem-json:
+    description: Every 4xx and 5xx response is application/problem+json.
+    severity: error
+    given: "$.paths[*][get,put,post,delete,patch].responses[?(@property.match(/^[45]/))].content"
+    then:
+      function: schema
+      functionOptions:
+        schema:
+          type: object
+          required:
+            - "application/problem+json"
+  pp-typed-2xx:
+    description: Every 2xx JSON body has properties or a $ref, never a bare object.
+    severity: error
+    given: "$.paths[*][get,put,post,delete,patch].responses[?(@property.match(/^2/))].content.application/json.schema"
+    then:
+      function: schema
+      functionOptions:
+        schema:
+          anyOf:
+            - required:
+                - "$ref"
+            - required:
+                - "properties"
+  pp-closed-objects:
+    description: Objects with properties are closed (additionalProperties false).
+    severity: error
+    given: "$..[?(@ && @.type == 'object' && @.properties)]"
+    then:
+      - field: additionalProperties
+        function: defined
+      - field: additionalProperties
+        function: falsy

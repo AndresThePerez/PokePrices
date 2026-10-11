@@ -2,9 +2,9 @@
 
 namespace App\Providers;
 
+use App\OpenApi\ContractDocument;
 use Dedoc\Scramble\Scramble;
 use Dedoc\Scramble\Support\Generator\OpenApi;
-use Dedoc\Scramble\Support\Generator\Server;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -23,9 +23,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // The contract's only server is the relative /v1, so the export never depends on APP_URL (R78).
+        // Servers, contact, the readiness problem schema and closed objects (R78, .spectral.yaml).
         Scramble::configure()->withDocumentTransformers(function (OpenApi $openApi): void {
-            $openApi->servers = [new Server('/v1')];
+            (new ContractDocument)($openApi);
         });
     }
 }

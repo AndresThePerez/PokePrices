@@ -3,24 +3,34 @@
     "info": {
         "title": "Pok\u00e9Prices",
         "version": "0.1.0",
-        "description": "Pok\u00e9Prices API: daily-close Pok\u00e9mon card prices."
+        "description": "Pok\u00e9Prices API: daily-close Pok\u00e9mon card prices.",
+        "contact": {
+            "name": "Pok\u00e9Prices"
+        }
     },
     "servers": [
         {
             "url": "/v1"
         }
     ],
+    "tags": [
+        {
+            "name": "Readiness",
+            "description": "Whether the Pok\u00e9Prices API can serve requests."
+        }
+    ],
     "paths": {
         "/ready": {
             "get": {
                 "operationId": "getReady",
+                "description": "Probes Postgres and both Redis roles and reports each check as ok or fail. Every check ok answers 200; any failed check answers 503 problem+json carrying the same checks map.",
                 "summary": "Readiness of the Pok\u00e9Prices API and the services it needs",
                 "tags": [
                     "Readiness"
                 ],
                 "responses": {
                     "200": {
-                        "description": "",
+                        "description": "Every dependency answered.",
                         "content": {
                             "application/json": {
                                 "schema": {
@@ -44,18 +54,58 @@
                                     "required": [
                                         "status",
                                         "checks"
-                                    ]
+                                    ],
+                                    "additionalProperties": false
                                 }
                             }
                         }
                     },
                     "503": {
-                        "description": "",
+                        "description": "At least one dependency did not answer.",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
-                                    "type": "array",
-                                    "items": {}
+                                    "type": "object",
+                                    "properties": {
+                                        "type": {
+                                            "type": "string"
+                                        },
+                                        "title": {
+                                            "type": "string"
+                                        },
+                                        "status": {
+                                            "type": "integer"
+                                        },
+                                        "instance": {
+                                            "type": "string"
+                                        },
+                                        "request_id": {
+                                            "type": "string"
+                                        },
+                                        "detail": {
+                                            "type": "string"
+                                        },
+                                        "checks": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "ok",
+                                                    "fail"
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "type",
+                                        "title",
+                                        "status",
+                                        "instance",
+                                        "request_id",
+                                        "detail",
+                                        "checks"
+                                    ],
+                                    "additionalProperties": false
                                 }
                             }
                         }

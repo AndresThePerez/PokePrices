@@ -1,0 +1,24 @@
+{
+  "openapi": "3.1.0",
+  "info": {"title": "Bad", "version": "0", "description": "fixture", "contact": {"name": "fixture"}},
+  "servers": [{"url": "/v1"}],
+  "tags": [{"name": "t", "description": "t"}],
+  "paths": {
+    "/thing": {
+      "get": {
+        "tags": ["t"],
+        "description": "no operationId, no summary, bare object, error not problem+json",
+        "responses": {
+          "200": {"description": "ok", "content": {"application/json": {"schema": {"type": "object"}}}},
+          "503": {"description": "down", "content": {"application/json": {"schema": {"type": "object", "properties": {"a": {"type": "string"}}}}}}
+        }
+      }
+    },
+    "/other": {
+      "get": {
+        "operationId": "getOther", "summary": "Only success", "tags": ["t"], "description": "no error response",
+        "responses": {"200": {"description": "ok", "content": {"application/json": {"schema": {"type": "object", "properties": {"b": {"type": "string"}}, "required": ["b"]}}}}}
+      }
+    }
+  }
+}

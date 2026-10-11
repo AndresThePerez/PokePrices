@@ -17,9 +17,10 @@ $DC up -d --wait node >/dev/null 2>&1
 
 # --- 1. every package.json pin equals the plan table (and nothing extra) -------------------------
 check "dependencies are exactly react and react-dom" jq -e '(.dependencies|keys) == ["react","react-dom"]' $P
-# T09 added the six ESLint packages (exact pins checked in T09), T10 the five Vitest packages, T11 the two Tailwind packages, T12 Prettier; a later task that adds packages edits this list.
-check "devDependencies are exactly the plan's six T05 packages, the six T09 ESLint packages, the five T10 Vitest packages, the two T11 Tailwind packages and the T12 Prettier package" jq -e '(.devDependencies|keys) == ["@eslint/js","@tailwindcss/vite","@testing-library/dom","@testing-library/react","@types/node","@types/react","@types/react-dom","@vitejs/plugin-react","@vitest/coverage-v8","eslint","eslint-plugin-react-hooks","eslint-plugin-react-refresh","globals","jsdom","prettier","tailwindcss","typescript","typescript-eslint","vite","vitest"]' $P
+# T09 added the six ESLint packages (exact pins checked in T09), T10 the five Vitest packages, T11 the two Tailwind packages, T12 Prettier, T21 the Spectral CLI; a later task that adds packages edits this list.
+check "devDependencies are exactly the plan's six T05 packages, the six T09 ESLint packages, the five T10 Vitest packages, the two T11 Tailwind packages, the T12 Prettier package and the T21 Spectral CLI" jq -e '(.devDependencies|keys) == ["@eslint/js","@stoplight/spectral-cli","@tailwindcss/vite","@testing-library/dom","@testing-library/react","@types/node","@types/react","@types/react-dom","@vitejs/plugin-react","@vitest/coverage-v8","eslint","eslint-plugin-react-hooks","eslint-plugin-react-refresh","globals","jsdom","prettier","tailwindcss","typescript","typescript-eslint","vite","vitest"]' $P
 check_out "T12 Prettier carries the plan's exact pin" 3.9.10 jq -r .devDependencies.prettier $P
+check_out "T21 Spectral CLI carries the plan's exact pin" 6.17.0 jq -r '.devDependencies["@stoplight/spectral-cli"]' $P
 check "T10 Vitest packages carry the plan's exact pins" jq -e '.devDependencies.vitest=="5.0.3" and .devDependencies["@vitest/coverage-v8"]=="5.0.3" and .devDependencies.jsdom=="30.1.2" and .devDependencies["@testing-library/react"]=="16.3.3"' $P
 check_out "react-dom equals react" 19.3.0 jq -r '.dependencies["react-dom"]' $P
 check "@types/node stays on the node 24 line" jq -e '.devDependencies["@types/node"] | test("^24\\.[0-9]+\\.[0-9]+$")' $P
