@@ -14,12 +14,13 @@ variant_script() { # $1 fixture dir
   sed -e '/^make gates/d' -e "s#^SC=.*#SC=$1/scorecard.json#" \
       -e 's#^cd .*#cd "'"$(pwd)"'" || exit 1#' tests/p0/T34.sh > "$1/T34-copy.sh"
 }
-# build NAME JQ-ON-SCORECARD JQ-ON-AG1 JQ-ON-DEN
+# build NAME JQ-ON-SCORECARD JQ-ON-AG1 JQ-ON-DEN [JQ-ON-NESTED-SCORECARD]
 build() {
   d=$T/$1; rm -rf "$d"; mkdir -p "$d"
   jq --arg h "$HEADSHA" '.head = $h' "$REAL/scorecard.json" | jq "$2" > "$d/scorecard.json"
   jq -e "$3" "$REAL/AG1.json" > "$d/AG1.json" || exit 1
   jq -e "$4" "$REAL/DEN.json" > "$d/DEN.json" || exit 1
+  jq -e "${5:-.}" "$REAL/EC-ci-parity.nested.json" > "$d/EC-ci-parity.nested.json" || exit 1
   jq -e "$2" "$REAL/scorecard.json" >/dev/null || exit 1
   variant_script "$d"
 }
@@ -45,9 +46,9 @@ expect_flip dirtybefore "primary context, clean before and after"
 build linked '.run_context = "linked"' "$I" "$I"
 expect_flip linked "primary context, clean before and after"
 build smuggled '(.gates[] | select(.id == "Q1")) |= (.status = "fail")' "$I" "$I"
-expect_flip smuggled "every hard gate except AG1, EC-ci-parity and DEN passes"
+expect_flip smuggled "every hard gate except AG1, DEN and EC-ci-parity passes (exactly those three fail)"
 build notrun '(.gates[] | select(.id == "Q1")) |= (.status = "not_run")' "$I" "$I"
-expect_flip notrun "every hard gate except AG1, EC-ci-parity and DEN passes"
+expect_flip notrun "every hard gate except AG1, DEN and EC-ci-parity passes (exactly those three fail)"
 build agvalues '(.gates[] | select(.id == "AG-values")) |= (.status = "fail")' "$I" "$I"
 expect_flip agvalues "AG-values clean on every group"
 build soft3 '(.gates[] | select(.id == "Q5")) |= (.status = "fail")' "$I" "$I"
@@ -59,9 +60,11 @@ expect_flip ag1other "AG1 fails only for the missing anchor"
 build ag1none "$I" '.details |= map(.violation = false)' "$I"
 expect_flip ag1none "AG1 fails only for the missing anchor"
 build denextra "$I" "$I" '.details += [{"gate":"Q1","rule":"zero_denominator","status":"fail","denominator":0}]'
-expect_flip denextra "DEN fails only on AG1 and EC-ci-parity"
-build denmissing "$I" "$I" '.details |= map(select(.gate != "EC-ci-parity"))'
-expect_flip denmissing "DEN fails only on AG1 and EC-ci-parity"
+expect_flip denextra "DEN fails only on AG1"
+build denmissing "$I" "$I" '.details |= map(select(.gate != "AG1"))'
+expect_flip denmissing "DEN fails only on AG1"
+build nestedextra "$I" "$I" "$I" '(.gates[] | select(.id == "Q1")) |= (.status = "fail")'
+expect_flip nestedextra "EC-ci-parity's nested run fails only on AG1 and DEN"
 
 # Rector edits must keep QueueProbe's command surface (T18).
 QP="$DC exec -T -w /workspace/api api php artisan"

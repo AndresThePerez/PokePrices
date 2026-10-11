@@ -108,10 +108,15 @@ it('refuses before RefreshDatabase runs when the database value is not a string'
 })->with([[['pokeprices_test']], [42], [null]]);
 
 it('lets the per-worker database name through to RefreshDatabase', function (): void {
-    $probe = guardedProbe(['database.connections.pgsql.database' => 'pokeprices_test_test_3']);
+    // Serial: a per-worker-shaped name passes the guard without any database being touched.
+    // Parallel: Laravel's own per-worker database (created from pokeprices_test, so a fresh volume
+    // works and no stray database is left, R100) must reach RefreshDatabase unchanged.
+    $serial = getenv('TEST_TOKEN') === false;
+    $probe = guardedProbe($serial ? ['database.connections.pgsql.database' => 'pokeprices_test_test_3'] : []);
     $probe->boot();
 
-    expect($probe->migrated)->toBeTrue();
+    expect($probe->migrated)->toBeTrue()
+        ->and($probe->migratedDatabase)->toBe($serial ? 'pokeprices_test_test_3' : 'pokeprices_test_test_'.getenv('TEST_TOKEN'));
 
     $probe->shutdown();
 });
