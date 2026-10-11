@@ -64,8 +64,8 @@ it('normalises throwable context and drops wrongly typed route and duration', fu
 })->group('O2');
 
 it('writes exactly one request line with status 500 when the route throws', function (): void {
-    Route::get('/v1/edge-boom', fn () => throw new RuntimeException('boom'));
-    $this->get('/v1/edge-boom')->assertStatus(500);
+    Route::get('/v1/__edge-boom', fn () => throw new RuntimeException('boom'));
+    $this->get('/v1/__edge-boom')->assertStatus(500);
     $requests = array_values(array_filter(edgeLines($this->edgeFile), fn (array $l): bool => $l['message'] === 'request'));
     expect($requests)->toHaveCount(1)
         ->and($requests[0]['context']['status'])->toBe(500);
