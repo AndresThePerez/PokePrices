@@ -1,7 +1,5 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
+declare(strict_types=1);
 
-Route::get('/', function () {
-    return view('welcome');
-});
+// The SPA owns every non-API path; nginx serves it, so Laravel registers no web routes.
