@@ -80,8 +80,14 @@ return [
 
         'redis' => [
             'driver' => 'redis',
-            'connection' => env('REDIS_CACHE_CONNECTION', 'cache'),
-            'lock_connection' => env('REDIS_CACHE_LOCK_CONNECTION', 'default'),
+            'connection' => 'cache',
+            'lock_connection' => 'default',
+        ],
+
+        'locks' => [
+            'driver' => 'redis',
+            'connection' => 'default',
+            'lock_connection' => 'default',
         ],
 
         'dynamodb' => [
@@ -132,5 +138,17 @@ return [
     */
 
     'serializable_classes' => false,
+
+    /*
+    |--------------------------------------------------------------------------
+    | Rate Limiter Store
+    |--------------------------------------------------------------------------
+    |
+    | The rate limiter keeps its counters on the redis-queue connection
+    | through the "locks" store, so evicting cache data never resets a limit.
+    |
+    */
+
+    'limiter' => 'locks',
 
 ];
