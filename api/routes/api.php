@@ -2,4 +2,7 @@
 
 declare(strict_types=1);
 
-// API routes, served under /v1 (apiPrefix in bootstrap/app.php). T16 adds GET /ready.
+use App\Http\Controllers\ReadinessController;
+use Illuminate\Support\Facades\Route;
+
+Route::get('/ready', ReadinessController::class)->name('ready');

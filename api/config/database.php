@@ -97,6 +97,7 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
+            'options' => [PDO::ATTR_TIMEOUT => 1],
         ],
 
         'sqlsrv' => [
@@ -164,6 +165,8 @@ return [
             'backoff_algorithm' => env('REDIS_BACKOFF_ALGORITHM', 'decorrelated_jitter'),
             'backoff_base' => env('REDIS_BACKOFF_BASE', 100),
             'backoff_cap' => env('REDIS_BACKOFF_CAP', 1000),
+            'timeout' => 0.5,
+            'read_timeout' => 0.5,
         ],
 
         'cache' => [
@@ -177,6 +180,8 @@ return [
             'backoff_algorithm' => env('REDIS_BACKOFF_ALGORITHM', 'decorrelated_jitter'),
             'backoff_base' => env('REDIS_BACKOFF_BASE', 100),
             'backoff_cap' => env('REDIS_BACKOFF_CAP', 1000),
+            'timeout' => 0.5,
+            'read_timeout' => 0.5,
         ],
 
     ],
