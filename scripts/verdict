@@ -1,0 +1,853 @@
+#!/usr/bin/env -S python3 -I
+"""PokéPrices verdict: judge a scorecard by script, never by trust (A2 0.2, R9-R11, R18, R22, R29).
+
+Usage:
+  scripts/verdict --gates-only --manifest M --scorecard S
+      prints GATES_OK, or GATES_FAIL followed by the blocking ids on the same line.
+      Never reads findings (R22). Accepts primary, nested and ci scorecards; in nested
+      and ci runs, primary-scope gates recorded out_of_scope are not counted.
+  scripts/verdict --manifest M --scorecard S --findings F [--confirm S2] [--baseline B]
+                  [--human-gates H.json] [--deferrals D.json]
+      prints DONE or NOT_DONE, then one tagged blocking id per line (sorted), then
+      HUMAN_GATES_ONLY when every blocking id is human-gate:* (R29). Runs the manifest's
+      exit_criteria checks (R34) and logs them to <scorecard dir>/exit/<id>.log.
+  scripts/verdict --selftest DIR --out FILE
+      evaluates every case directory under DIR in full mode, compares the output with
+      the case's expected.txt and writes the VER-selftest gate result to FILE:
+      value = cases whose output differs from expected.txt, plus 1 when no case
+      evaluated to DONE; denominator = cases.
+
+Status 0 only for GATES_OK, DONE, or a selftest with value 0; status 1 otherwise;
+status 2 on a usage error. Every unreadable or malformed input blocks (fail closed).
+
+Blocking id tags: gate:<id>, finding:<F-id>, findings:invalid, exit:<EC-id>,
+manifest:invalid, manifest:floor, manifest:duplicate:<id> (a gates[] or exit_criteria[]
+id used twice), manifest:hash_mismatch, human-gate:HG-07,
+scorecard:<reason> (unreadable, schema, context, head, head_epoch, dirty, manifest,
+stale:<id>, missing:<id>, duplicate:<id>, unknown:<id>, log_tampered:<id>),
+confirm:<reason> (missing, unreadable, head, same_run, overlap, shared_logs, or
+confirm:<tag> for a rule 1, 2, 5 or 7 tag of the second scorecard), soft:ratio,
+soft:regression:<id>.
+
+Selftest case directory: manifest.json, scorecard.json, logs referenced by the
+scorecard (paths relative to the case directory), git_state.json {head,
+head_commit_epoch, clean, manifest_sha256, approved_sha256 (null = no approval file)},
+expected.txt, and optionally findings.json, exit_results.json ({EC-id: status} or a list
+of statuses, one per exit_criteria entry),
+confirm.json, baseline.json, jitter.json, human_gates.json, deferrals.json and
+ratchet/ (ratchet.json, anchor/<path>, head/<path>). expected.txt holds exactly the
+full-mode output: line 1 DONE or NOT_DONE, then the sorted blocking ids, then
+HUMAN_GATES_ONLY when that marker applies.
+"""
+import argparse
+import hashlib
+import json
+import os
+import re
+import subprocess
+import sys
+from fractions import Fraction
+
+SCORECARD_SCHEMA = "pokeprices-scorecard/v1"
+MANIFEST_SCHEMA = "pokeprices-manifest/v1"
+CONTEXTS = ("primary", "nested", "ci")
+ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+AG_RE = re.compile(r"^AG[0-9]+$")
+SHA_RE = re.compile(r"^[0-9a-f]{64}$")
+FRAME_RE = re.compile(r"^## GATE (\S+) head=([0-9a-f]{40}) run=(\S+) start=([0-9]+) context=(\S+)$")
+EXIT_RE = re.compile(r"^EXIT ([0-9]+)$")
+FINDING_ID_RE = re.compile(r"^F-P[0-9]+-[0-9]{3}$")
+SEVERITIES = ("Critical", "High", "Medium", "Low")
+STATUS_RE = re.compile(r"^(open|fixed\([0-9a-f]{7,40}\)|ruled\(R[0-9]+\)|deferred\(P[0-9]+, Andres\))$")
+DEFERRED_RE = re.compile(r"^deferred\((P[0-9]+), Andres\)$")
+PHASE_RE = re.compile(r"^P([0-9]+)$")
+HG_RE = re.compile(r"^HG-[0-9]+$")
+EXIT_CHECK_TIMEOUT = 600
+OPS = {
+    "==": lambda a, b: a == b,
+    "!=": lambda a, b: a != b,
+    ">=": lambda a, b: a >= b,
+    "<=": lambda a, b: a <= b,
+    ">": lambda a, b: a > b,
+    "<": lambda a, b: a < b,
+}
+HERE = os.path.dirname(os.path.realpath(__file__))
+RATCHET = os.path.join(HERE, "lib", "ratchet.py")
+
+
+class UsageError(Exception):
+    pass
+
+
+def is_number(x):
+    return isinstance(x, (int, float)) and not isinstance(x, bool) and x == x and x not in (float("inf"), float("-inf"))
+
+
+def meets(value, op, threshold):
+    return is_number(value) and is_number(threshold) and op in OPS and bool(OPS[op](value, threshold))
+
+
+def sha256_bytes(data):
+    return hashlib.sha256(data).hexdigest()
+
+
+def note(msg):
+    sys.stderr.write("verdict: %s\n" % msg)
+
+
+# ====================================================================== pure evaluation
+def duplicate_ids(entries):
+    """Ids that occur more than once in a list of {id: ...} entries (R89: a manifest defect, fails closed)."""
+    seen, dups = set(), set()
+    for e in entries if isinstance(entries, list) else []:
+        eid = e.get("id") if isinstance(e, dict) else None
+        if isinstance(eid, str):
+            if eid in seen:
+                dups.add(eid)
+            seen.add(eid)
+    return dups
+
+
+def manifest_gates(manifest):
+    """Validated gate list, or None when the manifest cannot be evaluated at all."""
+    if not isinstance(manifest, dict) or manifest.get("schema") != MANIFEST_SCHEMA:
+        return None
+    gates = manifest.get("gates")
+    if not isinstance(gates, list) or not gates:
+        return None
+    seen = set()
+    for g in gates:
+        gid = g.get("id") if isinstance(g, dict) else None
+        if not isinstance(gid, str) or not ID_RE.match(gid) or gid in seen:
+            return None
+        seen.add(gid)
+    return gates
+
+
+def is_hard(gate):
+    return gate.get("hard") is not False or bool(AG_RE.match(gate["id"]))
+
+
+def check_floor(manifest, gates):
+    floor = manifest.get("floor")
+    if not isinstance(floor, dict):
+        return False
+    hard_ids = {g["id"] for g in gates if g.get("hard") is not False}
+    all_ids = {g["id"] for g in gates}
+    fh, fs = floor.get("hard"), floor.get("soft")
+    for lst in (fh, fs):
+        if not isinstance(lst, list) or not all(isinstance(x, str) for x in lst):
+            return False
+    if not set(fh) <= hard_ids or not set(fs) <= all_ids:
+        return False
+    for g in gates:
+        dmin = g.get("denominator_min")
+        if not is_number(dmin) or dmin < 1:
+            return False
+    return True
+
+
+def parse_log(data):
+    """Return (lines, ok_text) for a log's bytes."""
+    try:
+        return data.decode("utf-8").splitlines(), True
+    except UnicodeDecodeError:
+        return data.decode("utf-8", "replace").splitlines(), False
+
+
+def banner_ok(record, gate, lines):
+    banner = record.get("banner")
+    if not isinstance(banner, dict) or banner.get("exit") != 0:
+        return False
+    line = banner.get("line")
+    pattern = gate.get("banner_re")
+    if not isinstance(line, str) or not isinstance(pattern, str) or not pattern:
+        return False
+    try:
+        if not re.search(pattern, line):
+            return False
+    except re.error:
+        return False
+    try:
+        start = next(i for i, ln in enumerate(lines) if ln.startswith("## BANNER_CMD"))
+        end = next(i for i, ln in enumerate(lines) if ln == "## BANNER_EXIT 0")
+    except StopIteration:
+        return False
+    return start < end and line in lines[start + 1:end]
+
+
+def check_record(record, gate, sc, read_log):
+    """Integrity of one record's log. Returns (tampered, exit_from_log, banner_ok)."""
+    path = record.get("log")
+    data = read_log(path) if isinstance(path, str) else None
+    if data is None:
+        return True, None, False
+    lines, utf8 = parse_log(data)
+    tampered = not utf8 or record.get("log_sha256") != sha256_bytes(data)
+    m = FRAME_RE.match(lines[0]) if lines else None
+    if not m or m.group(1) != gate["id"] or m.group(2) != sc.get("head") or m.group(3) != sc.get("run_id") \
+            or int(m.group(4)) != record.get("started_epoch"):
+        tampered = True
+    em = EXIT_RE.match(lines[-1]) if lines else None
+    exit_code = int(em.group(1)) if em else None
+    if exit_code is None or exit_code != record.get("exit"):
+        tampered = True
+    bexit = [ln for ln in lines if ln.startswith("## BANNER_EXIT ")]
+    if len(bexit) != 1:
+        tampered = True
+    return tampered, exit_code, banner_ok(record, gate, lines)
+
+
+def recompute(record, gate, exit_code, banner):
+    """True when the raw fields satisfy the manifest's status rule."""
+    if exit_code != 0 or not banner:
+        return False
+    if not meets(record.get("value"), gate.get("op"), gate.get("threshold")):
+        return False
+    secs = gate.get("secondary") or []
+    if not isinstance(secs, list):
+        return False
+    recorded = record.get("secondary") if isinstance(record.get("secondary"), list) else []
+    for sec in secs:
+        if not isinstance(sec, dict):
+            return False
+        match = [r for r in recorded if isinstance(r, dict) and r.get("name") == sec.get("name")]
+        if len(match) != 1 or not meets(match[0].get("value"), sec.get("op"), sec.get("threshold")):
+            return False
+    den, dmin = record.get("denominator"), gate.get("denominator_min")
+    return is_number(den) and is_number(dmin) and dmin >= 1 and den > 0 and den >= dmin
+
+
+def evaluate_scorecard(sc, inputs, read_log, gates_only, check_tree=True):
+    """Rules 1, 2, 5 and 7 (ratio) for one scorecard; check_tree adds the working-tree check (once per run). Returns (tags, gate_status {id: pass|fail|skip}, soft records)."""
+    tags = set()
+    gates = inputs["gates"]
+    git = inputs["git"]
+    if not isinstance(sc, dict):
+        return {"scorecard:unreadable"}, {}, {}
+    if sc.get("schema") != SCORECARD_SCHEMA or not isinstance(sc.get("gates"), list):
+        return {"scorecard:schema"}, {}, {}
+    ctx = sc.get("run_context")
+    if (ctx not in CONTEXTS) if gates_only else (ctx != "primary"):
+        tags.add("scorecard:context")
+    if sc.get("head") != git.get("head"):
+        tags.add("scorecard:head")
+    if sc.get("clean_before") is not True or sc.get("clean_after") is not True \
+            or (check_tree and git.get("clean") is not True):
+        tags.add("scorecard:dirty")
+    head_epoch = git.get("head_commit_epoch")
+    if not is_number(head_epoch) or sc.get("head_commit_epoch") != head_epoch:
+        tags.add("scorecard:head_epoch")
+    man = sc.get("manifest")
+    if not isinstance(man, dict) or man.get("sha256") != inputs["manifest_sha256"]:
+        tags.add("scorecard:manifest")
+    by_id = {}
+    for r in sc["gates"]:
+        rid = r.get("id") if isinstance(r, dict) else None
+        by_id.setdefault(rid, []).append(r)
+    known = {g["id"] for g in gates}
+    for rid in by_id:
+        if rid not in known:
+            tags.add("scorecard:unknown:%s" % rid)
+    status, soft = {}, {}
+    for g in gates:
+        gid = g["id"]
+        recs = by_id.get(gid, [])
+        if not recs:
+            tags.add("scorecard:missing:%s" % gid)
+            status[gid] = "fail"
+        elif len(recs) > 1:
+            tags.add("scorecard:duplicate:%s" % gid)
+            status[gid] = "fail"
+        else:
+            r = recs[0]
+            se = r.get("started_epoch")
+            if not is_number(se) or not is_number(head_epoch) or se < head_epoch:
+                tags.add("scorecard:stale:%s" % gid)
+            if gates_only and ctx in ("nested", "ci") and g.get("scope") == "primary" and r.get("status") == "out_of_scope":
+                status[gid] = "skip"
+                continue
+            tampered, exit_code, bok = check_record(r, g, sc, read_log)
+            if tampered:
+                tags.add("scorecard:log_tampered:%s" % gid)
+            ok = r.get("status") != "out_of_scope" and recompute(r, g, exit_code, bok)
+            status[gid] = "pass" if ok else "fail"
+            if (r.get("status") == "pass") != ok:
+                note("%s: stored status %s, recomputed %s" % (gid, r.get("status"), status[gid]))
+        if is_hard(g):
+            if status[gid] != "pass" and status[gid] != "skip":
+                tags.add("gate:%s" % gid)
+        elif status[gid] != "skip":
+            soft[gid] = recs[0] if len(recs) == 1 else None
+    soft_ids = list(soft)
+    if soft_ids:
+        passed = sum(1 for gid in soft_ids if status[gid] == "pass")
+        if Fraction(passed, len(soft_ids)) < Fraction(4, 5):
+            tags.add("soft:ratio")
+    return tags, status, soft
+
+
+def worse(value, base, op, threshold, tol):
+    if not is_number(base):
+        return False
+    if not is_number(value):
+        return True
+    if op in (">=", ">"):
+        return value < base - tol
+    if op in ("<=", "<"):
+        return value > base + tol
+    if op == "==" and is_number(threshold):
+        return abs(value - threshold) > abs(base - threshold) + tol
+    return value != base
+
+
+def soft_regressions(soft, inputs):
+    tags = set()
+    baseline = inputs.get("baseline")
+    if baseline is None:
+        return tags
+    if not isinstance(baseline, dict) or not isinstance(baseline.get("gates"), list):
+        return {"soft:regression:baseline"}
+    base = {r.get("id"): r for r in baseline["gates"] if isinstance(r, dict)}
+    jitter = inputs.get("jitter") or {}
+    gmap = {g["id"]: g for g in inputs["gates"]}
+    for gid, rec in soft.items():
+        b = base.get(gid)
+        if b is None:
+            continue
+        tol = jitter.get(gid, 0)
+        tol = tol if is_number(tol) and tol >= 0 else 0
+        value = rec.get("value") if isinstance(rec, dict) else None
+        if worse(value, b.get("value"), gmap[gid].get("op"), gmap[gid].get("threshold"), tol):
+            tags.add("soft:regression:%s" % gid)
+    return tags
+
+
+def human_gate_ran(human_gates, hg):
+    entry = None
+    if isinstance(human_gates, dict):
+        entry = human_gates.get(hg)
+    elif isinstance(human_gates, list):
+        found = [x for x in human_gates if isinstance(x, dict) and x.get("id") == hg]
+        entry = found[0] if len(found) == 1 else None
+    status = entry.get("status") if isinstance(entry, dict) else entry
+    return isinstance(status, str) and status.startswith("ran-by-Andres")
+
+
+def evaluate_findings(inputs):
+    findings = inputs.get("findings")
+    if not isinstance(findings, list):
+        return {"findings:invalid"}
+    for f in findings:
+        if not isinstance(f, dict) or not isinstance(f.get("id"), str) or not FINDING_ID_RE.match(f["id"]) \
+                or f.get("severity") not in SEVERITIES:
+            return {"findings:invalid"}
+    pm = PHASE_RE.match(str(inputs["manifest"].get("phase", "")))
+    phase_n = int(pm.group(1)) if pm else None
+    deferrals = inputs.get("deferrals") if isinstance(inputs.get("deferrals"), dict) else {}
+    tags = set()
+    for f in findings:
+        if f["severity"] not in ("Critical", "High"):
+            continue
+        st = f.get("status")
+        st = st if isinstance(st, str) and STATUS_RE.match(st) else "open"
+        if st.startswith("fixed(") or st.startswith("ruled("):
+            continue
+        is_open = True
+        dm = DEFERRED_RE.match(st)
+        if dm and f["severity"] == "High":
+            d = deferrals.get(f["id"])
+            if isinstance(d, dict) and isinstance(d.get("phase"), str) and isinstance(d.get("human_gate"), str):
+                dp = PHASE_RE.match(d["phase"])
+                if (dp and phase_n is not None and int(dp.group(1)) > phase_n and d["phase"] == dm.group(1)
+                        and HG_RE.match(d["human_gate"]) and human_gate_ran(inputs.get("human_gates"), d["human_gate"])):
+                    is_open = False
+        if is_open:
+            tags.add("finding:%s" % f["id"])
+    return tags
+
+
+def evaluate_exit(inputs):
+    tags = set()
+    crit = inputs["manifest"].get("exit_criteria", [])
+    if not isinstance(crit, list):
+        return {"exit:invalid"}
+    tags |= {"manifest:duplicate:%s" % d for d in duplicate_ids(crit)}
+    # One result per entry, in manifest order (R89): a dict keyed by id could let a later
+    # passing entry hide an earlier failing one with the same id.
+    raw = inputs.get("exit_results")
+    if isinstance(raw, list) and len(raw) == len(crit):
+        results = raw
+    elif isinstance(raw, dict):
+        results = [raw.get(c.get("id")) if isinstance(c, dict) else None for c in crit]
+    else:
+        results = [None] * len(crit)
+    for c, code in zip(crit, results):
+        cid = c.get("id") if isinstance(c, dict) else None
+        if not isinstance(cid, str) or not ID_RE.match(cid):
+            tags.add("exit:invalid")
+            continue
+        if code != 0 or isinstance(code, bool):
+            tags.add("exit:%s" % cid)
+    return tags
+
+
+def evaluate_confirm(sc, inputs):
+    cf = inputs.get("confirm")
+    if cf is None:
+        return {"confirm:missing"}
+    if not isinstance(cf, dict) or not isinstance(sc, dict):
+        return {"confirm:unreadable"}
+    if cf.get("head") != sc.get("head"):
+        return {"confirm:head"}
+    if cf.get("run_id") == sc.get("run_id") or not isinstance(cf.get("run_id"), str):
+        return {"confirm:same_run"}
+    s1, f1, s2, f2 = (sc.get("started_epoch"), sc.get("finished_epoch"), cf.get("started_epoch"), cf.get("finished_epoch"))
+    if not all(is_number(x) for x in (s1, f1, s2, f2)) or not (s2 > f1 or s1 > f2):
+        return {"confirm:overlap"}
+    logs1 = {r.get("log") for r in sc.get("gates", []) if isinstance(r, dict)}
+    logs2 = {r.get("log") for r in cf.get("gates", []) if isinstance(r, dict)} if isinstance(cf.get("gates"), list) else set()
+    if logs1 & logs2:
+        return {"confirm:shared_logs"}
+    tags, _status, _soft = evaluate_scorecard(cf, inputs, inputs["read_confirm_log"], False, check_tree=False)
+    return {"confirm:%s" % t for t in tags}
+
+
+def evaluate(inputs):
+    """Pure verdict over gathered inputs. Returns (verdict, sorted blocking ids, human_gates_only).
+
+    inputs: mode ('full' | 'gates_only'), manifest, manifest_sha256, approved_sha256 (None when
+    the approval file is absent), git {head, head_commit_epoch, clean}, scorecard, read_log,
+    read_confirm_log, ratchet (None when there is no frozen anchor, else [{path, result}]),
+    baseline, jitter {id: tolerance}, and in full mode findings, exit_results, confirm,
+    human_gates, deferrals.
+    """
+    gates_only = inputs["mode"] == "gates_only"
+    gates = manifest_gates(inputs.get("manifest"))
+    blocking = set()
+    if isinstance(inputs.get("manifest"), dict):
+        blocking |= {"manifest:duplicate:%s" % d for d in duplicate_ids(inputs["manifest"].get("gates"))}
+    if gates is None:
+        blocking.add("manifest:invalid")
+    else:
+        inputs = dict(inputs, gates=gates)
+        sc = inputs.get("scorecard")
+        tags, _status, soft = evaluate_scorecard(sc, inputs, inputs["read_log"], gates_only)
+        blocking |= tags
+        if not check_floor(inputs["manifest"], gates):
+            blocking.add("manifest:floor")
+        approved = inputs.get("approved_sha256")
+        if approved is None:
+            blocking.add("human-gate:HG-07")
+        elif approved != inputs.get("manifest_sha256"):
+            blocking.add("manifest:hash_mismatch")
+        ratchet = inputs.get("ratchet")
+        if ratchet is not None:
+            if not isinstance(ratchet, list) or any(
+                    not isinstance(r, dict) or r.get("result") not in ("same", "stricter") for r in ratchet):
+                blocking.add("gate:AG1")
+        blocking |= soft_regressions(soft, inputs)
+        if not gates_only:
+            blocking |= evaluate_findings(inputs)
+            blocking |= evaluate_exit(inputs)
+            blocking |= evaluate_confirm(sc, inputs)
+    ids = sorted(blocking)
+    human_only = bool(ids) and all(i.startswith("human-gate:") for i in ids)
+    return ("DONE" if not ids else "NOT_DONE"), ids, human_only
+
+
+def render(mode, verdict, ids, human_only):
+    if mode == "gates_only":
+        return ["GATES_OK"] if not ids else ["GATES_FAIL " + " ".join(ids)]
+    return [verdict] + ids + (["HUMAN_GATES_ONLY"] if human_only else [])
+
+
+# ====================================================================== input gathering
+def read_bytes(path):
+    try:
+        with open(path, "rb") as fh:
+            return fh.read()
+    except OSError:
+        return None
+
+
+def load_json(path):
+    """Parsed JSON, or None when the file is absent or unparsable."""
+    data = read_bytes(path)
+    if data is None:
+        return None
+    try:
+        return json.loads(data.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError):
+        return None
+
+
+def confined_reader(base, confine):
+    """Read a relative path under base whose real location stays inside confine."""
+    confine_real = os.path.realpath(confine)
+
+    def read(rel):
+        if not isinstance(rel, str) or not rel or os.path.isabs(rel):
+            return None
+        full = os.path.realpath(os.path.join(base, rel))
+        if os.path.commonpath([full, confine_real]) != confine_real:
+            return None
+        return read_bytes(full)
+    return read
+
+
+def approved_path(manifest_path):
+    stem = manifest_path[:-5] if manifest_path.endswith(".json") else manifest_path
+    return stem + ".approved.sha256"
+
+
+def read_approved(path):
+    """First token of the approval file, '' when unreadable or malformed, None when absent."""
+    if not os.path.lexists(path):
+        return None
+    data = read_bytes(path)
+    try:
+        tok = data.decode("ascii").split()[0] if data else ""
+    except (UnicodeDecodeError, IndexError):
+        tok = ""
+    return tok if SHA_RE.match(tok) else ""
+
+
+def ratchet_compare(kind, anchor_file, head_file):
+    try:
+        out = subprocess.run([sys.executable, "-I", RATCHET, "compare", "--kind", kind, anchor_file, head_file],
+                             capture_output=True, text=True, stdin=subprocess.DEVNULL, timeout=120)
+    except (OSError, subprocess.SubprocessError):
+        return "undecidable"
+    word = out.stdout.strip()
+    return word if word in ("same", "stricter", "looser", "undecidable") else "undecidable"
+
+
+def kind_for(kinds_doc, key):
+    if isinstance(kinds_doc, dict):
+        kinds = kinds_doc.get("kinds") if isinstance(kinds_doc.get("kinds"), dict) else {}
+        if isinstance(kinds.get(key), str):
+            return kinds[key]
+        if "#" in key:
+            return "json-subtree:" + key.split("#", 1)[1]
+        if isinstance(kinds_doc.get("default_kind"), str):
+            return kinds_doc["default_kind"]
+    elif "#" in key:
+        return "json-subtree:" + key.split("#", 1)[1]
+    return "hash"
+
+
+def git(root, *args, binary=False):
+    out = subprocess.run(["git", *args], cwd=root, capture_output=True, stdin=subprocess.DEVNULL)
+    if out.returncode != 0:
+        return None
+    return out.stdout if binary else out.stdout.decode("utf-8", "replace")
+
+
+def subtree_hash(root, path, sub):
+    try:
+        out = subprocess.run(["jq", "-S", sub, path], cwd=root, capture_output=True, stdin=subprocess.DEVNULL, timeout=60)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return sha256_bytes(out.stdout) if out.returncode == 0 else None
+
+
+def live_ratchet(root, gates_dir_rel, scratch):
+    """Rule 6 against the frozen anchor; None when gates/frozen.sha256 does not exist."""
+    frozen_rel = os.path.join(gates_dir_rel, "frozen.sha256")
+    if not os.path.lexists(os.path.join(root, frozen_rel)):
+        return None
+    log = git(root, "log", "--diff-filter=A", "--format=%H", "--", frozen_rel)
+    anchors = log.split() if log else []
+    if not anchors:
+        return [{"path": frozen_rel, "result": "anchor_missing"}]
+    anchor = anchors[-1]
+    frozen = git(root, "show", "%s:%s" % (anchor, frozen_rel))
+    if frozen is None:
+        return [{"path": frozen_rel, "result": "anchor_unreadable"}]
+    kinds_raw = git(root, "show", "%s:%s" % (anchor, os.path.join(gates_dir_rel, "ratchet.json")))
+    try:
+        kinds_doc = json.loads(kinds_raw) if kinds_raw is not None else None
+    except ValueError:
+        return [{"path": "ratchet.json", "result": "unparsable"}]
+    results = []
+    for line in frozen.splitlines():
+        if not line.strip():
+            continue
+        m = re.match(r"^([0-9a-f]{64})  (\S.*)$", line)
+        if not m:
+            results.append({"path": line, "result": "malformed"})
+            continue
+        want, key = m.group(1), m.group(2)
+        path, sub = (key.split("#", 1) + [None])[:2]
+        full = os.path.join(root, path)
+        if not os.path.isfile(full):
+            results.append({"path": key, "result": "missing"})
+            continue
+        now = subtree_hash(root, path, sub) if sub else sha256_bytes(read_bytes(full) or b"")
+        if now == want:
+            results.append({"path": key, "result": "same"})
+            continue
+        anchor_data = git(root, "show", "%s:%s" % (anchor, path), binary=True)
+        if anchor_data is None:
+            results.append({"path": key, "result": "anchor_unreadable"})
+            continue
+        safe = key.replace("#", "__")
+        a_file = os.path.join(scratch, "anchor", safe)
+        h_file = os.path.join(scratch, "head", safe)
+        try:
+            for f, data in ((a_file, anchor_data), (h_file, read_bytes(full) or b"")):
+                os.makedirs(os.path.dirname(f), exist_ok=True)
+                with open(f, "wb") as fh:
+                    fh.write(data)
+        except OSError:
+            results.append({"path": key, "result": "scratch_error"})
+            continue
+        results.append({"path": key, "result": ratchet_compare(kind_for(kinds_doc, key), a_file, h_file)})
+    return results
+
+
+def run_exit_criteria(root, manifest, out_dir):
+    """One status per exit_criteria entry, in manifest order (None when not run or not logged)."""
+    crit = manifest.get("exit_criteria", []) if isinstance(manifest, dict) else []
+    if not isinstance(crit, list):
+        return []
+    results = [None] * len(crit)
+    try:
+        os.makedirs(out_dir, exist_ok=True)
+    except OSError:
+        return results
+    seen = {}
+    for i, c in enumerate(crit):
+        cid = c.get("id") if isinstance(c, dict) else None
+        check = c.get("check") if isinstance(c, dict) else None
+        if not isinstance(cid, str) or not ID_RE.match(cid):
+            continue
+        seen[cid] = seen.get(cid, 0) + 1
+        log = os.path.join(out_dir, cid + (".log" if seen[cid] == 1 else ".%d.log" % seen[cid]))
+        if not isinstance(check, str) or not check.strip():
+            code, output = 2, "no check command\n"
+        else:
+            try:
+                p = subprocess.run(["bash", "-o", "pipefail", "-c", check], cwd=root, stdin=subprocess.DEVNULL,
+                                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=EXIT_CHECK_TIMEOUT)
+                code, output = p.returncode, p.stdout.decode("utf-8", "replace")
+            except subprocess.TimeoutExpired as err:
+                code, output = 124, (err.stdout or b"").decode("utf-8", "replace")
+            except OSError as err:
+                code, output = 127, "%s\n" % err
+        try:
+            with open(log, "w", encoding="utf-8") as fh:
+                fh.write("## EXIT_CRITERION %s\n## CHECK %s\n" % (cid, check))
+                fh.write(output if output.endswith("\n") or not output else output + "\n")
+                fh.write("EXIT %d\n" % code)
+        except OSError:
+            continue  # an unlogged check counts as not passed
+        results[i] = code
+    return results
+
+
+def live_inputs(args, mode):
+    top = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True, stdin=subprocess.DEVNULL)
+    if top.returncode != 0:
+        raise UsageError("not inside a git repository")
+    root = top.stdout.strip()
+    manifest_path = os.path.abspath(args.manifest)
+    mbytes = read_bytes(manifest_path)
+    if mbytes is None:
+        raise UsageError("cannot read manifest %s" % args.manifest)
+    try:
+        manifest = json.loads(mbytes.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError):
+        manifest = None
+    scorecard_path = os.path.abspath(args.scorecard)
+    sc_dir = os.path.dirname(os.path.realpath(scorecard_path))
+    # verdict artefacts (ratchet copies, exit logs) sit next to the scorecard, or under .gates/tmp
+    work = sc_dir if os.path.isfile(scorecard_path) else os.path.join(root, ".gates", "tmp", "verdict")
+    head = (git(root, "rev-parse", "HEAD") or "").strip()
+    epoch_txt = (git(root, "show", "-s", "--format=%ct", "HEAD") or "").strip()
+    porcelain = git(root, "status", "--porcelain", "--untracked-files=all")
+    gates_dir_rel = os.path.relpath(os.path.dirname(manifest_path), root)
+    phase = manifest.get("phase") if isinstance(manifest, dict) else None
+    jitter_doc = load_json(os.path.join(root, gates_dir_rel, "jitter-%s.json" % phase)) if isinstance(phase, str) else None
+    jitter = jitter_doc.get("tolerance") if isinstance(jitter_doc, dict) and isinstance(jitter_doc.get("tolerance"), dict) else {}
+    inputs = {
+        "mode": mode,
+        "manifest": manifest,
+        "manifest_sha256": sha256_bytes(mbytes),
+        "approved_sha256": read_approved(approved_path(manifest_path)),
+        "git": {"head": head, "head_commit_epoch": int(epoch_txt) if epoch_txt.isdigit() else None,
+                "clean": porcelain == ""},
+        "scorecard": load_json(scorecard_path),
+        "read_log": confined_reader(root, sc_dir),
+        "read_confirm_log": None,
+        "ratchet": live_ratchet(root, gates_dir_rel, os.path.join(work, "verdict", "ratchet")),
+        "baseline": None,
+        "jitter": jitter,
+    }
+    if mode == "full":
+        inputs["findings"] = load_json(args.findings)
+        inputs["human_gates"] = load_json(args.human_gates) if args.human_gates else None
+        inputs["deferrals"] = load_json(args.deferrals) if args.deferrals else None
+        if args.baseline:
+            inputs["baseline"] = load_json(args.baseline)
+            if inputs["baseline"] is None:
+                inputs["baseline"] = "unreadable"
+        else:
+            note("baseline: none")
+        if args.confirm:
+            confirm_path = os.path.abspath(args.confirm)
+            inputs["confirm"] = load_json(confirm_path)
+            if inputs["confirm"] is None:
+                inputs["confirm"] = "unreadable"
+            inputs["read_confirm_log"] = confined_reader(root, os.path.dirname(os.path.realpath(confirm_path)))
+        else:
+            inputs["confirm"] = None
+        inputs["exit_results"] = run_exit_criteria(root, manifest, os.path.join(work, "exit"))
+    return inputs
+
+
+# ====================================================================== selftest
+def case_inputs(case):
+    def j(name):
+        return load_json(os.path.join(case, name))
+    mbytes = read_bytes(os.path.join(case, "manifest.json"))
+    if mbytes is None:
+        raise UsageError("manifest.json missing")
+    gs = j("git_state.json")
+    if not isinstance(gs, dict):
+        raise UsageError("git_state.json missing or invalid")
+    msha = sha256_bytes(mbytes)
+    if gs.get("manifest_sha256") != msha:
+        raise UsageError("git_state.manifest_sha256 does not match manifest.json")
+    try:
+        manifest = json.loads(mbytes.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError):
+        manifest = None
+    ratchet = None
+    rdir = os.path.join(case, "ratchet")
+    if os.path.isdir(rdir):
+        kinds_doc = load_json(os.path.join(rdir, "ratchet.json"))
+        ratchet = []
+        paths = set()
+        for side in ("anchor", "head"):
+            base = os.path.join(rdir, side)
+            for dirpath, _dirs, files in os.walk(base):
+                for f in files:
+                    paths.add(os.path.relpath(os.path.join(dirpath, f), base))
+        for rel in sorted(paths):
+            a, h = os.path.join(rdir, "anchor", rel), os.path.join(rdir, "head", rel)
+            if not os.path.isfile(a) or not os.path.isfile(h):
+                ratchet.append({"path": rel, "result": "missing"})
+            elif read_bytes(a) == read_bytes(h):
+                ratchet.append({"path": rel, "result": "same"})
+            else:
+                ratchet.append({"path": rel, "result": ratchet_compare(kind_for(kinds_doc, rel), a, h)})
+    jitter_doc = j("jitter.json")
+    confirm_exists = os.path.lexists(os.path.join(case, "confirm.json"))
+    baseline_exists = os.path.lexists(os.path.join(case, "baseline.json"))
+    reader = confined_reader(case, case)
+    return {
+        "mode": "full",
+        "manifest": manifest,
+        "manifest_sha256": msha,
+        "approved_sha256": gs.get("approved_sha256"),
+        "git": {"head": gs.get("head"), "head_commit_epoch": gs.get("head_commit_epoch"), "clean": gs.get("clean")},
+        "scorecard": j("scorecard.json"),
+        "read_log": reader,
+        "read_confirm_log": reader,
+        "ratchet": ratchet,
+        "baseline": (j("baseline.json") or "unreadable") if baseline_exists else None,
+        "jitter": jitter_doc.get("tolerance", {}) if isinstance(jitter_doc, dict) else {},
+        "findings": j("findings.json"),
+        "exit_results": j("exit_results.json"),
+        "confirm": (j("confirm.json") or "unreadable") if confirm_exists else None,
+        "human_gates": j("human_gates.json"),
+        "deferrals": j("deferrals.json"),
+    }
+
+
+def selftest(directory, out):
+    try:
+        names = sorted(n for n in os.listdir(directory) if os.path.isdir(os.path.join(directory, n)))
+    except OSError as err:
+        raise UsageError("cannot list %s: %s" % (directory, err))
+    details, mismatches, done_expected, done_said = [], 0, 0, 0
+    for name in names:
+        case = os.path.join(directory, name)
+        exp_bytes = read_bytes(os.path.join(case, "expected.txt"))
+        expected = exp_bytes.decode("utf-8", "replace").rstrip("\n").split("\n") if exp_bytes else None
+        expected = [ln.rstrip() for ln in expected] if expected else None
+        if expected and expected[0] == "DONE":
+            done_expected += 1
+        try:
+            verdict, ids, human_only = evaluate(case_inputs(case))
+            got = render("full", verdict, ids, human_only)
+            error = None
+            done_said += verdict == "DONE"
+        except Exception as err:  # a broken case is a mismatch, never a crash or a pass
+            got, error = None, "%s: %s" % (type(err).__name__, err)
+        ok = expected is not None and got == expected
+        if not ok:
+            mismatches += 1
+        details.append({"case": name, "ok": ok, "expected": expected, "got": got, "error": error})
+        print("%s %s%s" % ("ok    " if ok else "FAIL  ", name, "" if ok else "  expected %s got %s%s" % (
+            expected, got, " (%s)" % error if error else "")))
+    # A verdict that never says DONE is useless: one more point when no case evaluated to DONE.
+    # With every case matching its expected.txt this is exactly "no case expects DONE".
+    value = mismatches + (0 if done_said else 1)
+    result = {"id": "VER-selftest", "value": value, "denominator": len(names),
+              "details": details + ([{"error": "the verdict said DONE on no case"}] if not done_said else [])}
+    os.makedirs(os.path.dirname(os.path.abspath(out)), exist_ok=True)
+    with open(out, "w", encoding="utf-8") as fh:
+        json.dump(result, fh, indent=2, ensure_ascii=False)
+        fh.write("\n")
+    print("VER-selftest: value %d, %d case(s), %d expecting DONE, %d evaluated DONE" % (value, len(names), done_expected, done_said))
+    return 0 if value == 0 else 1
+
+
+# ====================================================================== CLI
+def main(argv):
+    parser = argparse.ArgumentParser(prog="verdict", description=__doc__.split("\n\n")[0],
+                                     formatter_class=argparse.RawDescriptionHelpFormatter,
+                                     epilog="\n\n".join(__doc__.split("\n\n")[1:]))
+    parser.add_argument("--gates-only", action="store_true", help="judge rules 1-7 only (make gates); never reads findings")
+    parser.add_argument("--manifest")
+    parser.add_argument("--scorecard")
+    parser.add_argument("--findings")
+    parser.add_argument("--confirm")
+    parser.add_argument("--baseline")
+    parser.add_argument("--human-gates", dest="human_gates")
+    parser.add_argument("--deferrals")
+    parser.add_argument("--selftest", metavar="DIR")
+    parser.add_argument("--out")
+    args = parser.parse_args(argv)
+    if args.selftest is not None:
+        if not args.out:
+            raise UsageError("--selftest needs --out")
+        return selftest(args.selftest, args.out)
+    if not args.manifest or not args.scorecard:
+        raise UsageError("--manifest and --scorecard are required")
+    mode = "gates_only" if args.gates_only else "full"
+    if mode == "gates_only":
+        extra = [n for n in ("findings", "confirm", "baseline", "human_gates", "deferrals") if getattr(args, n)]
+        if extra:
+            raise UsageError("--gates-only takes no %s" % ", ".join("--" + n.replace("_", "-") for n in extra))
+    elif not args.findings:
+        raise UsageError("full mode needs --findings (use --gates-only for make gates)")
+    verdict, ids, human_only = evaluate(live_inputs(args, mode))
+    for line in render(mode, verdict, ids, human_only):
+        print(line)
+    return 0 if not ids else 1
+
+
+if __name__ == "__main__":
+    try:
+        code = main(sys.argv[1:])
+    except UsageError as err:
+        sys.stderr.write("verdict: %s\n" % err)
+        code = 2
+    except Exception as err:  # never a silent pass: an internal error is a failing verdict
+        sys.stderr.write("verdict: internal error: %s: %s\n" % (type(err).__name__, err))
+        code = 1
+    raise SystemExit(code)

@@ -1,0 +1,7 @@
+## GATE G-hard head=0123456789abcdef0123456789abcdef01234567 run=20261011T120100Z-a1b2 start=1791700100 context=primary
+## BANNER_CMD bash --version | head -1
+GNU bash, version 5.3.9(1)-release (x86_64-redhat-linux-gnu)
+## BANNER_EXIT 0
+## COMMAND printf 'G-hard: value 0\n'
+G-hard: value 0
+EXIT 1

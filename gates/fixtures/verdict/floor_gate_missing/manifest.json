@@ -1,0 +1,80 @@
+{
+  "schema": "pokeprices-manifest/v1",
+  "phase": "P0",
+  "floor": {
+    "hard": [
+      "G-hard",
+      "AG2",
+      "G-gone"
+    ],
+    "soft": [
+      "G-soft"
+    ]
+  },
+  "gates": [
+    {
+      "id": "G-hard",
+      "title": "fixture gate G-hard",
+      "hard": true,
+      "scope": "any",
+      "runs_in": "host",
+      "command": "printf 'G-hard: value 0\\n'",
+      "banner_cmd": "bash --version | head -1",
+      "banner_re": "^GNU bash",
+      "artifact": null,
+      "value_parser": "echo 0",
+      "op": "==",
+      "threshold": 0,
+      "denominator_source": "echo 3",
+      "denominator_min": 1,
+      "timeout_s": 20,
+      "why": "verdict fixture"
+    },
+    {
+      "id": "AG2",
+      "title": "fixture gate AG2",
+      "hard": true,
+      "scope": "any",
+      "runs_in": "host",
+      "command": "printf 'AG2: value 0\\n'",
+      "banner_cmd": "bash --version | head -1",
+      "banner_re": "^GNU bash",
+      "artifact": null,
+      "value_parser": "echo 0",
+      "op": "==",
+      "threshold": 0,
+      "denominator_source": "echo 3",
+      "denominator_min": 1,
+      "timeout_s": 20,
+      "why": "verdict fixture"
+    },
+    {
+      "id": "G-soft",
+      "title": "fixture gate G-soft",
+      "hard": false,
+      "scope": "any",
+      "runs_in": "host",
+      "command": "printf 'G-soft: value 0\\n'",
+      "banner_cmd": "bash --version | head -1",
+      "banner_re": "^GNU bash",
+      "artifact": null,
+      "value_parser": "echo 0",
+      "op": "==",
+      "threshold": 0,
+      "denominator_source": "echo 3",
+      "denominator_min": 1,
+      "timeout_s": 20,
+      "why": "verdict fixture"
+    }
+  ],
+  "exit_criteria": [
+    {
+      "id": "EC-A",
+      "check": "true"
+    },
+    {
+      "id": "EC-B",
+      "check": "test 1 -eq 1"
+    }
+  ]
+}

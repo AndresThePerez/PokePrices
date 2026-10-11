@@ -1,0 +1,6 @@
+{
+  "default_kind": "hash",
+  "kinds": {
+    "api/phpstan.neon": "phpstan-params"
+  }
+}

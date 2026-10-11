@@ -1,0 +1,7 @@
+{
+  "head": "0123456789abcdef0123456789abcdef01234567",
+  "head_commit_epoch": 1791700000,
+  "clean": true,
+  "manifest_sha256": "703ecb90e9b653a4eb0bcbb0009b26ff39ebba5cd82e88625292cac0b7a38793",
+  "approved_sha256": "703ecb90e9b653a4eb0bcbb0009b26ff39ebba5cd82e88625292cac0b7a38793"
+}

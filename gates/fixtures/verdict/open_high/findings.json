@@ -1,0 +1,37 @@
+[
+  {
+    "id": "F-P0-001",
+    "severity": "Medium",
+    "status": "open",
+    "title": "an open Medium does not block"
+  },
+  {
+    "id": "F-P0-002",
+    "severity": "High",
+    "status": "fixed(abc1234)",
+    "title": "fixed High"
+  },
+  {
+    "id": "F-P0-003",
+    "severity": "Critical",
+    "status": "ruled(R9)",
+    "title": "ruled Critical"
+  },
+  {
+    "id": "F-P0-004",
+    "severity": "Low",
+    "status": "deferred(P1, Andres)",
+    "title": "deferred Low"
+  },
+  {
+    "id": "F-P0-005",
+    "severity": "High",
+    "status": "deferred(P1, Andres)",
+    "title": "High deferred through a run human gate"
+  },
+  {
+    "id": "F-P0-012",
+    "severity": "High",
+    "status": "open"
+  }
+]

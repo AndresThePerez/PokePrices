@@ -1,0 +1,3 @@
+NOT_DONE
+gate:G-hard
+scorecard:log_tampered:G-hard

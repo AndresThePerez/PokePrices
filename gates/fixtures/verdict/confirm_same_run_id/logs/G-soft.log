@@ -1,0 +1,7 @@
+## GATE G-soft head=0123456789abcdef0123456789abcdef01234567 run=20261011T120100Z-a1b2 start=1791700110 context=primary
+## BANNER_CMD bash --version | head -1
+GNU bash, version 5.3.9(1)-release (x86_64-redhat-linux-gnu)
+## BANNER_EXIT 0
+## COMMAND printf 'G-soft: value 0\n'
+G-soft: value 0
+EXIT 0

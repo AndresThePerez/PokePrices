@@ -1,0 +1,128 @@
+{
+  "schema": "pokeprices-scorecard/v1",
+  "run_id": "20261011T120100Z-a1b2",
+  "run_context": "primary",
+  "started_at": "2026-10-11T06:28:20Z",
+  "started_epoch": 1791700100,
+  "finished_at": "2026-10-11T06:28:36Z",
+  "finished_epoch": 1791700116,
+  "head": "0123456789abcdef0123456789abcdef01234567",
+  "tree": "89abcdef0123456789abcdef0123456789abcdef",
+  "head_commit_epoch": 1791700000,
+  "clean_before": true,
+  "clean_after": true,
+  "manifest": {
+    "path": "manifest.json",
+    "sha256": "b59037fa22d252296d64378d4b51072519ee6cebc765da9213b1ebf3a353d4cb"
+  },
+  "scripts": {
+    "scorecard_sha256": null,
+    "verdict_sha256": null
+  },
+  "tools": {
+    "docker": null,
+    "compose": null,
+    "git": null,
+    "python": "3.14.8"
+  },
+  "only": null,
+  "gates": [
+    {
+      "id": "G-hard",
+      "hard": true,
+      "scope": "any",
+      "status": "fail",
+      "reason": "value_threshold",
+      "value": 3,
+      "op": "==",
+      "threshold": 0,
+      "secondary": [],
+      "denominator": 3,
+      "denominator_min": 1,
+      "denominator_source": "echo 3",
+      "command": "printf 'G-hard: value 0\\n'",
+      "log": "logs/G-hard.log",
+      "log_sha256": "a551138c7c6849ab290e9a0c9acaa18e82ac14df0c33ff5b79d388319725208e",
+      "artifact": null,
+      "artifact_sha256": null,
+      "exit": 0,
+      "banner": {
+        "cmd": "bash --version | head -1",
+        "exit": 0,
+        "line": "GNU bash, version 5.3.9(1)-release (x86_64-redhat-linux-gnu)"
+      },
+      "started_at": "2026-10-11T06:28:20Z",
+      "started_epoch": 1791700100,
+      "finished_epoch": 1791700105,
+      "run_context": "primary"
+    },
+    {
+      "id": "AG2",
+      "hard": true,
+      "scope": "any",
+      "status": "pass",
+      "reason": "ok",
+      "value": 0,
+      "op": "==",
+      "threshold": 0,
+      "secondary": [],
+      "denominator": 3,
+      "denominator_min": 1,
+      "denominator_source": "echo 3",
+      "command": "printf 'AG2: value 0\\n'",
+      "log": "logs/AG2.log",
+      "log_sha256": "0dd9007e1a9e7ab2b574a928ca9d59e24c8f33da3122f99d7e67f682db093976",
+      "artifact": null,
+      "artifact_sha256": null,
+      "exit": 0,
+      "banner": {
+        "cmd": "bash --version | head -1",
+        "exit": 0,
+        "line": "GNU bash, version 5.3.9(1)-release (x86_64-redhat-linux-gnu)"
+      },
+      "started_at": "2026-10-11T06:28:25Z",
+      "started_epoch": 1791700105,
+      "finished_epoch": 1791700110,
+      "run_context": "primary"
+    },
+    {
+      "id": "G-soft",
+      "hard": false,
+      "scope": "any",
+      "status": "pass",
+      "reason": "ok",
+      "value": 0,
+      "op": "==",
+      "threshold": 0,
+      "secondary": [],
+      "denominator": 3,
+      "denominator_min": 1,
+      "denominator_source": "echo 3",
+      "command": "printf 'G-soft: value 0\\n'",
+      "log": "logs/G-soft.log",
+      "log_sha256": "f8b3d88fcca0bd480e8c5315fb26e537539bb2b1b0964393d899a815f263c475",
+      "artifact": null,
+      "artifact_sha256": null,
+      "exit": 0,
+      "banner": {
+        "cmd": "bash --version | head -1",
+        "exit": 0,
+        "line": "GNU bash, version 5.3.9(1)-release (x86_64-redhat-linux-gnu)"
+      },
+      "started_at": "2026-10-11T06:28:30Z",
+      "started_epoch": 1791700110,
+      "finished_epoch": 1791700115,
+      "run_context": "primary"
+    }
+  ],
+  "summary": {
+    "hard_total": 2,
+    "hard_pass": 2,
+    "soft_total": 1,
+    "soft_pass": 1,
+    "not_run": [],
+    "failing": [],
+    "out_of_scope": []
+  },
+  "exit": 0
+}
