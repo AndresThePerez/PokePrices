@@ -12,7 +12,8 @@
     "preview": "vite preview",
     "test": "vitest run --config vitest.config.ts",
     "typecheck": "tsc -b",
-    "lint": "eslint -c eslint.config.js --max-warnings=0 ."
+    "lint": "eslint -c eslint.config.js --max-warnings=0 .",
+    "format:check": "prettier --config .prettierrc.json --ignore-path .prettierignore --check ."
   },
   "dependencies": {
     "react": "19.3.0",
@@ -33,6 +34,7 @@
     "eslint-plugin-react-refresh": "0.5.7",
     "globals": "17.13.0",
     "jsdom": "30.1.2",
+    "prettier": "3.9.10",
     "tailwindcss": "4.3.3",
     "typescript": "6.0.3",
     "typescript-eslint": "8.71.1",

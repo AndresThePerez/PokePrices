@@ -34,6 +34,8 @@ describe('App', () => {
 
   it('refuses to start without #root', async () => {
     vi.resetModules();
-    await expect(import('./main')).rejects.toThrow('PokéPrices: #root element missing from index.html');
+    await expect(import('./main')).rejects.toThrow(
+      'PokéPrices: #root element missing from index.html',
+    );
   });
 });
