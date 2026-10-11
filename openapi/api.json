@@ -1,0 +1,67 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "Pok\u00e9Prices",
+        "version": "0.1.0",
+        "description": "Pok\u00e9Prices API: daily-close Pok\u00e9mon card prices."
+    },
+    "servers": [
+        {
+            "url": "/v1"
+        }
+    ],
+    "paths": {
+        "/ready": {
+            "get": {
+                "operationId": "getReady",
+                "summary": "Readiness of the Pok\u00e9Prices API and the services it needs",
+                "tags": [
+                    "Readiness"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "status": {
+                                            "type": "string",
+                                            "const": "ok"
+                                        },
+                                        "checks": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "string",
+                                                "enum": [
+                                                    "ok",
+                                                    "fail"
+                                                ]
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "status",
+                                        "checks"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "type": "array",
+                                    "items": {}
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
