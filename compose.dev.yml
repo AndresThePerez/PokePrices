@@ -70,7 +70,7 @@ services:
       QUEUE_CONNECTION: redis
       CACHE_STORE: redis
       SESSION_DRIVER: database
-      LOG_CHANNEL: stderr
+      LOG_CHANNEL: stderr_json
       SANCTUM_STATEFUL_DOMAINS: pokeprices.localhost:8095
     mem_limit: 384m
     depends_on:
