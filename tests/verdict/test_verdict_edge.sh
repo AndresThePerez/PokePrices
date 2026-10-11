@@ -339,6 +339,12 @@ def live(mode, root, variant):
             rr["log"] = "%s/%s.log" % (c.pfx[name], rr["id"])
     if variant == "dupexit":
         c.m["exit_criteria"] = [{"id": "EC-A", "check": "false"}, {"id": "EC-A", "check": "true"}]
+    if variant == "dupexit_pass_then_fail":
+        c.m["exit_criteria"] = [{"id": "EC-A", "check": "true"}, {"id": "EC-A", "check": "false"}]
+    if variant == "dupexit_three":
+        c.m["exit_criteria"] = [{"id": "EC-A", "check": "true"}, {"id": "EC-A", "check": "false"}, {"id": "EC-A", "check": "true"}]
+    if variant == "dupgate":
+        c.m["gates"].append(copy.deepcopy(c.g("G-soft")))
     if variant in ("nested", "primary_oos"):
         c.g("G-hard")["scope"] = "primary"
     if mode == "pre":
@@ -548,6 +554,16 @@ mkrepo dupexit
 check_out "live: two exit criteria sharing an id cannot hide a failing one" "NOT_DONE
 exit:EC-A
 manifest:duplicate:EC-A" fv
+mkrepo dupexit_pass_then_fail
+check_out "live: a duplicated exit id whose first entry passes and second fails still blocks" "NOT_DONE
+exit:EC-A
+manifest:duplicate:EC-A" fv
+mkrepo dupexit_three
+check_out "live: three exit entries with one id and a failing middle still block" "NOT_DONE
+exit:EC-A
+manifest:duplicate:EC-A" fv
+mkrepo dupgate
+check_out "live gates-only: a duplicated gate id fails closed with manifest:duplicate" "GATES_FAIL manifest:duplicate:G-soft manifest:invalid" gv
 mkrepo nested
 check_out "live gates-only accepts a nested scorecard that skips primary-scope gates" GATES_OK gv
 check_out "live full mode rejects the same nested scorecard" "NOT_DONE
