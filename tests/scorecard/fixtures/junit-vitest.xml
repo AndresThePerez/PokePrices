@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<testsuites name="vitest tests" tests="3" failures="0" errors="0" time="0.100">
+    <testsuite name="src/App.test.tsx" timestamp="2026-01-01T00:00:00.000Z" tests="3" failures="0" errors="0" skipped="0" time="0.090">
+        <testcase classname="src/App.test.tsx" name="App &gt; names the product" time="0.030">
+        </testcase>
+        <testcase classname="src/App.test.tsx" name="App &gt; shows the as-of date" time="0.030">
+        </testcase>
+        <testcase classname="src/App.test.tsx" name="App &gt; mounts into #root" time="0.030">
+        </testcase>
+    </testsuite>
+</testsuites>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="" tests="4" assertions="6" errors="0" failures="1" skipped="0" time="0.100000">
+    <testsuite name="Tests\Feature\ReadinessTest" file="tests/Feature/ReadinessTest.php" tests="2" assertions="3" errors="0" failures="1" skipped="0" time="0.050000">
+      <testcase name="it reports ready" class="Tests\Feature\ReadinessTest" classname="Tests.Feature.ReadinessTest" file="tests/Feature/ReadinessTest.php::it reports ready" line="0" assertions="2" time="0.020000"/>
+      <testcase name="it reports a failing dependency" class="Tests\Feature\ReadinessTest" classname="Tests.Feature.ReadinessTest" file="tests/Feature/ReadinessTest.php::it reports a failing dependency" line="0" assertions="1" time="0.030000">
+        <failure type="PHPUnit\Framework\ExpectationFailedException">Failed asserting that 503 is identical to 200.</failure>
+      </testcase>
+    </testsuite>
+    <testsuite name="Tests\Unit\ArchTest" file="/workspace/api/tests/Unit/ArchTest.php" tests="2" assertions="3" errors="0" failures="0" skipped="0" time="0.050000">
+      <testcase name="it keeps debug calls out" class="Tests\Unit\ArchTest" classname="Tests.Unit.ArchTest" file="/workspace/api/tests/Unit/ArchTest.php::it keeps debug calls out" line="0" assertions="2" time="0.025000"/>
+      <testcase name="it keeps strict types" class="Tests\Unit\ArchTest" classname="Tests.Unit.ArchTest" file="/workspace/api/tests/Unit/ArchTest.php::it keeps strict types" line="0" assertions="1" time="0.025000"/>
+    </testsuite>
+  </testsuite>
+</testsuites>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<coverage generated="1700000000">
+  <project timestamp="1700000000" name="Clover Coverage">
+    <package name="App\Http\Controllers">
+      <file name="/workspace/api/app/Http/Controllers/ReadinessController.php">
+        <class name="App\Http\Controllers\ReadinessController" namespace="App\Http\Controllers">
+          <metrics complexity="2" methods="2" coveredmethods="1" conditionals="0" coveredconditionals="0" statements="10" coveredstatements="8" elements="12" coveredelements="9"/>
+        </class>
+        <line num="12" type="stmt" count="1"/>
+        <metrics loc="40" ncloc="30" classes="1" methods="2" coveredmethods="1" conditionals="0" coveredconditionals="0" statements="10" coveredstatements="8" elements="12" coveredelements="9"/>
+      </file>
+    </package>
+    <file name="/workspace/api/app/Support/RequestId.php">
+      <metrics loc="20" ncloc="15" classes="1" methods="1" coveredmethods="1" conditionals="0" coveredconditionals="0" statements="6" coveredstatements="6" elements="7" coveredelements="7"/>
+    </file>
+    <metrics files="2" loc="60" ncloc="45" classes="2" methods="3" coveredmethods="2" conditionals="0" coveredconditionals="0" statements="16" coveredstatements="14" elements="19" coveredelements="16"/>
+  </project>
+</coverage>

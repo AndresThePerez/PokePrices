@@ -1,0 +1,406 @@
+#!/usr/bin/env -S python3 -I
+"""PokéPrices scorecard: run every manifest gate unmasked and record raw results.
+
+Usage: scripts/scorecard --manifest PATH [--only ID[,ID]]
+
+Runs from the repository root of the current working directory. Refuses a dirty
+tree (status 3, nothing written). Writes .gates/<head12>-<run_id>/ with
+scorecard.json, logs/<ID>.log and records/<ID>.json, and points .gates/latest at
+it. Exits with status 0 only when every in-scope hard gate passed and the tree
+was clean before and after the run; status 1 otherwise; status 2 on a usage or
+manifest error. It never edits tracked files: it writes only under .gates/.
+"""
+import argparse
+import datetime
+import hashlib
+import json
+import os
+import re
+import secrets
+import signal
+import subprocess
+import sys
+
+SCHEMA = "pokeprices-scorecard/v1"
+MANIFEST_SCHEMA = "pokeprices-manifest/v1"
+CONTEXTS = ("primary", "nested", "ci")
+ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+NUMBER_RE = re.compile(r"^-?[0-9]+(\.[0-9]+)?([eE][+-]?[0-9]+)?$")
+EXIT_RE = re.compile(r"^EXIT ([0-9]+)$")
+TIMEOUT_CODES = (124, 137)
+KILL_AFTER = 10
+OPS = {
+    "==": lambda a, b: a == b,
+    "!=": lambda a, b: a != b,
+    ">=": lambda a, b: a >= b,
+    "<=": lambda a, b: a <= b,
+    ">": lambda a, b: a > b,
+    "<": lambda a, b: a < b,
+}
+# The frozen run contract: the command's combined output and its status line go to the log.
+WRAPPER = '{ timeout --kill-after=%d "$2" bash -o pipefail -c "$1" </dev/null; echo "EXIT $?"; } >>"$3" 2>&1' % KILL_AFTER
+
+
+class UsageError(Exception):
+    pass
+
+
+def now():
+    t = datetime.datetime.now(datetime.timezone.utc)
+    return t.strftime("%Y-%m-%dT%H:%M:%SZ"), int(t.timestamp())
+
+
+def sha256_file(path):
+    try:
+        h = hashlib.sha256()
+        with open(path, "rb") as fh:
+            for chunk in iter(lambda: fh.read(1 << 16), b""):
+                h.update(chunk)
+        return h.hexdigest()
+    except OSError:
+        return None
+
+
+def git(root, *args):
+    out = subprocess.run(["git", *args], cwd=root, capture_output=True, text=True, stdin=subprocess.DEVNULL)
+    if out.returncode != 0:
+        raise UsageError("git %s failed: %s" % (" ".join(args), out.stderr.strip()))
+    return out.stdout
+
+
+def porcelain(root):
+    return git(root, "status", "--porcelain", "--untracked-files=all")
+
+
+def probe(cmd):
+    try:
+        out = subprocess.run(cmd, capture_output=True, text=True, timeout=20, stdin=subprocess.DEVNULL)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if out.returncode != 0:
+        return None
+    line = out.stdout.strip().splitlines()
+    return line[0] if line else None
+
+
+def run_capture(cmd, env, root, timeout_s, merge_stderr):
+    """Run cmd under bash -o pipefail with a timeout; return (exit or None on timeout, stdout text)."""
+    proc = subprocess.Popen(
+        ["bash", "-o", "pipefail", "-c", cmd], cwd=root, env=env, stdin=subprocess.DEVNULL,
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT if merge_stderr else subprocess.DEVNULL,
+        start_new_session=True)
+    try:
+        out, _ = proc.communicate(timeout=timeout_s)
+    except subprocess.TimeoutExpired:
+        kill_group(proc)
+        out, _ = proc.communicate()
+        return None, out.decode("utf-8", "replace")
+    return proc.returncode, out.decode("utf-8", "replace")
+
+
+def kill_group(proc):
+    try:
+        os.killpg(proc.pid, signal.SIGKILL)
+    except OSError:
+        pass
+
+
+def parse_number(text):
+    """Exactly one finite number on stdout, else None."""
+    if text is None:
+        return None
+    token = text.strip()
+    if not NUMBER_RE.match(token):
+        return None
+    if re.match(r"^-?[0-9]+$", token):
+        return int(token)
+    value = float(token)
+    if value != value or value in (float("inf"), float("-inf")):
+        return None
+    return value
+
+
+def is_number(x):
+    return isinstance(x, (int, float)) and not isinstance(x, bool)
+
+
+def compare(value, op, threshold):
+    if value is None or op not in OPS or not is_number(threshold):
+        return False
+    return bool(OPS[op](value, threshold))
+
+
+def load_manifest(path):
+    try:
+        with open(path, "rb") as fh:
+            raw = fh.read()
+        doc = json.loads(raw.decode("utf-8"))
+    except (OSError, ValueError) as err:
+        raise UsageError("cannot read manifest %s: %s" % (path, err))
+    if not isinstance(doc, dict) or doc.get("schema") != MANIFEST_SCHEMA:
+        raise UsageError("manifest schema must be %s" % MANIFEST_SCHEMA)
+    gates = doc.get("gates")
+    if not isinstance(gates, list) or not gates:
+        raise UsageError("manifest has no gates")
+    seen = set()
+    for gate in gates:
+        gid = gate.get("id") if isinstance(gate, dict) else None
+        if not isinstance(gid, str) or not ID_RE.match(gid):
+            raise UsageError("manifest gate with a missing or invalid id: %r" % (gid,))
+        if gid in seen:
+            raise UsageError("duplicate gate id %s" % gid)
+        seen.add(gid)
+    return doc, hashlib.sha256(raw).hexdigest()
+
+
+def run_context():
+    if os.environ.get("GITHUB_ACTIONS") == "true":
+        return "ci"
+    ctx = os.environ.get("PP_RUN_CONTEXT", "") or "primary"
+    if ctx not in CONTEXTS:
+        raise UsageError("PP_RUN_CONTEXT must be one of %s" % ", ".join(CONTEXTS))
+    return ctx
+
+
+def append(log, text):
+    with open(log, "a", encoding="utf-8") as fh:
+        fh.write(text)
+
+
+def last_line(path):
+    try:
+        with open(path, "rb") as fh:
+            lines = fh.read().decode("utf-8", "replace").splitlines()
+    except OSError:
+        return None
+    return lines[-1] if lines else None
+
+
+def run_gate(gate, ctx, root, out_rel, env, head, run_id):
+    gid = gate["id"]
+    started_at, started_epoch = now()
+    log_rel = os.path.join(out_rel, "logs", gid + ".log")
+    log = os.path.join(root, log_rel)
+    artifact = gate.get("artifact")
+    artifact_rel = artifact.replace("${GATES_OUT}", out_rel).replace("$GATES_OUT", out_rel) if isinstance(artifact, str) else None
+    secondaries = gate.get("secondary") or []
+    record = {
+        "id": gid, "hard": gate.get("hard") is not False, "scope": gate.get("scope", "any"),
+        "status": None, "reason": None,
+        "value": None, "op": gate.get("op"), "threshold": gate.get("threshold"),
+        "secondary": [],
+        "denominator": None, "denominator_min": gate.get("denominator_min"),
+        "denominator_source": gate.get("denominator_source"),
+        "command": gate.get("command"), "log": log_rel, "log_sha256": None,
+        "artifact": artifact_rel, "artifact_sha256": None,
+        "exit": None, "banner": {"cmd": gate.get("banner_cmd"), "exit": None, "line": None},
+        "started_at": started_at, "started_epoch": started_epoch, "finished_epoch": None,
+        "run_context": ctx,
+    }
+    append(log, "## GATE %s head=%s run=%s start=%d context=%s\n" % (gid, head, run_id, started_epoch, ctx))
+
+    def finish(status, reason):
+        record["status"], record["reason"] = status, reason
+        record["log_sha256"] = sha256_file(log)
+        if artifact_rel is not None:
+            record["artifact_sha256"] = sha256_file(os.path.join(root, artifact_rel))
+        record["finished_epoch"] = now()[1]
+        return record
+
+    if record["scope"] == "primary" and ctx != "primary":
+        append(log, "## OUT_OF_SCOPE scope=primary context=%s\n" % ctx)
+        return finish("out_of_scope", "out_of_scope")
+
+    timeout_s = gate.get("timeout_s")
+    command = gate.get("command")
+    if not is_number(timeout_s) or timeout_s <= 0 or not isinstance(command, str) or not command.strip():
+        append(log, "## COULD_NOT_START command or timeout_s missing in the manifest\n")
+        return finish("not_run", "could_not_start")
+    timeout_s = int(timeout_s) if float(timeout_s).is_integer() else float(timeout_s)
+
+    banner_cmd = gate.get("banner_cmd")
+    banner_re = gate.get("banner_re")
+    append(log, "## BANNER_CMD %s\n" % banner_cmd)
+    banner_ok = False
+    if isinstance(banner_cmd, str) and banner_cmd.strip():
+        bexit, bout = run_capture(banner_cmd, env, root, min(timeout_s, 120), True)
+        append(log, bout if bout.endswith("\n") or not bout else bout + "\n")
+        record["banner"]["exit"] = bexit
+        lines = bout.splitlines()
+        try:
+            pattern = re.compile(banner_re) if isinstance(banner_re, str) and banner_re else None
+        except re.error:
+            pattern = None
+        match = next((ln for ln in lines if pattern is not None and pattern.search(ln)), None)
+        record["banner"]["line"] = match if match is not None else (lines[0] if lines else None)
+        banner_ok = bexit == 0 and match is not None
+    append(log, "## BANNER_EXIT %s\n" % record["banner"]["exit"])
+    append(log, "## COMMAND %s\n" % command)
+
+    proc = subprocess.Popen(["bash", "-c", WRAPPER, "bash", command, str(timeout_s), log],
+                            cwd=root, env=env, stdin=subprocess.DEVNULL,
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
+    try:
+        proc.wait(timeout=timeout_s + KILL_AFTER + 30)
+    except subprocess.TimeoutExpired:
+        kill_group(proc)
+        proc.wait()
+        append(log, "## KILLED by the scorecard after %ss\n" % (timeout_s + KILL_AFTER + 30))
+        return finish("not_run", "timeout")
+
+    tail = last_line(log)
+    m = EXIT_RE.match(tail or "")
+    if not m:
+        return finish("not_run", "could_not_start")
+    record["exit"] = int(m.group(1))
+    if record["exit"] in TIMEOUT_CODES:
+        return finish("not_run", "timeout")
+
+    _vexit, vout = run_capture(gate.get("value_parser") or "", env, root, timeout_s, False) \
+        if isinstance(gate.get("value_parser"), str) and gate.get("value_parser").strip() else (None, None)
+    record["value"] = parse_number(vout)
+    sec_ok = isinstance(secondaries, list)
+    for sec in secondaries if isinstance(secondaries, list) else []:
+        sec = sec if isinstance(sec, dict) else {}
+        parser = sec.get("value_parser")
+        sout = run_capture(parser, env, root, timeout_s, False)[1] if isinstance(parser, str) and parser.strip() else None
+        svalue = parse_number(sout)
+        ok = compare(svalue, sec.get("op"), sec.get("threshold"))
+        sec_ok = sec_ok and ok
+        record["secondary"].append({"name": sec.get("name"), "value": svalue, "op": sec.get("op"),
+                                    "threshold": sec.get("threshold"), "ok": ok})
+    den_src = gate.get("denominator_source")
+    dout = run_capture(den_src, env, root, timeout_s, False)[1] if isinstance(den_src, str) and den_src.strip() else None
+    record["denominator"] = parse_number(dout)
+    den_min = gate.get("denominator_min")
+
+    if record["exit"] != 0:
+        return finish("fail", "exit_nonzero")
+    if not banner_ok:
+        return finish("fail", "banner_missing")
+    if record["value"] is None:
+        return finish("fail", "value_unparsable")
+    if not compare(record["value"], record["op"], record["threshold"]):
+        return finish("fail", "value_threshold")
+    if not sec_ok:
+        return finish("fail", "secondary_threshold")
+    if record["denominator"] is None:
+        return finish("fail", "denominator_unparsable")
+    if not is_number(den_min) or record["denominator"] <= 0 or record["denominator"] < den_min:
+        return finish("fail", "zero_denominator")
+    return finish("pass", "ok")
+
+
+def main(argv):
+    parser = argparse.ArgumentParser(prog="scorecard")
+    parser.add_argument("--manifest", required=True)
+    parser.add_argument("--only")
+    args = parser.parse_args(argv)
+
+    started_at, started_epoch = now()
+    ctx = run_context()
+    top = subprocess.run(["git", "rev-parse", "--show-toplevel"], capture_output=True, text=True,
+                         stdin=subprocess.DEVNULL)
+    if top.returncode != 0:
+        raise UsageError("not inside a git repository")
+    root = top.stdout.strip()
+    manifest_abs = os.path.abspath(args.manifest)
+    doc, manifest_sha = load_manifest(manifest_abs)
+    gates = doc["gates"]
+    if args.only is not None:
+        wanted = [x for x in args.only.split(",") if x]
+        known = {g["id"] for g in gates}
+        unknown = [x for x in wanted if x not in known]
+        if not wanted or unknown:
+            raise UsageError("--only names unknown gate ids: %s" % ", ".join(unknown or ["(none)"]))
+        gates = [g for g in gates if g["id"] in wanted]
+
+    dirty = porcelain(root)
+    if dirty:
+        sys.stderr.write("scorecard: refusing to run on a dirty tree:\n" + dirty)
+        return 3
+
+    head = git(root, "rev-parse", "HEAD").strip()
+    tree = git(root, "rev-parse", "HEAD^{tree}").strip()
+    head_epoch = int(git(root, "show", "-s", "--format=%ct", "HEAD").strip())
+    run_id = "%s-%s" % (datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ"), secrets.token_hex(2))
+    dir_name = "%s-%s" % (head[:12], run_id)
+    out_rel = os.path.join(".gates", dir_name)
+    out = os.path.join(root, out_rel)
+    os.makedirs(os.path.join(out, "logs"))
+    os.makedirs(os.path.join(out, "records"))
+
+    env = dict(os.environ)
+    env.update({"GATES_OUT": out_rel, "NO_COLOR": "1", "CI": "1", "COMPOSE_ANSI": "never", "PP_RUN_CONTEXT": ctx})
+
+    here = os.path.dirname(os.path.realpath(__file__))
+    records = []
+    for gate in gates:
+        record = run_gate(gate, ctx, root, out_rel, env, head, run_id)
+        with open(os.path.join(out, "records", gate["id"] + ".json"), "w", encoding="utf-8") as fh:
+            json.dump(record, fh, indent=2, ensure_ascii=False)
+            fh.write("\n")
+        records.append(record)
+        print("%-12s %-5s %-16s %s value=%s denominator=%s exit=%s" % (
+            record["status"].upper(), "hard" if record["hard"] else "soft", record["reason"], record["id"],
+            record["value"], record["denominator"], record["exit"]), flush=True)
+
+    clean_after = porcelain(root) == ""
+    in_scope = [r for r in records if r["status"] != "out_of_scope"]
+    hard = [r for r in in_scope if r["hard"]]
+    soft = [r for r in in_scope if not r["hard"]]
+    summary = {
+        "hard_total": len(hard),
+        "hard_pass": sum(1 for r in hard if r["status"] == "pass"),
+        "soft_total": len(soft),
+        "soft_pass": sum(1 for r in soft if r["status"] == "pass"),
+        "not_run": [r["id"] for r in records if r["status"] == "not_run"],
+        "failing": [r["id"] for r in records if r["status"] == "fail"],
+        "out_of_scope": [r["id"] for r in records if r["status"] == "out_of_scope"],
+    }
+    exit_code = 0 if (summary["hard_pass"] == summary["hard_total"] and clean_after) else 1
+    finished_at, finished_epoch = now()
+    scorecard = {
+        "schema": SCHEMA,
+        "run_id": run_id,
+        "run_context": ctx,
+        "started_at": started_at, "started_epoch": started_epoch,
+        "finished_at": finished_at, "finished_epoch": finished_epoch,
+        "head": head, "tree": tree, "head_commit_epoch": head_epoch,
+        "clean_before": True, "clean_after": clean_after,
+        "manifest": {"path": os.path.relpath(manifest_abs, root), "sha256": manifest_sha},
+        "scripts": {"scorecard_sha256": sha256_file(os.path.realpath(__file__)),
+                    "verdict_sha256": sha256_file(os.path.join(here, "verdict"))},
+        "tools": {"docker": probe(["docker", "--version"]),
+                  "compose": probe(["docker", "compose", "version", "--short"]),
+                  "git": probe(["git", "--version"]),
+                  "python": sys.version.split()[0]},
+        "only": args.only.split(",") if args.only is not None else None,
+        "gates": records,
+        "summary": summary,
+        "exit": exit_code,
+    }
+    with open(os.path.join(out, "scorecard.json"), "w", encoding="utf-8") as fh:
+        json.dump(scorecard, fh, indent=2, ensure_ascii=False)
+        fh.write("\n")
+    latest = os.path.join(root, ".gates", "latest")
+    tmp = os.path.join(root, ".gates", ".latest-%s" % secrets.token_hex(4))
+    os.symlink(dir_name, tmp)
+    os.replace(tmp, latest)
+
+    if not clean_after:
+        sys.stderr.write("scorecard: the tree is dirty after the run:\n" + porcelain(root))
+    print("scorecard %s: hard %d/%d, soft %d/%d, not_run [%s], failing [%s], out_of_scope [%s], clean_after %s -> %s" % (
+        out_rel, summary["hard_pass"], summary["hard_total"], summary["soft_pass"], summary["soft_total"],
+        " ".join(summary["not_run"]), " ".join(summary["failing"]), " ".join(summary["out_of_scope"]),
+        str(clean_after).lower(), exit_code))
+    return exit_code
+
+
+if __name__ == "__main__":
+    try:
+        code = main(sys.argv[1:])
+    except UsageError as err:
+        sys.stderr.write("scorecard: %s\n" % err)
+        code = 2
+    raise SystemExit(code)
