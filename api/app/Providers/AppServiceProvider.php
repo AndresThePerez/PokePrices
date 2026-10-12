@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Domain\Catalog\CatalogRegistrar;
 use App\OpenApi\ContractDocument;
 use Dedoc\Scramble\Scramble;
 use Dedoc\Scramble\Support\Generator\OpenApi;
@@ -16,6 +17,8 @@ class AppServiceProvider extends ServiceProvider
     {
         // nginx routes no docs UI in P0 (D3 is out of scope), so Scramble registers no /docs routes.
         Scramble::ignoreDefaultRoutes();
+
+        CatalogRegistrar::register();
     }
 
     /**
