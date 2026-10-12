@@ -25,12 +25,12 @@ check "C6 refuses to run without GATES_OUT" sh -c '! env -u GATES_OUT sh scripts
 sed 's/PokéPrices/PokePrices/' "$S" > "$T/flip.d.ts"
 check "C6 fails when one character differs" sh -c '! env GATES_OUT="$0" C6_TARGET="$1" sh scripts/gates/c6.sh' "$T" "$T/flip.d.ts"
 
-root=$PWD
 rm -rf "$T/clone" 2>/dev/null
 git clone -q . "$T/clone" 2>/dev/null
 ( cd "$T/clone" && git rm -q --cached "$S" ) >/dev/null 2>&1
-check "C6 fails when the types file is untracked" sh -c 'cd "$0/$1/clone" && ! env GATES_OUT="$0/$1/out2" sh "$0/scripts/gates/c6.sh"' "$root" "$T"
-check "untracked failure is recorded as tracked=false" sh -c 'jq -e "select(.check==\"tracked\" and .ok==false)" "$0/out2/C6.details.jsonl"' "$T"
+mkdir -p "$T/clone/$T/out2"
+check "C6 fails when the types file is untracked" sh -c 'cd "$0/clone" && ! env GATES_OUT="$1" sh scripts/gates/c6.sh' "$T" "$T/out2"
+check "untracked failure is recorded as tracked=false" sh -c 'jq -e "select(.check==\"tracked\" and .ok==false)" "$0/clone/$0/out2/C6.details.jsonl"' "$T"
 
 check "overrides is exactly one openapi-typescript entry using the \$typescript reference" jq -e '.overrides=={"openapi-typescript":{"typescript":"$typescript"}}' web/package.json
 check "prettierignore mentions the types file exactly once" sh -c '[ "$(/usr/bin/grep -c schema web/.prettierignore)" = 1 ]'

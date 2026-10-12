@@ -83,8 +83,8 @@ check_out "queue-probe --timeout default stays 10" "10" \
   sh -c "$QP help pokeprices:queue-probe --format=json | jq -r .definition.options.timeout.default"
 check_out "queue-probe --token default stays empty and accepts a value" "true" \
   sh -c "$QP help pokeprices:queue-probe --format=json | jq -r '.definition.options.token.accept_value'"
-check "queue-probe live probe exits 0 with a known token and a 0 timeout (clamped to 1s min)" \
+check "queue-probe live probe reports 'probe processed' (a 0 timeout clamped to 1 s, one retry with an 8 s timeout)" \
   sh -c "$QP pokeprices:queue-probe --timeout=0 --token=edge-t34 | grep -q 'probe processed' || $QP pokeprices:queue-probe --timeout=8 --token=edge-t34b | grep -q 'probe processed'"
-check "queue-probe still exits 1 with a negative timeout when no worker answers (clamp to 1s, no hang)" \
+check "queue-probe with a negative timeout returns within 60 s with rc 0 or 1 (no hang; QueueProbeEdgeTest pins rc 1)" \
   sh -c "timeout 60 $QP pokeprices:queue-probe --timeout=-5 --token=edge-t34c >/dev/null; rc=\$?; test \$rc -eq 0 -o \$rc -eq 1"
 finish
