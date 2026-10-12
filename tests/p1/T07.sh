@@ -9,8 +9,9 @@ cd "$(dirname "$0")/../.." || exit 1
 ROOT=$(pwd)
 T=.gates/tmp/T07; mkdir -p "$T/bin" "$T/gopath/bin" "$T/ps" "$T/fx"
 TA=$ROOT/$T
-FAST18="tests/scorecard/test_scorecard.sh tests/scorecard/test_scorecard_edge.sh tests/verdict/test_verdict.sh
-tests/verdict/test_verdict_edge.sh tests/gates/test_ag1.sh tests/gates/test_ag1_edge.sh tests/gates/test_ci_docs.sh
+# test_ag1.sh is parked out of the fast list under R153/R155 while frozen files differ; the bundle's gate phase restores it here and in run.sh.
+FAST17="tests/scorecard/test_scorecard.sh tests/scorecard/test_scorecard_edge.sh tests/verdict/test_verdict.sh
+tests/verdict/test_verdict_edge.sh tests/gates/test_ag1_edge.sh tests/gates/test_ci_docs.sh
 tests/gates/test_ci_docs_edge.sh tests/gates/test_gate_libs.sh tests/gates/test_gate_libs_edge.sh
 tests/gates/test_gate_libs_edge2.sh tests/gates/test_gate_libs_edge3.sh tests/gates/test_gate_libs_edge4.sh
 tests/gates/test_gate_libs_edge5.sh tests/p0/T02.sh tests/p0/T02-edge.sh tests/p0/T19-edge.sh tests/p0/T29b-edge.sh"
@@ -62,10 +63,10 @@ check "a failing Pest run makes the full tier exit non-zero" sh -c 'test "$(cat 
 # ---- criterion 2: the fast tier ---------------------------------------------------------------------
 runsh fast TIER=fast $RUN
 check_out "the fast tier exits 0 when every step passes" 0 cat "$T/fast.rc"
-printf 'sh %s\n' $FAST18 > "$T/fast18.expected"
-check "the fast tier starts with the 18 self-contained scripts of review-2 §4, in order" sh -c 'head -n 18 "$0/fast.log" | cmp -s - "$0/fast18.expected"' "$TA"
+printf 'sh %s\n' $FAST17 > "$T/fast17.expected"
+check "the fast tier starts with the self-contained scripts of review-2 §4 less test_ag1.sh, in order" sh -c 'head -n 17 "$0/fast.log" | cmp -s - "$0/fast17.expected"' "$TA"
 check "every fast step before the scorecard runs a tracked script" sh -c '
-  n=$(wc -l < "$0"); test "$n" -ge 20 || exit 1
+  n=$(wc -l < "$0"); test "$n" -ge 19 || exit 1
   head -n $((n - 1)) "$0" | while read -r c s; do test "$c" = sh && git ls-files --error-unmatch "$s" >/dev/null 2>&1 || exit 1; done' "$T/fast.log"
 check "the fast list includes this script (self-contained P1 scripts join it)" /usr/bin/grep -qx 'sh tests/p1/T07.sh' "$T/fast.log"
 tail -n 1 "$T/fast.log" > "$T/fast.last"
@@ -77,7 +78,7 @@ check "the scorecard --only list holds all 21 fast gate ids" sh -c 'for i in $1;
 check "every --only id is a gate of the current manifest (scorecard would exit 2 otherwise)" sh -c '
   for i in $(printf "%s" "$0" | tr , " "); do jq -e --arg i "$i" "any(.gates[]; .id == \$i)" "$1" >/dev/null || exit 1; done' "$ONLY" "$MANIFEST"
 check "the fast tier starts no docker, make, go or golangci-lint command itself" sh -c '! /usr/bin/grep -Eq "^(docker|make|go|golangci-lint) " "$0"' "$T/fast.log"
-runsh fastfail TIER=fast SHIM_FAIL="sh tests/gates/test_ag1.sh" $RUN
+runsh fastfail TIER=fast SHIM_FAIL="sh tests/gates/test_ag1_edge.sh" $RUN
 check "a failing fast script makes the tier exit non-zero and the scorecard still runs" sh -c 'test "$(cat "$0/fastfail.rc")" -ne 0 && cmp -s "$0/fast.log" "$0/fastfail.log"' "$TA"
 runsh fastsc TIER=fast SHIM_FAIL="scripts/scorecard" $RUN
 check "a failing fast scorecard makes the tier exit non-zero" sh -c 'test "$(cat "$0")" -ne 0' "$T/fastsc.rc"

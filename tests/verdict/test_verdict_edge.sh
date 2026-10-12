@@ -525,8 +525,11 @@ check "R35: verdict fixtures carry no home path or LAN address" sh -c '! /usr/bi
 check "usage: no mode and no arguments is status 2" sh -c 'scripts/verdict >/dev/null 2>&1; test $? -eq 2'
 check "usage: full mode without --findings is status 2" sh -c 'scripts/verdict --manifest gates/manifest-P0.json --scorecard gates/manifest-P0.json >/dev/null 2>&1; test $? -eq 2'
 check "usage: --gates-only refuses --findings (it never reads findings)" sh -c 'scripts/verdict --gates-only --manifest gates/manifest-P0.json --scorecard gates/manifest-P0.json --findings x >/dev/null 2>&1; test $? -eq 2'
-check "gates-only on a non-scorecard file fails closed" sh -c 'out=$(scripts/verdict --gates-only --manifest gates/manifest-P0.json --scorecard gates/manifest-P0.json 2>/dev/null); rc=$?; test $rc -eq 1 && case "$out" in "GATES_FAIL "*scorecard:schema*) true;; *) false;; esac'
-check "gates-only with a missing scorecard fails closed" sh -c 'out=$(scripts/verdict --gates-only --manifest gates/manifest-P0.json --scorecard "$0/nope.json" 2>/dev/null); test $? -eq 1 && case "$out" in "GATES_FAIL scorecard:unreadable"*) true;; *) false;; esac' "$T"
+cp gates/manifest-P0.json "$T/not-a-scorecard.json"
+check "gates-only on a non-scorecard file fails closed" sh -c 'out=$(scripts/verdict --gates-only --manifest gates/manifest-P0.json --scorecard "$0/not-a-scorecard.json" 2>/dev/null); rc=$?; test $rc -eq 1 && case "$out" in "GATES_FAIL "*scorecard:schema*) true;; *) false;; esac' "$T"
+check "gates-only on a non-scorecard file leaves no artefact under the tracked gates/ tree" sh -c 'test ! -e gates/verdict && test -z "$(git status --porcelain --untracked-files=all -- gates)"'
+# gate:AG1 may lead the list while frozen files differ from the anchor (R153/R155); no other tag may precede scorecard:unreadable.
+check "gates-only with a missing scorecard fails closed" sh -c 'out=$(scripts/verdict --gates-only --manifest gates/manifest-P0.json --scorecard "$0/nope.json" 2>/dev/null); test $? -eq 1 && case "$out" in "GATES_FAIL scorecard:unreadable"*|"GATES_FAIL gate:AG1 scorecard:unreadable"*) true;; *) false;; esac' "$T"
 # ---- live CLI against a scratch git repository (no network, no containers)
 GIT="git -c core.hooksPath=/dev/null -c user.name=edge -c user.email=edge@example.com"
 mkrepo() { # variant -> $T/repo ready

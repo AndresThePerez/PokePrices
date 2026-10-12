@@ -9,9 +9,10 @@ cd "$(dirname "$0")/../.." || exit 1
 TIER=${TIER:-full}
 PS=${PS:-0}
 # The 18 self-contained scripts of review-2 §4; later self-contained P1 scripts are appended in order.
+# AG1's live self-checks (test_ag1.sh) are expected red under R153/R155 while frozen files differ; the gate phase that lands the bundle restores the line.
 FAST="tests/scorecard/test_scorecard.sh tests/scorecard/test_scorecard_edge.sh
 tests/verdict/test_verdict.sh tests/verdict/test_verdict_edge.sh
-tests/gates/test_ag1.sh tests/gates/test_ag1_edge.sh tests/gates/test_ci_docs.sh tests/gates/test_ci_docs_edge.sh
+tests/gates/test_ag1_edge.sh tests/gates/test_ci_docs.sh tests/gates/test_ci_docs_edge.sh
 tests/gates/test_gate_libs.sh tests/gates/test_gate_libs_edge.sh tests/gates/test_gate_libs_edge2.sh
 tests/gates/test_gate_libs_edge3.sh tests/gates/test_gate_libs_edge4.sh tests/gates/test_gate_libs_edge5.sh
 tests/p0/T02.sh tests/p0/T02-edge.sh tests/p0/T19-edge.sh tests/p0/T29b-edge.sh
