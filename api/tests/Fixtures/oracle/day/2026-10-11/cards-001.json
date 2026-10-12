@@ -1,0 +1,10 @@
+{"data":[
+{"id":"basep-1","set":{"id":"basep","name":"Wizards Black Star Promos"},"tcgplayer":{"url":"https://prices.pokemontcg.io/tcgplayer/basep-1","updatedAt":"2026/10/12","prices":{"holofoil":{"low":8.0,"mid":9.5,"high":30.0,"market":10.0,"directLow":null}}}},
+{"id":"basep-2","set":{"id":"basep","name":"Wizards Black Star Promos"},"tcgplayer":{"url":"https://prices.pokemontcg.io/tcgplayer/basep-2","updatedAt":"2026/10/12","prices":{"holofoil":{"low":15.0,"mid":19.0,"high":60.0,"market":20.0,"directLow":null}}}},
+{"id":"base1-4","set":{"id":"base1","name":"Base"},"tcgplayer":{"url":"https://prices.pokemontcg.io/tcgplayer/base1-4","updatedAt":"2026/10/12","prices":{"holofoil":{"low":350.0,"mid":420.0,"high":3000.0,"market":400.0,"directLow":null}}}},
+{"id":"sv8pt5-61","set":{"id":"sv8pt5","name":"Prismatic Evolutions"},"tcgplayer":{"url":"https://prices.pokemontcg.io/tcgplayer/sv8pt5-61","updatedAt":"2026/10/12","prices":{"normal":{"low":0.01,"mid":0.15,"high":999.0,"market":0.06,"directLow":0.01},"reverseHolofoil":{"low":0.04,"mid":0.2,"high":999.0,"market":0.22,"directLow":0.1}}}},
+{"id":"ex10-1","set":{"id":"ex10","name":"Unseen Forces"},"tcgplayer":{"url":"https://prices.pokemontcg.io/tcgplayer/ex10-1","updatedAt":"2023/03/27","prices":{"holofoil":{"low":84.97,"mid":135.45,"high":980.0,"market":107.49,"directLow":null}}}},
+{"id":"tk1a-1","set":{"id":"tk1a","name":"EX Trainer Kit Latias"}},
+{"id":"me2pt5-2","set":{"id":"me2pt5","name":"Fixture ME Era Set"},"tcgplayer":{"url":"https://prices.pokemontcg.io/tcgplayer/me2pt5-2"}},
+{"id":"neo1-50","set":{"id":"neo1","name":"Neo Genesis"},"tcgplayer":{"url":"https://prices.pokemontcg.io/tcgplayer/neo1-50","updatedAt":"2026/10/11","prices":{"1stEdition":{"low":2.01,"mid":4.05,"high":45.82,"market":4.0,"directLow":null},"unlimited":{"low":1.24,"mid":2.2,"high":30.92,"market":2.2,"directLow":null}}}}
+],"page":1,"pageSize":250,"count":8,"totalCount":8}

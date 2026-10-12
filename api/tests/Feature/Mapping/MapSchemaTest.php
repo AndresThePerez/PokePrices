@@ -576,14 +576,20 @@ test('the models read and write their tables with typed casts', function (): voi
 });
 
 test('the migration rolls back and re-applies cleanly', function (): void {
+    // unmapped_cards (a later migration) references map_builds, so it rolls back first and re-applies last,
+    // in the order migrate:rollback and migrate use.
     $migration = require database_path(T36_MIGRATION);
+    $cards = require database_path('migrations/2026_10_13_000002_create_unmapped_cards_table.php');
 
+    $cards->down();
     $migration->down();
     $afterDown = array_map(fn (string $t): bool => Schema::hasTable($t), T36_TABLES);
     $guard = DB::selectOne("SELECT count(*) AS n FROM pg_proc WHERE proname = 'source_product_map_history_append_only'");
 
     $migration->up();
+    $cards->up();
     $afterUp = array_map(fn (string $t): bool => Schema::hasTable($t), T36_TABLES);
+    expect(Schema::hasTable('unmapped_cards'))->toBeTrue();
 
     expect($afterDown)->toBe(array_fill(0, 6, false))
         ->and($guard->n)->toBe(0)
@@ -594,3 +600,57 @@ test('the migration rolls back and re-applies cleanly', function (): void {
             'source_product_map_name_agreement_check',
         ]);
 });
+
+// unmapped_cards (T40 fix round 1): a dataset card no priced item of the build reached is listed per build, so the
+// coverage audit sees every card as mapped or listed for review. A table of its own: unmapped_source_items keeps
+// its product columns NOT NULL.
+
+test('unmapped_cards has exactly its planned columns and named constraints', function (): void {
+    expect(t36Columns('unmapped_cards'))->toBe([
+        'id:bigint:NOT NULL',
+        'map_build_id:bigint:NOT NULL',
+        'source:text:NOT NULL',
+        'card_id:text:NOT NULL',
+        'reason:text:NOT NULL',
+        'resolved_at:timestamp with time zone:NULL',
+        'resolution:text:NULL',
+    ])->and(t36Constraints('unmapped_cards'))->toBe([
+        'unmapped_cards_build_source_card_unique' => 'u:map_build_id,source,card_id',
+        'unmapped_cards_card_id_check' => 'c:card_id',
+        'unmapped_cards_map_build_id_foreign' => 'f:map_build_id',
+        'unmapped_cards_pkey' => 'p:id',
+        'unmapped_cards_reason_check' => 'c:reason',
+        'unmapped_cards_source_check' => 'c:source',
+    ]);
+})->group('DC3');
+
+test('unmapped_cards accepts its two reasons and refuses another reason, a bad card id and an unknown build', function (): void {
+    $ids = t36Seed();
+    $row = fn (array $o): array => array_merge(['map_build_id' => $ids['@build'], 'source' => 'tcgplayer', 'card_id' => 'svp-105', 'reason' => 'no_priced_product'], $o);
+    DB::table('unmapped_cards')->insert($row([]));
+    DB::table('unmapped_cards')->insert($row(['card_id' => 'fut20-1', 'reason' => 'no_set_alias']));
+
+    $reason = t36Error(fn () => DB::table('unmapped_cards')->insert($row(['card_id' => 'svp-106', 'reason' => 'other'])));
+    $cardId = t36Error(fn () => DB::table('unmapped_cards')->insert($row(['card_id' => 'svp:106'])));
+    $source = t36Error(fn () => DB::table('unmapped_cards')->insert($row(['card_id' => 'svp-107', 'source' => 'ebay'])));
+    $build = t36Error(fn () => DB::table('unmapped_cards')->insert($row(['card_id' => 'svp-108', 'map_build_id' => 999999999])));
+
+    expect(DB::table('unmapped_cards')->count())->toBe(2)
+        ->and($reason?->getMessage())->toContain('unmapped_cards_reason_check')
+        ->and($cardId?->getMessage())->toContain('unmapped_cards_card_id_check')
+        ->and($source?->getMessage())->toContain('unmapped_cards_source_check')
+        ->and($build?->getMessage())->toContain('unmapped_cards_map_build_id_foreign');
+});
+
+test('unmapped_cards (build, source, card) raises SQLSTATE 23505 inside DB::transaction', function (): void {
+    $ids = t36Seed();
+    $row = ['map_build_id' => $ids['@build'], 'source' => 'tcgplayer', 'card_id' => 'svp-105', 'reason' => 'no_priced_product'];
+    DB::table('unmapped_cards')->insert($row);
+
+    $error = t36Error(fn () => DB::table('unmapped_cards')->insert(['reason' => 'no_set_alias'] + $row));
+
+    expect($error)->toBeInstanceOf(QueryException::class)
+        ->and($error?->getCode())->toBe('23505')
+        ->and($error?->getMessage())->toContain('unmapped_cards_build_source_card_unique')
+        ->and(DB::table('unmapped_cards')->count())->toBe(1);
+})->group('DC3');

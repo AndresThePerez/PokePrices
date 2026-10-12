@@ -32,6 +32,10 @@ use RuntimeException;
  * "(Prerelease)" beside "(Prerelease) [Staff]", svp-46 whose only product is Cosmos); the others keep their tags.
  * A second price row on a key already taken is `duplicate_target`, so no key is ever written twice.
  *
+ * Cards: a dataset card that no price row reached (neither matched nor a candidate of an unmapped item) is listed
+ * in unmapped_cards for the build, `no_set_alias` when its set has no alias row and `no_priced_product` otherwise,
+ * so every catalog card is either mapped or listed for review (DC5).
+ *
  * Epochs (R131): a key whose (product, subtype) changes has its row moved to source_product_map_history with
  * ended_at and end_reason `remapped`, and the new row gets series_epoch + 1. A row whose (product, subtype) is now
  * claimed by another key is ended the same way. Every other current row is left exactly as it is.
@@ -154,7 +158,7 @@ final readonly class MapBuilder
      *
      * @param  array<int, list<array{set: string, role: string, number_rule: string|null, unlimited_means: string|null}>>  $aliases
      * @param  array{ref: string, sets: array<string, string>, cards: array<string, list<array{id: string, name: string, number: string}>>}  $dataset
-     * @return array{mapped: list<array<string, mixed>>, unmapped: list<array<string, mixed>>, counts: array<string, mixed>}
+     * @return array{mapped: list<array<string, mixed>>, unmapped: list<array<string, mixed>>, unmapped_cards: list<array{card: string, reason: string}>, counts: array<string, mixed>}
      */
     private function plan(SnapshotReader $snapshot, array $aliases, array $dataset): array
     {
@@ -246,9 +250,27 @@ final readonly class MapBuilder
         $unlisted = array_values(array_diff(array_keys($dataset['sets']), array_keys($listed)));
         sort($unlisted);
 
+        // Every dataset card no priced item reached (neither matched nor a candidate of an unmapped item) is listed
+        // per build, so the coverage audit sees each card as mapped or listed for review (DC5).
+        $reached = array_flip($matchedCards);
+        foreach ($unmapped as $row) {
+            foreach ($row['candidates'] as $card) {
+                $reached[$card] = true;
+            }
+        }
+        $unmappedCards = [];
+        foreach ($dataset['cards'] as $setId => $cards) {
+            foreach ($cards as $card) {
+                if (! isset($reached[$card['id']])) {
+                    $unmappedCards[] = ['card' => $card['id'], 'reason' => isset($listed[$setId]) ? 'no_priced_product' : 'no_set_alias'];
+                }
+            }
+        }
+
         return [
             'mapped' => $mapped,
             'unmapped' => $unmapped,
+            'unmapped_cards' => $unmappedCards,
             'counts' => [
                 'cards' => $cardCount,
                 'variants' => count($mapped),
@@ -262,6 +284,7 @@ final readonly class MapBuilder
                 'orphan_price_rows' => $orphans,
                 'empty_groups' => $emptyGroups,
                 'unlisted_sets' => $unlisted,
+                'unmapped_cards' => count($unmappedCards),
             ],
         ];
     }
@@ -397,7 +420,7 @@ final readonly class MapBuilder
     }
 
     /**
-     * @param  array{mapped: list<array<string, mixed>>, unmapped: list<array<string, mixed>>, counts: array<string, mixed>}  $plan
+     * @param  array{mapped: list<array<string, mixed>>, unmapped: list<array<string, mixed>>, unmapped_cards: list<array{card: string, reason: string}>, counts: array<string, mixed>}  $plan
      * @return array{build_id: int, counts: array<string, mixed>}
      */
     private function write(array $plan, string $day, string $datasetRef, CarbonImmutable $startedAt, SnapshotReader $snapshot): array
@@ -422,6 +445,15 @@ final readonly class MapBuilder
                 'number' => $r['number'],
                 'reason' => $r['reason'],
                 'candidates' => json_encode($r['candidates'], JSON_THROW_ON_ERROR),
+            ], $chunk));
+        }
+
+        foreach (array_chunk($plan['unmapped_cards'], self::CHUNK) as $chunk) {
+            $this->db->table('unmapped_cards')->insert(array_map(fn (array $r): array => [
+                'map_build_id' => $buildId,
+                'source' => self::SOURCE,
+                'card_id' => $r['card'],
+                'reason' => $r['reason'],
             ], $chunk));
         }
 

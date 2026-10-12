@@ -1,0 +1,28 @@
+{
+  "note": "Synthetic collected day for OracleTest (plan T41). Prices are invented and distinctive; the test writes them as a TCGCSV day (zstd) into a temp directory and proves none of them leaves memory.",
+  "marker": "2026-10-11T20:05:45+0000",
+  "groups": {
+    "604": "Base Set",
+    "1663": "Base Set (Shadowless)",
+    "1840": "Deck Exclusives",
+    "1418": "WoTC Promo",
+    "1398": "EX Unseen Forces",
+    "1396": "Neo Genesis",
+    "1543": "EX Trainer Kit 1: Latias & Latios",
+    "23821": "SV: Prismatic Evolutions",
+    "22872": "SV: Scarlet & Violet Promo Cards",
+    "24380": "ME: Fixture Era Set"
+  },
+  "prices": {
+    "604": [[42382, "Holofoil", 410.0]],
+    "1663": [[106999, "1st Edition Holofoil", 9100.0], [106999, "Unlimited Holofoil", 1200.0]],
+    "1840": [[42501, "Holofoil", 31.07], [42502, "1st Edition Holofoil", 55.55]],
+    "1418": [[85101, "Holofoil", 10.2], [85102, "Holofoil", 19.5], [85103, "Holofoil", 4.44]],
+    "1398": [[90200, "Holofoil", 12.34]],
+    "1396": [[89612, "1st Edition", 4.1], [89612, "Unlimited", 2.25]],
+    "1543": [[1001, "Holofoil", 3.21]],
+    "23821": [[610800, "Normal", 0.08], [610800, "Reverse Holofoil", null], [610801, "Holofoil", 1.11]],
+    "22872": [[520099, "Holofoil", 7.77]],
+    "24380": [[700001, "Normal", 0.5], [700002, "Normal", 0.75]]
+  }
+}

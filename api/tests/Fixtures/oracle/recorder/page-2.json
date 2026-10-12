@@ -1,0 +1,9 @@
+{
+  "data": [
+    { "id": "xy5-1", "set": { "id": "xy5" }, "tcgplayer": { "updatedAt": "2026/10/12", "prices": { "normal": { "market": 0.5 } } } }
+  ],
+  "page": 2,
+  "pageSize": 250,
+  "count": 50,
+  "totalCount": 300
+}

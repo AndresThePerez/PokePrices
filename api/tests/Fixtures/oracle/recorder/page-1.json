@@ -1,0 +1,9 @@
+{
+  "data": [
+    { "id": "hgss4-1", "set": { "id": "hgss4" }, "tcgplayer": { "updatedAt": "2026/10/12", "prices": { "holofoil": { "market": 1.5 } } } }
+  ],
+  "page": 1,
+  "pageSize": 250,
+  "count": 250,
+  "totalCount": 300
+}

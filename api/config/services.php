@@ -38,6 +38,17 @@ return [
         'snapshots' => env('TCGCSV_SNAPSHOTS_DIR', '/workspace/.data/snapshots'),
     ],
 
+    // Dataset checkouts by ref, read by the map audits (plan T40).
+    'dataset' => [
+        'root' => env('DATASET_DIR', '/workspace/.data/dataset'),
+    ],
+
+    // The recorded pokemontcg.io oracle by day: written once by pokeprices:oracle:fetch, read by
+    // pokeprices:map:oracle (plan T41).
+    'oracle' => [
+        'root' => env('ORACLE_DIR', '/workspace/.data/oracle'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

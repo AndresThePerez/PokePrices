@@ -485,3 +485,25 @@ test('a product that moves to another key frees its old key without a unique cla
         ->toBe([['sv8pt5-7:normal:-:-', 610380, 1, 'remapped']]);
     expect(t39Unmapped())->not->toContain([610381, 'Normal', 'duplicate_target']);
 });
+
+test('every dataset card is mapped, a candidate of an unmapped item, or listed in unmapped_cards with its reason', function (): void {
+    t39Build();
+
+    $build = (int) DB::table('map_builds')->max('id');
+    $mapped = DB::table('source_product_map as m')->join('card_variants as v', 'v.variant_key', '=', 'm.variant_key')->distinct()->pluck('v.card_id')->all();
+    $candidates = array_map(fn (object $r): string => $r->card, DB::select('SELECT DISTINCT jsonb_array_elements_text(candidates) AS card FROM unmapped_source_items WHERE map_build_id = ?', [$build]));
+    $listed = DB::table('unmapped_cards')->where('map_build_id', $build)->pluck('reason', 'card_id')->all();
+    $dataset = [];
+    foreach (glob(t39Fixture('dataset/cards/en/*.json')) ?: [] as $file) {
+        foreach (json_decode((string) file_get_contents($file), true, 512, JSON_THROW_ON_ERROR) as $card) {
+            $dataset[] = $card['id'];
+        }
+    }
+    $counts = json_decode((string) DB::table('map_builds')->where('id', $build)->value('counts'), true);
+
+    expect(array_values(array_diff($dataset, $mapped, $candidates, array_keys($listed))))->toBe([])
+        ->and(array_intersect(array_keys($listed), array_merge($mapped, $candidates)))->toBe([])
+        ->and($listed['fut20-1'] ?? null)->toBe('no_set_alias')
+        ->and(array_unique(array_values($listed)))->each->toBeIn(['no_priced_product', 'no_set_alias'])
+        ->and($counts['unmapped_cards'])->toBe(count($listed));
+});
