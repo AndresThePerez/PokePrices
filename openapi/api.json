@@ -190,6 +190,133 @@
                 }
             }
         },
+        "/cards/{id}": {
+            "get": {
+                "operationId": "getCard",
+                "description": "The card comes from the Pok\u00e9Search catalog; variants lists the Pok\u00e9Prices variants of the card with their current TCGplayer mappings, and catalog names the Pok\u00e9Search dataset that answered. There is no price yet. An id outside the Pok\u00e9Search card id pattern, or one Pok\u00e9Search does not have, answers 404 card-not-found; catalog_missing is true when Pok\u00e9Prices holds variant rows for an id Pok\u00e9Search no longer has (the rows are flagged, never deleted). While Pok\u00e9Search is unavailable the last good copy answers with meta.degraded true and meta.stale_since, or 503 when there is none.",
+                "summary": "Read one card, hydrated with its Pok\u00e9Prices variants",
+                "tags": [
+                    "Cards"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`CardResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/CardResource"
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "degraded": {
+                                                    "type": "boolean"
+                                                },
+                                                "stale_since": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "degraded"
+                                            ],
+                                            "additionalProperties": false
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ],
+                                    "additionalProperties": false
+                                }
+                            }
+                        }
+                    },
+                    "304": {
+                        "description": "Not Modified: the If-None-Match validator matches the current representation.",
+                        "headers": {
+                            "ETag": {
+                                "description": "The validator of the current representation.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "An error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests: the rate limit of this route is spent.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds until the limit resets.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "Pok\u00e9Search answered outside its contract (problem type https://pokeprices.andrestheperez.com/problems/upstream-contract).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Pok\u00e9Search did not answer (problem type https://pokeprices.andrestheperez.com/problems/upstream-unavailable).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds before Pok\u00e9Search is worth asking again.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/ready": {
             "get": {
                 "operationId": "getReady",
@@ -286,6 +413,208 @@
     },
     "components": {
         "schemas": {
+            "CardResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "supertype": {
+                        "type": "string"
+                    },
+                    "subtypes": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "hp": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "types": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "rarity": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "number": {
+                        "type": "string"
+                    },
+                    "artist": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "set": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "string"
+                            },
+                            "name": {
+                                "type": "string"
+                            },
+                            "series": {
+                                "type": "string"
+                            },
+                            "total": {
+                                "type": "integer"
+                            },
+                            "release_date": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "name",
+                            "series",
+                            "total",
+                            "release_date"
+                        ],
+                        "additionalProperties": false
+                    },
+                    "images": {
+                        "type": "object",
+                        "properties": {
+                            "small": {
+                                "type": "string"
+                            },
+                            "large": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "small",
+                            "large"
+                        ],
+                        "additionalProperties": false
+                    },
+                    "variants": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "variant_key": {
+                                    "type": "string"
+                                },
+                                "finish": {
+                                    "type": "string"
+                                },
+                                "edition": {
+                                    "type": "string"
+                                },
+                                "treatment": {
+                                    "type": "string"
+                                },
+                                "sources": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "properties": {
+                                            "source": {
+                                                "type": "string"
+                                            },
+                                            "product_id": {
+                                                "type": "integer"
+                                            },
+                                            "subtype": {
+                                                "type": "string"
+                                            },
+                                            "group_id": {
+                                                "type": "integer"
+                                            },
+                                            "series_epoch": {
+                                                "type": "integer"
+                                            },
+                                            "map_snapshot_day": {
+                                                "type": "string"
+                                            }
+                                        },
+                                        "required": [
+                                            "source",
+                                            "product_id",
+                                            "subtype",
+                                            "group_id",
+                                            "series_epoch",
+                                            "map_snapshot_day"
+                                        ],
+                                        "additionalProperties": false
+                                    }
+                                }
+                            },
+                            "required": [
+                                "variant_key",
+                                "finish",
+                                "edition",
+                                "treatment",
+                                "sources"
+                            ],
+                            "additionalProperties": false
+                        }
+                    },
+                    "catalog": {
+                        "type": "object",
+                        "properties": {
+                            "seed_ref": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "seeded_at": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "status": {
+                                "type": "string",
+                                "enum": [
+                                    "catalog_missing",
+                                    "ok",
+                                    "unverified"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "seed_ref",
+                            "seeded_at",
+                            "status"
+                        ],
+                        "additionalProperties": false
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "supertype",
+                    "subtypes",
+                    "hp",
+                    "types",
+                    "rarity",
+                    "number",
+                    "artist",
+                    "set",
+                    "images",
+                    "variants",
+                    "catalog"
+                ],
+                "additionalProperties": false,
+                "title": "CardResource"
+            },
             "CardSummaryResource": {
                 "type": "object",
                 "properties": {

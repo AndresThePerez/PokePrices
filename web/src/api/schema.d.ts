@@ -24,6 +24,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/cards/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read one card, hydrated with its PokéPrices variants
+         * @description The card comes from the PokéSearch catalog; variants lists the PokéPrices variants of the card with their current TCGplayer mappings, and catalog names the PokéSearch dataset that answered. There is no price yet. An id outside the PokéSearch card id pattern, or one PokéSearch does not have, answers 404 card-not-found; catalog_missing is true when PokéPrices holds variant rows for an id PokéSearch no longer has (the rows are flagged, never deleted). While PokéSearch is unavailable the last good copy answers with meta.degraded true and meta.stale_since, or 503 when there is none.
+         */
+        get: operations["getCard"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/ready": {
         parameters: {
             query?: never;
@@ -48,6 +68,49 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** CardResource */
+        CardResource: {
+            id: string;
+            name: string;
+            supertype: string;
+            subtypes: string[];
+            hp: number | null;
+            types: string[];
+            rarity: string | null;
+            number: string;
+            artist: string | null;
+            set: {
+                id: string;
+                name: string;
+                series: string;
+                total: number;
+                release_date: string;
+            };
+            images: {
+                small: string;
+                large: string;
+            };
+            variants: {
+                variant_key: string;
+                finish: string;
+                edition: string;
+                treatment: string;
+                sources: {
+                    source: string;
+                    product_id: number;
+                    subtype: string;
+                    group_id: number;
+                    series_epoch: number;
+                    map_snapshot_day: string;
+                }[];
+            }[];
+            catalog: {
+                seed_ref: string | null;
+                seeded_at: string | null;
+                /** @enum {string} */
+                status: "catalog_missing" | "ok" | "unverified";
+            };
+        };
         /** CardSummaryResource */
         CardSummaryResource: {
             id: string;
@@ -131,6 +194,83 @@ export interface operations {
             };
             /** @description Validation error */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Too Many Requests: the rate limit of this route is spent. */
+            429: {
+                headers: {
+                    /** @description Seconds until the limit resets. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description PokéSearch answered outside its contract (problem type https://pokeprices.andrestheperez.com/problems/upstream-contract). */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description PokéSearch did not answer (problem type https://pokeprices.andrestheperez.com/problems/upstream-unavailable). */
+            503: {
+                headers: {
+                    /** @description Seconds before PokéSearch is worth asking again. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getCard: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `CardResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CardResource"];
+                        meta: {
+                            degraded: boolean;
+                            stale_since?: string;
+                        };
+                    };
+                };
+            };
+            /** @description Not Modified: the If-None-Match validator matches the current representation. */
+            304: {
+                headers: {
+                    /** @description The validator of the current representation. */
+                    ETag: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

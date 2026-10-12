@@ -7,6 +7,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use LogicException;
 use ReflectionProperty;
 use Symfony\Component\HttpFoundation\JsonResponse as SymfonyJsonResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -14,18 +15,27 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Validators and cache policy for public reads (plan T44, review-1 recs 5 and 10), alias conditional-get.
  *
- * A 200 to a GET or HEAD gets a strong ETag over its body (xxh128) and Cache-Control
- * public, max-age=60, s-maxage=300; a matching If-None-Match turns it into a 304 that keeps the ETag and
- * drops the body. A body whose meta.degraded is true is a stale copy: it gets Cache-Control no-store, no
- * ETag, and is never answered 304. Any other status passes through untouched. The ETag only holds because
- * these bodies are deterministic: no request id and no upstream timing in a 200.
+ * A 200 to a GET or HEAD gets a strong ETag over its body (xxh128) and the route's Cache-Control policy, named
+ * as the middleware parameter: conditional-get (or conditional-get:search) sends public, max-age=60,
+ * s-maxage=300; conditional-get:card sends public, max-age=60, stale-while-revalidate=300 (T43, review-1
+ * rec 12). A matching If-None-Match turns it into a 304 that keeps the ETag and drops the body. A body whose
+ * meta.degraded is true is a stale copy: it gets Cache-Control no-store, no ETag, and is never answered 304.
+ * Any other status passes through untouched. The ETag only holds because these bodies are deterministic: no
+ * request id and no upstream timing in a 200.
  */
 final class ConditionalGet
 {
     public const string CACHE_CONTROL = 'public, max-age=60, s-maxage=300';
 
-    public function handle(Request $request, Closure $next): Response
+    public const string CARD_CACHE_CONTROL = 'public, max-age=60, stale-while-revalidate=300';
+
+    /** The Cache-Control of a fresh 200, by the policy name a route passes as the middleware parameter. */
+    public const array POLICIES = ['search' => self::CACHE_CONTROL, 'card' => self::CARD_CACHE_CONTROL];
+
+    /** @throws LogicException when the route names a policy that does not exist */
+    public function handle(Request $request, Closure $next, string $policy = 'search'): Response
     {
+        $cacheControl = self::POLICIES[$policy] ?? throw new LogicException("Unknown conditional-get policy {$policy}.");
         $response = $next($request);
         if (! $response instanceof Response || $response->getStatusCode() !== 200 || ! $request->isMethodCacheable()) {
             return $response;
@@ -43,7 +53,7 @@ final class ConditionalGet
             return $response;
         }
 
-        $response->headers->set('Cache-Control', self::CACHE_CONTROL);
+        $response->headers->set('Cache-Control', $cacheControl);
         $response->setEtag(hash('xxh128', $body));
         $response->isNotModified($request);
 

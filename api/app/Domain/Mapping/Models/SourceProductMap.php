@@ -7,6 +7,7 @@ namespace App\Domain\Mapping\Models;
 use Illuminate\Database\Eloquent\Attributes\Guarded;
 use Illuminate\Database\Eloquent\Attributes\Table;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * The current mapping of one source product and subtype to a card variant (plan T36, R131). A remap moves the
@@ -25,11 +26,22 @@ use Illuminate\Database\Eloquent\Model;
  * @property bool $name_agreement
  * @property int $series_epoch
  * @property int $map_build_id
+ * @property-read MapBuild $mapBuild
  */
 #[Table('source_product_map', timestamps: false)]
 #[Guarded(['id'])]
 final class SourceProductMap extends Model
 {
+    /**
+     * The build that wrote this mapping; its snapshot_day is the day the mapping was made from.
+     *
+     * @return BelongsTo<MapBuild, $this>
+     */
+    public function mapBuild(): BelongsTo
+    {
+        return $this->belongsTo(MapBuild::class);
+    }
+
     /** @return array<string, string> */
     protected function casts(): array
     {

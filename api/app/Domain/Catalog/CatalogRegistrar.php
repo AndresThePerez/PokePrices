@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Catalog;
 
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\RequestException;
@@ -12,8 +13,8 @@ use Illuminate\Support\Facades\Http;
 use Throwable;
 
 /**
- * Registers the catalog's Http::pokesearch() macro (plan T34) and the rate tiers (T44);
- * AppServiceProvider only delegates here.
+ * Registers the catalog's Http::pokesearch() macro (plan T34), the rate tiers (T44) and the lazy-loading
+ * guard (T43, P7); AppServiceProvider only delegates here.
  *
  * Timeouts are per attempt: connect 1 s, total 2 s. R130 (F-P1-R1-16): retry once, 100 ms later, and only
  * when the first attempt failed fast (connection refused, or HTTP 502/503/504 within 0.9 s); never after
@@ -35,6 +36,10 @@ final class CatalogRegistrar
         Http::macro('pokesearch', fn (): PendingRequest => CatalogRegistrar::pendingRequest());
 
         RateLimits::register();
+
+        // P7: outside production a lazy relation access throws, so a read that forgets an eager load (the card
+        // read's variants, sources and builds) fails its tests instead of turning into N+1 queries.
+        Model::preventLazyLoading(! app()->isProduction());
     }
 
     public static function pendingRequest(): PendingRequest

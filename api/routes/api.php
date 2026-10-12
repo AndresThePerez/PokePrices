@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\CardController;
 use App\Http\Controllers\CardSearchController;
 use App\Http\Controllers\ReadinessController;
 use Illuminate\Support\Facades\Route;
@@ -14,4 +15,9 @@ Route::group(['pokesearch' => true], function (): void {
     Route::get('/cards', CardSearchController::class)
         ->middleware(['throttle:search', 'conditional-get'])
         ->name('cards.search');
+
+    // The {id} segment arrives percent-decoded: /v1/cards/ex10-%3F reaches the controller as ex10-?.
+    Route::get('/cards/{id}', CardController::class)
+        ->middleware(['throttle:public-read', 'conditional-get:card'])
+        ->name('cards.show');
 });
