@@ -28,3 +28,20 @@ arch('AppServiceProvider delegates catalog registration to CatalogRegistrar')
 arch('AppServiceProvider registers no Http macro of its own')
     ->expect('App\Providers\AppServiceProvider')
     ->not->toUse(['Illuminate\Support\Facades\Http', 'Illuminate\Http\Client\Factory']);
+
+test('the map builder, the snapshot reader and the map:build command exist', function (string $class): void {
+    expect(class_exists($class))->toBeTrue();
+})->with([
+    'App\Domain\Mapping\MapBuilder',
+    'App\Domain\Mapping\SnapshotReader',
+    'App\Console\Commands\MapBuild',
+]);
+
+arch('mapping code is strict-typed and final')
+    ->expect(['App\Domain\Mapping', 'App\Console\Commands\MapBuild'])
+    ->toUseStrictTypes()
+    ->toBeFinal();
+
+arch('the product map is built from collected files only, never from the network')
+    ->expect(['App\Domain\Mapping', 'App\Console\Commands\MapBuild'])
+    ->not->toUse(['Illuminate\Support\Facades\Http', 'Illuminate\Http\Client', 'GuzzleHttp']);

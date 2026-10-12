@@ -33,6 +33,11 @@ return [
         'api_key' => env('POKESEARCH_API_KEY'),
     ],
 
+    // Collected TCGCSV days, only ever read (plan T39). The dev stack mounts the repository at /workspace.
+    'tcgcsv' => [
+        'snapshots' => env('TCGCSV_SNAPSHOTS_DIR', '/workspace/.data/snapshots'),
+    ],
+
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
