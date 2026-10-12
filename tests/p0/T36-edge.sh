@@ -171,11 +171,12 @@ fresh
 REAL=.gates/latest
 if [ -f "$REAL/scorecard.json" ] && [ -f "$REAL/EC-ci-parity.nested.json" ]; then
   D=$T/sc; mkdir -p "$D"
-  # T31 line: only the "make gates exits 0 and every hard gate passes" check, rc injected, scorecard path swapped.
+  # T31 lines: only the final "make gates exits 0 ... matches tests/pending-gates.txt" block (P1-i1-T07),
+  # rc injected, scorecard path swapped, the real ledger.
   t31() { # $1 name, $2 jq on scorecard, $3 rc
     jq "$2" "$REAL/scorecard.json" > "$D/$1.json" || return 1
-    { printf '#!/bin/sh\nset -u\ncd "%s" || exit 1\n. tests/p0/lib.sh\nrc=%s\n' "$PWD" "$3"
-      /usr/bin/grep 'every hard gate passes (the gate set' tests/p0/T31.sh | sed "s#\\.gates/latest/scorecard\\.json#$D/$1.json#g"
+    { printf '#!/bin/sh\nset -u\ncd "%s" || exit 1\n. tests/p0/lib.sh\nPG=tests/pending-gates.txt\nrc=%s\n' "$PWD" "$3"
+      sed -n '/^P=\$(pending_json/,/matches tests\/pending-gates\.txt/p' tests/p0/T31.sh | sed "s#\\.gates/latest/scorecard\\.json#$D/$1.json#g"
       echo finish; } > "$D/$1.t31.sh"
     sh "$D/$1.t31.sh" 2>&1
   }
@@ -197,15 +198,15 @@ if [ -f "$REAL/scorecard.json" ] && [ -f "$REAL/EC-ci-parity.nested.json" ]; the
     t35() { # $1 name, $2 jq on nested scorecard, $3 jq on nested DEN
       jq "$2" "$REAL/EC-ci-parity.nested.json" > "$D/$1.nested.json" || return 1
       mkdir -p "$D/$1.d"; jq "$3" "$REALDEN" > "$D/$1.d/EC-ci-parity.nested.DEN.json" || return 1
-      { printf '#!/bin/sh\nset -u\ncd "%s" || exit 1\n. tests/p0/lib.sh\nN=%s\nT=%s\n' "$PWD" "$D/$1.nested.json" "$D/$1.d"
-        /usr/bin/grep -E 'every in-scope hard gate passes in the nested run|the nested DEN has no failing details' tests/p0/T35.sh
+      { printf '#!/bin/sh\nset -u\ncd "%s" || exit 1\n. tests/p0/lib.sh\nPG=tests/pending-gates.txt\nN=%s\nT=%s\n' "$PWD" "$D/$1.nested.json" "$D/$1.d"
+        /usr/bin/grep -E '^P=\$\(pending_json|in-scope failing hard set matches tests/pending-gates\.txt|the nested DEN has no failing details' tests/p0/T35.sh
         echo finish; } > "$D/$1.t35.sh"
       sh "$D/$1.t35.sh" 2>&1
     }
-    case "$(t35 base . .)" in *"not ok"*) echo "not ok - T35 nested checks fail on the undoctored artifacts"; fails=$((fails + 1));; *"ok - since the freeze"*"ok - the nested DEN"*) echo "ok - T35 nested checks pass on the undoctored artifacts";; *) echo "not ok - T35 nested checks were not extracted"; fails=$((fails + 1));; esac
-    for v in 'n-q1fail@@(.gates[] | select(.id == "Q1")) |= (.status = "fail")@@.@@every in-scope hard gate passes' \
-             'n-ag1fail@@(.gates[] | select(.id == "AG1")) |= (.status = "fail")@@.@@every in-scope hard gate passes' \
-             'n-q1notrun@@(.gates[] | select(.id == "Q1")) |= (.status = "not_run")@@.@@every in-scope hard gate passes' \
+    case "$(t35 base . .)" in *"not ok"*) echo "not ok - T35 nested checks fail on the undoctored artifacts"; fails=$((fails + 1));; *"ok - the nested run's in-scope failing hard set matches"*"ok - the nested DEN"*) echo "ok - T35 nested checks pass on the undoctored artifacts";; *) echo "not ok - T35 nested checks were not extracted"; fails=$((fails + 1));; esac
+    for v in 'n-q1fail@@(.gates[] | select(.id == "Q1")) |= (.status = "fail")@@.@@in-scope failing hard set matches tests/pending-gates.txt' \
+             'n-ag1fail@@(.gates[] | select(.id == "AG1")) |= (.status = "fail")@@.@@in-scope failing hard set matches tests/pending-gates.txt' \
+             'n-q1notrun@@(.gates[] | select(.id == "Q1")) |= (.status = "not_run")@@.@@in-scope failing hard set matches tests/pending-gates.txt' \
              'n-denval@@.@@.value = 1@@the nested DEN has no failing details' \
              'n-dendetail@@.@@.details += [{"gate":"AG1","rule":"zero_denominator","status":"fail","denominator":0}]@@the nested DEN has no failing details' \
              'n-denpass@@.@@.details += [{"gate":"Q1","status":"pass"}]@@the nested DEN has no failing details'; do

@@ -1,0 +1,6 @@
+# Hard gates allowed to be red, one "<GATE-ID> <owner>" per line (# starts a comment line).
+# tests/p0/T31.sh, T34.sh, T35.sh and T34-edge.sh require the failing in-scope hard set to equal the
+# listed ids exactly. Remove an id in the commit that makes its gate pass; add only ids the plan names.
+# T07 changes no frozen file, so AG1 is still green: both ids stay commented until T08 uncomments them.
+# AG1 P1-i1-T29
+# EC-ci-parity P1-i1-T29

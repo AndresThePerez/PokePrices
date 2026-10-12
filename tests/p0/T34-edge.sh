@@ -9,9 +9,11 @@ T=.gates/tmp/T34-edge
 mkdir -p "$T"
 HEADSHA=$(git rev-parse HEAD)
 
-# A copy of T34.sh without the make gates run, reading the fixture scorecard.
+# A copy of T34.sh without the make gates run, reading the fixture scorecard and the ledger $PGF
+# (the real tests/pending-gates.txt unless a case sets PGF).
+PGF=tests/pending-gates.txt
 variant_script() { # $1 fixture dir
-  sed -e '/^make gates/d' -e "s#^SC=.*#SC=$1/scorecard.json#" \
+  sed -e '/^make gates/d' -e "s#^SC=.*#SC=$1/scorecard.json#" -e "s#^PG=.*#PG=$PGF#" \
       -e 's#^cd .*#cd "'"$(pwd)"'" || exit 1#' tests/p0/T34.sh > "$1/T34-copy.sh"
 }
 # build NAME JQ-ON-SCORECARD JQ-ON-AG1 JQ-ON-DEN [JQ-ON-NESTED-SCORECARD]
@@ -30,6 +32,12 @@ expect_flip() {
   case "$(out "$1")" in *"not ok - $2"*) printf 'ok - %s flips "%s"\n' "$1" "$2";;
     *) printf 'not ok - %s does not flip "%s"\n' "$1" "$2"; fails=$((fails + 1));; esac
 }
+# expect_hold NAME DESC-OF-CHECK-THAT-MUST-PASS
+expect_hold() {
+  case "$(out "$1")" in *"not ok - $2"*) printf 'not ok - %s flips "%s"\n' "$1" "$2"; fails=$((fails + 1));;
+    *"ok - $2"*) printf 'ok - %s holds "%s"\n' "$1" "$2";;
+    *) printf 'not ok - %s never ran "%s"\n' "$1" "$2"; fails=$((fails + 1));; esac
+}
 
 [ -f "$REAL/scorecard.json" ] || { echo "not ok - no scorecard to derive fixtures from"; exit 1; }
 I='.'
@@ -45,14 +53,34 @@ build dirtybefore '.clean_before = false' "$I" "$I"
 expect_flip dirtybefore "primary context, clean before and after"
 build linked '.run_context = "linked"' "$I" "$I"
 expect_flip linked "primary context, clean before and after"
-# Since the T36 freeze every hard gate passes; the doctored variants below fail one gate each, or
-# restore the pre-freeze failure set (AG1 without an anchor, DEN and EC-ci-parity through it).
+# The failing hard set must equal the ids tests/pending-gates.txt lists (P1-i1-T07); the doctored
+# variants below fail one more gate each, or restore the pre-freeze failure set (AG1 without an
+# anchor, DEN and EC-ci-parity through it), or list a gate that passes.
+PRIM="the failing hard set matches tests/pending-gates.txt"
+NEST="EC-ci-parity's nested run: the in-scope failing hard set matches tests/pending-gates.txt"
 build smuggled '(.gates[] | select(.id == "Q1")) |= (.status = "fail")' "$I" "$I"
-expect_flip smuggled "every hard gate passes"
+expect_flip smuggled "$PRIM"
 build notrun '(.gates[] | select(.id == "Q1")) |= (.status = "not_run")' "$I" "$I"
-expect_flip notrun "every hard gate passes"
+expect_flip notrun "$PRIM"
 build prefreeze '(.gates[] | select(.id == "AG1" or .id == "DEN" or .id == "EC-ci-parity")) |= (.status = "fail")' "$I" "$I"
-expect_flip prefreeze "every hard gate passes"
+expect_flip prefreeze "$PRIM"
+build oosprimary '(.gates[] | select(.id == "Q1")) |= (.status = "out_of_scope")' "$I" "$I"
+expect_flip oosprimary "$PRIM"
+# Ledger fixtures: the real ledger plus Q1, and one malformed line.
+{ cat tests/pending-gates.txt; printf 'Q1 P1-i1-T07-edge\n'; } > "$T/pg-plus-q1.txt"
+{ cat tests/pending-gates.txt; printf 'Q1\n'; } > "$T/pg-bad.txt"
+PGF=$T/pg-plus-q1.txt
+build listedpassing "$I" "$I" "$I"
+expect_flip listedpassing "$PRIM"
+expect_flip listedpassing "$NEST"
+build listedfailing '(.gates[] | select(.id == "Q1")) |= (.status = "fail")' "$I" "$I" '(.gates[] | select(.id == "Q1")) |= (.status = "fail")'
+expect_hold listedfailing "$PRIM"
+expect_hold listedfailing "$NEST"
+PGF=$T/pg-bad.txt
+build badledger "$I" "$I" "$I"
+expect_flip badledger "$PRIM"
+expect_flip badledger "$NEST"
+PGF=tests/pending-gates.txt
 build agvalues '(.gates[] | select(.id == "AG-values")) |= (.status = "fail")' "$I" "$I"
 expect_flip agvalues "AG-values clean on every group"
 build soft3 '(.gates[] | select(.id == "Q5")) |= (.status = "fail")' "$I" "$I"
@@ -70,9 +98,9 @@ expect_flip denvalue "DEN shows no failing details"
 build denprefreeze "$I" "$I" '.details = [{"gate":"AG1","rule":"zero_denominator","status":"fail","denominator":0}] | .value = 1'
 expect_flip denprefreeze "DEN shows no failing details"
 build nestedextra "$I" "$I" "$I" '(.gates[] | select(.id == "Q1")) |= (.status = "fail")'
-expect_flip nestedextra "EC-ci-parity's nested run passes every in-scope hard gate"
+expect_flip nestedextra "$NEST"
 build nestedprefreeze "$I" "$I" "$I" '(.gates[] | select(.id == "AG1" or .id == "DEN")) |= (.status = "fail")'
-expect_flip nestedprefreeze "EC-ci-parity's nested run passes every in-scope hard gate"
+expect_flip nestedprefreeze "$NEST"
 
 # Rector edits must keep QueueProbe's command surface (T18).
 QP="$DC exec -T -w /workspace/api api php artisan"
