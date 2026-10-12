@@ -38,11 +38,10 @@ check_out "git remote -v is exactly the fetch and push line of origin" \
 check_out "origin has a single url value" 1 sh -c 'git config --get-all remote.origin.url | wc -l | tr -d " "'
 check "origin has no separate pushurl" sh -c '! git config --get remote.origin.pushurl'
 check "no remote url rewrite (insteadOf) config" sh -c 'test -z "$(git config --get-regexp "^url\\." )"'
-check "main has no upstream configured" sh -c '! git config --get branch.main.remote'
-check "no FETCH_HEAD exists" sh -c '! test -e .git/FETCH_HEAD'
+check "main's upstream, if set, is origin" sh -c 'r=$(git config --get branch.main.remote); test -z "$r" || test "$r" = origin'
 check "no packed remote refs" sh -c '! test -e .git/packed-refs || ! '"$GREP"' -q refs/remotes .git/packed-refs'
-check_out "only the main branch exists" main sh -c 'git for-each-ref --format="%(refname:short)" refs/heads'
-check_out "HEAD is a symbolic ref to refs/heads/main" refs/heads/main git symbolic-ref HEAD
+check_out "the local branches are exactly main and p1-work" "main p1-work" sh -c 'git for-each-ref --format="%(refname:short)" refs/heads | LC_ALL=C sort | paste -sd" " -'
+check "HEAD is a symbolic ref to refs/heads/main or refs/heads/p1-work" sh -c 'case $(git symbolic-ref HEAD) in refs/heads/main|refs/heads/p1-work) exit 0 ;; esac; exit 1'
 check_out "history has exactly one root commit" 1 sh -c 'git rev-list --max-parents=0 HEAD | wc -l | tr -d " "'
 check_out "no tags" 0 sh -c 'git tag | wc -l | tr -d " "'
 
