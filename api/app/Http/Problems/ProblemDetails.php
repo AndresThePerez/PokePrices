@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Context;
 use Illuminate\Validation\ValidationException;
+use Stringable;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
@@ -25,22 +26,54 @@ final class ProblemDetails
         if ($e instanceof ValidationException) {
             return self::response(422, 'validation-failed', 'Validation Failed', $request, null, ['errors' => $e->errors()]);
         }
-        if ($e instanceof NotFoundHttpException) {
-            return self::response(404, 'not-found', 'Not Found', $request);
-        }
-        if ($e instanceof MethodNotAllowedHttpException) {
-            return self::response(405, 'method-not-allowed', 'Method Not Allowed', $request);
-        }
         if ($e instanceof AuthenticationException) {
             return self::response(401, 'unauthenticated', 'Unauthenticated', $request);
         }
         if ($e instanceof HttpExceptionInterface) {
-            $status = $e->getStatusCode();
-
-            return self::response($status, 'http-'.$status, Response::$statusTexts[$status] ?? 'Error', $request);
+            return self::withHeaders(self::fromHttpException($e, $request), $e->getHeaders());
         }
 
         return self::response(500, 'server-error', 'Server Error', $request);
+    }
+
+    /** The P1 slugs first (F-P1-027), then the P0 404/405 slugs, then http-<n> for every other status. */
+    private static function fromHttpException(HttpExceptionInterface $e, Request $request): JsonResponse
+    {
+        $status = $e->getStatusCode();
+
+        return match (true) {
+            $e instanceof UpstreamUnavailable => self::response(503, 'upstream-unavailable', 'Upstream Unavailable', $request),
+            $e instanceof UpstreamContract => self::response(502, 'upstream-contract', 'Upstream Contract Violation', $request),
+            $e instanceof CardNotFound => self::response(404, 'card-not-found', 'Card Not Found', $request, null, ['catalog_missing' => $e->catalogMissing]),
+            $e instanceof NotFoundHttpException => self::response(404, 'not-found', 'Not Found', $request),
+            $e instanceof MethodNotAllowedHttpException => self::response(405, 'method-not-allowed', 'Method Not Allowed', $request),
+            $status === 429 => self::response(429, 'too-many-requests', 'Too Many Requests', $request),
+            default => self::response($status, 'http-'.$status, Response::$statusTexts[$status] ?? 'Error', $request),
+        };
+    }
+
+    /**
+     * The exception's own headers (Retry-After, X-RateLimit-*, Allow) travel with the problem; its Content-Type never does.
+     *
+     * @param  array<mixed>  $headers
+     */
+    private static function withHeaders(JsonResponse $response, array $headers): JsonResponse
+    {
+        foreach ($headers as $name => $value) {
+            $name = (string) $name;
+            $values = [];
+            foreach (is_array($value) ? $value : [$value] as $item) {
+                if (is_scalar($item) || $item instanceof Stringable) {
+                    $values[] = (string) $item;
+                }
+            }
+            if ($values !== [] && strcasecmp($name, 'Content-Type') !== 0) {
+                $response->headers->set($name, $values);
+            }
+        }
+        $response->headers->set('Content-Type', 'application/problem+json');
+
+        return $response;
     }
 
     /** @param array<string, mixed> $extra */
