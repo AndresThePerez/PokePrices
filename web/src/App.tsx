@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import Link from './Link';
+import SearchPage from './pages/SearchPage';
 import { useRoute } from './router';
 
 function Page({ title, children }: { readonly title: string; readonly children: ReactNode }) {
@@ -11,7 +12,7 @@ function Page({ title, children }: { readonly title: string; readonly children: 
   );
 }
 
-// The /search and /card/:id pages are placeholders until their own tasks build them.
+// The /card/:id page is a placeholder until its own task builds it.
 export default function App() {
   const { pathname, route } = useRoute();
   switch (route.name) {
@@ -25,11 +26,7 @@ export default function App() {
         </Page>
       );
     case 'search':
-      return (
-        <Page title="Search cards">
-          <p className="mt-2 text-base">Card search is not available yet.</p>
-        </Page>
-      );
+      return <SearchPage query={route.query} />;
     case 'card':
       return (
         <Page title={`Card ${route.id}`}>
