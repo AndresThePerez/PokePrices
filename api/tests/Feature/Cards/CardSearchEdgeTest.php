@@ -9,18 +9,26 @@ use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Client\Request as ClientRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter as RateLimiterFacade;
+use Tests\Support\CatalogCache;
 
 // Reviewer edge tests for T44 (GET /v1/cards?q=). Every upstream call is faked; every /v1 response is also
-// validated against openapi/api.json by Tests\TestCase (C3).
+// validated against openapi/api.json by Tests\TestCase (C3). Since T42 the search is cached on real Redis under
+// a per-test prefix with the seed ref primed; a repeated q is a cached answer (meta.cached true).
 
 const T44E_BASE = 'http://192.0.2.10:8081';
 
 beforeEach(function (): void {
     config(['services.pokesearch.url' => T44E_BASE, 'services.pokesearch.api_key' => null]);
+    $this->catalogPrefix = CatalogCache::isolate();
+    CatalogCache::primeSeedRef(T44E_BASE);
     Http::preventStrayRequests();
     config(['cache.limiter' => 'array']);
     app()->forgetInstance(RateLimiter::class);
     RateLimiterFacade::clearResolvedInstance(RateLimiter::class);
+});
+
+afterEach(function (): void {
+    CatalogCache::flush($this->catalogPrefix);
 });
 
 function t44eHit(int $n, array $override = []): array
@@ -157,9 +165,11 @@ it('passes pages through even when it contradicts total and page_size, and when 
 
 it('keeps the ETag deterministic across requests and changes it with the page', function (): void {
     t44eFake(t44eBody([t44eHit(1)], ['page' => 1]));
+    $this->getJson('/v1/cards?q=a')->assertOk(); // T42: warm the cache, so a and b are both cached answers
     $a = $this->withHeader('X-Request-Id', 'edge-req-000001')->getJson('/v1/cards?q=a');
     $b = $this->withHeader('X-Request-Id', 'edge-req-000002')->getJson('/v1/cards?q=a');
     t44eFake(t44eBody([t44eHit(2)], ['page' => 2]));
+    $this->getJson('/v1/cards?q=a&page=2')->assertOk(); // T42: warm page 2 too, so only the page differs from a
     $c = $this->getJson('/v1/cards?q=a&page=2');
 
     expect($a->headers->get('ETag'))->toBe($b->headers->get('ETag'))
@@ -170,6 +180,7 @@ it('keeps the ETag deterministic across requests and changes it with the page', 
 
 it('treats If-None-Match * as a match, a weak copy of the tag as a match, and a wrong tag as a miss', function (): void {
     t44eFake(t44eBody([t44eHit(1)]));
+    $this->getJson('/v1/cards?q=a')->assertOk(); // T42: the cached answer (meta.cached true) is the one revalidated
     $etag = (string) $this->getJson('/v1/cards?q=a')->headers->get('ETag');
 
     $star = $this->withHeader('If-None-Match', '*')->getJson('/v1/cards?q=a');
@@ -187,6 +198,7 @@ it('treats If-None-Match * as a match, a weak copy of the tag as a match, and a 
 
 it('answers HEAD with the headers of the GET, no body, and 304 on a matching tag', function (): void {
     t44eFake(t44eBody([t44eHit(1)]));
+    $this->getJson('/v1/cards?q=a')->assertOk(); // T42: warm the cache, so GET and HEAD carry the same cached answer
     $get = $this->getJson('/v1/cards?q=a');
 
     $head = $this->call('HEAD', '/v1/cards?q=a');
@@ -203,7 +215,7 @@ it('sends the cache policy only on the 200, never on a 422, 429 or 502', functio
     $ok = $this->getJson('/v1/cards?q=a');
     $invalid = $this->getJson('/v1/cards');
     t44eFake(['nope' => true]);
-    $bad = $this->getJson('/v1/cards?q=a');
+    $bad = $this->getJson('/v1/cards?q=b'); // T42: q=a is cached by now; a new q reaches the broken upstream
 
     expect((string) $ok->headers->get('Cache-Control'))->toContain('s-maxage=300');
     foreach ([$invalid, $bad] as $error) {

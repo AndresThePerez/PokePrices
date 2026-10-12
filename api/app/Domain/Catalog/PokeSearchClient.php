@@ -55,6 +55,19 @@ final class PokeSearchClient
     }
 
     /**
+     * GET /api/meta: build identity and corpus provenance (seed: {ref, seeded_at} or null), decoded (plan T42).
+     *
+     * @return array<mixed>
+     *
+     * @throws UpstreamUnavailable when PokéSearch cannot be reached or answers 5xx
+     * @throws UpstreamContract when PokéSearch answers any other non-2xx or a body that is not a JSON object
+     */
+    public function meta(): array
+    {
+        return $this->decoded($this->get('/api/meta'));
+    }
+
+    /**
      * GET /api/v1/cards?ids=a,b,c: the decoded answer (found cards in data, the rest in missing).
      *
      * @param  list<string>  $ids

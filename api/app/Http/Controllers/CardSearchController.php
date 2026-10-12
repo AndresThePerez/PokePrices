@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Domain\Catalog\PokeSearchClient;
+use App\Domain\Catalog\CatalogRepository;
 use App\Http\Resources\CardSummaryResource;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\Request;
@@ -17,8 +17,8 @@ final class CardSearchController
     /** The only query parameters accepted; anything else (debug, a PokéSearch filter) is a 422, never forwarded. */
     private const array PARAMETERS = ['q', 'page', 'page_size'];
 
-    /** T42 wraps this one call with the search cache and the degraded last-good copy. */
-    public function __construct(private readonly PokeSearchClient $pokeSearch) {}
+    /** The search goes through the catalog cache (T42): cached answers, and the degraded last-good copy. */
+    public function __construct(private readonly CatalogRepository $catalog) {}
 
     /**
      * Search cards in the PokéSearch catalog.
@@ -40,19 +40,23 @@ final class CardSearchController
             'page_size' => ['sometimes', 'integer', 'min:1', 'max:100'],
         ]);
 
-        $answer = $this->pokeSearch->search(
+        $result = $this->catalog->search(
             (string) $validated['q'],
             isset($validated['page']) ? (int) $validated['page'] : null,
             isset($validated['page_size']) ? (int) $validated['page_size'] : null,
         );
+        // PokeSearchClient::search() checked this shape before the answer was cached; the casts are no-ops that
+        // keep the integers visible to the contract export (Scramble does not read the @var).
+        /** @var array{total: int, page: int, pages: int, page_size: int, results: list<array<string, mixed>>} $answer */
+        $answer = $result->data;
 
         return CardSummaryResource::collection($answer['results'])->additional(['meta' => [
-            'total' => $answer['total'],
-            'page' => $answer['page'],
-            'pages' => $answer['pages'],
-            'page_size' => $answer['page_size'],
-            'degraded' => false,
-            'cached' => false,
+            'total' => (int) $answer['total'],
+            'page' => (int) $answer['page'],
+            'pages' => (int) $answer['pages'],
+            'page_size' => (int) $answer['page_size'],
+            'degraded' => $result->degraded,
+            'cached' => $result->cached,
         ]]);
     }
 }

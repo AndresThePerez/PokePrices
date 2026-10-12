@@ -12,9 +12,12 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter as RateLimiterFacade;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Testing\TestResponse;
+use Tests\Support\CatalogCache;
 
 // GET /v1/cards?q= proxies PokéSearch's /api/search (plan T44, R159). Every upstream call is faked; every
-// /v1 response below is also validated against openapi/api.json by Tests\TestCase (C3).
+// /v1 response below is also validated against openapi/api.json by Tests\TestCase (C3). Since T42 the search
+// goes through the catalog cache on real Redis: each test gets its own key prefix and a cached seed ref, so
+// the first search of a q is an upstream call and a repeat is served from the cache (meta.cached true).
 
 const T44_BASE = 'http://192.0.2.10:8081';
 
@@ -22,6 +25,8 @@ const T44_SUMMARY_KEYS = ['id', 'name', 'number', 'rarity', 'supertype', 'set_id
 
 beforeEach(function (): void {
     config(['services.pokesearch.url' => T44_BASE, 'services.pokesearch.api_key' => null]);
+    $this->catalogPrefix = CatalogCache::isolate();
+    CatalogCache::primeSeedRef(T44_BASE);
     Http::preventStrayRequests();
 
     // The application's limiter (on the redis-queue "locks" store) is kept for the registration assertions; the
@@ -31,6 +36,10 @@ beforeEach(function (): void {
     config(['cache.limiter' => 'array']);
     app()->forgetInstance(RateLimiter::class);
     RateLimiterFacade::clearResolvedInstance(RateLimiter::class);
+});
+
+afterEach(function (): void {
+    CatalogCache::flush($this->catalogPrefix);
 });
 
 /** One PokéSearch search hit: the fields PokéPrices maps plus some it must drop. */
@@ -281,6 +290,7 @@ it('sends a strong body-hash ETag and the public cache policy on a 200', functio
 
 it('gives the same ETag to the same answer whatever the request id', function (): void {
     t44FakeSearch(t44SearchBody(2));
+    $this->getJson('/v1/cards?q=card')->assertOk(); // T42: warm the cache, so both reads below are cached answers
 
     $first = $this->withHeader('X-Request-Id', 'req-t44-etag-0001')->getJson('/v1/cards?q=card');
     $second = $this->withHeader('X-Request-Id', 'req-t44-etag-0002')->getJson('/v1/cards?q=card');
@@ -292,6 +302,7 @@ it('gives the same ETag to the same answer whatever the request id', function ()
 
 it('answers 304 with the ETag and no body when If-None-Match matches', function (): void {
     t44FakeSearch(t44SearchBody(2));
+    $this->getJson('/v1/cards?q=card')->assertOk(); // T42: the cached answer (meta.cached true) is the one revalidated
     $etag = (string) $this->getJson('/v1/cards?q=card')->headers->get('ETag');
 
     $response = $this->withHeader('If-None-Match', $etag)->getJson('/v1/cards?q=card');
@@ -304,6 +315,7 @@ it('answers 304 with the ETag and no body when If-None-Match matches', function 
 
 it('answers 304 when the matching validator is one of several in If-None-Match', function (): void {
     t44FakeSearch(t44SearchBody(2));
+    $this->getJson('/v1/cards?q=card')->assertOk(); // T42: the cached answer (meta.cached true) is the one revalidated
     $etag = (string) $this->getJson('/v1/cards?q=card')->headers->get('ETag');
 
     $response = $this->withHeader('If-None-Match', '"0000", '.$etag)->getJson('/v1/cards?q=card');
@@ -401,8 +413,9 @@ it('puts throttle:search, conditional-get and the PokéSearch tag on the search 
 it('answers the 61st search in a minute from one IP with the 429 problem and Retry-After', function (): void {
     t44FakeSearch(t44SearchBody(1));
 
+    // T42: a distinct q per request, so each is a cache miss and still one upstream call.
     for ($i = 1; $i <= 60; $i++) {
-        $this->getJson('/v1/cards?q=card')->assertOk();
+        $this->getJson('/v1/cards?q=card'.$i)->assertOk();
     }
     $response = $this->getJson('/v1/cards?q=card');
 
