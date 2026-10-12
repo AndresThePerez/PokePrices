@@ -1,0 +1,181 @@
+pokesearch_set_id,source_group_id,role,number_rule,method,unlimited_means,note
+base1,604,primary,,manual,unlimited,manual: Base Set: Normal/Holofoil products are the unlimited print; source groups.json of 2026-10-11 plus dataset sets/en.json at 39a26a1
+base1,1663,edition-split,,manual,shadowless,"manual: Base Set (Shadowless): its Unlimited subtype is the shadowless print, 1st Edition is 1st; source groups.json of 2026-10-11 plus dataset sets/en.json at 39a26a1"
+base1,1840,secondary,8,manual,,manual: Deck Exclusives: Base Set Machamp #8 (1st Edition Holofoil) is listed only here; source groups.json of 2026-10-11 plus dataset sets/en.json at 39a26a1
+base2,635,primary,,name,unlimited,name matches group 'Jungle' in groups.json of 2026-10-11
+basep,1418,primary,,manual,,manual: WoTC Promo; ptcgo PR is shared by 21 groups and would pick 1840 Deck Exclusives; source groups.json of 2026-10-11 plus dataset sets/en.json at 39a26a1
+base3,630,primary,,name,unlimited,name matches group 'Fossil' in groups.json of 2026-10-11
+base4,605,primary,,name,,name matches group 'Base Set 2' in groups.json of 2026-10-11
+base5,1373,primary,,name,unlimited,name matches group 'Team Rocket' in groups.json of 2026-10-11
+gym1,1441,primary,,name,unlimited,name matches group 'Gym Heroes' in groups.json of 2026-10-11
+gym2,1440,primary,,name,unlimited,name matches group 'Gym Challenge' in groups.json of 2026-10-11
+neo1,1396,primary,,name,unlimited,name matches group 'Neo Genesis' in groups.json of 2026-10-11
+neo2,1434,primary,,name,unlimited,name matches group 'Neo Discovery' in groups.json of 2026-10-11
+si1,648,primary,,name,,name matches group 'Southern Islands' in groups.json of 2026-10-11
+neo3,1389,primary,,name,unlimited,name matches group 'Neo Revelation' in groups.json of 2026-10-11
+neo4,1444,primary,,name,unlimited,name matches group 'Neo Destiny' in groups.json of 2026-10-11
+base6,1374,primary,,name,,name matches group 'Legendary Collection' in groups.json of 2026-10-11
+ecard1,1375,primary,,ptcgo,,ptcgoCode EX matches group 'Expedition' in groups.json of 2026-10-11
+bp,1455,primary,,manual,,manual: Best of Promos; source groups.json of 2026-10-11 plus dataset sets/en.json at 39a26a1
+ecard2,1397,primary,,name,,name matches group 'Aquapolis' in groups.json of 2026-10-11
+ecard3,1372,primary,,name,,name matches group 'Skyridge' in groups.json of 2026-10-11
+ex1,1393,primary,,name,,name matches group 'EX Ruby and Sapphire' in groups.json of 2026-10-11
+ex2,1392,primary,,name,,name matches group 'EX Sandstorm' in groups.json of 2026-10-11
+ex3,1376,primary,,name,,name matches group 'EX Dragon' in groups.json of 2026-10-11
+np,1423,primary,,manual,,manual: Nintendo Promos; ptcgo PR-NP has no group; source groups.json of 2026-10-11 plus dataset sets/en.json at 39a26a1
+ex4,1377,primary,,name,,name matches group 'EX Team Magma vs Team Aqua' in groups.json of 2026-10-11
+tk1a,1543,primary,,manual,,"manual: EX Trainer Kit 1: Latias & Latios; shared with tk1b, the Latias deck tag separates them; source groups.json of 2026-10-11 plus dataset sets/en.json at 39a26a1"
+tk1b,1543,primary,,manual,,"manual: EX Trainer Kit 1: Latias & Latios; shared with tk1a, the Latios deck tag separates them; source groups.json of 2026-10-11 plus dataset sets/en.json at 39a26a1"
+ex5,1416,primary,,name,,name matches group 'EX Hidden Legends' in groups.json of 2026-10-11
+ex6,1419,primary,,name,,name matches group 'EX FireRed & LeafGreen' in groups.json of 2026-10-11
+pop1,1422,primary,,name,,name matches group 'POP Series 1' in groups.json of 2026-10-11
+ex7,1428,primary,,name,,name matches group 'EX Team Rocket Returns' in groups.json of 2026-10-11
+ex8,1404,primary,,name,,name matches group 'EX Deoxys' in groups.json of 2026-10-11
+ex9,1410,primary,,name,,name matches group 'EX Emerald' in groups.json of 2026-10-11
+ex10,1398,primary,,name,,name matches group 'EX Unseen Forces' in groups.json of 2026-10-11
+pop2,1447,primary,,name,,name matches group 'POP Series 2' in groups.json of 2026-10-11
+ex11,1429,primary,,name,,name matches group 'EX Delta Species' in groups.json of 2026-10-11
+ex12,1378,primary,,name,,name matches group 'EX Legend Maker' in groups.json of 2026-10-11
+tk2a,1542,primary,,manual,,"manual: EX Trainer Kit 2: Plusle & Minun; shared with tk2b, the Plusle deck tag separates them; source groups.json of 2026-10-11 plus dataset sets/en.json at 39a26a1"
+tk2b,1542,primary,,manual,,"manual: EX Trainer Kit 2: Plusle & Minun; shared with tk2a, the Minun deck tag separates them; source groups.json of 2026-10-11 plus dataset sets/en.json at 39a26a1"
+pop3,1442,primary,,name,,name matches group 'POP Series 3' in groups.json of 2026-10-11
+ex13,1379,primary,,name,,name matches group 'EX Holon Phantoms' in groups.json of 2026-10-11
+ex14,1395,primary,,name,,name matches group 'EX Crystal Guardians' in groups.json of 2026-10-11
+pop4,1452,primary,,name,,name matches group 'POP Series 4' in groups.json of 2026-10-11
+ex15,1411,primary,,name,,name matches group 'EX Dragon Frontiers' in groups.json of 2026-10-11
+pop5,1439,primary,,name,,name matches group 'POP Series 5' in groups.json of 2026-10-11
+ex16,1383,primary,,name,,name matches group 'EX Power Keepers' in groups.json of 2026-10-11
+dp1,1430,primary,,name,,name matches group 'Diamond and Pearl' in groups.json of 2026-10-11
+dpp,1421,primary,,manual,,manual: Diamond and Pearl Promos; source groups.json of 2026-10-11 plus dataset sets/en.json at 39a26a1
+dp2,1368,primary,,name,,name matches group 'Mysterious Treasures' in groups.json of 2026-10-11
+pop6,1432,primary,,name,,name matches group 'POP Series 6' in groups.json of 2026-10-11
+dp3,1380,primary,,name,,name matches group 'Secret Wonders' in groups.json of 2026-10-11
+dp4,1405,primary,,name,,name matches group 'Great Encounters' in groups.json of 2026-10-11
+pop7,1414,primary,,name,,name matches group 'POP Series 7' in groups.json of 2026-10-11
+dp5,1390,primary,,name,,name matches group 'Majestic Dawn' in groups.json of 2026-10-11
+dp6,1417,primary,,name,,name matches group 'Legends Awakened' in groups.json of 2026-10-11
+pop8,1450,primary,,name,,name matches group 'POP Series 8' in groups.json of 2026-10-11
+dp7,1369,primary,,name,,name matches group 'Stormfront' in groups.json of 2026-10-11
+pl1,1406,primary,,name,,name matches group 'Platinum' in groups.json of 2026-10-11
+pop9,1446,primary,,name,,name matches group 'POP Series 9' in groups.json of 2026-10-11
+pl2,1367,primary,,name,,name matches group 'Rising Rivals' in groups.json of 2026-10-11
+pl3,1384,primary,,name,,name matches group 'Supreme Victors' in groups.json of 2026-10-11
+pl4,1391,primary,,name,,name matches group 'Arceus' in groups.json of 2026-10-11
+ru1,1433,primary,,manual,,manual: Rumble; source groups.json of 2026-10-11 plus dataset sets/en.json at 39a26a1
+hgss1,1402,primary,,ptcgo,,ptcgoCode HS matches group 'HeartGold SoulSilver' in groups.json of 2026-10-11
+hsp,1453,primary,,manual,,manual: HGSS Promos; source groups.json of 2026-10-11 plus dataset sets/en.json at 39a26a1
+hgss2,1399,primary,,ptcgo,,ptcgoCode UL matches group 'Unleashed' in groups.json of 2026-10-11
+hgss3,1403,primary,,ptcgo,,ptcgoCode UD matches group 'Undaunted' in groups.json of 2026-10-11
+hgss4,1381,primary,,ptcgo,,ptcgoCode TM matches group 'Triumphant' in groups.json of 2026-10-11
+col1,1415,primary,,name,,name matches group 'Call of Legends' in groups.json of 2026-10-11
+bwp,1407,primary,,manual,,manual: Black and White Promos; source groups.json of 2026-10-11 plus dataset sets/en.json at 39a26a1
+bw1,1400,primary,,name,,name matches group 'Black and White' in groups.json of 2026-10-11
+mcd11,1401,primary,,manual,,manual: McDonald's Promos 2011; source groups.json of 2026-10-11 plus dataset sets/en.json at 39a26a1
+bw2,1424,primary,,name,,name matches group 'Emerging Powers' in groups.json of 2026-10-11
+bw3,1385,primary,,name,,name matches group 'Noble Victories' in groups.json of 2026-10-11
+bw4,1412,primary,,name,,name matches group 'Next Destinies' in groups.json of 2026-10-11
+bw5,1386,primary,,name,,name matches group 'Dark Explorers' in groups.json of 2026-10-11
+mcd12,1427,primary,,manual,,manual: McDonald's Promos 2012; source groups.json of 2026-10-11 plus dataset sets/en.json at 39a26a1
+bw6,1394,primary,,name,,name matches group 'Dragons Exalted' in groups.json of 2026-10-11
+dv1,1426,primary,,name,,name matches group 'Dragon Vault' in groups.json of 2026-10-11
+bw7,1408,primary,,name,,name matches group 'Boundaries Crossed' in groups.json of 2026-10-11
+bw8,1413,primary,,name,,name matches group 'Plasma Storm' in groups.json of 2026-10-11
+bw9,1382,primary,,name,,name matches group 'Plasma Freeze' in groups.json of 2026-10-11
+bw10,1370,primary,,name,,name matches group 'Plasma Blast' in groups.json of 2026-10-11
+xyp,1451,primary,,manual,,manual: XY Promos; source groups.json of 2026-10-11 plus dataset sets/en.json at 39a26a1
+bw11,1409,primary,,name,,name matches group 'Legendary Treasures' in groups.json of 2026-10-11
+bw11,1465,secondary,RC*,manual,,manual: Legendary Treasures: Radiant Collection holds the RC-numbered cards; source groups.json of 2026-10-11 plus dataset sets/en.json at 39a26a1
+xy0,1522,primary,,name,,name matches group 'Kalos Starter Set' in groups.json of 2026-10-11
+xy1,1387,primary,,ptcgo,,ptcgoCode XY matches group 'XY Base Set' in groups.json of 2026-10-11
+xy2,1464,primary,,name,,name matches group 'XY - Flashfire' in groups.json of 2026-10-11
+mcd14,1692,primary,,manual,,manual: McDonald's Promos 2014; source groups.json of 2026-10-11 plus dataset sets/en.json at 39a26a1
+xy3,1481,primary,,name,,name matches group 'XY - Furious Fists' in groups.json of 2026-10-11
+xy4,1494,primary,,name,,name matches group 'XY - Phantom Forces' in groups.json of 2026-10-11
+xy5,1509,primary,,name,,name matches group 'XY - Primal Clash' in groups.json of 2026-10-11
+dc1,1525,primary,,name,,name matches group 'Double Crisis' in groups.json of 2026-10-11
+xy6,1534,primary,,name,,name matches group 'XY - Roaring Skies' in groups.json of 2026-10-11
+xy7,1576,primary,,name,,name matches group 'XY - Ancient Origins' in groups.json of 2026-10-11
+xy8,1661,primary,,name,,name matches group 'XY - BREAKthrough' in groups.json of 2026-10-11
+mcd15,1694,primary,,manual,,manual: McDonald's Promos 2015; source groups.json of 2026-10-11 plus dataset sets/en.json at 39a26a1
+xy9,1701,primary,,name,,name matches group 'XY - BREAKpoint' in groups.json of 2026-10-11
+g1,1728,primary,,name,,name matches group 'Generations' in groups.json of 2026-10-11
+g1,1729,secondary,RC*,manual,,manual: Generations: Radiant Collection holds the RC-numbered cards; source groups.json of 2026-10-11 plus dataset sets/en.json at 39a26a1
+xy10,1780,primary,,name,,name matches group 'XY - Fates Collide' in groups.json of 2026-10-11
+xy11,1815,primary,,name,,name matches group 'XY - Steam Siege' in groups.json of 2026-10-11
+mcd16,3087,primary,,manual,,manual: McDonald's Promos 2016; source groups.json of 2026-10-11 plus dataset sets/en.json at 39a26a1
+xy12,1842,primary,,name,,name matches group 'XY - Evolutions' in groups.json of 2026-10-11
+sm1,1863,primary,,manual,,manual: SM Base Set; source groups.json of 2026-10-11 plus dataset sets/en.json at 39a26a1
+smp,1861,primary,,manual,,manual: SM Promos; source groups.json of 2026-10-11 plus dataset sets/en.json at 39a26a1
+sm2,1919,primary,,name,,name matches group 'SM - Guardians Rising' in groups.json of 2026-10-11
+sm3,1957,primary,,name,,name matches group 'SM - Burning Shadows' in groups.json of 2026-10-11
+sm35,2054,primary,,name,,name matches group 'Shining Legends' in groups.json of 2026-10-11
+sm4,2071,primary,,name,,name matches group 'SM - Crimson Invasion' in groups.json of 2026-10-11
+mcd17,2148,primary,,manual,,manual: McDonald's Promos 2017; source groups.json of 2026-10-11 plus dataset sets/en.json at 39a26a1
+sm5,2178,primary,,name,,name matches group 'SM - Ultra Prism' in groups.json of 2026-10-11
+sm6,2209,primary,,name,,name matches group 'SM - Forbidden Light' in groups.json of 2026-10-11
+sm7,2278,primary,,name,,name matches group 'SM - Celestial Storm' in groups.json of 2026-10-11
+sm75,2295,primary,,name,,name matches group 'Dragon Majesty' in groups.json of 2026-10-11
+mcd18,2364,primary,,manual,,manual: McDonald's Promos 2018; source groups.json of 2026-10-11 plus dataset sets/en.json at 39a26a1
+sm8,2328,primary,,name,,name matches group 'SM - Lost Thunder' in groups.json of 2026-10-11
+sm9,2377,primary,,name,,name matches group 'SM - Team Up' in groups.json of 2026-10-11
+det1,2409,primary,,name,,name matches group 'Detective Pikachu' in groups.json of 2026-10-11
+sm10,2420,primary,,name,,name matches group 'SM - Unbroken Bonds' in groups.json of 2026-10-11
+sm11,2464,primary,,name,,name matches group 'SM - Unified Minds' in groups.json of 2026-10-11
+sm115,2480,primary,,name,,name matches group 'Hidden Fates' in groups.json of 2026-10-11
+sma,2594,primary,,name,,name matches group 'Hidden Fates: Shiny Vault' in groups.json of 2026-10-11
+mcd19,2555,primary,,manual,,manual: McDonald's Promos 2019; source groups.json of 2026-10-11 plus dataset sets/en.json at 39a26a1
+sm12,2534,primary,,name,,name matches group 'SM - Cosmic Eclipse' in groups.json of 2026-10-11
+swshp,2545,primary,,manual,,manual: SWSH: Sword & Shield Promo Cards; source groups.json of 2026-10-11 plus dataset sets/en.json at 39a26a1
+swsh1,2585,primary,,manual,,manual: SWSH01: Sword & Shield Base Set; source groups.json of 2026-10-11 plus dataset sets/en.json at 39a26a1
+swsh2,2626,primary,,name,,name matches group 'SWSH02: Rebel Clash' in groups.json of 2026-10-11
+swsh3,2675,primary,,name,,name matches group 'SWSH03: Darkness Ablaze' in groups.json of 2026-10-11
+fut20,,none,,manual,,"manual: no TCGplayer group for the Futsal Collection on 2026-10-11; not storable, the seeder skips it; source groups.json of 2026-10-11 plus dataset sets/en.json at 39a26a1"
+swsh35,2685,primary,,name,,name matches group 'Champion's Path' in groups.json of 2026-10-11
+swsh4,2701,primary,,name,,name matches group 'SWSH04: Vivid Voltage' in groups.json of 2026-10-11
+swsh45,2754,primary,,name,,name matches group 'Shining Fates' in groups.json of 2026-10-11
+swsh45sv,2781,primary,,name,,name matches group 'Shining Fates: Shiny Vault' in groups.json of 2026-10-11
+swsh5,2765,primary,,name,,name matches group 'SWSH05: Battle Styles' in groups.json of 2026-10-11
+swsh6,2807,primary,,name,,name matches group 'SWSH06: Chilling Reign' in groups.json of 2026-10-11
+swsh7,2848,primary,,name,,name matches group 'SWSH07: Evolving Skies' in groups.json of 2026-10-11
+mcd21,2782,primary,,manual,,manual: McDonald's 25th Anniversary Promos; source groups.json of 2026-10-11 plus dataset sets/en.json at 39a26a1
+cel25,2867,primary,,name,,name matches group 'Celebrations' in groups.json of 2026-10-11
+cel25c,2931,primary,,name,,name matches group 'Celebrations: Classic Collection' in groups.json of 2026-10-11
+swsh8,2906,primary,,name,,name matches group 'SWSH08: Fusion Strike' in groups.json of 2026-10-11
+swsh9,2948,primary,,name,,name matches group 'SWSH09: Brilliant Stars' in groups.json of 2026-10-11
+swsh9tg,3020,primary,,name,,name matches group 'SWSH09: Brilliant Stars Trainer Gallery' in groups.json of 2026-10-11
+swsh10,3040,primary,,name,,name matches group 'SWSH10: Astral Radiance' in groups.json of 2026-10-11
+swsh10tg,3068,primary,,name,,name matches group 'SWSH10: Astral Radiance Trainer Gallery' in groups.json of 2026-10-11
+pgo,3064,primary,,name,,name matches group 'Pokemon GO' in groups.json of 2026-10-11
+mcd22,3150,primary,,manual,,manual: McDonald's Promos 2022; source groups.json of 2026-10-11 plus dataset sets/en.json at 39a26a1
+swsh11,3118,primary,,name,,name matches group 'SWSH11: Lost Origin' in groups.json of 2026-10-11
+swsh11tg,3172,primary,,name,,name matches group 'SWSH11: Lost Origin Trainer Gallery' in groups.json of 2026-10-11
+swsh12,3170,primary,,name,,name matches group 'SWSH12: Silver Tempest' in groups.json of 2026-10-11
+swsh12tg,17674,primary,,name,,name matches group 'SWSH12: Silver Tempest Trainer Gallery' in groups.json of 2026-10-11
+swsh12pt5,17688,primary,,name,,name matches group 'SWSH: Crown Zenith' in groups.json of 2026-10-11
+swsh12pt5gg,17689,primary,,name,,name matches group 'SWSH: Crown Zenith: Galarian Gallery' in groups.json of 2026-10-11
+svp,22872,primary,,manual,,manual: SV: Scarlet & Violet Promo Cards; source groups.json of 2026-10-11 plus dataset sets/en.json at 39a26a1
+sve,24382,primary,,name,,name matches group 'SVE: Scarlet & Violet Energies' in groups.json of 2026-10-11
+sv1,22873,primary,,ptcgo,,ptcgoCode SVI matches group 'SV01: Scarlet & Violet Base Set' in groups.json of 2026-10-11
+sv2,23120,primary,,name,,name matches group 'SV02: Paldea Evolved' in groups.json of 2026-10-11
+sv3,23228,primary,,name,,name matches group 'SV03: Obsidian Flames' in groups.json of 2026-10-11
+sv3pt5,23237,primary,,ptcgo,,ptcgoCode MEW matches group 'SV: Scarlet & Violet 151' in groups.json of 2026-10-11
+sv4,23286,primary,,name,,name matches group 'SV04: Paradox Rift' in groups.json of 2026-10-11
+sv4pt5,23353,primary,,name,,name matches group 'SV: Paldean Fates' in groups.json of 2026-10-11
+sv5,23381,primary,,name,,name matches group 'SV05: Temporal Forces' in groups.json of 2026-10-11
+sv6,23473,primary,,name,,name matches group 'SV06: Twilight Masquerade' in groups.json of 2026-10-11
+sv6pt5,23529,primary,,name,,name matches group 'SV: Shrouded Fable' in groups.json of 2026-10-11
+sv7,23537,primary,,name,,name matches group 'SV07: Stellar Crown' in groups.json of 2026-10-11
+sv8,23651,primary,,name,,name matches group 'SV08: Surging Sparks' in groups.json of 2026-10-11
+sv8pt5,23821,primary,,name,,name matches group 'SV: Prismatic Evolutions' in groups.json of 2026-10-11
+sv9,24073,primary,,name,,name matches group 'SV09: Journey Together' in groups.json of 2026-10-11
+sv10,24269,primary,,name,,name matches group 'SV10: Destined Rivals' in groups.json of 2026-10-11
+zsv10pt5,24325,primary,,name,,name matches group 'SV: Black Bolt' in groups.json of 2026-10-11
+rsv10pt5,24326,primary,,name,,name matches group 'SV: White Flare' in groups.json of 2026-10-11
+me1,24380,primary,,name,,name matches group 'ME01: Mega Evolution' in groups.json of 2026-10-11
+me2,24448,primary,,name,,name matches group 'ME02: Phantasmal Flames' in groups.json of 2026-10-11
+me2pt5,24541,primary,,name,,name matches group 'ME: Ascended Heroes' in groups.json of 2026-10-11
+me3,24587,primary,,name,,name matches group 'ME03: Perfect Order' in groups.json of 2026-10-11
+me4,24655,primary,,name,,name matches group 'ME04: Chaos Rising' in groups.json of 2026-10-11
+me5,24688,primary,,name,,name matches group 'ME05: Pitch Black' in groups.json of 2026-10-11
+me55,24722,primary,,name,,name matches group 'ME: 30th Celebration' in groups.json of 2026-10-11
+me55c,24837,primary,,name,,name matches group 'ME: 30th Celebration Classic Collection' in groups.json of 2026-10-11
