@@ -72,8 +72,11 @@ services:
       SESSION_DRIVER: database
       LOG_CHANNEL: stderr_json
       SANCTUM_STATEFUL_DOMAINS: pokeprices.localhost:8095
+      # PokéSearch on the workstation, reached through the host gateway (R134).
+      POKESEARCH_URL: ${POKESEARCH_URL:-http://host.docker.internal:8081}
     mem_limit: 384m
     dns_opt: ["timeout:1", "attempts:1"]
+    extra_hosts: ["host.docker.internal:host-gateway"]
     depends_on:
       postgres:
         condition: service_healthy
@@ -98,6 +101,7 @@ services:
       - ./:/workspace
     environment: *api-env
     command: ["php", "artisan", "queue:work", "redis", "--queue=default", "--sleep=1", "--tries=3", "--max-time=3600", "--memory=256"]
+    extra_hosts: ["host.docker.internal:host-gateway"]
     restart: unless-stopped
     mem_limit: 384m
     depends_on:
@@ -120,6 +124,7 @@ services:
       - ./:/workspace
     environment: *api-env
     command: ["php", "artisan", "schedule:work"]
+    extra_hosts: ["host.docker.internal:host-gateway"]
     restart: unless-stopped
     mem_limit: 128m
     depends_on:

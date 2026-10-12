@@ -4,7 +4,7 @@ FROM mlocati/php-extension-installer:2@sha256:1afade3e29cfc97362cf5885e5ac333bf2
 
 FROM php:8.5-fpm-alpine@sha256:fa01fb1645cd0fc566a5f146b099adace33b906571f972f71f2182a7c12d1cd7 AS base
 COPY --from=extinstaller /usr/bin/install-php-extensions /usr/local/bin/install-php-extensions
-RUN install-php-extensions pdo_pgsql redis pcov intl zip pcntl \
+RUN install-php-extensions pdo_pgsql redis pcov intl zip pcntl zstd \
  && apk add --no-cache fcgi git unzip \
  && printf 'pcov.enabled=0\npcov.directory=/workspace/api/app\n' > /usr/local/etc/php/conf.d/zz-pcov.ini
 # Cold-cache type coverage needs more than PHP's 128M default (R100); container caps are unchanged.
