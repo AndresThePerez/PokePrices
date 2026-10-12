@@ -4,12 +4,18 @@
 # test_c6_edge.sh must stay inside .gates/ (and api/, web/) on a stale tree and on a second run.
 # Mutants and stubs live in the git-ignored .gates/tmp/; no tracked file is edited. The one stray file
 # a stub writes outside the allowed trees is removed by name (rm -f / rmdir only).
+# R114 (F-P0-124): the diff checks scan $BASE..$TASK, the P0-i2-T03 task commit found by its subject (so a
+# rewritten history still resolves it), never HEAD; the two queue-probe commands are found under their
+# check descriptions, never by line number, so later edits to T34-edge.sh leave this script green.
 set -u
 cd "$(dirname "$0")/../.." || exit 1
 . tests/p0/lib.sh
 GREP=/usr/bin/grep
 NOHITS=scripts/lib/nohits
-BASE=0f21557
+TASK=$(git log --format=%H --grep '^\[P0-i2-T03\] Make two PokéPrices edge tests' -1)
+TASK=${TASK:-P0-i2-T03-task-commit-not-found}
+BASE=$(git rev-parse --short=7 "$TASK^" 2>/dev/null)
+BASE=${BASE:-P0-i2-T03-base-not-found}
 E=tests/p0/T34-edge.sh; C6E=tests/gates/test_c6_edge.sh; Q=api/tests/Feature/QueueProbeEdgeTest.php; ACC=tests/p0/Ti2-03.sh
 OUT=.gates/tmp/Ti2-03-edge
 RUN=.gates/tmp/Ti2-03-edge-run.sh
@@ -21,24 +27,49 @@ cleanup() { rm -f "$STRAY/o" "$STRAY2"; rm -f "$STRAY" 2>/dev/null; rmdir "$STRA
 cleanup
 
 # --- 1. T34-edge: only the two descriptions changed; the commands are byte-identical to the base --
+check "the P0-i2-T03 task commit is found by its subject and is an ancestor of HEAD" git merge-base --is-ancestor "$TASK" HEAD
+check "the base is the task commit's parent, the P0-i2-T02 commit" sh -c 'git log -1 --format=%s "$0" | /usr/bin/grep -q "^\[P0-i2-T02\] "' "$BASE"
 check "T34-edge differs from the base in exactly 2 removed and 2 added lines" sh -c '
-  [ "$(git diff -U0 "$1" HEAD -- "$0" | /usr/bin/grep -c "^-[^-]")" -eq 2 ] && [ "$(git diff -U0 "$1" HEAD -- "$0" | /usr/bin/grep -c "^+[^+]")" -eq 2 ]' "$E" "$BASE"
+  [ "$(git diff -U0 "$1..$2" -- "$0" | /usr/bin/grep -c "^-[^-]")" -eq 2 ] && [ "$(git diff -U0 "$1..$2" -- "$0" | /usr/bin/grep -c "^+[^+]")" -eq 2 ]' "$E" "$BASE" "$TASK"
 check "every changed T34-edge line is a check description line" sh -c '
-  git diff -U0 "$1" HEAD -- "$0" | /usr/bin/grep "^[-+][^-+]" | /usr/bin/grep -vc "^[-+]check \"queue-probe .*\" \\\\\$" | /usr/bin/grep -qx 0' "$E" "$BASE"
-for n in 87 89; do
-  git show "$BASE:$E" | sed -n "${n}p" > "$OUT/base$n.line"; sed -n "${n}p" "$E" > "$OUT/head$n.line"
-  check "T34-edge line $n (the command) is byte-identical to $BASE" cmp "$OUT/base$n.line" "$OUT/head$n.line"
-  check "T34-edge line $n (the command) is a non-empty sh -c line" sh -c '/usr/bin/grep -q "^  sh -c " "$0"' "$OUT/head$n.line"
+  git diff -U0 "$1..$2" -- "$0" | /usr/bin/grep "^[-+][^-+]" | /usr/bin/grep -vc "^[-+]check \"queue-probe .*\" \\\\\$" | /usr/bin/grep -qx 0' "$E" "$BASE" "$TASK"
+# qcmd FILE REGEX: the number of the "  sh -c " command line directly under the one check whose description
+# matches REGEX; empty when the description is missing or repeated or no sh -c line follows it.
+qcmd() { awk -v re="$2" 'BEGIN { d = -1 } NR == d + 1 && /^  sh -c / { c = NR } $0 ~ re { n++; d = NR } END { if (n == 1 && c) print c }' "$1"; }
+lineof() { awk -v n="${2:-0}" 'NR == n' "$1"; }
+LIVE_RE='^check "queue-probe live probe reports '\''probe processed'\'''
+NEG_RE='^check "queue-probe with a negative timeout '
+git show "$BASE:$E" > "$OUT/base-T34-edge.sh"
+b_live=$(qcmd "$OUT/base-T34-edge.sh" '^check "queue-probe live probe exits 0 ')
+b_neg=$(qcmd "$OUT/base-T34-edge.sh" '^check "queue-probe still exits 1 with a negative timeout ')
+h_live=$(qcmd "$E" "$LIVE_RE"); h_neg=$(qcmd "$E" "$NEG_RE")
+check "both queue-probe commands are found under their descriptions in the base and in T34-edge" \
+  test -n "$b_live" -a -n "$b_neg" -a -n "$h_live" -a -n "$h_neg"
+lineof "$OUT/base-T34-edge.sh" "$b_live" > "$OUT/base-live-probe.line"; lineof "$E" "$h_live" > "$OUT/head-live-probe.line"
+lineof "$OUT/base-T34-edge.sh" "$b_neg" > "$OUT/base-negative-timeout.line"; lineof "$E" "$h_neg" > "$OUT/head-negative-timeout.line"
+for k in live-probe negative-timeout; do
+  check "T34-edge $k command (found under its description) is byte-identical to $BASE" cmp "$OUT/base-$k.line" "$OUT/head-$k.line"
+  check "T34-edge $k command is a non-empty sh -c line" sh -c '/usr/bin/grep -q "^  sh -c " "$0"' "$OUT/head-$k.line"
 done
 # the description claims, matched against the command beneath them
 check "live-probe command: --timeout=0 first, one retry with --timeout=8, both grep 'probe processed'" sh -c '
-  l=$(sed -n 87p "$0"); [ "$(printf "%s" "$l" | /usr/bin/grep -o -e "--timeout=[0-9-]*" | tr "\n" " ")" = "--timeout=0 --timeout=8 " ] &&
-  [ "$(printf "%s" "$l" | /usr/bin/grep -o "probe processed" | wc -l)" -eq 2 ]' "$E"
+  l=$(cat "$0"); [ "$(printf "%s" "$l" | /usr/bin/grep -o -e "--timeout=[0-9-]*" | tr "\n" " ")" = "--timeout=0 --timeout=8 " ] &&
+  [ "$(printf "%s" "$l" | /usr/bin/grep -o "probe processed" | wc -l)" -eq 2 ]' "$OUT/head-live-probe.line"
 check "negative-timeout command: timeout 60, --timeout=-5, accepts rc 0 or 1 and nothing else" sh -c '
-  l=$(sed -n 89p "$0"); printf "%s" "$l" | /usr/bin/grep -qF "timeout 60 " && printf "%s" "$l" | /usr/bin/grep -qF -e "--timeout=-5" &&
-  printf "%s" "$l" | /usr/bin/grep -qF "test \\\$rc -eq 0 -o \\\$rc -eq 1\"" && ! printf "%s" "$l" | /usr/bin/grep -qE "rc -eq [2-9]"' "$E"
-check "the description above line 87 is line 86 and above line 89 is line 88" sh -c '
-  sed -n 86p "$0" | /usr/bin/grep -q "^check \"queue-probe live probe" && sed -n 88p "$0" | /usr/bin/grep -q "^check \"queue-probe with a negative timeout"' "$E"
+  l=$(cat "$0"); printf "%s" "$l" | /usr/bin/grep -qF "timeout 60 " && printf "%s" "$l" | /usr/bin/grep -qF -e "--timeout=-5" &&
+  printf "%s" "$l" | /usr/bin/grep -qF "test \\\$rc -eq 0 -o \\\$rc -eq 1\"" && ! printf "%s" "$l" | /usr/bin/grep -qE "rc -eq [2-9]"' "$OUT/head-negative-timeout.line"
+check "the line directly above each command is its own queue-probe description" sh -c '
+  awk -v n="$(($1 - 1))" "NR == n" "$0" | /usr/bin/grep -q "^check \"queue-probe live probe" &&
+  awk -v n="$(($2 - 1))" "NR == n" "$0" | /usr/bin/grep -q "^check \"queue-probe with a negative timeout"' "$E" "${h_live:-0}" "${h_neg:-0}"
+# the locator follows the commands when lines move (F-P0-124) and refuses an ambiguous description
+{ printf '%s\n' '# inserted 1' '# inserted 2' '# inserted 3'; cat "$E"; printf '%s\n' '# a later note'; } > "$OUT/t34-shifted.sh"
+s_live=$(qcmd "$OUT/t34-shifted.sh" "$LIVE_RE"); s_neg=$(qcmd "$OUT/t34-shifted.sh" "$NEG_RE")
+check "three lines inserted above and one appended: both commands are found 3 lines lower, unchanged" sh -c '
+  [ "$1 $2" = "$(($3 + 3)) $(($4 + 3))" ] && [ "$(awk -v n="$1" "NR == n" "$0")" = "$(cat "$5")" ]' \
+  "$OUT/t34-shifted.sh" "${s_live:-x}" "${s_neg:-x}" "${h_live:-0}" "${h_neg:-0}" "$OUT/head-live-probe.line"
+{ cat "$E"; $GREP -e "$LIVE_RE" "$E"; printf '%s\n' '  sh -c "true"'; } > "$OUT/t34-dupdesc.sh"
+d_live=$(qcmd "$OUT/t34-dupdesc.sh" "$LIVE_RE")
+check "a repeated live-probe description makes the locator find nothing" test -z "$d_live"
 check "QueueProbeEdgeTest keeps -5 in the dataset that asserts exit 1" sh -c '
   /usr/bin/grep -qF "assertExitCode(1)" "$0" && /usr/bin/grep -qF -e "$1" "$0"' "$Q" "->with(['0', '-5', 'abc', '']);"
 
@@ -198,9 +229,9 @@ for f in "$E" "$C6E" "$ACC" tests/p0/Ti2-03-edge.sh; do
   check "hygiene patterns find nothing in $f" $NOHITS $GREP -qP "$pat" "$f"
   check "no Docker-bridge, Tailscale, LAN address or home path in $f" $NOHITS $GREP -qP "$extra" "$f"
 done
-check "the added lines of the task commit say PokéPrices with the accent" sh -c '! git diff -U0 "$0" "$1" -- tests | /usr/bin/grep "^+" | /usr/bin/grep -q "PokePrices"' "$BASE" 1e60d51
+check "the added lines of the task commit say PokéPrices with the accent" sh -c '! git diff -U0 "$0" "$1" -- tests | /usr/bin/grep "^+" | /usr/bin/grep -q "PokePrices"' "$BASE" "$TASK"
 check "the three task files are mode 100755" sh -c '[ "$(git ls-files -s "$0" "$1" "$2" | /usr/bin/grep -c "^100755")" -eq 3 ]' "$E" "$C6E" "$ACC"
-check "the task commit message is the subject alone" sh -c '[ "$(git log --format=%B "$0..$1" | sed "/^\$/d" | wc -l | tr -d " ")" -eq 1 ]' "$BASE" 1e60d51
-check "the task commit message has no trailer, Claude, Anthropic or AI reference" sh -c '! git log --format=%B "$0..$1" | /usr/bin/grep -qiE "co-authored|claude|anthropic|session|(^|[^a-z])ai([^a-z]|$)|agent"' "$BASE" 1e60d51
+check "the task commit message is the subject alone" sh -c '[ "$(git log --format=%B "$0..$1" | sed "/^\$/d" | wc -l | tr -d " ")" -eq 1 ]' "$BASE" "$TASK"
+check "the task commit message has no trailer, Claude, Anthropic or AI reference" sh -c '! git log --format=%B "$0..$1" | /usr/bin/grep -qiE "co-authored|claude|anthropic|session|(^|[^a-z])ai([^a-z]|$)|agent"' "$BASE" "$TASK"
 cleanup
 finish
