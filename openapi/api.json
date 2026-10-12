@@ -17,9 +17,179 @@
         {
             "name": "Readiness",
             "description": "Whether the Pok\u00e9Prices API can serve requests."
+        },
+        {
+            "name": "Cards",
+            "description": "Pok\u00e9mon cards from the Pok\u00e9Search catalog."
         }
     ],
     "paths": {
+        "/cards": {
+            "get": {
+                "operationId": "searchCards",
+                "description": "Proxies Pok\u00e9Search's search with q (the search text), page (from 1; Pok\u00e9Search clamps it to its last reachable page) and page_size (Pok\u00e9Search's default is 24) only; any other query parameter answers 422. Pagination passes through unchanged: pages is Pok\u00e9Search's count, which stops at its 9,600-result window, so read pages rather than computing it from total.",
+                "summary": "Search cards in the Pok\u00e9Search catalog",
+                "tags": [
+                    "Cards"
+                ],
+                "parameters": [
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                        }
+                    },
+                    {
+                        "name": "page",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1
+                        }
+                    },
+                    {
+                        "name": "page_size",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 100
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `CardSummaryResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/CardSummaryResource"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "total": {
+                                                    "type": "integer"
+                                                },
+                                                "page": {
+                                                    "type": "integer"
+                                                },
+                                                "pages": {
+                                                    "type": "integer"
+                                                },
+                                                "page_size": {
+                                                    "type": "integer"
+                                                },
+                                                "degraded": {
+                                                    "type": "boolean"
+                                                },
+                                                "cached": {
+                                                    "type": "boolean"
+                                                }
+                                            },
+                                            "required": [
+                                                "total",
+                                                "page",
+                                                "pages",
+                                                "page_size",
+                                                "degraded",
+                                                "cached"
+                                            ],
+                                            "additionalProperties": false
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ],
+                                    "additionalProperties": false
+                                }
+                            }
+                        }
+                    },
+                    "304": {
+                        "description": "Not Modified: the If-None-Match validator matches the current representation.",
+                        "headers": {
+                            "ETag": {
+                                "description": "The validator of the current representation.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests: the rate limit of this route is spent.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds until the limit resets.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "502": {
+                        "description": "Pok\u00e9Search answered outside its contract (problem type https://pokeprices.andrestheperez.com/problems/upstream-contract).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Pok\u00e9Search did not answer (problem type https://pokeprices.andrestheperez.com/problems/upstream-unavailable).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds before Pok\u00e9Search is worth asking again.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/ready": {
             "get": {
                 "operationId": "getReady",
@@ -111,6 +281,106 @@
                         }
                     }
                 }
+            }
+        }
+    },
+    "components": {
+        "schemas": {
+            "CardSummaryResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "string"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "number": {
+                        "type": "string"
+                    },
+                    "rarity": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "supertype": {
+                        "type": "string"
+                    },
+                    "set_id": {
+                        "type": "string"
+                    },
+                    "set_name": {
+                        "type": "string"
+                    },
+                    "release_date": {
+                        "type": "string"
+                    },
+                    "image_small": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "number",
+                    "rarity",
+                    "supertype",
+                    "set_id",
+                    "set_name",
+                    "release_date",
+                    "image_small"
+                ],
+                "additionalProperties": false,
+                "title": "CardSummaryResource"
+            },
+            "Problem": {
+                "type": "object",
+                "description": "RFC 9457 problem details; type is https://pokeprices.andrestheperez.com/problems/<slug>.",
+                "properties": {
+                    "type": {
+                        "type": "string",
+                        "format": "uri"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "integer"
+                    },
+                    "instance": {
+                        "type": "string"
+                    },
+                    "request_id": {
+                        "type": "string"
+                    },
+                    "detail": {
+                        "type": "string"
+                    },
+                    "errors": {
+                        "type": "object",
+                        "description": "Validation messages per input field (422 only).",
+                        "additionalProperties": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "catalog_missing": {
+                        "type": "boolean",
+                        "description": "card-not-found only: true when Pok\u00e9Search no longer has the card but Pok\u00e9Prices still holds variant rows for it."
+                    }
+                },
+                "required": [
+                    "type",
+                    "title",
+                    "status",
+                    "instance",
+                    "request_id"
+                ],
+                "additionalProperties": false,
+                "title": "Problem"
             }
         }
     }

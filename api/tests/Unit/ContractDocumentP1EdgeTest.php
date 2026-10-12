@@ -204,7 +204,7 @@ it('keeps the getReady 503 body identical to the committed contract and does not
 
     expect(json_encode($mine, JSON_THROW_ON_ERROR))->toBe(json_encode($theirs, JSON_THROW_ON_ERROR))
         ->and($spec['paths']['/ready']['get']['responses'])->toHaveKey(429)
-        ->and($committed['components']['schemas'] ?? [])->not->toHaveKey('Problem');
+        ->and($theirs['application/problem+json']['schema'])->not->toHaveKey('$ref');
 });
 
 it('leaves an operation with no route metadata unrouted yet still rewrites its 4xx to the Problem reference', function (): void {

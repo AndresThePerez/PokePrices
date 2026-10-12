@@ -90,6 +90,13 @@ final class ContractDocument
             }
         }
 
+        // Component schemas (a JsonResource such as CardSummaryResource) close the same way as inline bodies.
+        foreach ($openApi->components->schemas as $schema) {
+            if ($schema instanceof Schema) {
+                $schema->type = self::close($schema->type);
+            }
+        }
+
         self::dropUnusedResponses($openApi, array_keys($inlined));
     }
 

@@ -4,6 +4,26 @@
  */
 
 export interface paths {
+    "/cards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search cards in the PokéSearch catalog
+         * @description Proxies PokéSearch's search with q (the search text), page (from 1; PokéSearch clamps it to its last reachable page) and page_size (PokéSearch's default is 24) only; any other query parameter answers 422. Pagination passes through unchanged: pages is PokéSearch's count, which stops at its 9,600-result window, so read pages rather than computing it from total.
+         */
+        get: operations["searchCards"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/ready": {
         parameters: {
             query?: never;
@@ -27,7 +47,39 @@ export interface paths {
 }
 export type webhooks = Record<string, never>;
 export interface components {
-    schemas: never;
+    schemas: {
+        /** CardSummaryResource */
+        CardSummaryResource: {
+            id: string;
+            name: string;
+            number: string;
+            rarity: string | null;
+            supertype: string;
+            set_id: string;
+            set_name: string;
+            release_date: string;
+            image_small: string;
+        };
+        /**
+         * Problem
+         * @description RFC 9457 problem details; type is https://pokeprices.andrestheperez.com/problems/<slug>.
+         */
+        Problem: {
+            /** Format: uri */
+            type: string;
+            title: string;
+            status: number;
+            instance: string;
+            request_id: string;
+            detail?: string;
+            /** @description Validation messages per input field (422 only). */
+            errors?: {
+                [key: string]: string[];
+            };
+            /** @description card-not-found only: true when PokéSearch no longer has the card but PokéPrices still holds variant rows for it. */
+            catalog_missing?: boolean;
+        };
+    };
     responses: never;
     parameters: never;
     requestBodies: never;
@@ -36,6 +88,89 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    searchCards: {
+        parameters: {
+            query: {
+                q: string;
+                page?: number;
+                page_size?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of `CardSummaryResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CardSummaryResource"][];
+                        meta: {
+                            total: number;
+                            page: number;
+                            pages: number;
+                            page_size: number;
+                            degraded: boolean;
+                            cached: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Not Modified: the If-None-Match validator matches the current representation. */
+            304: {
+                headers: {
+                    /** @description The validator of the current representation. */
+                    ETag: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Too Many Requests: the rate limit of this route is spent. */
+            429: {
+                headers: {
+                    /** @description Seconds until the limit resets. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description PokéSearch answered outside its contract (problem type https://pokeprices.andrestheperez.com/problems/upstream-contract). */
+            502: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description PokéSearch did not answer (problem type https://pokeprices.andrestheperez.com/problems/upstream-unavailable). */
+            503: {
+                headers: {
+                    /** @description Seconds before PokéSearch is worth asking again. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     getReady: {
         parameters: {
             query?: never;

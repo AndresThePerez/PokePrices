@@ -1,0 +1,58 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Controllers;
+
+use App\Domain\Catalog\PokeSearchClient;
+use App\Http\Resources\CardSummaryResource;
+use Dedoc\Scramble\Attributes\Group;
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Validation\ValidationException;
+
+#[Group('Cards', 'Pokémon cards from the PokéSearch catalog.')]
+final class CardSearchController
+{
+    /** The only query parameters accepted; anything else (debug, a PokéSearch filter) is a 422, never forwarded. */
+    private const array PARAMETERS = ['q', 'page', 'page_size'];
+
+    /** T42 wraps this one call with the search cache and the degraded last-good copy. */
+    public function __construct(private readonly PokeSearchClient $pokeSearch) {}
+
+    /**
+     * Search cards in the PokéSearch catalog.
+     *
+     * Proxies PokéSearch's search with q (the search text), page (from 1; PokéSearch clamps it to its last reachable page) and page_size (PokéSearch's default is 24) only; any other query parameter answers 422. Pagination passes through unchanged: pages is PokéSearch's count, which stops at its 9,600-result window, so read pages rather than computing it from total.
+     *
+     * @operationId searchCards
+     */
+    public function __invoke(Request $request): AnonymousResourceCollection
+    {
+        $unknown = array_diff(array_map('strval', array_keys($request->query())), self::PARAMETERS);
+        if ($unknown !== []) {
+            throw ValidationException::withMessages(array_fill_keys($unknown, 'This query parameter is not accepted.'));
+        }
+
+        $validated = $request->validate([
+            'q' => ['required', 'string', 'min:1', 'max:200'],
+            'page' => ['sometimes', 'integer', 'min:1'],
+            'page_size' => ['sometimes', 'integer', 'min:1', 'max:100'],
+        ]);
+
+        $answer = $this->pokeSearch->search(
+            (string) $validated['q'],
+            isset($validated['page']) ? (int) $validated['page'] : null,
+            isset($validated['page_size']) ? (int) $validated['page_size'] : null,
+        );
+
+        return CardSummaryResource::collection($answer['results'])->additional(['meta' => [
+            'total' => $answer['total'],
+            'page' => $answer['page'],
+            'pages' => $answer['pages'],
+            'page_size' => $answer['page_size'],
+            'degraded' => false,
+            'cached' => false,
+        ]]);
+    }
+}

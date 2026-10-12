@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\AssignRequestId;
+use App\Http\Middleware\ConditionalGet;
 use App\Http\Problems\ProblemDetails;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -19,6 +20,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->prepend(AssignRequestId::class);
+        $middleware->alias(['conditional-get' => ConditionalGet::class]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // nginx sends Laravel only API, health, Fortify and Sanctum paths, so every error is JSON (R16).

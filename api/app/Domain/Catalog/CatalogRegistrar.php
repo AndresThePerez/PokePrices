@@ -12,7 +12,8 @@ use Illuminate\Support\Facades\Http;
 use Throwable;
 
 /**
- * Registers the catalog's Http::pokesearch() macro; AppServiceProvider only delegates here (plan T34).
+ * Registers the catalog's Http::pokesearch() macro (plan T34) and the rate tiers (T44);
+ * AppServiceProvider only delegates here.
  *
  * Timeouts are per attempt: connect 1 s, total 2 s. R130 (F-P1-R1-16): retry once, 100 ms later, and only
  * when the first attempt failed fast (connection refused, or HTTP 502/503/504 within 0.9 s); never after
@@ -32,6 +33,8 @@ final class CatalogRegistrar
     {
         // Macroable rebinds the closure to the Http factory, so the class is named, never self::.
         Http::macro('pokesearch', fn (): PendingRequest => CatalogRegistrar::pendingRequest());
+
+        RateLimits::register();
     }
 
     public static function pendingRequest(): PendingRequest
