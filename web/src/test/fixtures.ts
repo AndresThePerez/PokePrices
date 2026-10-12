@@ -84,6 +84,109 @@ export const cardNotFoundProblem = {
   catalog_missing: true,
 } satisfies Schemas['Problem'];
 
+type CardBody = operations['getCard']['responses'][200]['content']['application/json'];
+
+/** Unown ? as GET /v1/cards/{id} serves it: seeded catalog, two variants with one source each. */
+export const unownCard = {
+  id: 'ex10-?',
+  name: 'Unown',
+  supertype: 'Pokémon',
+  subtypes: ['Basic'],
+  hp: 50,
+  types: ['Psychic'],
+  rarity: 'Rare',
+  number: '?',
+  artist: 'Kagemaru Himeno',
+  set: {
+    id: 'ex10',
+    name: 'Unseen Forces',
+    series: 'EX',
+    total: 145,
+    release_date: '2005-08-22',
+  },
+  images: {
+    small: 'https://images.example.com/ex10/question.png',
+    large: 'https://images.example.com/ex10/question_hires.png',
+  },
+  variants: [
+    {
+      variant_key: 'ex10-?:holo:unlimited:-',
+      finish: 'holo',
+      edition: 'unlimited',
+      treatment: '-',
+      sources: [
+        {
+          source: 'tcgplayer',
+          product_id: 88123,
+          subtype: 'Holofoil',
+          group_id: 1399,
+          series_epoch: 1,
+          map_snapshot_day: '2026-10-11',
+        },
+      ],
+    },
+    {
+      variant_key: 'ex10-?:reverse:unlimited:-',
+      finish: 'reverse',
+      edition: 'unlimited',
+      treatment: '-',
+      sources: [
+        {
+          source: 'tcgplayer',
+          product_id: 88124,
+          subtype: 'Reverse Holofoil',
+          group_id: 1399,
+          series_epoch: 1,
+          map_snapshot_day: '2026-10-10',
+        },
+      ],
+    },
+  ],
+  catalog: {
+    seed_ref: '39a26a144c8b6ef6c2fb17b2c29d0bb7121e3a11',
+    seeded_at: '2026-10-11T20:05:45Z',
+    status: 'ok',
+  },
+} satisfies Schemas['CardResource'];
+
+/** The same card while PokéSearch has no seed stamp: no catalog version to name. */
+export const unseededUnownCard = {
+  ...unownCard,
+  catalog: { seed_ref: null, seeded_at: null, status: 'unverified' },
+} satisfies Schemas['CardResource'];
+
+/** The same card before any product map build: no variant rows. */
+export const unmappedUnownCard = {
+  ...unownCard,
+  variants: [],
+} satisfies Schemas['CardResource'];
+
+export const cardBody = { data: unownCard, meta: { degraded: false } } satisfies CardBody;
+
+export const unseededCardBody = {
+  data: unseededUnownCard,
+  meta: { degraded: false },
+} satisfies CardBody;
+
+export const unmappedCardBody = {
+  data: unmappedUnownCard,
+  meta: { degraded: false },
+} satisfies CardBody;
+
+/** The last good copy while PokéSearch is down; stale_since is a cache time the page never shows. */
+export const degradedCardBody = {
+  data: unownCard,
+  meta: { degraded: true, stale_since: '2026-10-12T06:30:00Z' },
+} satisfies CardBody;
+
+export const cardNotFoundPlainProblem = {
+  type: 'https://pokeprices.andrestheperez.com/problems/card-not-found',
+  title: 'Card Not Found',
+  status: 404,
+  instance: '/v1/cards/ex10-%3F',
+  request_id: 'req-t48-notfound-0005',
+} satisfies Schemas['Problem'];
+
 /** A JSON response; Content-Type defaults to application/json and `headers` may override it. */
 export function jsonResponse(
   body: unknown,

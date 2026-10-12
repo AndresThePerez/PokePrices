@@ -7,14 +7,8 @@ export type CardSearchQuery = operations['searchCards']['parameters']['query'];
 export type CardSearchPage =
   operations['searchCards']['responses'][200]['content']['application/json'];
 
-/**
- * Placeholder: GET /v1/cards/{id} is not in schema.d.ts yet. When the card endpoint lands in
- * openapi/api.json and C6 regenerates the types, replace this with the operation's 200 body.
- */
-export interface CardDetailPlaceholder {
-  readonly data: { readonly id: string; readonly name: string };
-  readonly meta: { readonly degraded: boolean };
-}
+export type Card = components['schemas']['CardResource'];
+export type CardDetail = operations['getCard']['responses'][200]['content']['application/json'];
 
 export type ApiFailure = {
   readonly ok: false;
@@ -117,10 +111,7 @@ const COLLAPSING_SEGMENTS: ReadonlySet<string> = new Set(['', '.', '..']);
  * An id that collapses under URL resolution ('', '.', '..') never reaches fetch: it resolves
  * as a failure with status 0, because ids also come from API data, not only from the router.
  */
-export function getCard(
-  id: string,
-  options: RequestOptions = {},
-): Promise<ApiResult<CardDetailPlaceholder>> {
+export function getCard(id: string, options: RequestOptions = {}): Promise<ApiResult<CardDetail>> {
   const segment = encodeURIComponent(id);
   if (COLLAPSING_SEGMENTS.has(segment)) {
     return Promise.resolve({
@@ -132,5 +123,5 @@ export function getCard(
       problem: null,
     });
   }
-  return request<CardDetailPlaceholder>(`/cards/${segment}`, options);
+  return request<CardDetail>(`/cards/${segment}`, options);
 }
