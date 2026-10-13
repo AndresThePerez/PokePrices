@@ -17,6 +17,7 @@ import {
   tooManyRequestsProblem,
   unauthenticatedProblem,
 } from '../test/fixtures';
+import { rawResponse } from '../test/fixtures';
 
 const TYPED = 'fake-password-0000-ok';
 const WRONG = 'These credentials do not match our records.';
@@ -251,5 +252,187 @@ describe('sign-in accessibility and honesty (T03 criterion 7)', () => {
       for (const pattern of FORBIDDEN_WORDS) expect(main().textContent).not.toMatch(pattern);
       expect(domHolds(TYPED)).toBe(false);
     }
+  });
+});
+
+describe('the two-factor challenge step (T04 criterion 1, D10)', () => {
+  const CODE = '000000';
+  const RECOVERY = 'fake-recovery-0001';
+  const WRONG_CODE = 'The provided two factor authentication code was invalid.';
+  const WRONG_RECOVERY = 'The provided two factor recovery code was invalid.';
+
+  async function reachChallenge(
+    routes: Parameters<typeof stubAccountFetch>[0],
+    path = '/sign-in',
+  ): Promise<ReturnType<typeof stubAccountFetch>> {
+    const calls = stubAccountFetch({
+      'GET /v1/me': [problemResponse(unauthenticatedProblem), jsonResponse(signedInMe)],
+      'POST /login': jsonResponse({ two_factor: true }),
+      ...routes,
+    });
+    visit(path);
+    render(<App />);
+    await signedOutForm();
+    fill('Email', 'collector@example.com');
+    fill('Password', TYPED);
+    submit();
+    await within(main()).findByRole('heading', { level: 2, name: 'Two-factor authentication' });
+    return calls;
+  }
+
+  function verify(): void {
+    fireEvent.click(within(main()).getByRole('button', { name: 'Verify' }));
+  }
+
+  it('replaces the sign-in form with the authentication code step', async () => {
+    const calls = await reachChallenge({});
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Sign in');
+    expect(within(main()).queryByLabelText('Email')).toBeNull();
+    expect(within(main()).queryByLabelText('Password')).toBeNull();
+    expect(within(main()).queryByRole('button', { name: 'Sign in' })).toBeNull();
+    const code = within(main()).getByLabelText('Authentication code');
+    expect(within(main()).getByText('Authentication code').tagName).toBe('LABEL');
+    expect(code.getAttribute('inputmode')).toBe('numeric');
+    expect(code.getAttribute('autocomplete')).toBe('one-time-code');
+    expect(within(main()).getByRole('button', { name: 'Verify' })).toBeTruthy();
+    expect(
+      within(main()).getByRole('button', { name: 'Use a recovery code instead' }),
+    ).toBeTruthy();
+    expect(within(main()).queryByLabelText('Recovery code')).toBeNull();
+    expect(domHolds(TYPED)).toBe(false);
+    expect(window.location.pathname).toBe('/sign-in');
+    // Nothing is signed in yet: the session is not refetched before the code.
+    expect(calls.filter((call) => call.key === 'GET /v1/me')).toHaveLength(1);
+  });
+
+  it('posts {code} to /two-factor-challenge and lands on /account after a 204', async () => {
+    const calls = await reachChallenge({ 'POST /two-factor-challenge': rawResponse(204, null) });
+    fill('Authentication code', CODE);
+    verify();
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/account');
+    });
+    expect(await screen.findByText('Signed in as collector@example.com')).toBeTruthy();
+    const challenge = calls.filter((call) => call.key === 'POST /two-factor-challenge');
+    expect(challenge).toHaveLength(1);
+    expect(sentBody(challenge[0])).toEqual({ code: CODE });
+    expect(calls.filter((call) => call.key === 'GET /v1/me').length).toBeGreaterThanOrEqual(2);
+    expect(domHolds(TYPED)).toBe(false);
+    expect(domHolds(CODE)).toBe(false);
+  });
+
+  it('switches to {recovery_code} and follows next after a 204', async () => {
+    const calls = await reachChallenge(
+      { 'POST /two-factor-challenge': rawResponse(204, null) },
+      `/sign-in?next=${encodeURIComponent('/search')}`,
+    );
+    fireEvent.click(within(main()).getByRole('button', { name: 'Use a recovery code instead' }));
+    expect(within(main()).queryByLabelText('Authentication code')).toBeNull();
+    expect(within(main()).getByText('Recovery code').tagName).toBe('LABEL');
+    expect(
+      within(main()).getByRole('button', { name: 'Use an authentication code instead' }),
+    ).toBeTruthy();
+    fill('Recovery code', RECOVERY);
+    verify();
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/search');
+    });
+    const challenge = calls.find((call) => call.key === 'POST /two-factor-challenge');
+    expect(sentBody(challenge)).toEqual({ recovery_code: RECOVERY });
+    expect(domHolds(RECOVERY)).toBe(false);
+  });
+
+  it('switches back to the authentication code', async () => {
+    await reachChallenge({});
+    fireEvent.click(within(main()).getByRole('button', { name: 'Use a recovery code instead' }));
+    fireEvent.click(
+      within(main()).getByRole('button', { name: 'Use an authentication code instead' }),
+    );
+    expect(within(main()).getByLabelText('Authentication code')).toBeTruthy();
+    expect(within(main()).queryByLabelText('Recovery code')).toBeNull();
+  });
+
+  it('shows a 422 under the code field, names the context and clears the field', async () => {
+    const calls = await reachChallenge({
+      'POST /two-factor-challenge': problemResponse(
+        accountValidationProblem('/two-factor-challenge', { code: [WRONG_CODE] }),
+      ),
+    });
+    fill('Authentication code', CODE);
+    verify();
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toContain('Could not sign in: check the fields below.');
+    const code = within(main()).getByLabelText<HTMLInputElement>('Authentication code');
+    expect(code.getAttribute('aria-invalid')).toBe('true');
+    const message = document.getElementById(code.getAttribute('aria-describedby') ?? '');
+    expect(message?.textContent).toBe(WRONG_CODE);
+    expect(code.value).toBe('');
+    expect(domHolds(CODE)).toBe(false);
+    expect(window.location.pathname).toBe('/sign-in');
+    expect(calls.filter((call) => call.key === 'GET /v1/me')).toHaveLength(1);
+  });
+
+  it('shows a 422 under the recovery code field and clears it', async () => {
+    await reachChallenge({
+      'POST /two-factor-challenge': problemResponse(
+        accountValidationProblem('/two-factor-challenge', { recovery_code: [WRONG_RECOVERY] }),
+      ),
+    });
+    fireEvent.click(within(main()).getByRole('button', { name: 'Use a recovery code instead' }));
+    fill('Recovery code', RECOVERY);
+    verify();
+    await screen.findByRole('alert');
+    const field = within(main()).getByLabelText<HTMLInputElement>('Recovery code');
+    expect(field.getAttribute('aria-invalid')).toBe('true');
+    expect(document.getElementById(field.getAttribute('aria-describedby') ?? '')?.textContent).toBe(
+      WRONG_RECOVERY,
+    );
+    expect(field.value).toBe('');
+    expect(domHolds(RECOVERY)).toBe(false);
+  });
+
+  it('shows the 429 line and clears the code', async () => {
+    await reachChallenge({
+      'POST /two-factor-challenge': problemResponse(
+        tooManyRequestsProblem('/two-factor-challenge'),
+      ),
+    });
+    fill('Authentication code', CODE);
+    verify();
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toContain(
+      'Could not sign in: Too Many Requests. Wait a minute and try again.',
+    );
+    expect(within(main()).getByLabelText<HTMLInputElement>('Authentication code').value).toBe('');
+    expect(domHolds(CODE)).toBe(false);
+  });
+
+  it('keeps every challenge state dark-ready, 44 px and free of forbidden words', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    vi.setSystemTime(new Date('2031-02-03T04:05:06Z'));
+    await reachChallenge({
+      'POST /two-factor-challenge': [
+        problemResponse(accountValidationProblem('/two-factor-challenge', { code: [WRONG_CODE] })),
+        problemResponse(tooManyRequestsProblem('/two-factor-challenge')),
+      ],
+    });
+    const check = (): void => {
+      expect(lightOnlyClasses(document.body)).toEqual([]);
+      expect(shortControls(main())).toEqual([]);
+      for (const pattern of FORBIDDEN_WORDS) expect(main().textContent).not.toMatch(pattern);
+      expect(main().textContent).not.toContain('2031');
+    };
+    check();
+    fill('Authentication code', CODE);
+    verify();
+    await screen.findByText(/check the fields below/);
+    check();
+    fireEvent.click(within(main()).getByRole('button', { name: 'Use a recovery code instead' }));
+    check();
+    fill('Recovery code', RECOVERY);
+    verify();
+    await screen.findByText(/Too Many Requests/);
+    check();
+    expect(domHolds(RECOVERY)).toBe(false);
   });
 });

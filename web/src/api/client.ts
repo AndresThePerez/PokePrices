@@ -192,6 +192,23 @@ export interface MessageAnswer {
   readonly message: string;
 }
 
+/** Fortify's QR answer (TwoFactorQrCodeController::show): 200 JSON { svg, url }. */
+export interface TwoFactorQrCode {
+  readonly svg: string;
+  readonly url: string;
+}
+
+/** Fortify's setup key answer (TwoFactorSecretKeyController::show): 200 JSON { secretKey }. */
+export interface TwoFactorSecretKey {
+  readonly secretKey: string;
+}
+
+/** Fortify's recovery codes (RecoveryCodeController::index): 200, a JSON array of strings. */
+export type RecoveryCodes = readonly string[];
+
+/** The two-factor challenge sends one of the two: an authentication code or a recovery code. */
+export type TwoFactorChallengeForm = { readonly code: string } | { readonly recovery_code: string };
+
 export interface SignInForm {
   readonly email: string;
   readonly password: string;
@@ -463,4 +480,78 @@ export function verifyEmail(
 /** POST /email/verification-notification: 202 sent, 204 when already verified. */
 export function resendVerification(): Promise<ApiResult<undefined>> {
   return accountRequest<undefined>('/email/verification-notification', { method: 'POST' });
+}
+
+// ---- Two-factor (P4 T04) -----------------------------------------------------------------------
+// Fortify's two-factor routes all sit behind RequirePassword (confirmPassword: true): any of them
+// may answer 423 {"message": "Password confirmation required."}, which surfaces as an ApiFailure
+// with status 423 and type about:blank. The QR code, the setup key and the recovery codes are
+// returned to the caller only: they are never cached or stored here.
+
+/** POST /user/confirm-password: 201 (Fortify's PasswordConfirmedResponse); 422 on a wrong one. */
+export function confirmPassword(form: {
+  readonly password: string;
+}): Promise<ApiResult<undefined>> {
+  return accountRequest<undefined>('/user/confirm-password', { method: 'POST', body: form });
+}
+
+/** POST /user/two-factor-authentication: 200 with an empty body; a new, unconfirmed secret. */
+export function enableTwoFactor(): Promise<ApiResult<undefined>> {
+  return accountRequest<undefined>('/user/two-factor-authentication', { method: 'POST' });
+}
+
+/** GET /user/two-factor-qr-code: 200 { svg, url } (Fortify answers [] when no secret exists). */
+export async function twoFactorQrCode(): Promise<ApiResult<TwoFactorQrCode>> {
+  const result = await accountRequest<unknown>('/user/two-factor-qr-code', { method: 'GET' });
+  if (!result.ok) return result;
+  const svg = field(result.data, 'svg');
+  const url = field(result.data, 'url');
+  return typeof svg === 'string' && typeof url === 'string'
+    ? { ok: true, data: { svg, url } }
+    : { ...UNEXPECTED_ANSWER };
+}
+
+/** GET /user/two-factor-secret-key: 200 { secretKey } (404 when no secret exists). */
+export async function twoFactorSecretKey(): Promise<ApiResult<TwoFactorSecretKey>> {
+  const result = await accountRequest<unknown>('/user/two-factor-secret-key', { method: 'GET' });
+  if (!result.ok) return result;
+  const secretKey = field(result.data, 'secretKey');
+  return typeof secretKey === 'string'
+    ? { ok: true, data: { secretKey } }
+    : { ...UNEXPECTED_ANSWER };
+}
+
+/** POST /user/confirmed-two-factor-authentication { code }: 200 empty; 422 errors.code. */
+export function confirmTwoFactor(form: { readonly code: string }): Promise<ApiResult<undefined>> {
+  return accountRequest<undefined>('/user/confirmed-two-factor-authentication', {
+    method: 'POST',
+    body: form,
+  });
+}
+
+/** GET /user/two-factor-recovery-codes: 200, a JSON array of strings. */
+export async function recoveryCodes(): Promise<ApiResult<RecoveryCodes>> {
+  const result = await accountRequest<unknown>('/user/two-factor-recovery-codes', {
+    method: 'GET',
+  });
+  if (!result.ok) return result;
+  const codes: unknown = result.data;
+  return Array.isArray(codes) && codes.every((code): code is string => typeof code === 'string')
+    ? { ok: true, data: codes }
+    : { ...UNEXPECTED_ANSWER };
+}
+
+/** POST /user/two-factor-recovery-codes: 200 empty; the old codes stop working. */
+export function regenerateRecoveryCodes(): Promise<ApiResult<undefined>> {
+  return accountRequest<undefined>('/user/two-factor-recovery-codes', { method: 'POST' });
+}
+
+/** DELETE /user/two-factor-authentication: 200 empty; the secret and the codes are removed. */
+export function disableTwoFactor(): Promise<ApiResult<undefined>> {
+  return accountRequest<undefined>('/user/two-factor-authentication', { method: 'DELETE' });
+}
+
+/** POST /two-factor-challenge { code } or { recovery_code }: 204, signed in. */
+export function twoFactorChallenge(form: TwoFactorChallengeForm): Promise<ApiResult<undefined>> {
+  return accountRequest<undefined>('/two-factor-challenge', { method: 'POST', body: form });
 }

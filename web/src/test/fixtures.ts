@@ -2,6 +2,7 @@
 // the generated schema (src/api/schema.d.ts), so a contract change breaks tsc (Q6) here first.
 import { onTestFinished, vi } from 'vitest';
 import type { components, operations } from '../api/schema';
+import type { RecoveryCodes, TwoFactorQrCode, TwoFactorSecretKey } from '../api/client';
 
 type Schemas = components['schemas'];
 type SearchBody = operations['searchCards']['responses'][200]['content']['application/json'];
@@ -807,4 +808,53 @@ export function stubFetch(reply: (url: string) => Response | Error): FetchCall[]
     vi.unstubAllGlobals();
   });
   return calls;
+}
+
+// ---- Two-factor (P4 T04) -----------------------------------------------------------------------
+// Fortify's two-factor answers are not in the /v1 contract: they are typed by client.ts's
+// hand-written types. Every value is an obvious fake (never a real setup key or recovery code).
+
+/** GET /v1/me for the verified account once two-factor authentication is confirmed. */
+export const twoFactorMe = {
+  data: { ...signedInMe.data, two_factor: true },
+} satisfies MeBody;
+
+/** A stand-in for Fortify's QR SVG (the real one is 192 px, no margin, white background). */
+export const FAKE_QR_SVG =
+  '<svg width="192" height="192" viewBox="0 0 4 4"><rect width="4" height="4" fill="#ffffff"/><rect width="1" height="1" fill="#2d3748"/></svg>';
+
+/** GET /user/two-factor-qr-code (TwoFactorQrCodeController::show). */
+export const twoFactorQrAnswer = {
+  svg: FAKE_QR_SVG,
+  url: 'otpauth://totp/PokePrices:collector%40example.com?issuer=PokePrices',
+} satisfies TwoFactorQrCode;
+
+/** The setup key the fake QR stands for: an obvious fake, never a real base32 secret. */
+export const FAKE_SETUP_KEY = 'FAKE-SETUP-KEY-0000';
+
+/** GET /user/two-factor-secret-key (TwoFactorSecretKeyController::show). */
+export const twoFactorSecretAnswer = { secretKey: FAKE_SETUP_KEY } satisfies TwoFactorSecretKey;
+
+/** GET /user/two-factor-recovery-codes right after confirming (RecoveryCodeController::index). */
+export const fakeRecoveryCodes = [
+  'fake-recovery-0001',
+  'fake-recovery-0002',
+  'fake-recovery-0003',
+] satisfies RecoveryCodes;
+
+/** The same GET after POST /user/two-factor-recovery-codes replaced them. */
+export const fakeNewRecoveryCodes = [
+  'fake-renewed-0004',
+  'fake-renewed-0005',
+  'fake-renewed-0006',
+] satisfies RecoveryCodes;
+
+/** RequirePassword's 423 (a plain JSON body, not a problem document). */
+export function passwordRequiredResponse(): Response {
+  return jsonResponse({ message: 'Password confirmation required.' }, { status: 423 });
+}
+
+/** Fortify's empty JSON answers: JsonResponse('', 200|201|204) sends '""' (204: no body). */
+export function emptyJsonResponse(status: number): Response {
+  return rawResponse(status, '""', 'application/json');
 }

@@ -1,8 +1,10 @@
-// /sign-in (D10): email and password over POST /login. Signed in, the page says who; after a
-// sign-in it refetches ['me'] and opens next (already checked by the router) or /account.
+// /sign-in (D10): email and password over POST /login, then, when Fortify answers
+// {two_factor: true}, the authentication code step (T04) over POST /two-factor-challenge. Signed
+// in, the page says who; after a sign-in it refetches ['me'] and opens next (already checked by
+// the router) or /account.
 import { useQueryClient } from '@tanstack/react-query';
-import { useState, type SubmitEvent } from 'react';
-import { signIn, type ApiFailure } from '../api/client';
+import { useId, useState, type SubmitEvent } from 'react';
+import { signIn, twoFactorChallenge, type ApiFailure } from '../api/client';
 import Link from '../Link';
 import { navigate } from '../router';
 import { AccountMain, Field, LoadingAccount, ProblemBlock, StatusLine } from './Form';
@@ -11,8 +13,94 @@ import { ME_KEY, useArrivalStatus, useSession } from './session';
 
 const FIELDS = ['email', 'password'] as const;
 
+type ChallengeField = 'code' | 'recovery_code';
+
+/** The two-factor step: an authentication code, or a recovery code instead. */
+function TwoFactorChallenge({ next }: { readonly next: string }) {
+  const queryClient = useQueryClient();
+  const headingId = useId();
+  const [field, setField] = useState<ChallengeField>('code');
+  const [value, setValue] = useState('');
+  const [pending, setPending] = useState(false);
+  const [failure, setFailure] = useState<ApiFailure | null>(null);
+  const errors = firstErrors(failure);
+
+  async function send(): Promise<void> {
+    setPending(true);
+    setFailure(null);
+    const form = field === 'code' ? { code: value } : { recovery_code: value };
+    // The code is never kept after a submit, whatever the answer.
+    setValue('');
+    const result = await twoFactorChallenge(form);
+    if (!result.ok) {
+      setPending(false);
+      setFailure(result);
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: ME_KEY, refetchType: 'all' });
+    navigate(next);
+  }
+
+  function submit(event: SubmitEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    if (!pending) void send();
+  }
+
+  function toggle(): void {
+    setField(field === 'code' ? 'recovery_code' : 'code');
+    setValue('');
+    setFailure(null);
+  }
+
+  return (
+    <section aria-labelledby={headingId} className="mt-6">
+      <h2 id={headingId} className="text-xl font-semibold">
+        Two-factor authentication
+      </h2>
+      {failure !== null && (
+        <ProblemBlock context="Could not sign in" failure={failure} fields={[field]} />
+      )}
+      <form noValidate onSubmit={submit} className="mt-4 space-y-4">
+        {field === 'code' ? (
+          <Field
+            key="code"
+            label="Authentication code"
+            name="code"
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            value={value}
+            onChange={setValue}
+            error={errors.code}
+          />
+        ) : (
+          <Field
+            key="recovery_code"
+            label="Recovery code"
+            name="recovery_code"
+            type="text"
+            autoComplete="off"
+            value={value}
+            onChange={setValue}
+            error={errors.recovery_code}
+          />
+        )}
+        <button type="submit" disabled={pending} className={PRIMARY_BUTTON}>
+          Verify
+        </button>
+      </form>
+      <p className="mt-4">
+        <button type="button" onClick={toggle} className={TEXT_LINK}>
+          {field === 'code' ? 'Use a recovery code instead' : 'Use an authentication code instead'}
+        </button>
+      </p>
+    </section>
+  );
+}
+
 function SignInForm({ next }: { readonly next: string }) {
   const queryClient = useQueryClient();
+  const [challenge, setChallenge] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [pending, setPending] = useState(false);
@@ -25,13 +113,16 @@ function SignInForm({ next }: { readonly next: string }) {
     const result = await signIn({ email, password });
     // The password is never kept after a submit, whatever the answer.
     setPassword('');
-    setPending(false);
     if (!result.ok) {
+      setPending(false);
       setFailure(result);
       return;
     }
-    // two_factor true: the authenticator-app step (T04) follows; nothing is signed in yet.
-    if (result.data.two_factor) return;
+    // two_factor true: the authenticator-app step follows; nothing is signed in yet.
+    if (result.data.two_factor) {
+      setChallenge(true);
+      return;
+    }
     await queryClient.invalidateQueries({ queryKey: ME_KEY, refetchType: 'all' });
     navigate(next);
   }
@@ -40,6 +131,8 @@ function SignInForm({ next }: { readonly next: string }) {
     event.preventDefault();
     if (!pending) void send();
   }
+
+  if (challenge) return <TwoFactorChallenge next={next} />;
 
   return (
     <>

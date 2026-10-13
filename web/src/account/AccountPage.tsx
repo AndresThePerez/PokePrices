@@ -1,5 +1,5 @@
 // /account (D10): who is signed in, whether the email address is verified (with a resend
-// button), and Sign out. Signed out, it links to sign-in and sign-up. A fresh mount reads the
+// button), the two-factor section (T04) and Sign out. Signed out, it links to sign-in and sign-up. A fresh mount reads the
 // session from GET /v1/me alone, so a signed-in session survives a reload (D13).
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -9,6 +9,7 @@ import { navigate } from '../router';
 import { AccountMain, LoadingAccount, ProblemBlock, StatusLine } from './Form';
 import { SECONDARY_BUTTON, TEXT_LINK } from './fields';
 import { ME_KEY, useArrivalStatus, useSession } from './session';
+import TwoFactorSection from './TwoFactor';
 
 function Verification({ verified }: { readonly verified: boolean }) {
   const [pending, setPending] = useState(false);
@@ -91,6 +92,7 @@ function SignedIn({ me }: { readonly me: Me }) {
     <>
       <p className="mt-6 text-lg font-medium break-all">{`Signed in as ${me.email}`}</p>
       <Verification verified={me.email_verified} />
+      <TwoFactorSection me={me} />
       <SignOut />
     </>
   );
