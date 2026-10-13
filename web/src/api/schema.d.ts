@@ -53,7 +53,7 @@ export interface paths {
         };
         /**
          * Readiness of the PokéPrices API and the services it needs
-         * @description Probes Postgres and both Redis roles and reports each check as ok or fail. Every check ok answers 200; any failed check answers 503 problem+json carrying the same checks map.
+         * @description Probes Postgres, both Redis roles and PokéSearch and reports each check as ok or fail. Every check ok answers 200; any failed check answers 503 problem+json carrying the same checks map.
          */
         get: operations["getReady"];
         put?: never;

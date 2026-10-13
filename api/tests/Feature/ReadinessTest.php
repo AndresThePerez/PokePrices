@@ -4,7 +4,13 @@ declare(strict_types=1);
 
 use App\Http\Problems\ProblemDetails;
 use App\Support\Readiness;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Redis;
+
+beforeEach(function (): void {
+    Http::fake(['*' => Http::response(['status' => 'ok'], 200)]);
+    resetReadinessCache();
+});
 
 it('reports ready with every real dependency up', function (): void {
     $response = $this->get('/v1/ready');
@@ -13,7 +19,7 @@ it('reports ready with every real dependency up', function (): void {
         ->and($response->headers->get('Cache-Control'))->toContain('no-store')
         ->and($response->json())->toBe([
             'status' => 'ok',
-            'checks' => ['database' => 'ok', 'redis_queue' => 'ok', 'redis_cache' => 'ok'],
+            'checks' => ['database' => 'ok', 'redis_queue' => 'ok', 'redis_cache' => 'ok', 'pokesearch' => 'ok'],
         ]);
 });
 

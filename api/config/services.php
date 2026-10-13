@@ -31,6 +31,10 @@ return [
     'pokesearch' => [
         'url' => env('POKESEARCH_URL', 'http://host.docker.internal:8081'),
         'api_key' => env('POKESEARCH_API_KEY'),
+        // The readiness probe's own client (plan T19): seconds, one attempt, no retry, no breaker.
+        'timeouts' => [
+            'readiness' => ['connect' => 1, 'total' => 1],
+        ],
     ],
 
     // Collected TCGCSV days, only ever read (plan T39). The dev stack mounts the repository at /workspace.

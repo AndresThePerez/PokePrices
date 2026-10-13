@@ -17,7 +17,7 @@ final class ReadinessController
     /**
      * Readiness of the PokéPrices API and the services it needs.
      *
-     * Probes Postgres and both Redis roles and reports each check as ok or fail. Every check ok answers 200; any failed check answers 503 problem+json carrying the same checks map.
+     * Probes Postgres, both Redis roles and PokéSearch and reports each check as ok or fail. Every check ok answers 200; any failed check answers 503 problem+json carrying the same checks map.
      *
      * @operationId getReady
      */

@@ -4,7 +4,13 @@ declare(strict_types=1);
 
 use App\Support\Readiness;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Redis;
+
+beforeEach(function (): void {
+    Http::fake(['*' => Http::response(['status' => 'ok'], 200)]);
+    resetReadinessCache();
+});
 
 it('answers 503 within 2 seconds when postgres is unreachable', function (): void {
     config(['database.connections.pgsql.host' => '192.0.2.10']);
@@ -49,7 +55,7 @@ it('answers 503 within 2 seconds with all three dependencies unreachable (budget
     Redis::purge('cache');
     $response->assertStatus(503);
     expect($elapsed)->toBeLessThan(2.5)
-        ->and($response->json('checks'))->toBe(['database' => 'fail', 'redis_queue' => 'fail', 'redis_cache' => 'fail']);
+        ->and($response->json('checks'))->toBe(['database' => 'fail', 'redis_queue' => 'fail', 'redis_cache' => 'fail', 'pokesearch' => 'ok']);
 });
 
 it('reports fail rather than a 500 when a check throws an Error', function (): void {
