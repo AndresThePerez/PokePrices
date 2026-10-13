@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest';
 import App from './App';
 import { cardPath, matchRoute, navigate } from './router';
+import { safeNext } from './router';
 import { answerMovers, stubFetch } from './test/fixtures';
 
 function visit(path: string): void {
@@ -71,6 +72,84 @@ describe('the movers route (T09 criterion 1)', () => {
     visit('/movers?direction=down');
     render(<App />);
     expect(heading()).toBe('Biggest moves');
+  });
+});
+
+describe('the account routes (P4 T03 criterion 2, D10)', () => {
+  it('maps each account path to its route', () => {
+    expect(matchRoute('/sign-in', '')).toEqual({ name: 'sign-in', next: '/account' });
+    expect(matchRoute('/sign-up', '')).toEqual({ name: 'sign-up' });
+    expect(matchRoute('/password/forgot', '')).toEqual({ name: 'forgot-password' });
+    expect(matchRoute('/password/reset', '?token=fake-reset-0000&email=a%40example.com')).toEqual({
+      name: 'reset-password',
+      token: 'fake-reset-0000',
+      email: 'a@example.com',
+    });
+    expect(matchRoute('/password/reset', '')).toEqual({
+      name: 'reset-password',
+      token: null,
+      email: null,
+    });
+    expect(matchRoute('/account', '')).toEqual({ name: 'account' });
+    expect(matchRoute('/account/verify-email', '?link=%2Femail%2Fverify%2F7%2Fab%3Fx%3D1')).toEqual(
+      { name: 'verify-email', link: '/email/verify/7/ab?x=1' },
+    );
+    expect(matchRoute('/account/verify-email', '')).toEqual({ name: 'verify-email', link: null });
+  });
+
+  it('carries a valid next into the sign-in route', () => {
+    expect(matchRoute('/sign-in', `?next=${encodeURIComponent('/card/ex10-%3F')}`)).toEqual({
+      name: 'sign-in',
+      next: '/card/ex10-%3F',
+    });
+    expect(matchRoute('/sign-in', '?next=%2F%2Fevil.example')).toEqual({
+      name: 'sign-in',
+      next: '/account',
+    });
+  });
+
+  it('keeps trailing-slash and extra-segment variants not-found', () => {
+    for (const path of [
+      '/sign-in/',
+      '/sign-up/',
+      '/account/',
+      '/account/x',
+      '/account/verify-email/',
+      '/password',
+      '/password/',
+      '/password/forgot/',
+      '/password/forgot/x',
+      '/password/reset/',
+      '/password/reset/x',
+    ]) {
+      expect(matchRoute(path, '')).toEqual({ name: 'not-found' });
+    }
+  });
+
+  it.each([
+    '/movers',
+    '/search?q=unown',
+    '/card/ex10-%3F',
+    `/account/verify-email?link=${encodeURIComponent('/email/verify/7/ab?expires=1&signature=0')}`,
+    '/account',
+  ])('accepts next %j', (next) => {
+    expect(safeNext(next)).toBe(next);
+  });
+
+  it.each([
+    '//evil.example',
+    '/\\evil.example',
+    'https://evil.example',
+    'javascript:alert(1)',
+    '/nowhere',
+    '',
+    'account',
+  ])('refuses next %j and lands on /account', (next) => {
+    expect(safeNext(next)).toBe('/account');
+  });
+
+  it('refuses a missing next', () => {
+    expect(safeNext(null)).toBe('/account');
   });
 });
 

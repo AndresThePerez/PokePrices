@@ -569,6 +569,227 @@ export interface FetchCall {
   readonly init: RequestInit | undefined;
 }
 
+// ---- Accounts (P4 T03) -------------------------------------------------------------------------
+
+type MeBody = operations['getMe']['responses'][200]['content']['application/json'];
+
+const PROBLEM_BASE = 'https://pokeprices.andrestheperez.com/problems/';
+
+/** GET /v1/me for a verified account without two-factor. */
+export const signedInMe = {
+  data: {
+    email: 'collector@example.com',
+    email_verified: true,
+    two_factor: false,
+    read_only: false,
+  },
+} satisfies MeBody;
+
+/** GET /v1/me for an account whose email address is not verified yet. */
+export const unverifiedMe = {
+  data: { ...signedInMe.data, email: 'newcomer@example.com', email_verified: false },
+} satisfies MeBody;
+
+/** The 401 GET /v1/me answers when nobody is signed in. */
+export const unauthenticatedProblem = {
+  type: `${PROBLEM_BASE}unauthenticated`,
+  title: 'Unauthenticated',
+  status: 401,
+  instance: '/v1/me',
+  request_id: 'req-p4-unauthenticated-0001',
+} satisfies Schemas['Problem'];
+
+/** A 422 validation-failed problem for an account form, with the given field errors. */
+export function accountValidationProblem(
+  instance: string,
+  errors: Record<string, string[]>,
+): Schemas['Problem'] {
+  return {
+    type: `${PROBLEM_BASE}validation-failed`,
+    title: 'Validation Failed',
+    status: 422,
+    instance,
+    request_id: 'req-p4-validation-0002',
+    errors,
+  };
+}
+
+/** The 419 a stateful write answers without a valid XSRF token. */
+export const csrfMismatchProblem = {
+  type: `${PROBLEM_BASE}csrf-token-mismatch`,
+  title: 'CSRF Token Mismatch',
+  status: 419,
+  instance: '/login',
+  request_id: 'req-p4-csrf-0003',
+} satisfies Schemas['Problem'];
+
+/** The 409 a guest route answers to a signed-in session (JsonGuest). */
+export const alreadySignedInProblem = {
+  type: `${PROBLEM_BASE}already-signed-in`,
+  title: 'Already Signed In',
+  status: 409,
+  instance: '/login',
+  request_id: 'req-p4-signed-in-0004',
+} satisfies Schemas['Problem'];
+
+/** A 429 too-many-requests problem for the given path. */
+export function tooManyRequestsProblem(instance: string): Schemas['Problem'] {
+  return {
+    type: `${PROBLEM_BASE}too-many-requests`,
+    title: 'Too Many Requests',
+    status: 429,
+    instance,
+    request_id: 'req-p4-throttle-0005',
+  };
+}
+
+/** The 403 a verification link with a bad signature answers. */
+export const invalidSignatureProblem = {
+  type: `${PROBLEM_BASE}http-403`,
+  title: 'Forbidden',
+  status: 403,
+  instance: '/email/verify/7/0a1b2c',
+  request_id: 'req-p4-signature-0006',
+} satisfies Schemas['Problem'];
+
+/** A server failure on an account path. */
+export function serverErrorProblem(instance: string): Schemas['Problem'] {
+  return {
+    type: `${PROBLEM_BASE}http-500`,
+    title: 'Internal Server Error',
+    status: 500,
+    instance,
+    request_id: 'req-p4-server-0007',
+  };
+}
+
+/** A 2xx answer with a raw body: '' (no body), '""' (Fortify's JsonResponse('')) or HTML. */
+export function rawResponse(status: number, body: string | null, contentType?: string): Response {
+  const headers: Record<string, string> = {};
+  if (contentType !== undefined) headers['Content-Type'] = contentType;
+  return new Response(status === 204 ? null : body, { status, headers });
+}
+
+/** The XSRF-TOKEN cookie value the csrf-cookie stub sets (percent-encoded, as Laravel sends it). */
+export const XSRF_COOKIE = 'fake-xsrf%2B0000%3D';
+/** XSRF_COOKIE decoded: what the client must send as X-XSRF-TOKEN. */
+export const XSRF_HEADER = 'fake-xsrf+0000=';
+
+export function setXsrfCookie(value: string = XSRF_COOKIE): void {
+  document.cookie = `XSRF-TOKEN=${value}; path=/`;
+}
+
+export function clearXsrfCookie(): void {
+  document.cookie = 'XSRF-TOKEN=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+}
+
+/** One stubbed answer: a Response, an Error (network failure) or a function of the request. */
+export type AccountAnswer =
+  Response | Error | ((init: RequestInit | undefined) => Response | Error);
+
+export interface AccountCall extends FetchCall {
+  /** 'GET /v1/me', 'POST /login', … */
+  readonly key: string;
+}
+
+/**
+ * The Fortify-answer stub router: answers `METHOD url` keys from `routes` (an array answers its
+ * entries in order and then repeats its last one). GET /sanctum/csrf-cookie is routed by default
+ * (204, and it sets the XSRF-TOKEN cookie like the real answer does). Any other request is a
+ * network failure. Restored when the test finishes; returns the recorded calls.
+ */
+export function stubAccountFetch(
+  routes: Readonly<Record<string, AccountAnswer | readonly AccountAnswer[]>>,
+): AccountCall[] {
+  const calls: AccountCall[] = [];
+  const used = new Map<string, number>();
+  vi.stubGlobal('fetch', (input: string | URL, init?: RequestInit): Promise<Response> => {
+    const url = String(input);
+    const key = `${init?.method ?? 'GET'} ${url}`;
+    calls.push({ url, init, key });
+    let route = routes[key];
+    if (route === undefined && key === 'GET /sanctum/csrf-cookie') {
+      route = () => {
+        setXsrfCookie();
+        return rawResponse(204, null);
+      };
+    }
+    if (route === undefined) return Promise.reject(new TypeError(`no request expected: ${key}`));
+    let answer: AccountAnswer;
+    if (Array.isArray(route)) {
+      const list = route as readonly AccountAnswer[];
+      const index = used.get(key) ?? 0;
+      used.set(key, index + 1);
+      const picked = list[Math.min(index, list.length - 1)];
+      if (picked === undefined) return Promise.reject(new TypeError(`empty route: ${key}`));
+      answer = picked;
+    } else {
+      answer = route as AccountAnswer;
+    }
+    const settled = typeof answer === 'function' ? answer(init) : answer;
+    // A Response body can be read once: hand out a copy so a repeated answer stays readable.
+    return settled instanceof Response ? Promise.resolve(settled.clone()) : Promise.reject(settled);
+  });
+  onTestFinished(() => {
+    vi.unstubAllGlobals();
+  });
+  return calls;
+}
+
+/** The parsed JSON body a recorded call sent. */
+export function sentBody(call: FetchCall | undefined): unknown {
+  const body = call?.init?.body;
+  return typeof body === 'string' ? (JSON.parse(body) as unknown) : undefined;
+}
+
+/** The P3 D14 forbidden words (the faked year 2031 is checked separately). */
+export const FORBIDDEN_WORDS: readonly RegExp[] = [
+  /\blive\b/i,
+  /real-?time/i,
+  /as of today/i,
+  /\btoday\b/i,
+  /\bnow\b/i,
+  /\b1D\b/i,
+  /\b24 ?h/i,
+  /20:05/,
+];
+
+/** Colour utilities that need a dark counterpart (the lightOnly rule of Header.test.tsx). */
+const COLOUR_CLASS =
+  /^((?:hover:|focus-visible:)*)(text|bg|border|divide|outline)-(slate|gray|red|amber|emerald|sky|white|black)(?:-\d+)?$/;
+
+/** Every colour class under root without a dark: class for the same property. */
+export function lightOnlyClasses(root: Element): string[] {
+  const missing: string[] = [];
+  for (const element of [root, ...Array.from(root.querySelectorAll('*'))]) {
+    const classes = element.getAttribute('class')?.split(/\s+/) ?? [];
+    for (const name of classes) {
+      const match = COLOUR_CLASS.exec(name);
+      if (match === null) continue;
+      const counterpart = `dark:${match[1] ?? ''}${match[2] ?? ''}-`;
+      if (!classes.some((other) => other.startsWith(counterpart))) {
+        missing.push(`${element.tagName.toLowerCase()} ${name}`);
+      }
+    }
+  }
+  return missing;
+}
+
+/** Every link, button, input and select under root without the 44 px min-h-11 class. */
+export function shortControls(root: Element): string[] {
+  return Array.from(root.querySelectorAll('a, button, input, select'))
+    .filter((control) => !(control.getAttribute('class') ?? '').split(/\s+/).includes('min-h-11'))
+    .map((control) => `${control.tagName.toLowerCase()} ${control.textContent}`);
+}
+
+/** True when `secret` is anywhere in the document: its markup or an input's current value. */
+export function domHolds(secret: string): boolean {
+  if (document.documentElement.outerHTML.includes(secret)) return true;
+  return Array.from(document.querySelectorAll('input')).some((input) =>
+    input.value.includes(secret),
+  );
+}
+
 /**
  * Replaces the global fetch for the current test only: the real fetch comes back when the test
  * finishes. `reply` answers each call with a Response (resolved) or an Error (rejected, like a

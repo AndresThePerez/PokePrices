@@ -172,3 +172,295 @@ export function getMovers(
   const params = new URLSearchParams({ direction, limit: String(limit) });
   return request<MoversPage>(`/movers?${params.toString()}`, options);
 }
+
+// ---- Accounts (P4 D11) --------------------------------------------------------------------------
+// The account layer serves /v1/me and the session paths Fortify and Sanctum answer at the root of
+// the same origin. Every account request sends the session cookie (same-origin credentials), a
+// same-origin Referer (Sanctum's first-party check) and refuses redirects, so a redirect never
+// lands on the SPA's index.html. Every write carries the XSRF-TOKEN cookie as X-XSRF-TOKEN.
+
+export type Me = components['schemas']['MeResource'];
+export type MeBody = operations['getMe']['responses'][200]['content']['application/json'];
+
+/** Fortify's sign-in answer (LoginResponse, RedirectIfTwoFactorAuthenticatable): 200 JSON. */
+export interface SignInAnswer {
+  readonly two_factor: boolean;
+}
+
+/** Fortify's reset answers (forgot-password and reset-password): 200 JSON with one message. */
+export interface MessageAnswer {
+  readonly message: string;
+}
+
+export interface SignInForm {
+  readonly email: string;
+  readonly password: string;
+}
+
+export interface SignUpForm {
+  readonly invite_code: string;
+  readonly email: string;
+  readonly password: string;
+  readonly password_confirmation: string;
+}
+
+export interface ResetPasswordForm {
+  readonly token: string;
+  readonly email: string;
+  readonly password: string;
+  readonly password_confirmation: string;
+}
+
+type Method = 'GET' | 'POST' | 'PUT' | 'DELETE';
+
+/** The root paths the account layer may call (Fortify and Sanctum; nginx routes each to Laravel). */
+const SESSION_PATHS: ReadonlySet<string> = new Set([
+  '/sanctum/csrf-cookie',
+  '/login',
+  '/logout',
+  '/register',
+  '/forgot-password',
+  '/reset-password',
+  '/email/verification-notification',
+  '/user/confirm-password',
+  '/user/two-factor-authentication',
+  '/user/confirmed-two-factor-authentication',
+  '/user/two-factor-qr-code',
+  '/user/two-factor-secret-key',
+  '/user/two-factor-recovery-codes',
+  '/two-factor-challenge',
+]);
+
+/** The /v1 account paths: the account itself, the lists and the demo session. */
+const ACCOUNT_API = /^\/v1\/(?:me|watchlist|portfolio)(?:[/?]|$)|^\/v1\/demo\/session$/;
+
+/** D10: a verification link is /email/verify/<id>/<hash>?<query>, nothing else. */
+const VERIFY_LINK = /^\/email\/verify\/([^/?#]+)\/([^/?#]+)\?/;
+
+/** A path segment that URL resolution would walk with ('.', '..', also percent-encoded). */
+function walksPath(segment: string): boolean {
+  return /^(?:\.|%2e){1,2}$/i.test(segment);
+}
+
+/** True for a verification link that matches D10's pattern and stays under /email/verify/. */
+export function isVerificationLink(link: string): boolean {
+  const match = VERIFY_LINK.exec(link);
+  if (match === null) return false;
+  const segments = [match[1] ?? '', match[2] ?? ''];
+  return !link.includes('\\') && !segments.some(walksPath);
+}
+
+function isAccountPath(path: string): boolean {
+  return SESSION_PATHS.has(path) || ACCOUNT_API.test(path) || isVerificationLink(path);
+}
+
+const UNREACHABLE: ApiFailure = {
+  ok: false,
+  status: 0,
+  type: 'about:blank',
+  title: 'The PokéPrices API could not be reached',
+  requestId: null,
+  problem: null,
+};
+
+const INVALID_PATH: ApiFailure = {
+  ok: false,
+  status: 0,
+  type: 'about:blank',
+  title: 'The account link is not valid',
+  requestId: null,
+  problem: null,
+};
+
+/** The XSRF-TOKEN cookie, decoded, or null when it is missing or malformed. */
+function xsrfToken(): string | null {
+  for (const pair of document.cookie.split(';')) {
+    const at = pair.indexOf('=');
+    if (at < 0 || pair.slice(0, at).trim() !== 'XSRF-TOKEN') continue;
+    const raw = pair.slice(at + 1).trim();
+    if (raw === '') return null;
+    try {
+      return decodeURIComponent(raw);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
+interface AccountInit {
+  readonly method: Method;
+  readonly body?: unknown;
+  readonly signal?: AbortSignal | undefined;
+}
+
+/** One fetch with the account flags; a network failure or a refused redirect resolves as null. */
+async function send(path: string, init: AccountInit): Promise<Response | null> {
+  const headers: Record<string, string> = { Accept: 'application/json' };
+  const request: RequestInit = {
+    method: init.method,
+    headers,
+    credentials: 'same-origin',
+    referrerPolicy: 'same-origin',
+    redirect: 'error',
+  };
+  if (init.body !== undefined) {
+    headers['Content-Type'] = 'application/json';
+    request.body = JSON.stringify(init.body);
+  }
+  if (init.method !== 'GET') {
+    const token = xsrfToken();
+    if (token !== null) headers['X-XSRF-TOKEN'] = token;
+  }
+  if (init.signal !== undefined) request.signal = init.signal;
+  try {
+    return await fetch(path, request);
+  } catch (error) {
+    if (init.signal?.aborted === true) throw error;
+    return null;
+  }
+}
+
+/** GET /sanctum/csrf-cookie (204): sets a fresh XSRF-TOKEN cookie. */
+function refreshCsrfCookie(signal: AbortSignal | undefined): Promise<Response | null> {
+  return send('/sanctum/csrf-cookie', { method: 'GET', signal });
+}
+
+/** Reads an account answer: an empty 2xx is ok without data, a non-JSON 2xx is a failure. */
+async function settle<T>(
+  response: Response,
+  signal: AbortSignal | undefined,
+): Promise<ApiResult<T>> {
+  let text: string;
+  try {
+    text = await response.text();
+  } catch (error) {
+    if (signal?.aborted === true) throw error;
+    text = '';
+  }
+  let body: unknown = undefined;
+  let json = text.trim() === '';
+  if (!json) {
+    try {
+      body = JSON.parse(text) as unknown;
+      json = true;
+    } catch {
+      json = false;
+    }
+  }
+  if (response.ok && json) {
+    // Fortify answers 201/202/204 with no body or with JsonResponse('') ('""'): no data.
+    return { ok: true, data: (body === '' ? undefined : body) as T };
+  }
+  if (!response.ok && isProblem(body)) {
+    return {
+      ok: false,
+      status: response.status,
+      type: body.type,
+      title: body.title,
+      requestId: body.request_id,
+      problem: body,
+    };
+  }
+  return {
+    ok: false,
+    status: response.status,
+    type: 'about:blank',
+    title: response.ok
+      ? `The PokéPrices API sent an unexpected answer (HTTP ${String(response.status)})`
+      : `The PokéPrices API answered HTTP ${String(response.status)}`,
+    requestId: response.headers.get('X-Request-Id'),
+    problem: null,
+  };
+}
+
+/**
+ * The account request (D11). A write first fetches the CSRF cookie when it is missing; a 419
+ * answer fetches a fresh cookie and retries once, and a second 419 is the failure.
+ */
+async function accountRequest<T>(path: string, init: AccountInit): Promise<ApiResult<T>> {
+  if (!isAccountPath(path)) return { ...INVALID_PATH };
+  const write = init.method !== 'GET';
+  if (write && xsrfToken() === null) await refreshCsrfCookie(init.signal);
+  let response = await send(path, init);
+  if (write && response?.status === 419) {
+    await refreshCsrfCookie(init.signal);
+    response = await send(path, init);
+  }
+  if (response === null) return { ...UNREACHABLE };
+  return settle<T>(response, init.signal);
+}
+
+/** GET /v1/me: who is signed in. Signed out, the answer is a 401 failure. */
+export function getMe(options: RequestOptions = {}): Promise<ApiResult<MeBody>> {
+  return accountRequest<MeBody>('/v1/me', { method: 'GET', signal: options.signal });
+}
+
+/** A 200 whose JSON is not the shape Fortify documents. */
+const UNEXPECTED_ANSWER: ApiFailure = {
+  ok: false,
+  status: 200,
+  type: 'about:blank',
+  title: 'The PokéPrices API sent an unexpected answer (HTTP 200)',
+  requestId: null,
+  problem: null,
+};
+
+/** The value of `key` when data is an object holding it, else undefined. */
+function field(data: unknown, key: string): unknown {
+  return typeof data === 'object' && data !== null && key in data
+    ? (data as Record<string, unknown>)[key]
+    : undefined;
+}
+
+/** POST /login: 200 { two_factor } (true when the authenticator-app step comes next). */
+export async function signIn(form: SignInForm): Promise<ApiResult<SignInAnswer>> {
+  const result = await accountRequest<unknown>('/login', { method: 'POST', body: form });
+  if (!result.ok) return result;
+  const twoFactor = field(result.data, 'two_factor');
+  return typeof twoFactor === 'boolean'
+    ? { ok: true, data: { two_factor: twoFactor } }
+    : { ...UNEXPECTED_ANSWER };
+}
+
+/** POST /register with the invite code: 201, signed in. */
+export function signUp(form: SignUpForm): Promise<ApiResult<undefined>> {
+  return accountRequest<undefined>('/register', { method: 'POST', body: form });
+}
+
+/** POST /logout: 204. */
+export function signOut(): Promise<ApiResult<undefined>> {
+  return accountRequest<undefined>('/logout', { method: 'POST' });
+}
+
+/** POST /forgot-password: 200 with the same message whether or not the account exists. */
+export async function requestPasswordReset(form: {
+  readonly email: string;
+}): Promise<ApiResult<MessageAnswer>> {
+  const result = await accountRequest<unknown>('/forgot-password', { method: 'POST', body: form });
+  if (!result.ok) return result;
+  const message = field(result.data, 'message');
+  return typeof message === 'string' ? { ok: true, data: { message } } : { ...UNEXPECTED_ANSWER };
+}
+
+/** POST /reset-password with the link's token: 200. */
+export function resetPassword(form: ResetPasswordForm): Promise<ApiResult<MessageAnswer>> {
+  return accountRequest<MessageAnswer>('/reset-password', { method: 'POST', body: form });
+}
+
+/**
+ * GET of a verification link (204 once verified). A link outside D10's pattern never reaches
+ * fetch: it resolves as a failure with status 0.
+ */
+export function verifyEmail(
+  link: string,
+  options: RequestOptions = {},
+): Promise<ApiResult<undefined>> {
+  if (!isVerificationLink(link)) return Promise.resolve({ ...INVALID_PATH });
+  return accountRequest<undefined>(link, { method: 'GET', signal: options.signal });
+}
+
+/** POST /email/verification-notification: 202 sent, 204 when already verified. */
+export function resendVerification(): Promise<ApiResult<undefined>> {
+  return accountRequest<undefined>('/email/verification-notification', { method: 'POST' });
+}

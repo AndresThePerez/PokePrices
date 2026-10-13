@@ -71,6 +71,14 @@ export default function Header() {
                 Movers
               </Link>
             </li>
+            <li>
+              <Link
+                to="/account"
+                className={`inline-flex min-h-11 items-center underline-offset-4 hover:underline ${FOCUS}`}
+              >
+                Account
+              </Link>
+            </li>
           </ul>
         </nav>
         <div className="flex flex-wrap items-center gap-x-4 text-sm">

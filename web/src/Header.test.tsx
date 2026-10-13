@@ -77,6 +77,7 @@ describe('Header (T02 criterion 1)', () => {
       ['PokéPrices', '/'],
       ['Search', '/search'],
       ['Movers', '/movers'],
+      ['Account', '/account'],
     ]);
     expect(within(banner).queryByRole('heading')).toBeNull();
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
@@ -117,7 +118,7 @@ describe('Header (T02 criterion 1)', () => {
   it('gives every header link and select a 44 px minimum height and wraps its rows', () => {
     render(<App />);
     const controls = header().querySelectorAll('a, select, button');
-    expect(controls).toHaveLength(5);
+    expect(controls).toHaveLength(6);
     for (const control of controls) {
       expect(control.className.split(/\s+/)).toContain('min-h-11');
     }

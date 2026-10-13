@@ -1,5 +1,11 @@
 import { useState, type ReactNode } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
+import AccountPage from './account/AccountPage';
+import ForgotPasswordPage from './account/ForgotPasswordPage';
+import ResetPasswordPage from './account/ResetPasswordPage';
+import SignInPage from './account/SignInPage';
+import SignUpPage from './account/SignUpPage';
+import VerifyEmailPage from './account/VerifyEmailPage';
 import Header from './Header';
 import Link from './Link';
 import CardPage from './pages/CardPage';
@@ -37,6 +43,18 @@ function Routes() {
       return <CardPage key={route.id} id={route.id} />;
     case 'movers':
       return <MoversPage direction={route.direction} />;
+    case 'sign-in':
+      return <SignInPage next={route.next} />;
+    case 'sign-up':
+      return <SignUpPage />;
+    case 'forgot-password':
+      return <ForgotPasswordPage />;
+    case 'reset-password':
+      return <ResetPasswordPage token={route.token} email={route.email} />;
+    case 'account':
+      return <AccountPage />;
+    case 'verify-email':
+      return <VerifyEmailPage key={route.link} link={route.link} />;
     case 'not-found':
       return (
         <Page title="Page not found">
