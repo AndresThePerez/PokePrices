@@ -24,7 +24,8 @@ make down                                  # stop the stack (volumes are kept)
 Every PHP and Node tool runs inside the compose services
 (`docker compose -f compose.dev.yml exec -T ...`); nothing is installed on the host. The dev site
 is `http://pokeprices.localhost:8095`. How prices are ingested, checked, replayed and repaired is in
-[`docs/OPERATIONS.md`](docs/OPERATIONS.md).
+[`docs/OPERATIONS.md`](docs/OPERATIONS.md). What each web page shows, how the pages refresh and how to
+see a change on the dev site is in [`docs/WEB.md`](docs/WEB.md).
 
 ## Reserved paths
 
