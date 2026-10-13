@@ -23,11 +23,75 @@
             "description": "Daily TCGplayer market prices via TCGCSV and their freshness."
         },
         {
+            "name": "Account",
+            "description": "The signed-in Pok\u00e9Prices account (cookie session; sign in through the session endpoints first)."
+        },
+        {
             "name": "Cards",
             "description": "Pok\u00e9mon cards from the Pok\u00e9Search catalog."
         }
     ],
     "paths": {
+        "/me": {
+            "get": {
+                "operationId": "getMe",
+                "description": "email is the account's lower-cased email address; email_verified says whether it has been verified; two_factor\nis true once two-factor authentication is confirmed; read_only is true for the read-only demo account. Signed\nout, the answer is 401. The answer is never cached.",
+                "summary": "Who is signed in",
+                "tags": [
+                    "Account"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`MeResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/MeResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ],
+                                    "additionalProperties": false
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated: sign in first (problem type https://pokeprices.andrestheperez.com/problems/unauthenticated).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests: the rate limit of this route is spent.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds until the limit resets.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/cards": {
             "get": {
                 "operationId": "searchCards",
@@ -1189,6 +1253,31 @@
                 ],
                 "additionalProperties": false,
                 "title": "CardSummaryResource"
+            },
+            "MeResource": {
+                "type": "object",
+                "properties": {
+                    "email": {
+                        "type": "string"
+                    },
+                    "email_verified": {
+                        "type": "boolean"
+                    },
+                    "two_factor": {
+                        "type": "boolean"
+                    },
+                    "read_only": {
+                        "type": "boolean"
+                    }
+                },
+                "required": [
+                    "email",
+                    "email_verified",
+                    "two_factor",
+                    "read_only"
+                ],
+                "additionalProperties": false,
+                "title": "MeResource"
             },
             "MoverResource": {
                 "type": "object",

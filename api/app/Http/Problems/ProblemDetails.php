@@ -23,6 +23,12 @@ final class ProblemDetails
 
     public static function fromThrowable(Throwable $e, Request $request): JsonResponse
     {
+        if ($e instanceof ValidationException && $e->status === 429) {
+            // Fortify's lockout throws a ValidationException with status 429 (plan P4-i1 D4): it is a 429, never a 422.
+            $retryAfter = $e->response?->headers->get('Retry-After');
+
+            return self::withHeaders(self::response(429, 'too-many-requests', 'Too Many Requests', $request), is_string($retryAfter) ? ['Retry-After' => $retryAfter] : []);
+        }
         if ($e instanceof ValidationException) {
             return self::response(422, 'validation-failed', 'Validation Failed', $request, null, ['errors' => $e->errors()]);
         }
@@ -36,7 +42,7 @@ final class ProblemDetails
         return self::response(500, 'server-error', 'Server Error', $request);
     }
 
-    /** The P1 slugs first (F-P1-027), then the P0 404/405 slugs, then http-<n> for every other status. */
+    /** The P1 slugs first (F-P1-027), then the P0 404/405 slugs, the P4 409/419 slugs, then http-<n> for every other status. */
     private static function fromHttpException(HttpExceptionInterface $e, Request $request): JsonResponse
     {
         $status = $e->getStatusCode();
@@ -47,6 +53,9 @@ final class ProblemDetails
             $e instanceof CardNotFound => self::response(404, 'card-not-found', 'Card Not Found', $request, null, ['catalog_missing' => $e->catalogMissing]),
             $e instanceof NotFoundHttpException => self::response(404, 'not-found', 'Not Found', $request),
             $e instanceof MethodNotAllowedHttpException => self::response(405, 'method-not-allowed', 'Method Not Allowed', $request),
+            $e instanceof AlreadySignedIn => self::response(409, 'already-signed-in', 'Already Signed In', $request),
+            // A CSRF failure reaches the renderer as HttpException(419): prepareException runs first (plan P4-i1 D4).
+            $status === 419 => self::response(419, 'csrf-token-mismatch', 'CSRF Token Mismatch', $request),
             $status === 429 => self::response(429, 'too-many-requests', 'Too Many Requests', $request),
             default => self::response($status, 'http-'.$status, Response::$statusTexts[$status] ?? 'Error', $request),
         };

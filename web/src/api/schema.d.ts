@@ -4,6 +4,28 @@
  */
 
 export interface paths {
+    "/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Who is signed in
+         * @description email is the account's lower-cased email address; email_verified says whether it has been verified; two_factor
+         *     is true once two-factor authentication is confirmed; read_only is true for the read-only demo account. Signed
+         *     out, the answer is 401. The answer is never cached.
+         */
+        get: operations["getMe"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/cards": {
         parameters: {
             query?: never;
@@ -215,6 +237,13 @@ export interface components {
             release_date: string;
             image_small: string;
         };
+        /** MeResource */
+        MeResource: {
+            email: string;
+            email_verified: boolean;
+            two_factor: boolean;
+            read_only: boolean;
+        };
         /** MoverResource */
         MoverResource: {
             rank: number;
@@ -281,6 +310,48 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    getMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `MeResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["MeResource"];
+                    };
+                };
+            };
+            /** @description Unauthenticated: sign in first (problem type https://pokeprices.andrestheperez.com/problems/unauthenticated). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Too Many Requests: the rate limit of this route is spent. */
+            429: {
+                headers: {
+                    /** @description Seconds until the limit resets. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
     searchCards: {
         parameters: {
             query: {

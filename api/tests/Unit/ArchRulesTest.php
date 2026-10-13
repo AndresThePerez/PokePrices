@@ -69,3 +69,20 @@ arch('pricing code is strict-typed and final')
 arch('pricing code never uses the network or an Elasticsearch client')
     ->expect(['App\Domain\Pricing', 'App\Console\Commands\PricesIngest'])
     ->not->toUse(['Illuminate\Support\Facades\Http', 'Illuminate\Http\Client', 'GuzzleHttp', 'Elastic', 'Elasticsearch']);
+
+// Plan P4-i1 T02 criterion 14: account code (the invite check, the limiters, the alert seam, the reset-link
+// answer) is strict-typed and final.
+test('the invite check, the account limiters, the alert seam and the reset-link answer exist in App\Domain\Accounts', function (string $class): void {
+    expect(class_exists($class))->toBeTrue();
+})->with([
+    'App\Domain\Accounts\InviteCode',
+    'App\Domain\Accounts\AccountRateLimits',
+    'App\Domain\Accounts\AlertEligibility',
+    'App\Domain\Accounts\ResetLinkAnswer',
+]);
+
+arch('account code is strict-typed, final classes in App\Domain\Accounts')
+    ->expect('App\Domain\Accounts')
+    ->toBeClasses()
+    ->toUseStrictTypes()
+    ->toBeFinal();

@@ -17,6 +17,7 @@ use Dedoc\Scramble\Support\Generator\Types\IntegerType;
 use Dedoc\Scramble\Support\Generator\Types\ObjectType;
 use Dedoc\Scramble\Support\Generator\Types\StringType;
 use Dedoc\Scramble\Support\Generator\Types\Type;
+use Illuminate\Auth\Middleware\Authenticate;
 use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 use Illuminate\Routing\MiddlewareNameResolver;
@@ -32,7 +33,10 @@ use Illuminate\Support\Arr;
  * - middleware CONDITIONAL_GET (the class, or the alias CONDITIONAL_GET_ALIAS): 304 with ETag, no content;
  * - middleware `throttle` / `throttle:<tier>` (ThrottleRequests or a subclass): 429 with Retry-After;
  * - route action attribute POKESEARCH === true, e.g. Route::group(['pokesearch' => true], ...); the innermost
- *   declaration wins: 503 upstream-unavailable with Retry-After and 502 upstream-contract.
+ *   declaration wins: 503 upstream-unavailable with Retry-After and 502 upstream-contract;
+ * - middleware resolving to Authenticate or a subclass (`auth`, `auth:<guard>`): 401 unauthenticated (plan P4-i1 D4);
+ * - middleware STATEFUL (Sanctum's EnsureFrontendRequestsAreStateful) on an operation whose method is not GET or
+ *   HEAD: 419 csrf-token-mismatch (plan P4-i1 D4).
  */
 final class ContractDocument
 {
@@ -45,6 +49,8 @@ final class ContractDocument
     public const string THROTTLE_ALIAS = 'throttle';
 
     public const string POKESEARCH = 'pokesearch';
+
+    public const string STATEFUL = 'Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful';
 
     /** @param Router|null $router the routes to read; null means the application's, aliases and groups registered */
     public function __construct(private readonly ?Router $router = null) {}
@@ -67,7 +73,7 @@ final class ContractDocument
                 }
                 $route = $routes[self::routeKey($operation->method, $operation->path)] ?? null;
                 if ($route instanceof Route) {
-                    self::addRouteResponses($responses, $router, $route);
+                    self::addRouteResponses($responses, $router, $route, $operation->method);
                 }
                 foreach ($responses as $response) {
                     if (! $response instanceof Response) {
@@ -155,7 +161,7 @@ final class ContractDocument
      *
      * @param-out list<Response|Reference> $responses
      */
-    private static function addRouteResponses(array &$responses, Router $router, Route $route): void
+    private static function addRouteResponses(array &$responses, Router $router, Route $route, ?string $method): void
     {
         // Router::gatherRouteMiddleware without its priority sort, which probes every name as a class.
         $resolve = fn (array $names): array => Arr::flatten(array_map(
@@ -187,6 +193,19 @@ final class ContractDocument
             self::response($responses, 503, 'PokéSearch did not answer (problem type '.ProblemDetails::BASE.'upstream-unavailable).')
                 ->addHeader('Retry-After', self::header('Seconds before PokéSearch is worth asking again.', new IntegerType));
             self::response($responses, 502, 'PokéSearch answered outside its contract (problem type '.ProblemDetails::BASE.'upstream-contract).');
+        }
+
+        // By resolution only: `auth` / `auth:<guard>` count once the router aliases them to Authenticate.
+        $authenticated = array_filter($middleware, fn (string $name): bool => is_a($name, Authenticate::class, true));
+        if ($authenticated !== []) {
+            // Scramble may already document a bare 401 (it reads the auth middleware); the contract's wording wins.
+            $description = 'Unauthenticated: sign in first (problem type '.ProblemDetails::BASE.'unauthenticated).';
+            self::response($responses, 401, $description)->setDescription($description);
+        }
+
+        $writes = ! in_array(strtoupper((string) $method), ['GET', 'HEAD'], true);
+        if ($writes && array_filter($middleware, fn (string $name): bool => is_a($name, self::STATEFUL, true)) !== []) {
+            self::response($responses, 419, 'The CSRF token is missing or stale: GET /sanctum/csrf-cookie and retry (problem type '.ProblemDetails::BASE.'csrf-token-mismatch).');
         }
     }
 
