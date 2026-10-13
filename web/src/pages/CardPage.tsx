@@ -71,6 +71,96 @@ function imageHost(url: string): string | null {
   }
 }
 
+type Price = NonNullable<Variant['price']>;
+
+const PRICE_FOOTNOTE = 'TCGplayer market prices via TCGCSV, collected once a day.';
+const NEUTRAL = 'text-slate-600';
+const DECIMAL = /^(\d+)(\.\d+)?$/;
+
+/**
+ * An unsigned API decimal string with ',' between thousands. The digits are copied, never parsed
+ * into a number (no re-rounding, "0.10" stays "0.10"); anything that is not a plain decimal is
+ * copied as it came.
+ */
+function grouped(amount: string): string {
+  const match = DECIMAL.exec(amount);
+  if (match === null) return amount;
+  const whole = match[1] ?? '';
+  return `${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}${match[2] ?? ''}`;
+}
+
+/** The sign of an API decimal string and its digits without it. */
+function signed(amount: string): { readonly negative: boolean; readonly digits: string } {
+  return { negative: amount.startsWith('-'), digits: amount.replace(/^[-+]/, '') };
+}
+
+/**
+ * The change line and its tone. Direction comes from the API's change string; the arrow and the
+ * sign carry it, the colour only repeats it. change_pct is printed only when the API sent one.
+ */
+function changeLine(price: Price): { readonly text: string; readonly tone: string } {
+  if (price.previous_close === null || price.previous_day === null || price.change === null) {
+    return { text: 'No previous close yet', tone: NEUTRAL };
+  }
+  const versus = `vs previous close (${price.previous_day})`;
+  const change = signed(price.change);
+  if (/^0+(\.0+)?$/.test(change.digits)) return { text: `No change ${versus}`, tone: NEUTRAL };
+  const arrow = change.negative ? '▼ -' : '▲ +';
+  let percent = '';
+  if (price.change_pct !== null) {
+    const pct = signed(price.change_pct);
+    percent = ` (${pct.negative ? '-' : '+'}${pct.digits}%)`;
+  }
+  return {
+    text: `${arrow}$${grouped(change.digits)}${percent} ${versus}`,
+    tone: change.negative ? 'text-red-700' : 'text-emerald-700',
+  };
+}
+
+function VariantPrice({ price }: { readonly price: Price }) {
+  const change = changeLine(price);
+  return (
+    <>
+      <span className="mt-1 block text-xl font-semibold tabular-nums">
+        {`Market price $${grouped(price.close)}`}
+      </span>
+      <span className={`block text-sm tabular-nums ${change.tone}`}>{change.text}</span>
+      <span className="block text-sm text-slate-600">
+        {`as of ${price.day} from TCGCSV (daily close)`}
+      </span>
+    </>
+  );
+}
+
+/**
+ * Each variant's newest daily close, or "No prices yet" while no variant of the card has one.
+ * Every value is the API's: no date or money arithmetic happens here.
+ */
+function Prices({ variants }: { readonly variants: Card['variants'] }) {
+  if (!variants.some((variant) => variant.price !== null)) {
+    return <p className="mt-2">No prices yet</p>;
+  }
+  return (
+    <>
+      <ul className="mt-2 space-y-4">
+        {variants.map((variant) => (
+          <li key={variant.variant_key}>
+            <span className="block font-medium capitalize">{variantLabel(variant)}</span>
+            {variant.price === null ? (
+              <span className="block text-sm text-slate-600">
+                No price in the collected snapshots
+              </span>
+            ) : (
+              <VariantPrice price={variant.price} />
+            )}
+          </li>
+        ))}
+      </ul>
+      <p className="mt-4 text-xs leading-snug text-slate-500">{PRICE_FOOTNOTE}</p>
+    </>
+  );
+}
+
 function CardImage({ card }: { readonly card: Card }) {
   const src = card.images.large !== '' ? card.images.large : card.images.small;
   if (src === '') return null;
@@ -140,7 +230,7 @@ function Loaded({ body }: { readonly body: CardDetail }) {
             <h2 id="card-prices" className="text-lg font-semibold">
               Prices
             </h2>
-            <p className="mt-2">No prices yet</p>
+            <Prices variants={card.variants} />
           </section>
           <section aria-labelledby="card-products" className="mt-8">
             <h2 id="card-products" className="text-lg font-semibold">

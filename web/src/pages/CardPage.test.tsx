@@ -6,11 +6,17 @@ import {
   cardBody,
   cardNotFoundPlainProblem,
   cardNotFoundProblem,
+  cardWithPrices,
   degradedCardBody,
+  fallingPrice,
+  firstClosePrice,
   jsonResponse,
+  pricedCardBody,
   problemResponse,
   stubFetch,
+  unchangedPrice,
   unmappedCardBody,
+  upFromZeroPrice,
   unownCard,
   unseededCardBody,
   upstreamUnavailableProblem,
@@ -160,23 +166,47 @@ describe('CardPage', () => {
   it('never shows live, real-time, as of today, a 1D range, a render date or a pokemontcg.io date', async () => {
     vi.useFakeTimers({ toFake: ['Date'] });
     vi.setSystemTime(new Date('2031-02-03T04:05:06Z'));
-    const answers: readonly [Response, string][] = [
-      [jsonResponse(cardBody), 'Unown'],
-      [jsonResponse(unseededCardBody), 'Unown'],
-      [jsonResponse(unmappedCardBody), 'Unown'],
-      [jsonResponse(degradedCardBody), 'Unown'],
-      [problemResponse(cardNotFoundProblem), 'Card not found'],
+    const answers: readonly [Response, string, 'unpriced' | 'priced'][] = [
+      [jsonResponse(cardBody), 'Unown', 'unpriced'],
+      [jsonResponse(unseededCardBody), 'Unown', 'unpriced'],
+      [jsonResponse(unmappedCardBody), 'Unown', 'unpriced'],
+      [jsonResponse(degradedCardBody), 'Unown', 'unpriced'],
+      [problemResponse(cardNotFoundProblem), 'Card not found', 'unpriced'],
+      [jsonResponse(pricedCardBody), 'Unown', 'priced'],
+      [
+        jsonResponse(
+          cardWithPrices(fallingPrice, unchangedPrice, firstClosePrice, upFromZeroPrice),
+        ),
+        'Unown',
+        'priced',
+      ],
     ];
-    for (const [answer, settled] of answers) {
+    for (const [answer, settled, kind] of answers) {
       const main = await renderCard(answer, settled);
       const text = main.textContent;
       expect(text).not.toMatch(/\blive\b/i);
       expect(text).not.toMatch(/real-?time/i);
       expect(text).not.toMatch(/as of today/i);
       expect(text).not.toMatch(/\b1D\b/i);
+      expect(text).not.toMatch(/\b24 ?h/i);
       expect(text).not.toContain('2031');
       expect(text).not.toContain('2005-08-22');
-      expect(text).not.toMatch(/\$|USD|€/);
+      if (kind === 'unpriced') {
+        expect(text).not.toMatch(/\$|USD|€/);
+      } else {
+        // The P2 $ carve-out: a $ only opens a digit, on a Market price or change line.
+        expect(text).not.toMatch(/USD|€/);
+        expect(text).not.toContain('20:05');
+        expect(text).toMatch(/\$\d/);
+        expect(text).not.toMatch(/\$(?!\d)/);
+        const dollarLines = Array.from(main.querySelectorAll('*'))
+          .filter((node) => node.children.length === 0 && node.textContent.includes('$'))
+          .map((node) => node.textContent);
+        expect(dollarLines.length).toBeGreaterThan(0);
+        for (const line of dollarLines) {
+          expect(line).toMatch(/^Market price \$\d|^[▲▼] [+-]\$\d.* vs previous close \(/);
+        }
+      }
       cleanup();
       vi.unstubAllGlobals();
     }

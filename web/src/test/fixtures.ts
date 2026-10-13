@@ -220,6 +220,117 @@ export const pricedCardBody = {
   meta: { degraded: false },
 } satisfies CardBody;
 
+type Variant = Schemas['CardResource']['variants'][number];
+export type VariantPrice = NonNullable<Variant['price']>;
+
+/** A daily close (P2-i1 T06) with only the fields a test sets changed; the rest is provenance. */
+function closeOf(fields: Partial<VariantPrice>): VariantPrice {
+  return {
+    source: 'tcgplayer',
+    feed: 'tcgcsv',
+    basis: 'market',
+    currency: 'USD',
+    cadence: 'daily',
+    close: '70.81',
+    day: '2026-10-12',
+    as_of: '2026-10-12T20:05:44Z',
+    previous_close: '69.36',
+    previous_day: '2026-10-11',
+    change: '1.45',
+    change_pct: '2.09',
+    series_epoch: 1,
+    ...fields,
+  };
+}
+
+/** Up against the previous close of 2026-10-11. */
+export const risingPrice = closeOf({});
+
+/** Down against the previous close of 2026-10-11. */
+export const fallingPrice = closeOf({ close: '68.06', change: '-1.30', change_pct: '-1.87' });
+
+/** The same close as the day before. */
+export const unchangedPrice = closeOf({
+  close: '2257.87',
+  previous_close: '2257.87',
+  change: '0.00',
+  change_pct: '0.00',
+});
+
+/** The variant's first real close: no previous close within 14 days of the same epoch. */
+export const firstClosePrice = closeOf({
+  previous_close: null,
+  previous_day: null,
+  change: null,
+  change_pct: null,
+});
+
+/** Up from a previous close of 0.00: the change is known, the percentage is not (D4). */
+export const upFromZeroPrice = closeOf({
+  close: '0.25',
+  previous_close: '0.00',
+  change: '0.25',
+  change_pct: null,
+});
+
+/** Still 0.00 after a previous close of 0.00: no change, no percentage. */
+export const flatAtZeroPrice = closeOf({
+  close: '0.00',
+  previous_close: '0.00',
+  change: '0.00',
+  change_pct: null,
+});
+
+/** A fall with no percentage: the page must print the change and omit the percentage. */
+export const downWithoutPctPrice = closeOf({
+  close: '0.75',
+  previous_close: '1.00',
+  change: '-0.25',
+  change_pct: null,
+});
+
+/** Four- and seven-digit money and sub-dollar money, as the API strings them. */
+export const thousandsPrice = closeOf({
+  close: '1234.50',
+  previous_close: '1234.57',
+  change: '-0.07',
+  change_pct: '-0.01',
+});
+export const centsPrice = closeOf({
+  close: '0.07',
+  previous_close: '1234.57',
+  change: '-1234.50',
+  change_pct: '-99.99',
+});
+export const millionPrice = closeOf({
+  close: '1000000.00',
+  previous_close: '999999.90',
+  change: '0.10',
+  change_pct: '0.00',
+});
+
+/** The Unown card with one variant per given price (null = no close in the snapshots). */
+export function cardWithPrices(...prices: readonly (VariantPrice | null)[]): CardBody {
+  const variants: Variant[] = prices.map((price, index) => ({
+    variant_key: `ex10-?:finish${String(index)}:unlimited:-`,
+    finish: `finish${String(index)}`,
+    edition: 'unlimited',
+    treatment: '-',
+    sources: [
+      {
+        source: 'tcgplayer',
+        product_id: 88123 + index,
+        subtype: 'Holofoil',
+        group_id: 1399,
+        series_epoch: 1,
+        map_snapshot_day: '2026-10-11',
+      },
+    ],
+    price,
+  }));
+  return { data: { ...unownCard, variants }, meta: { degraded: false } };
+}
+
 /** The same card before any product map build: no variant rows. */
 export const unmappedUnownCard = {
   ...unownCard,
