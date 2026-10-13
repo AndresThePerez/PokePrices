@@ -18,7 +18,16 @@ describe('shell page honesty', () => {
     const { container } = render(<App />);
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     expect(screen.getByRole('main')).toBeTruthy();
-    expect(container.querySelectorAll('img, svg, a, button')).toHaveLength(0);
+    expect(container.querySelectorAll('img, svg, button')).toHaveLength(0);
+    expect(
+      Array.from(container.querySelectorAll('a')).map((a) => [
+        a.textContent,
+        a.getAttribute('href'),
+      ]),
+    ).toEqual([
+      ['PokéPrices', '/'],
+      ['Search', '/search'],
+    ]);
   });
 
   it('keeps the accent as the precomposed U+00E9, not e plus a combining mark', () => {

@@ -6,7 +6,10 @@ import { searchCards, type ApiFailure, type ApiResult, type CardSearchPage } fro
 
 const DEGRADED_LINE = 'Catalog data may be out of date: PokéSearch is unavailable';
 const FOCUS =
-  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-700';
+  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-700 dark:focus-visible:outline-sky-400';
+/** Muted text, readable in both themes. */
+const MUTED = 'text-slate-600 dark:text-slate-400';
+const PAGER_LINK = `inline-flex min-h-11 items-center underline underline-offset-4 ${FOCUS}`;
 
 /** A page number from the URL; anything that is not a positive integer reads as page 1. */
 function readPage(raw: string | null): number {
@@ -39,12 +42,12 @@ function SearchForm({ initial }: { readonly initial: string }) {
           onChange={(event) => {
             setText(event.target.value);
           }}
-          className={`rounded-md border border-slate-400 px-3 py-2 text-base font-normal ${FOCUS}`}
+          className={`min-h-11 rounded-md border border-slate-400 bg-white px-3 py-2 text-base font-normal dark:border-slate-500 dark:bg-slate-900 ${FOCUS}`}
         />
       </label>
       <button
         type="submit"
-        className={`rounded-md bg-slate-900 px-4 py-2 font-semibold text-white ${FOCUS}`}
+        className={`min-h-11 min-w-11 rounded-md bg-slate-900 px-4 py-2 font-semibold text-white dark:bg-slate-100 dark:text-slate-900 ${FOCUS}`}
       >
         Search
       </button>
@@ -54,7 +57,10 @@ function SearchForm({ initial }: { readonly initial: string }) {
 
 function Problem({ failure }: { readonly failure: ApiFailure }) {
   return (
-    <div role="alert" className="mt-6 border-l-4 border-red-700 bg-red-50 px-4 py-3 text-red-950">
+    <div
+      role="alert"
+      className="mt-6 border-l-4 border-red-700 bg-red-50 px-4 py-3 text-red-950 dark:border-red-400 dark:bg-red-950 dark:text-red-100"
+    >
       <p className="font-semibold">Search failed: {failure.title}</p>
       {failure.requestId !== null && (
         <p className="mt-1 text-sm">
@@ -79,7 +85,7 @@ function Pager({
   return (
     <nav aria-label="Result pages" className="mt-6 flex items-center gap-6 text-sm">
       {page > 1 && (
-        <Link to={searchPath(q, previous)} className={`underline underline-offset-4 ${FOCUS}`}>
+        <Link to={searchPath(q, previous)} className={PAGER_LINK}>
           Previous page
         </Link>
       )}
@@ -87,7 +93,7 @@ function Pager({
         Page {page} of {pages}
       </span>
       {page < pages && (
-        <Link to={searchPath(q, page + 1)} className={`underline underline-offset-4 ${FOCUS}`}>
+        <Link to={searchPath(q, page + 1)} className={PAGER_LINK}>
           Next page
         </Link>
       )}
@@ -107,20 +113,23 @@ function Results({ q, body }: { readonly q: string; readonly body: CardSearchPag
   return (
     <>
       {meta.degraded && (
-        <p className="mt-6 border-l-4 border-amber-500 bg-amber-50 px-4 py-3 text-amber-950">
+        <p className="mt-6 border-l-4 border-amber-500 bg-amber-50 px-4 py-3 text-amber-950 dark:border-amber-400 dark:bg-amber-950 dark:text-amber-100">
           {DEGRADED_LINE}
         </p>
       )}
-      <p role="status" className="mt-6 text-sm text-slate-600">
+      <p role="status" className={`mt-6 text-sm ${MUTED}`}>
         {summary}
       </p>
       {data.length > 0 && (
-        <ol aria-label="Search results" className="mt-2 divide-y divide-slate-200">
+        <ol
+          aria-label="Search results"
+          className="mt-2 divide-y divide-slate-200 dark:divide-slate-700"
+        >
           {data.map((card) => (
             <li key={card.id}>
               <Link
                 to={cardPath(card.id)}
-                className={`flex items-center gap-4 py-3 hover:bg-slate-50 ${FOCUS}`}
+                className={`flex items-center gap-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 ${FOCUS}`}
               >
                 <img
                   src={card.image_small}
@@ -128,11 +137,11 @@ function Results({ q, body }: { readonly q: string; readonly body: CardSearchPag
                   width={63}
                   height={88}
                   loading="lazy"
-                  className="h-[88px] w-[63px] shrink-0 rounded-[5px] border-[3px] border-[#f2c230] bg-slate-100 object-cover"
+                  className="h-[88px] w-[63px] shrink-0 rounded-[5px] border-[3px] border-[#f2c230] bg-slate-100 object-cover dark:bg-slate-800"
                 />
                 <span className="min-w-0">
                   <span className="block text-lg font-semibold">{card.name}</span>
-                  <span className="mt-1 flex flex-wrap gap-x-4 text-sm text-slate-600">
+                  <span className={`mt-1 flex flex-wrap gap-x-4 text-sm ${MUTED}`}>
                     <span>{card.set_name}</span>
                     <span>No. {card.number}</span>
                     {card.rarity !== null && <span>{card.rarity}</span>}
@@ -177,10 +186,10 @@ export default function SearchPage({ query }: { readonly query: URLSearchParams 
 
   let body;
   if (q === '') {
-    body = <p className="mt-6 text-slate-600">Type a card name, then press Search.</p>;
+    body = <p className={`mt-6 ${MUTED}`}>Type a card name, then press Search.</p>;
   } else if (settled?.key !== key) {
     body = (
-      <p role="status" className="mt-6 text-sm text-slate-600">
+      <p role="status" className={`mt-6 text-sm ${MUTED}`}>
         Searching for “{q}”…
       </p>
     );

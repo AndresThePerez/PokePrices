@@ -54,7 +54,7 @@ describe('Card page prices', () => {
     const item = variantItem(section, 'finish0, unlimited');
     expect(within(item).getByText('Market price $70.81')).toBeTruthy();
     const change = within(item).getByText('▲ +$1.45 (+2.09%) vs previous close (2026-10-11)');
-    expect(change.className).toContain('text-emerald-700');
+    expect(change.className).toContain('text-up');
     expect(within(item).getByText(AS_OF_1012)).toBeTruthy();
     expect(section.textContent).not.toContain('No prices yet');
   });
@@ -63,16 +63,16 @@ describe('Card page prices', () => {
     const section = await prices(cardWithPrices(fallingPrice));
     expect(within(section).getByText('Market price $68.06')).toBeTruthy();
     const change = within(section).getByText('▼ -$1.30 (-1.87%) vs previous close (2026-10-11)');
-    expect(change.className).toContain('text-red-700');
-    expect(change.className).not.toContain('emerald');
+    expect(change.className).toContain('text-down');
+    expect(change.className).not.toContain('text-up');
   });
 
   it('says "No change" in neutral slate, with no arrow and no sign, for a zero change', async () => {
     const section = await prices(cardWithPrices(unchangedPrice));
     expect(within(section).getByText('Market price $2,257.87')).toBeTruthy();
     const change = within(section).getByText('No change vs previous close (2026-10-11)');
-    expect(change.className).toContain('text-slate-');
-    expect(change.className).not.toMatch(/emerald|red/);
+    expect(change.className).toContain('text-flat');
+    expect(change.className).not.toMatch(/text-up|text-down/);
     expect(section.textContent).not.toMatch(/[▲▼]|\+\$|-\$|%/);
   });
 
@@ -80,7 +80,7 @@ describe('Card page prices', () => {
     const section = await prices(cardWithPrices(firstClosePrice));
     expect(within(section).getByText('Market price $70.81')).toBeTruthy();
     const change = within(section).getByText('No previous close yet');
-    expect(change.className).toContain('text-slate-');
+    expect(change.className).toContain('text-flat');
     expect(section.textContent).not.toContain('vs previous close');
     expect(within(section).getByText(AS_OF_1012)).toBeTruthy();
   });
@@ -90,7 +90,7 @@ describe('Card page prices', () => {
     const up = within(variantItem(section, 'finish0, unlimited')).getByText(
       '▲ +$0.25 vs previous close (2026-10-11)',
     );
-    expect(up.className).toContain('text-emerald-700');
+    expect(up.className).toContain('text-up');
     expect(
       within(variantItem(section, 'finish1, unlimited')).getByText(
         'No change vs previous close (2026-10-11)',
@@ -102,7 +102,7 @@ describe('Card page prices', () => {
   it('omits the percentage on a down change whose change_pct is null', async () => {
     const section = await prices(cardWithPrices(downWithoutPctPrice));
     const down = within(section).getByText('▼ -$0.25 vs previous close (2026-10-11)');
-    expect(down.className).toContain('text-red-700');
+    expect(down.className).toContain('text-down');
     expect(section.textContent).not.toContain('%');
   });
 

@@ -117,7 +117,7 @@ describe('SearchPage edge cases', () => {
     render(<App />);
     await screen.findByText(/No cards match/);
     expect(screen.queryByRole('navigation', { name: 'Result pages' })).toBeNull();
-    expect(screen.queryByRole('link')).toBeNull();
+    expect(within(screen.getByRole('main')).queryByRole('link')).toBeNull();
   });
 
   it('offers a way back to page 1 when the page is beyond pages and has no cards', async () => {

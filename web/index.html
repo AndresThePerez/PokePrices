@@ -3,7 +3,37 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
     <title>PokéPrices</title>
+    <script>
+      // Pre-paint: the same rules as src/preferences.ts, so the first paint is in the chosen theme.
+      (function () {
+        var theme = 'system';
+        var palette = 'green-red';
+        try {
+          var storedTheme = window.localStorage.getItem('pokeprices:theme');
+          if (storedTheme === 'system' || storedTheme === 'light' || storedTheme === 'dark') {
+            theme = storedTheme;
+          }
+          var storedPalette = window.localStorage.getItem('pokeprices:palette');
+          if (storedPalette === 'green-red' || storedPalette === 'blue-orange') {
+            palette = storedPalette;
+          }
+        } catch (error) {
+          // Blocked storage: keep the defaults.
+        }
+        var dark = theme === 'dark';
+        if (theme === 'system') {
+          try {
+            dark = window.matchMedia('(prefers-color-scheme: dark)').matches === true;
+          } catch (error) {
+            dark = false;
+          }
+        }
+        document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+        document.documentElement.setAttribute('data-palette', palette);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

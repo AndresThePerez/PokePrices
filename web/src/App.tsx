@@ -1,7 +1,10 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
+import { QueryClientProvider } from '@tanstack/react-query';
+import Header from './Header';
 import Link from './Link';
 import CardPage from './pages/CardPage';
 import SearchPage from './pages/SearchPage';
+import { createQueryClient } from './query';
 import { useRoute } from './router';
 
 function Page({ title, children }: { readonly title: string; readonly children: ReactNode }) {
@@ -13,7 +16,7 @@ function Page({ title, children }: { readonly title: string; readonly children: 
   );
 }
 
-export default function App() {
+function Routes() {
   const { pathname, route } = useRoute();
   switch (route.name) {
     case 'home':
@@ -36,7 +39,7 @@ export default function App() {
           <p className="mt-4 text-base">
             <Link
               to="/"
-              className="underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2"
+              className="inline-flex min-h-11 items-center underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-700 dark:focus-visible:outline-sky-400"
             >
               Go to the home page
             </Link>
@@ -44,4 +47,15 @@ export default function App() {
         </Page>
       );
   }
+}
+
+export default function App() {
+  // One client per mount (D9): every render(<App />) starts with an empty cache.
+  const [queryClient] = useState(createQueryClient);
+  return (
+    <QueryClientProvider client={queryClient}>
+      <Header />
+      <Routes />
+    </QueryClientProvider>
+  );
 }

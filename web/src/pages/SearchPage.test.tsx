@@ -221,9 +221,9 @@ describe('SearchPage', () => {
   it('never shows a price, live or real-time wording', async () => {
     stubFetch(() => jsonResponse(degradedSearchPage));
     visit('/search?q=unown');
-    const { container } = render(<App />);
+    render(<App />);
     await screen.findByRole('list', { name: 'Search results' });
-    const text = container.textContent.toLowerCase();
+    const text = screen.getByRole('main').textContent.toLowerCase();
     for (const word of ['price', 'live', 'real-time', 'realtime', '$']) {
       expect(text).not.toContain(word);
     }

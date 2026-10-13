@@ -185,14 +185,14 @@ describe('Card page prices, edge cases', () => {
       return found;
     };
     expect(changeSpan(0).textContent).toMatch(/^▲ \+\$/);
-    expect(changeSpan(0).className).toContain('text-emerald-700');
-    expect(changeSpan(0).className).not.toContain('text-red-700');
+    expect(changeSpan(0).className).toContain('text-up');
+    expect(changeSpan(0).className).not.toContain('text-down');
     expect(changeSpan(1).textContent).toMatch(/^▼ -\$/);
-    expect(changeSpan(1).className).toContain('text-red-700');
-    expect(changeSpan(1).className).not.toContain('text-emerald-700');
+    expect(changeSpan(1).className).toContain('text-down');
+    expect(changeSpan(1).className).not.toContain('text-up');
     for (const index of [2, 3]) {
-      expect(changeSpan(index).className).toContain('text-slate-600');
-      expect(changeSpan(index).className).not.toMatch(/emerald|red-/);
+      expect(changeSpan(index).className).toContain('text-flat');
+      expect(changeSpan(index).className).not.toMatch(/text-up|text-down/);
     }
   });
 
