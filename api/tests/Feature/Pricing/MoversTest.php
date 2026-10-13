@@ -10,12 +10,14 @@ use Database\Seeders\SetAliasSeeder;
 use Illuminate\Cache\RateLimiter;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\QueryException;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter as RateLimiterFacade;
 use Illuminate\Support\Facades\Route;
+use Tests\Support\CatalogCache;
 
 // price_movers and GET /v1/movers (plan P2-i1 T12, D7, R177(10), R178, R180b, R181(1)). The map is built from the
 // P1 fixture day and the synthetic days of tests/Fixtures/tcgcsv-days are ingested with --sync; edited days are
@@ -152,7 +154,22 @@ beforeEach(function (): void {
     if ($code !== 0) {
         throw new RuntimeException('the fixture map build failed: '.Artisan::output());
     }
+    // P3-i1 T08: the movers name their cards through the catalog; PokéSearch is faked for every fixture card id and
+    // the catalog keys live under a prefix of this test's own, flushed when the application is torn down.
+    $catalogPrefix = CatalogCache::isolate();
+    $this->beforeApplicationDestroyed(fn () => CatalogCache::flush($catalogPrefix));
+    config(['services.pokesearch.url' => 'http://192.0.2.10:8081', 'services.pokesearch.api_key' => null]);
     Http::preventStrayRequests();
+    Http::fake(function (Request $request) {
+        if (parse_url($request->url(), PHP_URL_PATH) === '/api/meta') {
+            return Http::response(['version' => 'test', 'commit' => '0000000', 'built' => '', 'docs' => 1,
+                'seed' => ['ref' => '0123456789abcdef0123456789abcdef01234567', 'seeded_at' => '2026-10-11T20:05:45Z'], 'request_id' => 'fake-meta']);
+        }
+        parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+
+        return Http::response(['data' => array_map(fn (string $id): array => ['id' => $id, 'name' => "Name of {$id}",
+            'number' => substr((string) strrchr($id, '-'), 1), 'set_name' => 'Fixture set'], explode(',', (string) $query['ids'])), 'missing' => []]);
+    });
     $this->fixtureTree = t12Tree(t12Fixture('snapshots'));
 });
 
@@ -368,14 +385,15 @@ it('serves the newest movers day: exact rows, provenance and the previous_close 
     $response->assertOk();
     expect($response->json())->toBe([
         'data' => [
-            ['rank' => 1, 'card_id' => 'basep-8', 'variant_key' => 'basep-8:holo:-:-', 'finish' => 'holo', 'edition' => '-', 'treatment' => '-',
+            ['rank' => 1, 'card_id' => 'basep-8', 'card' => ['name' => 'Name of basep-8', 'set_name' => 'Fixture set', 'number' => '8'], 'variant_key' => 'basep-8:holo:-:-', 'finish' => 'holo', 'edition' => '-', 'treatment' => '-',
                 'close' => '28.00', 'previous_close' => '25.00', 'previous_day' => '2026-10-10', 'change' => '3.00', 'change_pct' => '12.00', 'series_epoch' => 1],
-            ['rank' => 2, 'card_id' => 'sv8pt5-5', 'variant_key' => 'sv8pt5-5:reverse:-:pokeball', 'finish' => 'reverse', 'edition' => '-', 'treatment' => 'pokeball',
+            ['rank' => 2, 'card_id' => 'sv8pt5-5', 'card' => ['name' => 'Name of sv8pt5-5', 'set_name' => 'Fixture set', 'number' => '5'], 'variant_key' => 'sv8pt5-5:reverse:-:pokeball', 'finish' => 'reverse', 'edition' => '-', 'treatment' => 'pokeball',
                 'close' => '32.00', 'previous_close' => '31.00', 'previous_day' => '2026-10-10', 'change' => '1.00', 'change_pct' => '3.23', 'series_epoch' => 1],
         ],
         'meta' => [
             'day' => '2026-10-11', 'as_of' => '2026-10-11T20:05:45Z', 'source' => 'tcgplayer', 'feed' => 'tcgcsv', 'basis' => 'market',
             'currency' => 'USD', 'window' => 'previous_close', 'min_previous_close' => '2.00', 'direction' => 'up', 'limit' => 2,
+            'degraded' => false,
         ],
     ]);
 });

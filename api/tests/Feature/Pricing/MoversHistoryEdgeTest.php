@@ -8,11 +8,13 @@ use App\Domain\Pricing\PriceDigest;
 use App\Domain\Pricing\PriceHistory;
 use Database\Seeders\SetAliasSeeder;
 use Illuminate\Cache\RateLimiter;
+use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter as RateLimiterFacade;
+use Tests\Support\CatalogCache;
 
 // Edge cases for the daily candles and the movers snapshot (plan P2-i1 T11, T12, D4, D7). Rows are inserted straight
 // into card_variants and price_daily (one real close per variant and day) and Movers::rebuild() ranks them, so each
@@ -56,7 +58,22 @@ beforeEach(function (): void {
     app()->forgetInstance(RateLimiter::class);
     RateLimiterFacade::clearResolvedInstance(RateLimiter::class);
     Queue::fake([VerifyCatalog::class]);
+    // P3-i1 T08: the movers name their cards through the catalog; PokéSearch is faked for every fixture card id and
+    // the catalog keys live under a prefix of this test's own, flushed when the application is torn down.
+    $catalogPrefix = CatalogCache::isolate();
+    $this->beforeApplicationDestroyed(fn () => CatalogCache::flush($catalogPrefix));
+    config(['services.pokesearch.url' => 'http://192.0.2.10:8081', 'services.pokesearch.api_key' => null]);
     Http::preventStrayRequests();
+    Http::fake(function (Request $request) {
+        if (parse_url($request->url(), PHP_URL_PATH) === '/api/meta') {
+            return Http::response(['version' => 'test', 'commit' => '0000000', 'built' => '', 'docs' => 1,
+                'seed' => ['ref' => '0123456789abcdef0123456789abcdef01234567', 'seeded_at' => '2026-10-11T20:05:45Z'], 'request_id' => 'fake-meta']);
+        }
+        parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
+
+        return Http::response(['data' => array_map(fn (string $id): array => ['id' => $id, 'name' => "Name of {$id}",
+            'number' => substr((string) strrchr($id, '-'), 1), 'set_name' => 'Fixture set'], explode(',', (string) $query['ids'])), 'missing' => []]);
+    });
 });
 
 test('51 or more variants tied on pct and change keep exactly 50 per direction, the first 50 in byte order of variant_key', function (): void {

@@ -13,6 +13,7 @@ use Illuminate\Contracts\Cache\LockProvider;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 use LogicException;
 
@@ -23,6 +24,8 @@ use LogicException;
  *   writes catalog:v1:seed_ref:last on redis-queue (30 days), the copy used while PokéSearch is down. A read
  *   whose ref differs from that copy queues VerifyCatalog (T45).
  * - Card: catalog:v1:card:{seedRef}:{id}, flexible [3600, 86400]; a 404 is remembered 60 s under …:none.
+ * - Card names (the movers, P3-i1 T08): catalog:v1:cardname:{seedRef}:{id}, judged against [3600, 86400] by
+ *   fetched_at and filled in one batch (cardNames()); …:none for 60 s, last-good catalog:v1:lastgood:cardname:{id}.
  * - Search: catalog:v1:search:{seedRef}:{sha1(normalised q|page|page_size)}, flexible [300, 900].
  * - Every upstream success also writes a last-good copy, catalog:v1:lastgood:{card|search}:…, for 7 days.
  *   A 5xx, a timeout or a contract violation is never cached.
@@ -164,6 +167,247 @@ final class CatalogRepository
         }
 
         return new CatalogResult($envelope['data'], cached: ! $fetched);
+    }
+
+    /**
+     * The name, set name and number of each card id, read in one batch (plan P3-i1 T08, review F-P3-06, F-P3-07).
+     *
+     * Every distinct id maps to {name, set_name, number} or null; it never throws. An id failing CardId maps to
+     * null and is never sent. Each valid id is read from its own key catalog:v1:cardname:{seedRef}:{id} and judged
+     * against CARD_TTL by its fetched_at: fresh, stale-but-live, or absent (none, or past the hard window). Ids
+     * under a live 60 s …:none marker are null. When any id is absent, the absent ids and every stale-but-live
+     * id go out in exactly one GET /api/v1/cards?ids= under the fill lock catalog:v1:fill:cardnames:{sha1 of the
+     * sorted, comma-joined ids}; without an absent id nothing is sent and stale names are served as they are.
+     * Each card of the answer is validated on its own: a malformed one is null for its id only, logged by id and
+     * not cached. degraded is true only when the seed ref, the batch or the fill lock failed (UpstreamUnavailable,
+     * UpstreamContract, a lock timeout); each batched id then falls back to catalog:v1:lastgood:cardname:{id}
+     * (7 days), else its stale-but-live name, else null. The card page's catalog:v1:card:* keys are never touched.
+     *
+     * @param  list<string>  $ids
+     * @return array{cards: array<string, array{name: string, set_name: string, number: string}|null>, degraded: bool}
+     */
+    public function cardNames(array $ids): array
+    {
+        $cards = [];
+        $valid = [];
+        foreach ($ids as $id) {
+            if (array_key_exists($id, $cards)) {
+                continue;
+            }
+            $cards[$id] = null;
+            if (CardId::isValid($id)) {
+                $valid[] = $id;
+            }
+        }
+        if ($valid === []) {
+            return ['cards' => $cards, 'degraded' => false];
+        }
+
+        try {
+            $segment = $this->seedRef()->segment();
+        } catch (UpstreamUnavailable|UpstreamContract) {
+            // No seed ref, so no fresh key can be read: last-good copies only.
+            foreach ($valid as $id) {
+                $cards[$id] = $this->lastGoodName($id);
+            }
+
+            return ['cards' => $cards, 'degraded' => true];
+        }
+
+        $absent = [];
+        $stale = [];
+        foreach ($valid as $id) {
+            $key = self::nameKey($segment, $id);
+            $missing = $this->store->get("{$key}:none");
+            if (is_numeric($missing) && (int) $missing + self::NEGATIVE_SECONDS > self::now()) {
+                continue;
+            }
+            $entry = self::live($this->store->get($key), self::CARD_TTL[1]);
+            $name = $entry === null ? null : self::cardName($entry['data']);
+            if ($entry === null || $name === null) {
+                $absent[] = $id;
+
+                continue;
+            }
+            $cards[$id] = $name;
+            if (self::now() >= $entry['fetched_at'] + self::CARD_TTL[0]) {
+                $stale[] = $id;
+            }
+        }
+        if ($absent === []) {
+            return ['cards' => $cards, 'degraded' => false];
+        }
+
+        $batch = array_merge($absent, $stale);
+        sort($batch, SORT_STRING);
+
+        try {
+            $fetched = $this->fillNames($segment, $batch);
+        } catch (UpstreamUnavailable|UpstreamContract) {
+            foreach ($batch as $id) {
+                // A stale id still holds its cached name in $cards; an absent one holds null.
+                $cards[$id] = $this->lastGoodName($id) ?? $cards[$id];
+            }
+
+            return ['cards' => $cards, 'degraded' => true];
+        }
+
+        foreach ($batch as $id) {
+            // An id the answer accounts for in neither list keeps what the cache had (null when it was absent).
+            $cards[$id] = array_key_exists($id, $fetched) ? $fetched[$id] : $cards[$id];
+        }
+
+        return ['cards' => $cards, 'degraded' => false];
+    }
+
+    /**
+     * Fills the batch's names under the fill lock. A filler that finished while this one waited leaves every id
+     * fresh or under a negative marker; the cached names are then answered without a request.
+     *
+     * @param  list<string>  $batch  sorted
+     * @return array<string, array{name: string, set_name: string, number: string}|null>
+     *
+     * @throws UpstreamUnavailable when PokéSearch failed or another filler held the lock for 2 s
+     * @throws UpstreamContract when the answer's data or missing is not a list
+     */
+    private function fillNames(string $segment, array $batch): array
+    {
+        $locks = $this->store->getStore();
+        if (! $locks instanceof LockProvider) {
+            throw new LogicException('The catalog cache store cannot lock.');
+        }
+
+        try {
+            /** @var array<string, array{name: string, set_name: string, number: string}|null> $names */
+            $names = $locks->lock('catalog:v1:fill:cardnames:'.sha1(implode(',', $batch)), self::FILL_LOCK_SECONDS)->block(
+                self::FILL_WAIT_SECONDS,
+                fn (): array => $this->settledNames($segment, $batch) ?? $this->fetchNames($segment, $batch),
+            );
+        } catch (LockTimeoutException $e) {
+            throw new UpstreamUnavailable(PokeSearchClient::RETRY_AFTER_SECONDS, $e);
+        }
+
+        return $names;
+    }
+
+    /**
+     * Every id's fresh name or negative answer, or null as soon as one id has neither.
+     *
+     * @param  list<string>  $ids
+     * @return array<string, array{name: string, set_name: string, number: string}|null>|null
+     */
+    private function settledNames(string $segment, array $ids): ?array
+    {
+        $settled = [];
+        foreach ($ids as $id) {
+            $key = self::nameKey($segment, $id);
+            $missing = $this->store->get("{$key}:none");
+            if (is_numeric($missing) && (int) $missing + self::NEGATIVE_SECONDS > self::now()) {
+                $settled[$id] = null;
+
+                continue;
+            }
+            $entry = self::live($this->store->get($key), self::CARD_TTL[0]);
+            $name = $entry === null ? null : self::cardName($entry['data']);
+            if ($name === null) {
+                return null;
+            }
+            $settled[$id] = $name;
+        }
+
+        return $settled;
+    }
+
+    /**
+     * One GET /api/v1/cards?ids= for the batch. A well-formed card is kept under its fresh key and its last-good
+     * copy; a missing id gets the 60 s negative marker; a malformed card is logged by id and cached nowhere.
+     *
+     * @param  list<string>  $batch
+     * @return array<string, array{name: string, set_name: string, number: string}|null>
+     *
+     * @throws UpstreamUnavailable when PokéSearch cannot be reached or answers 5xx
+     * @throws UpstreamContract when the answer is not a JSON object or its data or missing is not a list
+     */
+    private function fetchNames(string $segment, array $batch): array
+    {
+        $answer = $this->client->cards($batch);
+        $data = $answer['data'] ?? null;
+        $missing = $answer['missing'] ?? null;
+        if (! is_array($data) || ! array_is_list($data) || ! is_array($missing) || ! array_is_list($missing)) {
+            throw new UpstreamContract('PokéSearch batch answer has no data and missing lists.');
+        }
+
+        $asked = array_fill_keys($batch, true);
+        $names = [];
+        foreach ($data as $card) {
+            $id = is_array($card) ? ($card['id'] ?? null) : null;
+            if (! is_string($id) || ! isset($asked[$id])) {
+                Log::warning('PokéSearch batch answer has a card that was not asked for.', []);
+
+                continue;
+            }
+            $key = self::nameKey($segment, $id);
+            $name = self::cardName($card);
+            if ($name === null) {
+                Log::warning('PokéSearch batch answer has a malformed card.', ['card_id' => $id]);
+                $this->store->forget($key);
+                $names[$id] = null;
+
+                continue;
+            }
+            $envelope = self::envelopeOf($name);
+            $this->store->put($key, $envelope, self::CARD_TTL[1]);
+            $this->store->put(self::lastGoodNameKey($id), $envelope, self::LAST_GOOD_SECONDS);
+            $names[$id] = $name;
+        }
+        foreach ($missing as $id) {
+            if (is_string($id) && isset($asked[$id]) && ! array_key_exists($id, $names)) {
+                $key = self::nameKey($segment, $id);
+                $this->store->put("{$key}:none", self::now(), self::NEGATIVE_SECONDS);
+                $this->store->forget($key);
+                $names[$id] = null;
+            }
+        }
+
+        return $names;
+    }
+
+    /** @return array{name: string, set_name: string, number: string}|null */
+    private function lastGoodName(string $id): ?array
+    {
+        $envelope = self::live($this->store->get(self::lastGoodNameKey($id)), self::LAST_GOOD_SECONDS);
+
+        return $envelope === null ? null : self::cardName($envelope['data']);
+    }
+
+    /**
+     * The name, set_name and number of a PokéSearch card or a cached name, each a string, else null.
+     *
+     * @return array{name: string, set_name: string, number: string}|null
+     */
+    private static function cardName(mixed $card): ?array
+    {
+        if (! is_array($card)) {
+            return null;
+        }
+        $name = $card['name'] ?? null;
+        $setName = $card['set_name'] ?? null;
+        $number = $card['number'] ?? null;
+        if (! is_string($name) || ! is_string($setName) || ! is_string($number)) {
+            return null;
+        }
+
+        return ['name' => $name, 'set_name' => $setName, 'number' => $number];
+    }
+
+    private static function nameKey(string $segment, string $id): string
+    {
+        return "catalog:v1:cardname:{$segment}:{$id}";
+    }
+
+    private static function lastGoodNameKey(string $id): string
+    {
+        return "catalog:v1:lastgood:cardname:{$id}";
     }
 
     /**

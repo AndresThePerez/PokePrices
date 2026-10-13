@@ -93,7 +93,7 @@ export interface paths {
         };
         /**
          * Read the biggest movers of the newest collected day
-         * @description The variants whose TCGplayer market close (via TCGCSV, one close per day) moved most against their previous close, from the ranked snapshot PokéPrices builds when it ingests a day: meta.day is the newest day with movers and meta.as_of its snapshot marker. A variant counts when it has a real close on that day and a previous close of at least meta.min_previous_close (2.00 USD) in the same series epoch within 14 days; direction up lists rises and down lists falls (default up), ranked by the absolute change in percent, then the absolute change, then variant_key; limit is 1 to 50 (default 20). The window is the previous close, which may be more than one day back when a day had no close. Cards are named by card_id only. With no movers yet, data is [] and meta.day and meta.as_of are null.
+         * @description The variants whose TCGplayer market close (via TCGCSV, one close per day) moved most against their previous close, from the ranked snapshot PokéPrices builds when it ingests a day: meta.day is the newest day with movers and meta.as_of its snapshot marker. A variant counts when it has a real close on that day and a previous close of at least meta.min_previous_close (2.00 USD) in the same series epoch within 14 days; direction up lists rises and down lists falls (default up), ranked by the absolute change in percent, then the absolute change, then variant_key; limit is 1 to 50 (default 20). The window is the previous close, which may be more than one day back when a day had no close. Each row names its card from the PokéSearch catalog (card is null when PokéSearch does not have the id); while PokéSearch is unavailable, names come from the last good copy or are null, and meta.degraded is true. With no movers yet, data is [] and meta.day and meta.as_of are null.
          */
         get: operations["getMovers"];
         put?: never;
@@ -219,6 +219,11 @@ export interface components {
         MoverResource: {
             rank: number;
             card_id: string;
+            card: {
+                name: string;
+                set_name: string;
+                number: string;
+            } | null;
             variant_key: string;
             finish: string;
             edition: string;
@@ -581,6 +586,7 @@ export interface operations {
                             min_previous_close: string;
                             direction: string;
                             limit: number;
+                            degraded: boolean;
                         };
                     };
                 };

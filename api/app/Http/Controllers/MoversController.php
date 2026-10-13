@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Domain\Catalog\CatalogRepository;
 use App\Domain\Pricing\Models\PriceMover;
 use App\Http\Resources\MoverResource;
 use Dedoc\Scramble\Attributes\Group;
@@ -19,11 +20,11 @@ final class MoversController
     /**
      * Read the biggest movers of the newest collected day.
      *
-     * The variants whose TCGplayer market close (via TCGCSV, one close per day) moved most against their previous close, from the ranked snapshot PokéPrices builds when it ingests a day: meta.day is the newest day with movers and meta.as_of its snapshot marker. A variant counts when it has a real close on that day and a previous close of at least meta.min_previous_close (2.00 USD) in the same series epoch within 14 days; direction up lists rises and down lists falls (default up), ranked by the absolute change in percent, then the absolute change, then variant_key; limit is 1 to 50 (default 20). The window is the previous close, which may be more than one day back when a day had no close. Cards are named by card_id only. With no movers yet, data is [] and meta.day and meta.as_of are null.
+     * The variants whose TCGplayer market close (via TCGCSV, one close per day) moved most against their previous close, from the ranked snapshot PokéPrices builds when it ingests a day: meta.day is the newest day with movers and meta.as_of its snapshot marker. A variant counts when it has a real close on that day and a previous close of at least meta.min_previous_close (2.00 USD) in the same series epoch within 14 days; direction up lists rises and down lists falls (default up), ranked by the absolute change in percent, then the absolute change, then variant_key; limit is 1 to 50 (default 20). The window is the previous close, which may be more than one day back when a day had no close. Each row names its card from the PokéSearch catalog (card is null when PokéSearch does not have the id); while PokéSearch is unavailable, names come from the last good copy or are null, and meta.degraded is true. With no movers yet, data is [] and meta.day and meta.as_of are null.
      *
      * @operationId getMovers
      */
-    public function __invoke(Request $request): AnonymousResourceCollection
+    public function __invoke(Request $request, CatalogRepository $catalog): AnonymousResourceCollection
     {
         // limit stops at 50, the rows price_movers keeps per day and direction (config('pricing.movers.limit'), D9).
         $validated = $request->validate([
@@ -56,6 +57,16 @@ final class MoversController
             ->get(['m.rank', 'm.card_id', 'm.variant_key', 'v.finish', 'v.edition', 'v.treatment', 'm.close', 'm.previous_close',
                 'm.previous_day', 'm.change', 'm.change_pct', 'm.series_epoch']);
 
+        // The names: one batched, cached catalog read of the rows' distinct card ids; it never throws (P3-i1 T08).
+        /** @var list<string> $ids */
+        $ids = $movers->pluck('card_id')->map(fn (mixed $id): string => (string) $id)->unique()->values()->all();
+        $names = $catalog->cardNames($ids);
+        foreach ($movers as $mover) {
+            $mover->setAttribute('card', $names['cards'][(string) $mover->card_id] ?? null);
+        }
+        // Compared, not copied, so the exported schema types meta.degraded as a boolean (Amendment 1).
+        $degraded = $names['degraded'] === true;
+
         return MoverResource::collection($movers)->additional(['meta' => [
             'day' => $day,
             'as_of' => $asOf,
@@ -67,6 +78,7 @@ final class MoversController
             'min_previous_close' => (string) config('pricing.movers.min_previous_close'),
             'direction' => $direction,
             'limit' => $limit,
+            'degraded' => $degraded,
         ]]);
     }
 }
