@@ -1,11 +1,10 @@
 # ADR 3: Accounts, sessions and the read-only demo
 
-Status: Proposed (draft for Andres; he moves it to docs/adr/ to accept it)
+Status: Accepted (Andres, 2026-10-14)
 
 Date: 2026-10-13
 
-Drafted during the PokéPrices P4 loop (proposed human gate HG-22). Nothing here is in force
-until Andres moves it out of `drafts/`. If he changes a decision, the orchestrator plans a
+Drafted during the PokéPrices P4 loop (proposed human gate HG-22). Accepted by Andres on 2026-10-14. If he changes a decision, the orchestrator plans a
 follow-up task; the code already implements the defaults below, and each question with its
 default is listed again in the last section. How the pieces work day to day is in
 `docs/ACCOUNTS.md`; the security evidence is in `docs/security/asvs-l1.md`.
@@ -138,6 +137,8 @@ that no operation in the contract takes a `password` parameter.
   (`AlertEligibility`), attached to no route.
 
 ## Open for Andres
+
+Ruled 2026-10-14 (R225): all defaults below stand as accepted.
 
 Each question has a default the code already uses; none blocks the loop. Q1 to Q12 are quoted
 from the P4 planner report (`.superpowers/sdd/P4-i1/stage-A/planner-report.md`); items 13 to 16

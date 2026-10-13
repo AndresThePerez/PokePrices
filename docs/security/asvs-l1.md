@@ -18,7 +18,7 @@ How to read it:
   product. `gap`: it is not met yet; the row says what is missing and where it goes.
 - A test is named by its file path and its exact description, as written in the source file (an escaped apostrophe
   therefore shows as `\'`). Pest tests sit under `api/tests`, Vitest tests under `web/src`.
-- The decisions behind these rows are in `docs/adr/drafts/0003-accounts-and-sessions.md`; how the endpoints behave is in
+- The decisions behind these rows are in `docs/adr/0003-accounts-and-sessions.md`; how the endpoints behave is in
   `docs/ACCOUNTS.md`.
 
 | Requirement | Status | Evidence |

@@ -3,7 +3,7 @@
 How accounts work on the PokéPrices dev site (`http://pokeprices.localhost:8095`): sessions, the endpoints behind
 sign-in, the invite code, the read-only demo, the watchlist and portfolio, the data a person can download or delete,
 the rate limits, and where development mail goes. This describes the code as committed on `p4-work`; the decisions
-behind it are in the draft `adr/drafts/0003-accounts-and-sessions.md`, and the security evidence is in
+behind it are in the accepted `adr/0003-accounts-and-sessions.md`, and the security evidence is in
 [`security/asvs-l1.md`](security/asvs-l1.md). Accounts use an email address and a password only: there is no social
 login, no API token and no public signup.
 

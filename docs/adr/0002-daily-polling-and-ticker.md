@@ -1,14 +1,13 @@
 # ADR 2: Daily polling and what a ticker means in PokéPrices
 
-Status: Proposed (draft for Andres; he moves it to docs/adr/ to accept it)
+Status: Accepted (Andres, 2026-10-14)
 
 Date: 2026-10-13
 
-Drafted during the PokéPrices P3 loop (proposed human gate HG-21). Nothing here is in force
-until Andres moves it out of `drafts/`. If he changes a decision, the orchestrator plans a
+Drafted during the PokéPrices P3 loop (proposed human gate HG-21). Accepted by Andres on 2026-10-14. If he changes a decision, the orchestrator plans a
 follow-up task; the code already implements the defaults below, and each question with its
 default is listed again in the last section. The day-close definitions this ADR builds on are
-in the day-close draft, `0001-day-close.md`, which is also still a draft.
+in the day-close draft, `0001-day-close.md`, which Andres accepted on 2026-10-14.
 
 ## Context
 

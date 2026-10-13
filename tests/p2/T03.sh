@@ -5,7 +5,7 @@ set -u
 cd "$(dirname "$0")/../.." || exit 1
 . tests/p0/lib.sh
 GREP=/usr/bin/grep
-F=docs/adr/drafts/0001-day-close.md
+F=docs/adr/0001-day-close.md
 
 HEADINGS='## Context
 ## Decision: the day and the close
@@ -18,15 +18,15 @@ HEADINGS='## Context
 ## Consequences
 ## Open for Andres'
 
-check "the draft exists at docs/adr/drafts/0001-day-close.md" test -s "$F"
+check "the draft exists at docs/adr/0001-day-close.md" test -s "$F"
 check "the draft is tracked by git (not a loose file)" sh -c 'git ls-files --error-unmatch "$0" >/dev/null' "$F"
-check "no ADR 1 sits outside drafts/ (it counts only after Andres moves it)" sh -c 'test -z "$(git ls-files docs/adr | '"$GREP"' -v "^docs/adr/drafts/" | '"$GREP"' -i "day-close")"'
+check "ADR 1 sits in docs/adr/ and no copy is left in drafts/ (Andres accepted it, R227)" sh -c 'test "$(git ls-files docs/adr | '"$GREP"' -i "day-close")" = "docs/adr/0001-day-close.md"'
 
 check_out "the title line is exact" '# ADR 1: Day close for PokéPrices prices' sh -c 'head -n 1 "$0"' "$F"
-check "the status line is exact and says Proposed, not Accepted" \
-  $GREP -q -x -F 'Status: Proposed (draft for Andres; he moves it to docs/adr/ to accept it)' "$F"
+check "the status line is exact and says Accepted" \
+  $GREP -q -x -F 'Status: Accepted (Andres, 2026-10-14)' "$F"
 check "the date line is an ISO date" $GREP -q -x -E 'Date: 20[0-9]{2}-[01][0-9]-[0-3][0-9]' "$F"
-check "the draft never marks itself accepted" sh -c '! '"$GREP"' -q -i -E "^status: *accepted" "$0"' "$F"
+check "the ADR carries the exact accepted status line" sh -c ''"$GREP"' -q -x -F "Status: Accepted (Andres, 2026-10-14)" "$0"' "$F"
 
 check_out "there are exactly 10 level-2 headings" 10 sh -c "$GREP -c '^## ' \"\$0\"" "$F"
 check_out "the level-2 headings are the exact titles, in order" "$HEADINGS" sh -c "$GREP '^## ' \"\$0\"" "$F"

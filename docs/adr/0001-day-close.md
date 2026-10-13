@@ -1,11 +1,10 @@
 # ADR 1: Day close for PokéPrices prices
 
-Status: Proposed (draft for Andres; he moves it to docs/adr/ to accept it)
+Status: Accepted (Andres, 2026-10-14)
 
 Date: 2026-10-13
 
-Drafted during the PokéPrices P2 loop (human gate HG-20). Nothing here is in force
-until Andres moves it out of `drafts/`. If he changes a definition, the orchestrator
+Drafted during the PokéPrices P2 loop (human gate HG-20). Accepted by Andres on 2026-10-14. If he changes a definition, the orchestrator
 plans a follow-up task; the code already implements the defaults below, and each
 default is listed again, with its question, in the last section.
 

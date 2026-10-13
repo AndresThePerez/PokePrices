@@ -8,7 +8,7 @@ cd "$(dirname "$0")/../.." || exit 1
 . tests/p0/lib.sh
 GREP=/usr/bin/grep
 M=docs/measurements/movement-volume.md
-ADR=docs/adr/drafts/0001-day-close.md
+ADR=docs/adr/0001-day-close.md
 
 if [ ! -d .data/snapshots ]; then
   printf 'skip - T13 movement volume: .data/snapshots is absent (no collected days on this machine)\n'
