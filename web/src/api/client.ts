@@ -19,6 +19,13 @@ export type PriceRange = NonNullable<
   NonNullable<operations['getCardPrices']['parameters']['query']>['range']
 >;
 
+export type MoversPage = operations['getMovers']['responses'][200]['content']['application/json'];
+export type Mover = MoversPage['data'][number];
+/** The generated direction union: 'up' (rises) | 'down' (falls). */
+export type MoversDirection = NonNullable<
+  NonNullable<operations['getMovers']['parameters']['query']>['direction']
+>;
+
 export type ApiFailure = {
   readonly ok: false;
   /** HTTP status, or 0 when no response arrived. */
@@ -154,4 +161,14 @@ export function getCardPrices(
   if (segment === null) return Promise.resolve({ ...INVALID_ID });
   const params = new URLSearchParams({ range });
   return request<CardPrices>(`/cards/${segment}/prices?${params.toString()}`, options);
+}
+
+/** GET /v1/movers?direction=&limit= (the newest movers day, ranked; limit 1 to 50). */
+export function getMovers(
+  direction: MoversDirection,
+  limit: number,
+  options: RequestOptions = {},
+): Promise<ApiResult<MoversPage>> {
+  const params = new URLSearchParams({ direction, limit: String(limit) });
+  return request<MoversPage>(`/movers?${params.toString()}`, options);
 }

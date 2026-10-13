@@ -1,10 +1,14 @@
-// The PokéPrices SPA router: three routes over the History API, no dependency.
+// The PokéPrices SPA router: four routes over the History API, no dependency.
 import { useSyncExternalStore } from 'react';
+
+/** Which list of the movers board: rises (up) or falls (down). */
+export type MoverDirection = 'up' | 'down';
 
 export type Route =
   | { readonly name: 'home' }
   | { readonly name: 'search'; readonly query: URLSearchParams }
   | { readonly name: 'card'; readonly id: string }
+  | { readonly name: 'movers'; readonly direction: MoverDirection }
   | { readonly name: 'not-found' };
 
 const NAVIGATE_EVENT = 'pokeprices:navigate';
@@ -14,6 +18,10 @@ const CARD = /^\/card\/([^/]+)$/;
 export function matchRoute(pathname: string, search: string): Route {
   if (pathname === '/') return { name: 'home' };
   if (pathname === '/search') return { name: 'search', query: new URLSearchParams(search) };
+  if (pathname === '/movers') {
+    const down = new URLSearchParams(search).get('direction') === 'down';
+    return { name: 'movers', direction: down ? 'down' : 'up' };
+  }
   const encodedId = CARD.exec(pathname)?.[1];
   if (encodedId !== undefined) {
     try {

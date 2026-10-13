@@ -2,6 +2,7 @@ import { act, cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest';
 import App from './App';
 import { cardPath, matchRoute, navigate } from './router';
+import { answerMovers, stubFetch } from './test/fixtures';
 
 function visit(path: string): void {
   window.history.replaceState(null, '', path);
@@ -49,6 +50,30 @@ describe('matchRoute', () => {
   });
 });
 
+describe('the movers route (T09 criterion 1)', () => {
+  it('matches /movers with the direction up unless the query asks for down', () => {
+    expect(matchRoute('/movers', '')).toEqual({ name: 'movers', direction: 'up' });
+    expect(matchRoute('/movers', '?direction=down')).toEqual({ name: 'movers', direction: 'down' });
+    expect(matchRoute('/movers', '?direction=up')).toEqual({ name: 'movers', direction: 'up' });
+    for (const search of ['?direction=DOWN', '?direction=sideways', '?direction=', '?limit=5']) {
+      expect(matchRoute('/movers', search)).toEqual({ name: 'movers', direction: 'up' });
+    }
+  });
+
+  it('keeps /movers/ and /movers/x not-found', () => {
+    for (const path of ['/movers/', '/movers/x', '/movers/down']) {
+      expect(matchRoute(path, '')).toEqual({ name: 'not-found' });
+    }
+  });
+
+  it('renders the board at /movers', () => {
+    stubFetch(answerMovers);
+    visit('/movers?direction=down');
+    render(<App />);
+    expect(heading()).toBe('Biggest moves');
+  });
+});
+
 describe('cardPath', () => {
   it('encodes the id into one path segment that matchRoute reads back unchanged', () => {
     expect(cardPath('ex10-?')).toBe('/card/ex10-%3F');
@@ -79,6 +104,7 @@ describe('App routes', () => {
   });
 
   it('renders not-found for an unknown path, with a link home that navigates in place', () => {
+    stubFetch(answerMovers);
     visit('/no-such-page');
     render(<App />);
     expect(heading()).toBe('Page not found');

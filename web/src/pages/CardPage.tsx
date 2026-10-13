@@ -12,7 +12,7 @@ import {
   type PricePoint,
 } from '../api/client';
 import Sparkline from '../chart/Sparkline';
-import { changeLine, grouped, variantLabel } from '../format';
+import { PRICE_FOOTNOTE, changeLine, grouped, variantLabel } from '../format';
 import { unwrap } from '../query';
 import PriceHistory from './PriceHistory';
 
@@ -73,8 +73,6 @@ function imageHost(url: string): string | null {
 }
 
 type Price = NonNullable<Variant['price']>;
-
-const PRICE_FOOTNOTE = 'TCGplayer market prices via TCGCSV, collected once a day.';
 
 /** A point as the history answer must carry it; anything else draws no sparkline. */
 function isPoint(value: unknown): value is PricePoint {

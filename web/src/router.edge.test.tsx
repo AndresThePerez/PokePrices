@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import App from './App';
 import Link from './Link';
 import { cardPath, matchRoute, navigate } from './router';
+import { answerMovers, stubFetch } from './test/fixtures';
 
 function visit(path: string): void {
   window.history.replaceState(null, '', path);
@@ -107,6 +108,7 @@ describe('router edge cases', () => {
   });
 
   it('shows no live or real-time wording on any route', () => {
+    stubFetch(answerMovers);
     for (const path of ['/', '/search', '/card/ex10-%3F', '/nowhere']) {
       visit(path);
       const { unmount } = render(<App />);

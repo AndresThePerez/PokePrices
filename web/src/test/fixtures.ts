@@ -461,6 +461,85 @@ export function historyFor(card: CardBody): PricesBody {
   return historyBody(series, { to, from: to === null ? null : '2026-09-13' });
 }
 
+export type MoversBody = operations['getMovers']['responses'][200]['content']['application/json'];
+export type Mover = Schemas['MoverResource'];
+
+/** A mover row (GET /v1/movers): Chimecho's reverse holo up 361.30 %, unless `fields` say otherwise. */
+export function moverOf(fields: Partial<Mover> = {}): Mover {
+  return {
+    rank: 1,
+    card_id: 'ex5-17',
+    card: { name: 'Chimecho', set_name: 'Hidden Legends', number: '17' },
+    variant_key: 'ex5-17:reverse:-:-',
+    finish: 'reverse',
+    edition: '-',
+    treatment: '-',
+    close: '26.34',
+    previous_close: '5.71',
+    previous_day: '2026-10-11',
+    change: '20.63',
+    change_pct: '361.30',
+    series_epoch: 1,
+    ...fields,
+  } satisfies Mover;
+}
+
+/** The biggest rise of 2026-10-12. */
+export const risingMover = moverOf();
+
+/** The biggest fall of 2026-10-12: Cacturne ex, holo, down 60.54 %. */
+export const fallingMover = moverOf({
+  card_id: 'ex9-91',
+  card: { name: 'Cacturne ex', set_name: 'Emerald', number: '91' },
+  variant_key: 'ex9-91:holo:-:-',
+  finish: 'holo',
+  close: '65.11',
+  previous_close: '165.00',
+  change: '-99.89',
+  change_pct: '-60.54',
+});
+
+/** GET /v1/movers for one direction over the given rows; the day defaults to 2026-10-12. */
+export function moversBody(
+  direction: 'up' | 'down',
+  rows: readonly Mover[],
+  meta: Partial<MoversBody['meta']> = {},
+): MoversBody {
+  return {
+    data: [...rows],
+    meta: {
+      day: '2026-10-12',
+      as_of: '2026-10-12T20:05:44Z',
+      source: 'tcgplayer',
+      feed: 'tcgcsv',
+      basis: 'market',
+      currency: 'USD',
+      window: 'previous_close',
+      min_previous_close: '2.00',
+      direction,
+      limit: 50,
+      degraded: false,
+      ...meta,
+    },
+  } satisfies MoversBody;
+}
+
+/** True for a GET /v1/movers URL. */
+export function isMoversUrl(url: string): boolean {
+  return url.startsWith('/v1/movers?');
+}
+
+/**
+ * A fetch reply for tests that render the home page: a movers URL gets one rising or one falling
+ * row (by its direction), any other URL fails like a request that reached no server.
+ */
+export function answerMovers(url: string): Response | Error {
+  if (!isMoversUrl(url)) return new Error('no request expected');
+  return url.includes('direction=down')
+    ? jsonResponse(moversBody('down', [fallingMover]))
+    : jsonResponse(moversBody('up', [risingMover]));
+}
+
 /** True for a GET /v1/cards/{id}/prices URL (the history request). */
 export function isHistoryUrl(url: string): boolean {
   return url.includes('/prices?range=');

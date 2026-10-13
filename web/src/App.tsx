@@ -3,6 +3,8 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import Header from './Header';
 import Link from './Link';
 import CardPage from './pages/CardPage';
+import { BiggestMoves } from './pages/MoverList';
+import MoversPage from './pages/MoversPage';
 import SearchPage from './pages/SearchPage';
 import { createQueryClient } from './query';
 import { useRoute } from './router';
@@ -26,12 +28,15 @@ function Routes() {
             Pokémon card prices at the daily close. Every price shows its source and the date it is
             as of.
           </p>
+          <BiggestMoves />
         </Page>
       );
     case 'search':
       return <SearchPage query={route.query} />;
     case 'card':
       return <CardPage key={route.id} id={route.id} />;
+    case 'movers':
+      return <MoversPage direction={route.direction} />;
     case 'not-found':
       return (
         <Page title="Page not found">

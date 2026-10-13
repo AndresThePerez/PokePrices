@@ -20,6 +20,9 @@ export interface ChangeFields {
   readonly change_pct: string | null;
 }
 
+/** The footnote under every list of prices: where the market prices come from and how often. */
+export const PRICE_FOOTNOTE = 'TCGplayer market prices via TCGCSV, collected once a day.';
+
 /** finish, edition and treatment in words; '-' and '' mean "none" in the variant key. */
 export function variantLabel(variant: VariantNaming): string {
   const parts = [variant.finish, variant.edition, variant.treatment].filter(

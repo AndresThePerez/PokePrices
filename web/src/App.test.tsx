@@ -1,6 +1,7 @@
 import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
+import { answerMovers, stubFetch } from './test/fixtures';
 
 afterEach(() => {
   cleanup();
@@ -11,11 +12,13 @@ afterEach(() => {
 
 describe('App', () => {
   it('names the product with its accent', () => {
+    stubFetch(answerMovers);
     render(<App />);
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('PokéPrices');
   });
 
   it('states the daily-close basis and never claims real-time prices', () => {
+    stubFetch(answerMovers);
     const { container } = render(<App />);
     const text = container.textContent.toLowerCase();
     expect(text).toContain('daily close');
@@ -25,6 +28,7 @@ describe('App', () => {
   });
 
   it('mounts into #root from main.tsx', async () => {
+    stubFetch(answerMovers);
     document.body.innerHTML = '<div id="root"></div>';
     await act(async () => {
       await import('./main');
