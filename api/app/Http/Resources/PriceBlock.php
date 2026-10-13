@@ -1,0 +1,67 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Resources;
+
+use App\Domain\Pricing\Models\PriceLatest;
+
+/**
+ * The price block of a variant (P2-i1 T05, D4, D5), shared by the card page (CardResource) and the watchlist and
+ * portfolio (plan P4-i1 T05, D6): its latest TCGplayer close via TCGCSV with the previous close and change, or null
+ * when the collected snapshots hold no close for it. Money and change_pct are decimal strings with two decimals as
+ * Postgres numeric(12,2) gives them; day and previous_day are YYYY-MM-DD and as_of (the snapshot marker of the close)
+ * is RFC 3339 UTC.
+ */
+final class PriceBlock
+{
+    /** The price_latest columns a joined read selects as price_<column> to build the block with fromRow(). */
+    public const array COLUMNS = ['variant_key', 'source', 'series_epoch', 'close', 'day', 'as_of', 'previous_close', 'previous_day', 'change', 'change_pct'];
+
+    /**
+     * @return array{source: string, feed: string, basis: string, currency: string, cadence: string, close: string, day: string, as_of: string, previous_close: string|null, previous_day: string|null, change: string|null, change_pct: string|null, series_epoch: int}|null
+     */
+    public static function from(?PriceLatest $latest): ?array
+    {
+        if ($latest === null) {
+            return null;
+        }
+
+        return [
+            'source' => $latest->source,
+            'feed' => (string) config('pricing.feed'),
+            'basis' => 'market',
+            'currency' => 'USD',
+            'cadence' => 'daily',
+            'close' => $latest->close,
+            'day' => $latest->day->format('Y-m-d'),
+            'as_of' => $latest->as_of->utc()->format('Y-m-d\TH:i:s\Z'),
+            'previous_close' => $latest->previous_close,
+            'previous_day' => $latest->previous_day?->format('Y-m-d'),
+            'change' => $latest->change,
+            'change_pct' => $latest->change_pct,
+            'series_epoch' => $latest->series_epoch,
+        ];
+    }
+
+    /**
+     * The block of a row that LEFT JOINed price_latest with every COLUMNS entry selected as price_<column>: the row's
+     * price_latest values become a PriceLatest exactly as an eager load would hydrate it, so the block is the card
+     * page's, key for key. Null when the join found no close (price_variant_key is null).
+     *
+     * @param  array<string, mixed>  $row
+     * @return array{source: string, feed: string, basis: string, currency: string, cadence: string, close: string, day: string, as_of: string, previous_close: string|null, previous_day: string|null, change: string|null, change_pct: string|null, series_epoch: int}|null
+     */
+    public static function fromRow(array $row): ?array
+    {
+        if (($row['price_variant_key'] ?? null) === null) {
+            return null;
+        }
+        $attributes = [];
+        foreach (self::COLUMNS as $column) {
+            $attributes[$column] = $row['price_'.$column] ?? null;
+        }
+
+        return self::from((new PriceLatest)->newFromBuilder($attributes));
+    }
+}

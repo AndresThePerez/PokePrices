@@ -92,6 +92,640 @@
                 }
             }
         },
+        "/watchlist": {
+            "get": {
+                "operationId": "getWatchlist",
+                "description": "The variants on the signed-in account's watchlist, ordered by card id, then variant key. Each carries its card's name, set name and number from the Pok\u00e9Search catalog (card is null when Pok\u00e9Search does not have the id; while Pok\u00e9Search is unavailable, names come from the last good copy or are null, and meta.degraded is true) and the card page's price block: the variant's newest daily close from TCGplayer market prices via TCGCSV with source, feed, day and as_of, the previous close and the change (price is null when the collected snapshots hold no close for it). meta.limit is the most variants a watchlist holds. The answer is never cached.",
+                "summary": "Read your watchlist",
+                "tags": [
+                    "Account"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `WatchlistItemResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/WatchlistItemResource"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "count": {
+                                                    "type": "integer"
+                                                },
+                                                "limit": {
+                                                    "type": "integer"
+                                                },
+                                                "degraded": {
+                                                    "type": "boolean"
+                                                }
+                                            },
+                                            "required": [
+                                                "count",
+                                                "limit",
+                                                "degraded"
+                                            ],
+                                            "additionalProperties": false
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ],
+                                    "additionalProperties": false
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated: sign in first (problem type https://pokeprices.andrestheperez.com/problems/unauthenticated).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests: the rate limit of this route is spent.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds until the limit resets.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/watchlist/{variantKey}": {
+            "put": {
+                "operationId": "putWatchlistItem",
+                "description": "Puts the variant on the watchlist; the answer is the same 200 whether it was added now or was already there. A key that names no Pok\u00e9Prices variant, or a full watchlist (meta.limit variants), answers 422 with errors.variant_key. The demo account is read-only (403 demo-read-only).",
+                "summary": "Add a variant to your watchlist",
+                "tags": [
+                    "Account"
+                ],
+                "parameters": [
+                    {
+                        "name": "variantKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`WatchlistEntryResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/WatchlistEntryResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ],
+                                    "additionalProperties": false
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated: sign in first (problem type https://pokeprices.andrestheperez.com/problems/unauthenticated).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The demo account is read-only (problem type https://pokeprices.andrestheperez.com/problems/demo-read-only).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "419": {
+                        "description": "The CSRF token is missing or stale: GET /sanctum/csrf-cookie and retry (problem type https://pokeprices.andrestheperez.com/problems/csrf-token-mismatch).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests: the rate limit of this route is spent.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds until the limit resets.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "deleteWatchlistItem",
+                "description": "Takes the variant off the watchlist; 204 also when it was not there. The demo account is read-only (403 demo-read-only).",
+                "summary": "Remove a variant from your watchlist",
+                "tags": [
+                    "Account"
+                ],
+                "parameters": [
+                    {
+                        "name": "variantKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "401": {
+                        "description": "Unauthenticated: sign in first (problem type https://pokeprices.andrestheperez.com/problems/unauthenticated).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The demo account is read-only (problem type https://pokeprices.andrestheperez.com/problems/demo-read-only).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "419": {
+                        "description": "The CSRF token is missing or stale: GET /sanctum/csrf-cookie and retry (problem type https://pokeprices.andrestheperez.com/problems/csrf-token-mismatch).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests: the rate limit of this route is spent.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds until the limit resets.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/portfolio": {
+            "get": {
+                "operationId": "getPortfolio",
+                "description": "The variants the signed-in account holds, ordered by card id, then variant key, each with its quantity, its card's name from the Pok\u00e9Search catalog (as on the watchlist; meta.degraded is true while Pok\u00e9Search is unavailable) and the card page's price block from TCGplayer market prices via TCGCSV. value is quantity \u00d7 close, computed by Pok\u00e9Prices as a decimal string; it is null when the collected snapshots hold no close for the variant, which is then never counted as zero. meta.total_value sums the priced holdings (null when none is priced), meta.priced and meta.unpriced count them, and meta.first_day and meta.last_day are the oldest and newest close days the total rests on. The answer is never cached.",
+                "summary": "Read your portfolio",
+                "tags": [
+                    "Account"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `HoldingResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/HoldingResource"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "count": {
+                                                    "type": "integer"
+                                                },
+                                                "limit": {
+                                                    "type": "integer"
+                                                },
+                                                "total_value": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "priced": {
+                                                    "type": "integer"
+                                                },
+                                                "unpriced": {
+                                                    "type": "integer"
+                                                },
+                                                "first_day": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "last_day": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "source": {
+                                                    "type": "string"
+                                                },
+                                                "feed": {
+                                                    "type": "string"
+                                                },
+                                                "basis": {
+                                                    "type": "string",
+                                                    "const": "market"
+                                                },
+                                                "currency": {
+                                                    "type": "string",
+                                                    "const": "USD"
+                                                },
+                                                "degraded": {
+                                                    "type": "boolean"
+                                                }
+                                            },
+                                            "required": [
+                                                "count",
+                                                "limit",
+                                                "total_value",
+                                                "priced",
+                                                "unpriced",
+                                                "first_day",
+                                                "last_day",
+                                                "source",
+                                                "feed",
+                                                "basis",
+                                                "currency",
+                                                "degraded"
+                                            ],
+                                            "additionalProperties": false
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ],
+                                    "additionalProperties": false
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated: sign in first (problem type https://pokeprices.andrestheperez.com/problems/unauthenticated).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests: the rate limit of this route is spent.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds until the limit resets.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/portfolio/{variantKey}": {
+            "put": {
+                "operationId": "putHolding",
+                "description": "Sets the quantity (1 to 9999) held of the variant, creating the holding when needed; the quantity is set, never added to, and the answer is the same 200 either way. A key that names no Pok\u00e9Prices variant, a full portfolio (meta.limit variants) or a bad quantity answers 422. The demo account is read-only (403 demo-read-only).",
+                "summary": "Set how many of a variant you hold",
+                "tags": [
+                    "Account"
+                ],
+                "parameters": [
+                    {
+                        "name": "variantKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "quantity": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 9999
+                                    }
+                                },
+                                "required": [
+                                    "quantity"
+                                ],
+                                "additionalProperties": false
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "`HoldingEntryResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/HoldingEntryResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ],
+                                    "additionalProperties": false
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated: sign in first (problem type https://pokeprices.andrestheperez.com/problems/unauthenticated).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The demo account is read-only (problem type https://pokeprices.andrestheperez.com/problems/demo-read-only).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "419": {
+                        "description": "The CSRF token is missing or stale: GET /sanctum/csrf-cookie and retry (problem type https://pokeprices.andrestheperez.com/problems/csrf-token-mismatch).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests: the rate limit of this route is spent.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds until the limit resets.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "operationId": "deleteHolding",
+                "description": "Removes the holding; 204 also when it was not there. The demo account is read-only (403 demo-read-only).",
+                "summary": "Remove a variant from your portfolio",
+                "tags": [
+                    "Account"
+                ],
+                "parameters": [
+                    {
+                        "name": "variantKey",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "401": {
+                        "description": "Unauthenticated: sign in first (problem type https://pokeprices.andrestheperez.com/problems/unauthenticated).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The demo account is read-only (problem type https://pokeprices.andrestheperez.com/problems/demo-read-only).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "419": {
+                        "description": "The CSRF token is missing or stale: GET /sanctum/csrf-cookie and retry (problem type https://pokeprices.andrestheperez.com/problems/csrf-token-mismatch).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests: the rate limit of this route is spent.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds until the limit resets.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/demo/session": {
+            "post": {
+                "operationId": "startDemoSession",
+                "description": "Signs this browser session in as the shared demo account, which holds a seeded watchlist and portfolio and can\nread them but change nothing (every write answers 403 demo-read-only). The session is regenerated. Send it as\na first-party request with the X-XSRF-TOKEN header from GET /sanctum/csrf-cookie. When the demo is switched off\nor has not been seeded, the answer is 404 demo-unavailable.",
+                "summary": "Sign in to the read-only demo account",
+                "tags": [
+                    "Account"
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "404": {
+                        "description": "An error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "419": {
+                        "description": "The CSRF token is missing or stale: GET /sanctum/csrf-cookie and retry (problem type https://pokeprices.andrestheperez.com/problems/csrf-token-mismatch).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests: the rate limit of this route is spent.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds until the limit resets.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/cards": {
             "get": {
                 "operationId": "searchCards",
@@ -1254,6 +1888,163 @@
                 "additionalProperties": false,
                 "title": "CardSummaryResource"
             },
+            "HoldingEntryResource": {
+                "type": "object",
+                "properties": {
+                    "variant_key": {
+                        "type": "string"
+                    },
+                    "quantity": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "variant_key",
+                    "quantity"
+                ],
+                "additionalProperties": false,
+                "title": "HoldingEntryResource"
+            },
+            "HoldingResource": {
+                "type": "object",
+                "properties": {
+                    "variant_key": {
+                        "type": "string"
+                    },
+                    "card_id": {
+                        "type": "string"
+                    },
+                    "finish": {
+                        "type": "string"
+                    },
+                    "edition": {
+                        "type": "string"
+                    },
+                    "treatment": {
+                        "type": "string"
+                    },
+                    "card": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "set_name": {
+                                "type": "string"
+                            },
+                            "number": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "name",
+                            "set_name",
+                            "number"
+                        ],
+                        "additionalProperties": false
+                    },
+                    "price": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "properties": {
+                            "source": {
+                                "type": "string"
+                            },
+                            "feed": {
+                                "type": "string"
+                            },
+                            "basis": {
+                                "type": "string"
+                            },
+                            "currency": {
+                                "type": "string"
+                            },
+                            "cadence": {
+                                "type": "string"
+                            },
+                            "close": {
+                                "type": "string"
+                            },
+                            "day": {
+                                "type": "string"
+                            },
+                            "as_of": {
+                                "type": "string"
+                            },
+                            "previous_close": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "previous_day": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "change": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "change_pct": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "series_epoch": {
+                                "type": "integer"
+                            }
+                        },
+                        "required": [
+                            "source",
+                            "feed",
+                            "basis",
+                            "currency",
+                            "cadence",
+                            "close",
+                            "day",
+                            "as_of",
+                            "previous_close",
+                            "previous_day",
+                            "change",
+                            "change_pct",
+                            "series_epoch"
+                        ],
+                        "additionalProperties": false
+                    },
+                    "quantity": {
+                        "type": "integer"
+                    },
+                    "value": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "variant_key",
+                    "card_id",
+                    "finish",
+                    "edition",
+                    "treatment",
+                    "card",
+                    "price",
+                    "quantity",
+                    "value"
+                ],
+                "additionalProperties": false,
+                "title": "HoldingResource"
+            },
             "MeResource": {
                 "type": "object",
                 "properties": {
@@ -1492,6 +2283,148 @@
                 ],
                 "additionalProperties": false,
                 "title": "Problem"
+            },
+            "WatchlistEntryResource": {
+                "type": "object",
+                "properties": {
+                    "variant_key": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "variant_key"
+                ],
+                "additionalProperties": false,
+                "title": "WatchlistEntryResource"
+            },
+            "WatchlistItemResource": {
+                "type": "object",
+                "properties": {
+                    "variant_key": {
+                        "type": "string"
+                    },
+                    "card_id": {
+                        "type": "string"
+                    },
+                    "finish": {
+                        "type": "string"
+                    },
+                    "edition": {
+                        "type": "string"
+                    },
+                    "treatment": {
+                        "type": "string"
+                    },
+                    "card": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "set_name": {
+                                "type": "string"
+                            },
+                            "number": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "name",
+                            "set_name",
+                            "number"
+                        ],
+                        "additionalProperties": false
+                    },
+                    "price": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "properties": {
+                            "source": {
+                                "type": "string"
+                            },
+                            "feed": {
+                                "type": "string"
+                            },
+                            "basis": {
+                                "type": "string"
+                            },
+                            "currency": {
+                                "type": "string"
+                            },
+                            "cadence": {
+                                "type": "string"
+                            },
+                            "close": {
+                                "type": "string"
+                            },
+                            "day": {
+                                "type": "string"
+                            },
+                            "as_of": {
+                                "type": "string"
+                            },
+                            "previous_close": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "previous_day": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "change": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "change_pct": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "series_epoch": {
+                                "type": "integer"
+                            }
+                        },
+                        "required": [
+                            "source",
+                            "feed",
+                            "basis",
+                            "currency",
+                            "cadence",
+                            "close",
+                            "day",
+                            "as_of",
+                            "previous_close",
+                            "previous_day",
+                            "change",
+                            "change_pct",
+                            "series_epoch"
+                        ],
+                        "additionalProperties": false
+                    }
+                },
+                "required": [
+                    "variant_key",
+                    "card_id",
+                    "finish",
+                    "edition",
+                    "treatment",
+                    "card",
+                    "price"
+                ],
+                "additionalProperties": false,
+                "title": "WatchlistItemResource"
             }
         }
     }

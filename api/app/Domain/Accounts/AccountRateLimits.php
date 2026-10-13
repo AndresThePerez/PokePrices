@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Accounts;
 
+use App\Models\User;
 use Illuminate\Cache\RateLimiter;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
@@ -15,13 +16,15 @@ use RuntimeException;
  * A 429 is the existing problem too-many-requests with Retry-After.
  *
  * Keys: login by the normalised email and the IP (a non-string email keys as ''); two-factor by the pending sign-in
- * in the session (Fortify's login.id); register and account-guest by IP; password-confirm and account by user.
+ * in the session (Fortify's login.id); register, account-guest and demo-session by IP; password-confirm and account
+ * by user. The shared demo user is not one person, so on the account tier it gets the account-demo value keyed
+ * demo:<ip> instead (plan P4-i1 T06): one visitor cannot spend the demo's budget for every other visitor.
  */
 final class AccountRateLimits
 {
     public const string CONFIG = 'accounts.rate_limits';
 
-    public const array TIERS = ['login', 'two-factor', 'register', 'account-guest', 'password-confirm', 'account'];
+    public const array TIERS = ['login', 'two-factor', 'register', 'account-guest', 'password-confirm', 'account', 'account-demo', 'demo-session'];
 
     /**
      * Checks the tiers now (a malformed tier fails the boot), then names the limiters on every RateLimiter the
@@ -77,8 +80,17 @@ final class AccountRateLimits
     private static function apply(RateLimiter $limiter, array $tiers): void
     {
         foreach ($tiers as $name => $perMinute) {
-            $limiter->for($name, static fn (Request $request): Limit => Limit::perMinute($perMinute)->by(self::key($name, $request)));
+            $limiter->for($name, static fn (Request $request): Limit => $name === 'account' && self::isDemo($request)
+                ? Limit::perMinute($tiers['account-demo'])->by(self::key('account-demo', $request))
+                : Limit::perMinute($perMinute)->by(self::key($name, $request)));
         }
+    }
+
+    private static function isDemo(Request $request): bool
+    {
+        $user = $request->user();
+
+        return $user instanceof User && $user->is_demo;
     }
 
     private static function key(string $tier, Request $request): string
@@ -87,6 +99,7 @@ final class AccountRateLimits
             'login' => self::loginKey($request),
             'two-factor' => self::pendingSignIn($request),
             'password-confirm', 'account' => self::user($request),
+            'account-demo' => 'demo:'.$request->ip(),
             default => (string) $request->ip(),
         };
     }

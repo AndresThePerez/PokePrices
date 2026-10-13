@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Middleware\DemoReadOnly;
 use App\OpenApi\ContractDocument;
 use Dedoc\Scramble\Support\Generator\Components;
 use Dedoc\Scramble\Support\Generator\InfoObject;
@@ -111,4 +112,29 @@ it('adds 401 and 419 together to a non-GET route in an authenticated stateful gr
     $spec = accTransform($router, [accOperation('v1/watch/{key}', 'put')]);
 
     expect(accCodes($spec, '/watch/{key}', 'put'))->toBe(['200', '401', '419']);
+});
+
+// Plan P4-i1 T06 criterion 5 (D4): ContractDocument adds 403 demo-read-only to non-GET routes carrying
+// App\Http\Middleware\DemoReadOnly, by route metadata.
+it('adds the 403 demo-read-only problem to non-GET routes carrying DemoReadOnly and never to GET ones', function (): void {
+    $router = accRouter(function (Router $r): void {
+        $r->middleware(['auth:sanctum', DemoReadOnly::class])->group(function (Router $r): void {
+            $r->get('v1/lists', fn (): null => null);
+            $r->put('v1/lists/{key}', fn (): null => null);
+            $r->delete('v1/lists/{key}', fn (): null => null);
+        });
+        $r->post('v1/open', fn (): null => null);
+    });
+
+    $spec = accTransform($router, [
+        accOperation('v1/lists'), accOperation('v1/lists/{key}', 'put'), accOperation('v1/lists/{key}', 'delete'), accOperation('v1/open', 'post'),
+    ]);
+    $readOnly = $spec['paths']['/lists/{key}']['delete']['responses']['403'];
+
+    expect(accCodes($spec, '/lists', 'get'))->toBe(['200', '401'])
+        ->and(accCodes($spec, '/lists/{key}', 'put'))->toBe(['200', '401', '403'])
+        ->and(accCodes($spec, '/lists/{key}', 'delete'))->toBe(['200', '401', '403'])
+        ->and(accCodes($spec, '/open', 'post'))->toBe(['200'])
+        ->and($readOnly['description'])->toBe('The demo account is read-only (problem type https://pokeprices.andrestheperez.com/problems/demo-read-only).')
+        ->and($readOnly['content'])->toBe(['application/problem+json' => ['schema' => ['$ref' => '#/components/schemas/Problem']]]);
 });

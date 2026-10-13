@@ -26,6 +26,117 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/watchlist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read your watchlist
+         * @description The variants on the signed-in account's watchlist, ordered by card id, then variant key. Each carries its card's name, set name and number from the PokéSearch catalog (card is null when PokéSearch does not have the id; while PokéSearch is unavailable, names come from the last good copy or are null, and meta.degraded is true) and the card page's price block: the variant's newest daily close from TCGplayer market prices via TCGCSV with source, feed, day and as_of, the previous close and the change (price is null when the collected snapshots hold no close for it). meta.limit is the most variants a watchlist holds. The answer is never cached.
+         */
+        get: operations["getWatchlist"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/watchlist/{variantKey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Add a variant to your watchlist
+         * @description Puts the variant on the watchlist; the answer is the same 200 whether it was added now or was already there. A key that names no PokéPrices variant, or a full watchlist (meta.limit variants), answers 422 with errors.variant_key. The demo account is read-only (403 demo-read-only).
+         */
+        put: operations["putWatchlistItem"];
+        post?: never;
+        /**
+         * Remove a variant from your watchlist
+         * @description Takes the variant off the watchlist; 204 also when it was not there. The demo account is read-only (403 demo-read-only).
+         */
+        delete: operations["deleteWatchlistItem"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portfolio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read your portfolio
+         * @description The variants the signed-in account holds, ordered by card id, then variant key, each with its quantity, its card's name from the PokéSearch catalog (as on the watchlist; meta.degraded is true while PokéSearch is unavailable) and the card page's price block from TCGplayer market prices via TCGCSV. value is quantity × close, computed by PokéPrices as a decimal string; it is null when the collected snapshots hold no close for the variant, which is then never counted as zero. meta.total_value sums the priced holdings (null when none is priced), meta.priced and meta.unpriced count them, and meta.first_day and meta.last_day are the oldest and newest close days the total rests on. The answer is never cached.
+         */
+        get: operations["getPortfolio"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/portfolio/{variantKey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set how many of a variant you hold
+         * @description Sets the quantity (1 to 9999) held of the variant, creating the holding when needed; the quantity is set, never added to, and the answer is the same 200 either way. A key that names no PokéPrices variant, a full portfolio (meta.limit variants) or a bad quantity answers 422. The demo account is read-only (403 demo-read-only).
+         */
+        put: operations["putHolding"];
+        post?: never;
+        /**
+         * Remove a variant from your portfolio
+         * @description Removes the holding; 204 also when it was not there. The demo account is read-only (403 demo-read-only).
+         */
+        delete: operations["deleteHolding"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/demo/session": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Sign in to the read-only demo account
+         * @description Signs this browser session in as the shared demo account, which holds a seeded watchlist and portfolio and can
+         *     read them but change nothing (every write answers 403 demo-read-only). The session is regenerated. Send it as
+         *     a first-party request with the X-XSRF-TOKEN header from GET /sanctum/csrf-cookie. When the demo is switched off
+         *     or has not been seeded, the answer is 404 demo-unavailable.
+         */
+        post: operations["startDemoSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/cards": {
         parameters: {
             query?: never;
@@ -237,6 +348,41 @@ export interface components {
             release_date: string;
             image_small: string;
         };
+        /** HoldingEntryResource */
+        HoldingEntryResource: {
+            variant_key: string;
+            quantity: number;
+        };
+        /** HoldingResource */
+        HoldingResource: {
+            variant_key: string;
+            card_id: string;
+            finish: string;
+            edition: string;
+            treatment: string;
+            card: {
+                name: string;
+                set_name: string;
+                number: string;
+            } | null;
+            price: {
+                source: string;
+                feed: string;
+                basis: string;
+                currency: string;
+                cadence: string;
+                close: string;
+                day: string;
+                as_of: string;
+                previous_close: string | null;
+                previous_day: string | null;
+                change: string | null;
+                change_pct: string | null;
+                series_epoch: number;
+            } | null;
+            quantity: number;
+            value: string | null;
+        };
         /** MeResource */
         MeResource: {
             email: string;
@@ -301,6 +447,38 @@ export interface components {
             /** @description card-not-found only: true when PokéSearch no longer has the card but PokéPrices still holds variant rows for it. */
             catalog_missing?: boolean;
         };
+        /** WatchlistEntryResource */
+        WatchlistEntryResource: {
+            variant_key: string;
+        };
+        /** WatchlistItemResource */
+        WatchlistItemResource: {
+            variant_key: string;
+            card_id: string;
+            finish: string;
+            edition: string;
+            treatment: string;
+            card: {
+                name: string;
+                set_name: string;
+                number: string;
+            } | null;
+            price: {
+                source: string;
+                feed: string;
+                basis: string;
+                currency: string;
+                cadence: string;
+                close: string;
+                day: string;
+                as_of: string;
+                previous_close: string | null;
+                previous_day: string | null;
+                change: string | null;
+                change_pct: string | null;
+                series_epoch: number;
+            } | null;
+        };
     };
     responses: never;
     parameters: never;
@@ -332,6 +510,422 @@ export interface operations {
             };
             /** @description Unauthenticated: sign in first (problem type https://pokeprices.andrestheperez.com/problems/unauthenticated). */
             401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Too Many Requests: the rate limit of this route is spent. */
+            429: {
+                headers: {
+                    /** @description Seconds until the limit resets. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getWatchlist: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of `WatchlistItemResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["WatchlistItemResource"][];
+                        meta: {
+                            count: number;
+                            limit: number;
+                            degraded: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Unauthenticated: sign in first (problem type https://pokeprices.andrestheperez.com/problems/unauthenticated). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Too Many Requests: the rate limit of this route is spent. */
+            429: {
+                headers: {
+                    /** @description Seconds until the limit resets. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    putWatchlistItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                variantKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `WatchlistEntryResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["WatchlistEntryResource"];
+                    };
+                };
+            };
+            /** @description Unauthenticated: sign in first (problem type https://pokeprices.andrestheperez.com/problems/unauthenticated). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The demo account is read-only (problem type https://pokeprices.andrestheperez.com/problems/demo-read-only). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The CSRF token is missing or stale: GET /sanctum/csrf-cookie and retry (problem type https://pokeprices.andrestheperez.com/problems/csrf-token-mismatch). */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Too Many Requests: the rate limit of this route is spent. */
+            429: {
+                headers: {
+                    /** @description Seconds until the limit resets. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    deleteWatchlistItem: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                variantKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated: sign in first (problem type https://pokeprices.andrestheperez.com/problems/unauthenticated). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The demo account is read-only (problem type https://pokeprices.andrestheperez.com/problems/demo-read-only). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The CSRF token is missing or stale: GET /sanctum/csrf-cookie and retry (problem type https://pokeprices.andrestheperez.com/problems/csrf-token-mismatch). */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Too Many Requests: the rate limit of this route is spent. */
+            429: {
+                headers: {
+                    /** @description Seconds until the limit resets. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getPortfolio: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of `HoldingResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["HoldingResource"][];
+                        meta: {
+                            count: number;
+                            limit: number;
+                            total_value: string | null;
+                            priced: number;
+                            unpriced: number;
+                            first_day: string | null;
+                            last_day: string | null;
+                            source: string;
+                            feed: string;
+                            /** @constant */
+                            basis: "market";
+                            /** @constant */
+                            currency: "USD";
+                            degraded: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Unauthenticated: sign in first (problem type https://pokeprices.andrestheperez.com/problems/unauthenticated). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Too Many Requests: the rate limit of this route is spent. */
+            429: {
+                headers: {
+                    /** @description Seconds until the limit resets. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    putHolding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                variantKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    quantity: number;
+                };
+            };
+        };
+        responses: {
+            /** @description `HoldingEntryResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["HoldingEntryResource"];
+                    };
+                };
+            };
+            /** @description Unauthenticated: sign in first (problem type https://pokeprices.andrestheperez.com/problems/unauthenticated). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The demo account is read-only (problem type https://pokeprices.andrestheperez.com/problems/demo-read-only). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The CSRF token is missing or stale: GET /sanctum/csrf-cookie and retry (problem type https://pokeprices.andrestheperez.com/problems/csrf-token-mismatch). */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Too Many Requests: the rate limit of this route is spent. */
+            429: {
+                headers: {
+                    /** @description Seconds until the limit resets. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    deleteHolding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                variantKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated: sign in first (problem type https://pokeprices.andrestheperez.com/problems/unauthenticated). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The demo account is read-only (problem type https://pokeprices.andrestheperez.com/problems/demo-read-only). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The CSRF token is missing or stale: GET /sanctum/csrf-cookie and retry (problem type https://pokeprices.andrestheperez.com/problems/csrf-token-mismatch). */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Too Many Requests: the rate limit of this route is spent. */
+            429: {
+                headers: {
+                    /** @description Seconds until the limit resets. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    startDemoSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The CSRF token is missing or stale: GET /sanctum/csrf-cookie and retry (problem type https://pokeprices.andrestheperez.com/problems/csrf-token-mismatch). */
+            419: {
                 headers: {
                     [name: string]: unknown;
                 };

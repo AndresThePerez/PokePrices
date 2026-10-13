@@ -6,7 +6,6 @@ namespace App\Http\Resources;
 
 use App\Domain\Catalog\CatalogResult;
 use App\Domain\Mapping\Models\CardVariant;
-use App\Domain\Pricing\Models\PriceLatest;
 use App\Http\Problems\UpstreamContract;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
@@ -187,42 +186,11 @@ final class CardResource extends JsonResource
                 'edition' => $variant->edition,
                 'treatment' => $variant->treatment,
                 'sources' => $sources,
-                'price' => self::price($variant->latestPrice),
+                'price' => PriceBlock::from($variant->latestPrice),
             ];
         }
 
         return $variants;
-    }
-
-    /**
-     * The price block of a variant (P2-i1 T05, D4, D5): its latest TCGplayer close via TCGCSV with the previous close
-     * and change, or null when the collected snapshots hold no close for it. Money and change_pct are decimal
-     * strings with two decimals as Postgres numeric(12,2) gives them; day and previous_day are YYYY-MM-DD and as_of
-     * (the snapshot marker of the close) is RFC 3339 UTC.
-     *
-     * @return array{source: string, feed: string, basis: string, currency: string, cadence: string, close: string, day: string, as_of: string, previous_close: string|null, previous_day: string|null, change: string|null, change_pct: string|null, series_epoch: int}|null
-     */
-    private static function price(?PriceLatest $latest): ?array
-    {
-        if ($latest === null) {
-            return null;
-        }
-
-        return [
-            'source' => $latest->source,
-            'feed' => (string) config('pricing.feed'),
-            'basis' => 'market',
-            'currency' => 'USD',
-            'cadence' => 'daily',
-            'close' => $latest->close,
-            'day' => $latest->day->format('Y-m-d'),
-            'as_of' => $latest->as_of->utc()->format('Y-m-d\TH:i:s\Z'),
-            'previous_close' => $latest->previous_close,
-            'previous_day' => $latest->previous_day?->format('Y-m-d'),
-            'change' => $latest->change,
-            'change_pct' => $latest->change_pct,
-            'series_epoch' => $latest->series_epoch,
-        ];
     }
 
     private function catalogStatus(): string

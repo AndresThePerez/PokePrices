@@ -36,7 +36,9 @@ use Illuminate\Support\Arr;
  *   declaration wins: 503 upstream-unavailable with Retry-After and 502 upstream-contract;
  * - middleware resolving to Authenticate or a subclass (`auth`, `auth:<guard>`): 401 unauthenticated (plan P4-i1 D4);
  * - middleware STATEFUL (Sanctum's EnsureFrontendRequestsAreStateful) on an operation whose method is not GET or
- *   HEAD: 419 csrf-token-mismatch (plan P4-i1 D4).
+ *   HEAD: 419 csrf-token-mismatch (plan P4-i1 D4);
+ * - middleware DEMO_READ_ONLY (App\Http\Middleware\DemoReadOnly) on an operation whose method is not GET or HEAD:
+ *   403 demo-read-only (plan P4-i1 D4).
  */
 final class ContractDocument
 {
@@ -51,6 +53,8 @@ final class ContractDocument
     public const string POKESEARCH = 'pokesearch';
 
     public const string STATEFUL = 'Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful';
+
+    public const string DEMO_READ_ONLY = 'App\Http\Middleware\DemoReadOnly';
 
     /** @param Router|null $router the routes to read; null means the application's, aliases and groups registered */
     public function __construct(private readonly ?Router $router = null) {}
@@ -93,6 +97,12 @@ final class ContractDocument
                 }
                 usort($responses, fn (Response|Reference $a, Response|Reference $b): int => strcmp(self::code($a), self::code($b)));
                 $operation->responses = $responses;
+                // Request bodies close the same way (a PUT's validated fields, plan P4-i1 T05).
+                foreach ($operation->requestBodyObject->content ?? [] as $mediaType => $schema) {
+                    if ($schema instanceof Schema && $operation->requestBodyObject !== null) {
+                        $operation->requestBodyObject->content[$mediaType] = Schema::fromType(self::close($schema->type));
+                    }
+                }
             }
         }
 
@@ -207,6 +217,10 @@ final class ContractDocument
         if ($writes && array_filter($middleware, fn (string $name): bool => is_a($name, self::STATEFUL, true)) !== []) {
             self::response($responses, 419, 'The CSRF token is missing or stale: GET /sanctum/csrf-cookie and retry (problem type '.ProblemDetails::BASE.'csrf-token-mismatch).');
         }
+        if ($writes && array_filter($middleware, fn (string $name): bool => is_a($name, self::DEMO_READ_ONLY, true)) !== []) {
+            $description = 'The demo account is read-only (problem type '.ProblemDetails::BASE.'demo-read-only).';
+            self::response($responses, 403, $description)->setDescription($description);
+        }
     }
 
     /**
@@ -288,7 +302,7 @@ final class ContractDocument
             ->setRequired(['type', 'title', 'status', 'instance', 'request_id', 'detail', 'checks']);
     }
 
-    /** Every object schema that lists properties becomes closed, nested ones included. */
+    /** Every object schema that lists properties becomes closed, nested ones included (response and request bodies). */
     private static function close(Type $type): Type
     {
         if ($type instanceof ObjectType) {
