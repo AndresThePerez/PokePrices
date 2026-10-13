@@ -123,6 +123,7 @@ it('serves the exact 1W points of a card, a filled point carrying its filled_fro
             'finish' => 'holo',
             'edition' => '-',
             'treatment' => '-',
+            'history_begins' => '2026-10-09',
             'points' => [
                 t11Point('2026-10-09', '12.00', null, '2026-10-09T20:05:41Z'),
                 t11Point('2026-10-10', '12.20', null, '2026-10-10T20:05:42Z'),
@@ -230,7 +231,7 @@ it('answers nulls and empty series before any day is ingested', function (): voi
 
     $response->assertOk();
     expect($response->json())->toBe([
-        'data' => [['variant_key' => 'basep-8:holo:-:-', 'finish' => 'holo', 'edition' => '-', 'treatment' => '-', 'points' => []]],
+        'data' => [['variant_key' => 'basep-8:holo:-:-', 'finish' => 'holo', 'edition' => '-', 'treatment' => '-', 'history_begins' => null, 'points' => []]],
         'meta' => [
             'source' => 'tcgplayer', 'feed' => 'tcgcsv', 'basis' => 'market', 'currency' => 'USD', 'cadence' => 'daily',
             'range' => '1W', 'from' => null, 'to' => null, 'as_of' => null,

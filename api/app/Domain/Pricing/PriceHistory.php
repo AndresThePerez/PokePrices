@@ -6,6 +6,7 @@ namespace App\Domain\Pricing;
 
 use App\Domain\Mapping\Models\CardVariant;
 use Carbon\CarbonImmutable;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 use stdClass;
@@ -20,6 +21,11 @@ use stdClass;
  * [from, to]. With no ok run, from, to and as_of are null and every series is empty (no third query); a card without
  * variants gives no series. Missing days stay gaps; each point carries its own row's as_of (for a filled point, the
  * marker of the real close it repeats), is_filled, filled_from and series_epoch. Money stays a decimal string.
+ *
+ * Each series also carries history_begins (plan P3-i1 T04, D5): the day of the variant's earliest real close
+ * (is_filled false) for the source, in any series_epoch, over all days, so it does not depend on the range. It rides
+ * the variants query as a correlated min(day) on the price_daily primary key prefix (no fourth query), and is null
+ * without a real close and on every series while there is no ok run, whatever the subquery returned (F-P3-03).
  */
 final class PriceHistory
 {
@@ -29,7 +35,7 @@ final class PriceHistory
     public const string DEFAULT_RANGE = '1M';
 
     /**
-     * @return array{series: list<array{variant_key: string, finish: string, edition: string, treatment: string, points: list<array{day: string, close: string, is_filled: bool, filled_from: string|null, as_of: string, series_epoch: int}>}>, from: string|null, to: string|null, as_of: string|null}
+     * @return array{series: list<array{variant_key: string, finish: string, edition: string, treatment: string, history_begins: string|null, points: list<array{day: string, close: string, is_filled: bool, filled_from: string|null, as_of: string, series_epoch: int}>}>, from: string|null, to: string|null, as_of: string|null}
      */
     public static function forCard(string $cardId, string $range): array
     {
@@ -48,7 +54,13 @@ final class PriceHistory
         $from = $to === null ? null : self::from($to, $range);
 
         $variants = CardVariant::query()->where('card_id', $cardId)->orderBy('variant_key')
-            ->get(['variant_key', 'finish', 'edition', 'treatment']);
+            ->select(['variant_key', 'finish', 'edition', 'treatment'])
+            ->selectSub(fn (Builder $first): Builder => $first->from('price_daily')
+                ->selectRaw("to_char(min(price_daily.day), 'YYYY-MM-DD')")
+                ->whereColumn('price_daily.variant_key', 'card_variants.variant_key')
+                ->where('price_daily.source', $source)
+                ->where('price_daily.is_filled', false), 'history_begins')
+            ->get();
 
         /** @var array<string, list<array{day: string, close: string, is_filled: bool, filled_from: string|null, as_of: string, series_epoch: int}>> $points */
         $points = [];
@@ -80,11 +92,14 @@ final class PriceHistory
 
         $series = [];
         foreach ($variants as $variant) {
+            $begins = $variant->getAttribute('history_begins');
             $series[] = [
                 'variant_key' => $variant->variant_key,
                 'finish' => $variant->finish,
                 'edition' => $variant->edition,
                 'treatment' => $variant->treatment,
+                // Nothing ingested yet: null on every series, whatever rows a superseded run left behind.
+                'history_begins' => $to !== null && is_string($begins) ? $begins : null,
                 'points' => $points[$variant->variant_key] ?? [],
             ];
         }
