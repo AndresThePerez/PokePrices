@@ -16,10 +16,13 @@ it('answers an unknown /v1 path with problem+json even without an Accept header'
         ->and(array_key_exists('request_id', $response->json()))->toBeTrue();
 });
 
-it('answers the Fortify login path with a Laravel problem+json 404 while Fortify is absent (R24)', function (): void {
-    $response = $this->post('/login');
-    $response->assertNotFound();
-    expect($response->headers->get('Content-Type'))->toStartWith('application/problem+json');
+it('answers the Fortify login path with a problem+json validation error now that Fortify is installed (R24 superseded)', function (): void {
+    $response = $this->postJson('/login', []);
+    expect($response->getStatusCode())->not->toBe(404)
+        ->and($response->getStatusCode())->toBe(422)
+        ->and($response->headers->get('Content-Type'))->toStartWith('application/problem+json')
+        ->and($response->json('type'))->toBe(ProblemDetails::BASE.'validation-failed')
+        ->and($response->json('status'))->toBe(422);
 });
 
 it('does not serve the old api/ prefix', function (): void {
