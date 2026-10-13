@@ -24,6 +24,9 @@ import {
   upstreamUnavailableProblem,
 } from '../test/fixtures';
 
+// jsdom has no canvas: the chart library is replaced by its recording fake (T06 helper).
+vi.mock('lightweight-charts', () => import('../test/lightweightChartsFake'));
+
 const DEGRADED_LINE = 'Catalog data may be out of date: PokéSearch is unavailable';
 const SEEDED_LINE = 'Catalog: PokéSearch dataset 39a26a1, indexed 2026-10-11 (UTC)';
 const HOLO_SOURCE =

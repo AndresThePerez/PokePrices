@@ -1,7 +1,7 @@
 // The card page's Price history section (D4, D5, D7, D9, D10) over
 // GET /v1/cards/{id}/prices?range=. Every day and amount it prints is the API's (R132); the
-// browser's clock is never read. The canvas chart mounts in the chart area later (T06).
-import { useId, useState, type ReactNode } from 'react';
+// browser's clock is never read. The canvas chart (T06) is a lazy chunk inside an error boundary.
+import { Component, Suspense, lazy, useId, useMemo, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
   getCardPrices,
@@ -16,6 +16,7 @@ import {
   bannerText,
   eligibleSeries,
   pointsInRange,
+  segments,
   showsBanner,
   summaryText,
   tableRows,
@@ -27,6 +28,38 @@ const FOCUS =
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-700 dark:focus-visible:outline-sky-400';
 const MUTED = 'text-slate-600 dark:text-slate-400';
 const ZERO_ELIGIBLE = 'No daily close is held for this card yet.';
+const CHART_FAILED = 'The chart could not be drawn. Show the data table to read every close.';
+const ATTRIBUTION = 'Chart by TradingView Lightweight Charts';
+
+/** lightweight-charts is loaded with the chart only, never in the entry chunk (D6). */
+const PriceChart = lazy(() => import('../chart/PriceChart'));
+
+/** Keeps a chart that cannot be drawn from taking the card page down (D6). */
+class ChartBoundary extends Component<{ readonly children: ReactNode }, { failed: boolean }> {
+  override state = { failed: false };
+
+  static getDerivedStateFromError(): { failed: boolean } {
+    return { failed: true };
+  }
+
+  override render(): ReactNode {
+    return this.state.failed ? <p className="mt-4">{CHART_FAILED}</p> : this.props.children;
+  }
+}
+
+/** The link the chart library's licence asks for, under every drawn chart (D6). */
+function Attribution() {
+  return (
+    <p className="mt-1 text-xs">
+      <a
+        href="https://www.tradingview.com/"
+        className={`inline-flex min-h-11 items-center underline underline-offset-4 ${MUTED} ${FOCUS}`}
+      >
+        {ATTRIBUTION}
+      </a>
+    </p>
+  );
+}
 
 /** A pressable button: 44 px tall and wide, the pressed state filled in both themes. */
 const TOGGLE =
@@ -120,7 +153,11 @@ function SeriesView({
   const summaryId = `${ids}-summary`;
   const tableId = `${ids}-table`;
   const label = variantLabel(series);
-  const points = from === null || to === null ? [] : pointsInRange(series.points, from, to);
+  const points = useMemo(
+    () => (from === null || to === null ? [] : pointsInRange(series.points, from, to)),
+    [series.points, from, to],
+  );
+  const parts = useMemo(() => segments(points), [points]);
   return (
     <>
       {series.history_begins !== null && showsBanner(series.history_begins, from) && (
@@ -135,10 +172,16 @@ function SeriesView({
         )
       ) : (
         <>
-          <div>
+          <div className="mt-4">
             <p id={summaryId} className="sr-only">
               {summaryText(label, range, points)}
             </p>
+            <ChartBoundary>
+              <Suspense fallback={null}>
+                <PriceChart segments={parts} label={label} range={range} describedBy={summaryId} />
+                <Attribution />
+              </Suspense>
+            </ChartBoundary>
           </div>
           <button
             type="button"

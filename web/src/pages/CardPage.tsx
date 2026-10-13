@@ -2,7 +2,16 @@
 // comes from the API response (R132), never from the request or render time.
 import { useQuery } from '@tanstack/react-query';
 import Link from '../Link';
-import { getCard, type ApiFailure, type Card, type CardDetail } from '../api/client';
+import {
+  getCard,
+  getCardPrices,
+  type ApiFailure,
+  type Card,
+  type CardDetail,
+  type CardPrices,
+  type PricePoint,
+} from '../api/client';
+import Sparkline from '../chart/Sparkline';
 import { changeLine, grouped, variantLabel } from '../format';
 import { unwrap } from '../query';
 import PriceHistory from './PriceHistory';
@@ -67,13 +76,52 @@ type Price = NonNullable<Variant['price']>;
 
 const PRICE_FOOTNOTE = 'TCGplayer market prices via TCGCSV, collected once a day.';
 
-function VariantPrice({ price }: { readonly price: Price }) {
+/** A point as the history answer must carry it; anything else draws no sparkline. */
+function isPoint(value: unknown): value is PricePoint {
+  if (typeof value !== 'object' || value === null) return false;
+  const point = value as Partial<Record<keyof PricePoint, unknown>>;
+  return (
+    typeof point.day === 'string' &&
+    typeof point.close === 'string' &&
+    Number.isFinite(Number(point.close)) &&
+    typeof point.is_filled === 'boolean' &&
+    typeof point.series_epoch === 'number'
+  );
+}
+
+/** The 1M points of one variant from the history answer; none when the answer is malformed. */
+function pointsOf(history: CardPrices | undefined, variantKey: string): readonly PricePoint[] {
+  const raw: unknown = history;
+  if (typeof raw !== 'object' || raw === null) return [];
+  const data: unknown = (raw as { data?: unknown }).data;
+  if (!Array.isArray(data)) return [];
+  const series: unknown = data.find(
+    (one: unknown) =>
+      typeof one === 'object' &&
+      one !== null &&
+      (one as { variant_key?: unknown }).variant_key === variantKey,
+  );
+  const points: unknown = (series as { points?: unknown } | undefined)?.points;
+  if (!Array.isArray(points) || !points.every(isPoint)) return [];
+  return points;
+}
+
+function VariantPrice({
+  price,
+  points,
+}: {
+  readonly price: Price;
+  readonly points: readonly PricePoint[];
+}) {
   const change = changeLine(price);
   return (
     <>
-      <span className="mt-1 block text-xl font-semibold tabular-nums">
-        {`Market price $${grouped(price.close)}`}
-      </span>
+      <div className="mt-1 flex flex-wrap items-center gap-x-3">
+        <span className="block text-xl font-semibold tabular-nums">
+          {`Market price $${grouped(price.close)}`}
+        </span>
+        <Sparkline points={points} />
+      </div>
       <span className={`block text-sm tabular-nums ${change.tone}`}>{change.text}</span>
       <span className={`block text-sm ${MUTED}`}>
         {`as of ${price.day} from TCGCSV (daily close)`}
@@ -86,10 +134,29 @@ function VariantPrice({ price }: { readonly price: Price }) {
  * Each variant's newest daily close, or "No prices yet" while no variant of the card has one.
  * Every value is the API's: no date or money arithmetic happens here.
  */
-function Prices({ variants }: { readonly variants: Card['variants'] }) {
+function Prices({ id, variants }: { readonly id: string; readonly variants: Card['variants'] }) {
   if (!variants.some((variant) => variant.price !== null)) {
     return <p className="mt-2">No prices yet</p>;
   }
+  return <PricedVariants id={id} variants={variants} />;
+}
+
+/**
+ * The priced list with a sparkline beside each priced variant (D12). The 1M history query is the
+ * chart's default one (same key), so the page asks for it once; nothing is drawn while it loads
+ * or after it fails.
+ */
+function PricedVariants({
+  id,
+  variants,
+}: {
+  readonly id: string;
+  readonly variants: Card['variants'];
+}) {
+  const history = useQuery<CardPrices, ApiFailure>({
+    queryKey: ['card-prices', id, '1M'],
+    queryFn: ({ signal }) => unwrap(getCardPrices(id, '1M', { signal })),
+  });
   return (
     <>
       <ul className="mt-2 space-y-4">
@@ -99,7 +166,10 @@ function Prices({ variants }: { readonly variants: Card['variants'] }) {
             {variant.price === null ? (
               <span className={`block text-sm ${MUTED}`}>No price in the collected snapshots</span>
             ) : (
-              <VariantPrice price={variant.price} />
+              <VariantPrice
+                price={variant.price}
+                points={pointsOf(history.data, variant.variant_key)}
+              />
             )}
           </li>
         ))}
@@ -178,7 +248,7 @@ function Loaded({ body }: { readonly body: CardDetail }) {
             <h2 id="card-prices" className="text-lg font-semibold">
               Prices
             </h2>
-            <Prices variants={card.variants} />
+            <Prices id={card.id} variants={card.variants} />
           </section>
           <section aria-labelledby="card-products" className="mt-8">
             <h2 id="card-products" className="text-lg font-semibold">

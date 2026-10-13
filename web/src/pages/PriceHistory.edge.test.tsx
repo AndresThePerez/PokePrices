@@ -15,6 +15,9 @@ import {
   stubFetch,
 } from '../test/fixtures';
 
+// jsdom has no canvas: the chart library is replaced by its recording fake (T06 helper).
+vi.mock('lightweight-charts', () => import('../test/lightweightChartsFake'));
+
 const CARD_URL = '/v1/cards/ex10-%3F';
 const HOLO = 'ex10-?:holo:unlimited:-';
 const REVERSE = 'ex10-?:reverse:unlimited:-';

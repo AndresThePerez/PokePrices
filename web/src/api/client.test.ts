@@ -212,7 +212,11 @@ describe('production sources', () => {
     expect(names).toContain('./client.ts');
     expect(names).toContain('../App.tsx');
     for (const [name, text] of Object.entries(sources)) {
-      expect({ name, absoluteUrl: /https?:\/\//.test(text) }).toEqual({ name, absoluteUrl: false });
+      const scanned = text.replaceAll('"https://www.tradingview.com/"', '');
+      expect({ name, absoluteUrl: /https?:\/\//.test(scanned) }).toEqual({
+        name,
+        absoluteUrl: false,
+      });
       expect({ name, port8081: /\b8081\b/.test(text) }).toEqual({ name, port8081: false });
       expect({ name, apiPath: /['"`]\/api\//.test(text) }).toEqual({ name, apiPath: false });
     }

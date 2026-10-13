@@ -1,5 +1,5 @@
 import { cleanup, render, screen, within } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import App from '../App';
 import type { CardDetail } from '../api/client';
 import {
@@ -22,6 +22,9 @@ import {
   unmappedCardBody,
   upFromZeroPrice,
 } from '../test/fixtures';
+
+// jsdom has no canvas: the chart library is replaced by its recording fake (T06 helper).
+vi.mock('lightweight-charts', () => import('../test/lightweightChartsFake'));
 
 const FOOTNOTE = 'TCGplayer market prices via TCGCSV, collected once a day.';
 const AS_OF_1012 = 'as of 2026-10-12 from TCGCSV (daily close)';

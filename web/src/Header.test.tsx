@@ -15,6 +15,9 @@ import {
   stubFetch,
   upstreamUnavailableProblem,
 } from './test/fixtures';
+
+// jsdom has no canvas: the chart library is replaced by its recording fake (T06 helper).
+vi.mock('lightweight-charts', () => import('./test/lightweightChartsFake'));
 import type { CardSearchPage } from './api/client';
 
 const ROUTES = ['/', '/search?q=unown', '/card/ex10-%3F', '/nowhere'] as const;

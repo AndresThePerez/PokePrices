@@ -20,6 +20,9 @@ import {
   upstreamUnavailableProblem,
 } from '../test/fixtures';
 
+// jsdom has no canvas: the chart library is replaced by its recording fake (T06 helper).
+vi.mock('lightweight-charts', () => import('../test/lightweightChartsFake'));
+
 const CARD_URL = '/v1/cards/ex10-%3F';
 const HISTORY_1M = '/v1/cards/ex10-%3F/prices?range=1M';
 const HOLO = 'ex10-?:holo:unlimited:-';
