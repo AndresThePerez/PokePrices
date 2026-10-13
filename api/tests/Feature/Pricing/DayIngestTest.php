@@ -581,14 +581,14 @@ test('the rollup window recomputes a late day without touching a newer one', fun
         ->and(array_values(array_filter(t04Daily(), fn (array $r): bool => $r['day'] === '2026-10-12')))->toBe($newer);
 });
 
-test('PriceDigest records the map build and epochs and covers price_points and price_daily only', function (): void {
+test('PriceDigest records the map build and epochs and covers price_points, price_daily and price_latest only', function (): void {
     t04Ingest('2026-10-11');
     $digest = PriceDigest::compute(DB::connection());
 
     expect(array_keys($digest))->toBe(['map_build_id', 'map_epochs', 'tables'])
         ->and($digest['map_build_id'])->toBe((int) DB::table('map_builds')->max('id'))
         ->and($digest['map_epochs'])->toBe(['1' => 22])
-        ->and(array_keys($digest['tables']))->toBe(['price_points', 'price_daily'])
+        ->and(array_keys($digest['tables']))->toBe(['price_points', 'price_daily', 'price_latest'])
         ->and($digest['tables']['price_points']['sha256'])->toMatch('/\A[0-9a-f]{64}\z/');
 
     // ingest_run_id is volatile bookkeeping: rewriting it leaves the digest alone, rewriting a price does not.

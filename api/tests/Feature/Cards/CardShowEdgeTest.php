@@ -171,7 +171,7 @@ it('reports unverified for a mix of ok and unverified rows, ok only when every r
         ->and($this->getJson('/v1/cards/base1-5')->json('data.catalog.status'))->toBe('ok');
 });
 
-it('reads 24 variants mapped from different builds in 3 queries and dates every source by its own build', function (): void {
+it('reads 24 variants mapped from different builds in 4 queries and dates every source by its own build', function (): void {
     $builds = [t43eBuild('2026-10-09'), t43eBuild('2026-10-10'), t43eBuild('2026-10-11')];
     $n = 0;
     foreach (['normal', 'holo', 'reverse'] as $finish) {
@@ -199,7 +199,7 @@ it('reads 24 variants mapped from different builds in 3 queries and dates every 
     $days = collect($response->json('data.variants'))->mapWithKeys(fn (array $v): array => [$v['sources'][0]['product_id'] => $v['sources'][0]['map_snapshot_day']]);
     expect($response->getStatusCode())->toBe(200)
         ->and($response->json('data.variants'))->toHaveCount(24)
-        ->and($queries)->toBe(3)
+        ->and($queries)->toBe(4)
         ->and($days->unique()->sort()->values()->all())->toBe(['2026-10-09', '2026-10-10', '2026-10-11']);
     // The variants sort by key (finish first), so the product ids are not in insertion order; each id keeps its build.
     foreach ($days as $productId => $day) {

@@ -12,7 +12,8 @@ use stdClass;
  * taken over the rows serialized in primary-key order (byte order, COLLATE "C") with an explicit column list, one
  * row per line, columns joined by `|`, NULL written as `\N`, instants in UTC with microseconds, dates as YYYY-MM-DD
  * and numerics in their own text form. Volatile bookkeeping (ingest_run_id) is left out; price_daily has no volatile
- * column (D3). Covered tables: price_points and price_daily (price_latest joins in T05); never price_events.
+ * column (D3) and price_latest none (R177(6)). Covered tables: price_points, price_daily and price_latest (T05);
+ * never price_events.
  *
  * The digest also records map_build_id (the newest map_builds.id) and the map's row count per series_epoch, so a map
  * change between two digests is visible: "identical" holds at a fixed (day set, map build, code sha).
@@ -34,6 +35,13 @@ final class PriceDigest
             ." coalesce(to_char(filled_from, 'YYYY-MM-DD'), '\\N'),"
             ." to_char(as_of AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"')",
             'variant_key COLLATE "C", source COLLATE "C", day',
+        ],
+        'price_latest' => [
+            "variant_key, source, series_epoch::text, close::text, to_char(day, 'YYYY-MM-DD'),"
+            ." to_char(as_of AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS.US\"Z\"'),"
+            ." coalesce(previous_close::text, '\\N'), coalesce(to_char(previous_day, 'YYYY-MM-DD'), '\\N'),"
+            ." coalesce(change::text, '\\N'), coalesce(change_pct::text, '\\N')",
+            'variant_key COLLATE "C", source COLLATE "C"',
         ],
     ];
 

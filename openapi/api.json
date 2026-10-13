@@ -193,7 +193,7 @@
         "/cards/{id}": {
             "get": {
                 "operationId": "getCard",
-                "description": "The card comes from the Pok\u00e9Search catalog; variants lists the Pok\u00e9Prices variants of the card with their current TCGplayer mappings, and catalog names the Pok\u00e9Search dataset that answered. There is no price yet. An id outside the Pok\u00e9Search card id pattern, or one Pok\u00e9Search does not have, answers 404 card-not-found; catalog_missing is true when Pok\u00e9Prices holds variant rows for an id Pok\u00e9Search no longer has (the rows are flagged, never deleted). While Pok\u00e9Search is unavailable the last good copy answers with meta.degraded true and meta.stale_since, or 503 when there is none.",
+                "description": "The card comes from the Pok\u00e9Search catalog; variants lists the Pok\u00e9Prices variants of the card with their current TCGplayer mappings, and catalog names the Pok\u00e9Search dataset that answered. Each variant carries price: its newest daily close from TCGplayer market prices via TCGCSV, one close per day, with source, feed and as_of on each variant (as_of is the snapshot marker of the close's day), the previous close of the same series epoch within 14 days and the change since it; price is null when the collected snapshots hold no close for the variant. An id outside the Pok\u00e9Search card id pattern, or one Pok\u00e9Search does not have, answers 404 card-not-found; catalog_missing is true when Pok\u00e9Prices holds variant rows for an id Pok\u00e9Search no longer has (the rows are flagged, never deleted). While Pok\u00e9Search is unavailable the last good copy answers with meta.degraded true and meta.stale_since, or 503 when there is none.",
                 "summary": "Read one card, hydrated with its Pok\u00e9Prices variants",
                 "tags": [
                     "Cards"
@@ -553,6 +553,81 @@
                                         ],
                                         "additionalProperties": false
                                     }
+                                },
+                                "price": {
+                                    "type": [
+                                        "object",
+                                        "null"
+                                    ],
+                                    "properties": {
+                                        "source": {
+                                            "type": "string"
+                                        },
+                                        "feed": {
+                                            "type": "string"
+                                        },
+                                        "basis": {
+                                            "type": "string"
+                                        },
+                                        "currency": {
+                                            "type": "string"
+                                        },
+                                        "cadence": {
+                                            "type": "string"
+                                        },
+                                        "close": {
+                                            "type": "string"
+                                        },
+                                        "day": {
+                                            "type": "string"
+                                        },
+                                        "as_of": {
+                                            "type": "string"
+                                        },
+                                        "previous_close": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        },
+                                        "previous_day": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        },
+                                        "change": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        },
+                                        "change_pct": {
+                                            "type": [
+                                                "string",
+                                                "null"
+                                            ]
+                                        },
+                                        "series_epoch": {
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "required": [
+                                        "source",
+                                        "feed",
+                                        "basis",
+                                        "currency",
+                                        "cadence",
+                                        "close",
+                                        "day",
+                                        "as_of",
+                                        "previous_close",
+                                        "previous_day",
+                                        "change",
+                                        "change_pct",
+                                        "series_epoch"
+                                    ],
+                                    "additionalProperties": false
                                 }
                             },
                             "required": [
@@ -560,7 +635,8 @@
                                 "finish",
                                 "edition",
                                 "treatment",
-                                "sources"
+                                "sources",
+                                "price"
                             ],
                             "additionalProperties": false
                         }

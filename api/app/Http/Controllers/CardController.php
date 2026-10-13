@@ -23,7 +23,7 @@ final class CardController
     /**
      * Read one card, hydrated with its PokéPrices variants.
      *
-     * The card comes from the PokéSearch catalog; variants lists the PokéPrices variants of the card with their current TCGplayer mappings, and catalog names the PokéSearch dataset that answered. There is no price yet. An id outside the PokéSearch card id pattern, or one PokéSearch does not have, answers 404 card-not-found; catalog_missing is true when PokéPrices holds variant rows for an id PokéSearch no longer has (the rows are flagged, never deleted). While PokéSearch is unavailable the last good copy answers with meta.degraded true and meta.stale_since, or 503 when there is none.
+     * The card comes from the PokéSearch catalog; variants lists the PokéPrices variants of the card with their current TCGplayer mappings, and catalog names the PokéSearch dataset that answered. Each variant carries price: its newest daily close from TCGplayer market prices via TCGCSV, one close per day, with source, feed and as_of on each variant (as_of is the snapshot marker of the close's day), the previous close of the same series epoch within 14 days and the change since it; price is null when the collected snapshots hold no close for the variant. An id outside the PokéSearch card id pattern, or one PokéSearch does not have, answers 404 card-not-found; catalog_missing is true when PokéPrices holds variant rows for an id PokéSearch no longer has (the rows are flagged, never deleted). While PokéSearch is unavailable the last good copy answers with meta.degraded true and meta.stale_since, or 503 when there is none.
      *
      * @operationId getCard
      */
@@ -38,13 +38,15 @@ final class CardController
             throw new CardNotFound($this->flagMissing($id));
         }
 
-        // Three queries whatever the number of rows (P8): the variants, their sources, the sources' builds.
+        // Four queries whatever the number of rows (P8): the variants, their sources, the sources' builds and the
+        // variants' latest prices (P2-i1 T05).
         $variants = CardVariant::query()
             ->where('card_id', $id)
             ->orderBy('variant_key')
             ->with([
                 'sources' => fn (HasMany $sources): HasMany => $sources->orderBy('source'),
                 'sources.mapBuild',
+                'latestPrice',
             ])
             ->get();
 

@@ -6,6 +6,7 @@ namespace App\Http\Resources;
 
 use App\Domain\Catalog\CatalogResult;
 use App\Domain\Mapping\Models\CardVariant;
+use App\Domain\Pricing\Models\PriceLatest;
 use App\Http\Problems\UpstreamContract;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
@@ -13,8 +14,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * One card as GET /v1/cards/{id} answers it (plan T43, review-1 rec 12): the PokéSearch card fields PokéPrices
- * shows, its set and images, the PokéPrices variants with their current source mappings, and the provenance of
- * the catalog that answered. There is no price field in P1.
+ * shows, its set and images, the PokéPrices variants with their current source mappings and their latest daily
+ * close (price, P2-i1 T05), and the provenance of the catalog that answered.
  *
  * Image URLs are passed through as PokéSearch sends them (OQ4: the SPA rewrites them). hp, rarity and artist
  * are null and subtypes and types empty when PokéSearch omits them. catalog.status is the variant rows' catalog
@@ -107,7 +108,7 @@ final class CardResource extends JsonResource
      *     rarity: string|null, number: string, artist: string|null,
      *     set: array{id: string, name: string, series: string, total: int, release_date: string},
      *     images: array{small: string, large: string},
-     *     variants: list<array{variant_key: string, finish: string, edition: string, treatment: string, sources: list<array{source: string, product_id: int, subtype: string, group_id: int, series_epoch: int, map_snapshot_day: string}>}>,
+     *     variants: list<array{variant_key: string, finish: string, edition: string, treatment: string, sources: list<array{source: string, product_id: int, subtype: string, group_id: int, series_epoch: int, map_snapshot_day: string}>, price: array{source: string, feed: string, basis: string, currency: string, cadence: string, close: string, day: string, as_of: string, previous_close: string|null, previous_day: string|null, change: string|null, change_pct: string|null, series_epoch: int}|null}>,
      *     catalog: array{seed_ref: string|null, seeded_at: string|null, status: string}
      * }
      */
@@ -139,7 +140,7 @@ final class CardResource extends JsonResource
                 'small' => $card['image_small'],
                 'large' => $card['image_large'],
             ],
-            /** @var list<array{variant_key: string, finish: string, edition: string, treatment: string, sources: list<array{source: string, product_id: int, subtype: string, group_id: int, series_epoch: int, map_snapshot_day: string}>}> */
+            /** @var list<array{variant_key: string, finish: string, edition: string, treatment: string, sources: list<array{source: string, product_id: int, subtype: string, group_id: int, series_epoch: int, map_snapshot_day: string}>, price: array{source: string, feed: string, basis: string, currency: string, cadence: string, close: string, day: string, as_of: string, previous_close: string|null, previous_day: string|null, change: string|null, change_pct: string|null, series_epoch: int}|null}> */
             'variants' => $this->variants(),
             'catalog' => [
                 /** @var string|null */
@@ -164,7 +165,7 @@ final class CardResource extends JsonResource
         ];
     }
 
-    /** @return list<array{variant_key: string, finish: string, edition: string, treatment: string, sources: list<array{source: string, product_id: int, subtype: string, group_id: int, series_epoch: int, map_snapshot_day: string}>}> */
+    /** @return list<array{variant_key: string, finish: string, edition: string, treatment: string, sources: list<array{source: string, product_id: int, subtype: string, group_id: int, series_epoch: int, map_snapshot_day: string}>, price: array{source: string, feed: string, basis: string, currency: string, cadence: string, close: string, day: string, as_of: string, previous_close: string|null, previous_day: string|null, change: string|null, change_pct: string|null, series_epoch: int}|null}> */
     private function variants(): array
     {
         $variants = [];
@@ -186,10 +187,42 @@ final class CardResource extends JsonResource
                 'edition' => $variant->edition,
                 'treatment' => $variant->treatment,
                 'sources' => $sources,
+                'price' => self::price($variant->latestPrice),
             ];
         }
 
         return $variants;
+    }
+
+    /**
+     * The price block of a variant (P2-i1 T05, D4, D5): its latest TCGplayer close via TCGCSV with the previous close
+     * and change, or null when the collected snapshots hold no close for it. Money and change_pct are decimal
+     * strings with two decimals as Postgres numeric(12,2) gives them; day and previous_day are YYYY-MM-DD and as_of
+     * (the snapshot marker of the close) is RFC 3339 UTC.
+     *
+     * @return array{source: string, feed: string, basis: string, currency: string, cadence: string, close: string, day: string, as_of: string, previous_close: string|null, previous_day: string|null, change: string|null, change_pct: string|null, series_epoch: int}|null
+     */
+    private static function price(?PriceLatest $latest): ?array
+    {
+        if ($latest === null) {
+            return null;
+        }
+
+        return [
+            'source' => $latest->source,
+            'feed' => (string) config('pricing.feed'),
+            'basis' => 'market',
+            'currency' => 'USD',
+            'cadence' => 'daily',
+            'close' => $latest->close,
+            'day' => $latest->day->format('Y-m-d'),
+            'as_of' => $latest->as_of->utc()->format('Y-m-d\TH:i:s\Z'),
+            'previous_close' => $latest->previous_close,
+            'previous_day' => $latest->previous_day?->format('Y-m-d'),
+            'change' => $latest->change,
+            'change_pct' => $latest->change_pct,
+            'series_epoch' => $latest->series_epoch,
+        ];
     }
 
     private function catalogStatus(): string

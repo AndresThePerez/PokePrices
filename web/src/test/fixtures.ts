@@ -124,6 +124,7 @@ export const unownCard = {
           map_snapshot_day: '2026-10-11',
         },
       ],
+      price: null,
     },
     {
       variant_key: 'ex10-?:reverse:unlimited:-',
@@ -140,6 +141,7 @@ export const unownCard = {
           map_snapshot_day: '2026-10-10',
         },
       ],
+      price: null,
     },
   ],
   catalog: {
@@ -154,6 +156,69 @@ export const unseededUnownCard = {
   ...unownCard,
   catalog: { seed_ref: null, seeded_at: null, status: 'unverified' },
 } satisfies Schemas['CardResource'];
+
+/**
+ * The same card after two ingested days (P2-i1 T05): the holo variant has a close and a previous close, the
+ * reverse holo variant has no close in the collected snapshots.
+ */
+export const pricedUnownCard = {
+  ...unownCard,
+  variants: [
+    {
+      variant_key: 'ex10-?:holo:unlimited:-',
+      finish: 'holo',
+      edition: 'unlimited',
+      treatment: '-',
+      sources: [
+        {
+          source: 'tcgplayer',
+          product_id: 88123,
+          subtype: 'Holofoil',
+          group_id: 1399,
+          series_epoch: 1,
+          map_snapshot_day: '2026-10-11',
+        },
+      ],
+      price: {
+        source: 'tcgplayer',
+        feed: 'tcgcsv',
+        basis: 'market',
+        currency: 'USD',
+        cadence: 'daily',
+        close: '70.81',
+        day: '2026-10-12',
+        as_of: '2026-10-12T20:05:44Z',
+        previous_close: '69.36',
+        previous_day: '2026-10-11',
+        change: '1.45',
+        change_pct: '2.09',
+        series_epoch: 1,
+      },
+    },
+    {
+      variant_key: 'ex10-?:reverse:unlimited:-',
+      finish: 'reverse',
+      edition: 'unlimited',
+      treatment: '-',
+      sources: [
+        {
+          source: 'tcgplayer',
+          product_id: 88124,
+          subtype: 'Reverse Holofoil',
+          group_id: 1399,
+          series_epoch: 1,
+          map_snapshot_day: '2026-10-10',
+        },
+      ],
+      price: null,
+    },
+  ],
+} satisfies Schemas['CardResource'];
+
+export const pricedCardBody = {
+  data: pricedUnownCard,
+  meta: { degraded: false },
+} satisfies CardBody;
 
 /** The same card before any product map build: no variant rows. */
 export const unmappedUnownCard = {

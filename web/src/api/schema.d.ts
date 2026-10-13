@@ -33,7 +33,7 @@ export interface paths {
         };
         /**
          * Read one card, hydrated with its PokéPrices variants
-         * @description The card comes from the PokéSearch catalog; variants lists the PokéPrices variants of the card with their current TCGplayer mappings, and catalog names the PokéSearch dataset that answered. There is no price yet. An id outside the PokéSearch card id pattern, or one PokéSearch does not have, answers 404 card-not-found; catalog_missing is true when PokéPrices holds variant rows for an id PokéSearch no longer has (the rows are flagged, never deleted). While PokéSearch is unavailable the last good copy answers with meta.degraded true and meta.stale_since, or 503 when there is none.
+         * @description The card comes from the PokéSearch catalog; variants lists the PokéPrices variants of the card with their current TCGplayer mappings, and catalog names the PokéSearch dataset that answered. Each variant carries price: its newest daily close from TCGplayer market prices via TCGCSV, one close per day, with source, feed and as_of on each variant (as_of is the snapshot marker of the close's day), the previous close of the same series epoch within 14 days and the change since it; price is null when the collected snapshots hold no close for the variant. An id outside the PokéSearch card id pattern, or one PokéSearch does not have, answers 404 card-not-found; catalog_missing is true when PokéPrices holds variant rows for an id PokéSearch no longer has (the rows are flagged, never deleted). While PokéSearch is unavailable the last good copy answers with meta.degraded true and meta.stale_since, or 503 when there is none.
          */
         get: operations["getCard"];
         put?: never;
@@ -103,6 +103,21 @@ export interface components {
                     series_epoch: number;
                     map_snapshot_day: string;
                 }[];
+                price: {
+                    source: string;
+                    feed: string;
+                    basis: string;
+                    currency: string;
+                    cadence: string;
+                    close: string;
+                    day: string;
+                    as_of: string;
+                    previous_close: string | null;
+                    previous_day: string | null;
+                    change: string | null;
+                    change_pct: string | null;
+                    series_epoch: number;
+                } | null;
             }[];
             catalog: {
                 seed_ref: string | null;

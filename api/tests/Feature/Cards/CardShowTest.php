@@ -193,6 +193,7 @@ it('answers the hydrated card: catalog fields, set, images, mapped variants, cat
                     'series_epoch' => 2,
                     'map_snapshot_day' => '2026-10-11',
                 ]],
+                'price' => null,
             ]],
             'catalog' => ['seed_ref' => T43_SEED_REF, 'seeded_at' => '2026-10-11T20:05:45Z', 'status' => 'ok'],
         ],
@@ -201,20 +202,26 @@ it('answers the hydrated card: catalog fields, set, images, mapped variants, cat
     Http::assertSentCount(1);
 });
 
-it('carries no price field and none of the PokéSearch fields it does not map', function (): void {
-    t43Variants('base1-4', 2, t43Build());
+it('carries the price block with its exact keys and none of the PokéSearch fields it does not map', function (): void {
+    $keys = t43Variants('base1-4', 2, t43Build()); // base1-4:normal:-:- and base1-4:holo:-:-, served holo first
+    DB::table('price_latest')->insert([
+        'variant_key' => $keys[1], 'source' => 'tcgplayer', 'series_epoch' => 1, 'close' => '70.81', 'day' => '2026-10-11',
+        'as_of' => '2026-10-11 20:05:45+00', 'previous_close' => '70.10', 'previous_day' => '2026-10-10', 'change' => '0.71', 'change_pct' => '1.01',
+    ]);
     t43FakeCard('base1-4', t43Answer(t43Card()));
 
     $response = $this->getJson('/v1/cards/base1-4');
 
     $response->assertOk();
     $body = (string) $response->getContent();
-    foreach (['price', 'market', 'evolves_from', 'attacks', 'retreat_cost', 'flavor_text', 'national_pokedex_numbers', 'set_id', 'image_small', 'request_id', 'source_product_name', 'confidence', 'method'] as $leak) {
+    foreach (['evolves_from', 'attacks', 'retreat_cost', 'flavor_text', 'national_pokedex_numbers', 'set_id', 'image_small', 'request_id', 'source_product_name', 'confidence', 'method'] as $leak) {
         expect($body)->not->toContain($leak);
     }
     expect(array_keys($response->json()))->toBe(['data', 'meta'])
         ->and(array_keys($response->json('data')))->toBe(['id', 'name', 'supertype', 'subtypes', 'hp', 'types', 'rarity', 'number', 'artist', 'set', 'images', 'variants', 'catalog'])
-        ->and(array_keys($response->json('data.variants.0')))->toBe(['variant_key', 'finish', 'edition', 'treatment', 'sources'])
+        ->and(array_keys($response->json('data.variants.0')))->toBe(['variant_key', 'finish', 'edition', 'treatment', 'sources', 'price'])
+        ->and(array_keys($response->json('data.variants.0.price')))->toBe(['source', 'feed', 'basis', 'currency', 'cadence', 'close', 'day', 'as_of', 'previous_close', 'previous_day', 'change', 'change_pct', 'series_epoch'])
+        ->and($response->json('data.variants.1.price'))->toBeNull()
         ->and(array_keys($response->json('data.variants.0.sources.0')))->toBe(['source', 'product_id', 'subtype', 'group_id', 'series_epoch', 'map_snapshot_day']);
 });
 
@@ -498,7 +505,11 @@ it('documents GET /cards/{id} with a closed card schema and the 304, 404, 429, 5
     expect($body['additionalProperties'])->toBeFalse()
         ->and($card['additionalProperties'])->toBeFalse()
         ->and(array_keys($card['properties']))->toBe(['id', 'name', 'supertype', 'subtypes', 'hp', 'types', 'rarity', 'number', 'artist', 'set', 'images', 'variants', 'catalog'])
-        ->and(strtolower((string) json_encode([$body, $card])))->not->toContain('price');
+        ->and($card['properties']['variants']['items']['properties'])->toHaveKey('price');
+    // No price-shaped value outside variants[].price (P2-i1 T05): with that one property set aside, nothing says price.
+    unset($card['properties']['variants']['items']['properties']['price']);
+    $card['properties']['variants']['items']['required'] = array_values(array_diff($card['properties']['variants']['items']['required'], ['price']));
+    expect(strtolower((string) json_encode([$body, $card])))->not->toMatch('/price|market|close|change/');
 });
 
 it('throws on a lazy relation access to a P1 model', function (): void {
@@ -529,7 +540,7 @@ it('registers the lazy-loading guard from App\Domain\Catalog, never from app/Pro
         ->and($providers)->not->toContain('preventLazyLoading');
 })->group('P7');
 
-it('reads a card with 3 queries whether it has 1 or 24 variant rows', function (): void {
+it('reads a card with 4 queries whether it has 1 or 24 variant rows', function (): void {
     $build = t43Build();
     t43Variants('base1-4', 1, $build);
     t43Variants('base1-5', 24, $build, 43000);
@@ -546,5 +557,5 @@ it('reads a card with 3 queries whether it has 1 or 24 variant rows', function (
         $counts[$id] = count(DB::getQueryLog());
     }
 
-    expect($counts)->toBe(['base1-4' => 3, 'base1-5' => 3]);
+    expect($counts)->toBe(['base1-4' => 4, 'base1-5' => 4]);
 })->group('P8');

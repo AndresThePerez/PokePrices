@@ -33,6 +33,7 @@ const holoVariant: Variant = {
   edition: 'unlimited',
   treatment: '-',
   sources: [holoSource],
+  price: null,
 };
 
 function bodyWith(patch: Partial<Card>, degraded = false): CardDetail {
