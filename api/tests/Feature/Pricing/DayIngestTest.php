@@ -575,10 +575,14 @@ test('the rollup window recomputes a late day without touching a newer one', fun
     $newer = t04Daily();
     [$code, , $line] = t04Ingest('2026-10-11');
 
-    // P = 10-12, D = 10-11: the window is 10-11 .. 10-12; 10-12's candles are recomputed unchanged.
+    // P = 10-12, D = 10-11: the window is 10-11 .. 10-12; 10-12's real candles are recomputed unchanged, and since
+    // T07 the two variants with a 10-11 close but none on 10-12 (absent, null market) gain a filled 10-12 row.
+    $day12 = array_values(array_filter(t04Daily(), fn (array $r): bool => $r['day'] === '2026-10-12'));
     expect($code)->toBe(0)
-        ->and($line['daily_rows'])->toBe(19 + 17)
-        ->and(array_values(array_filter(t04Daily(), fn (array $r): bool => $r['day'] === '2026-10-12')))->toBe($newer);
+        ->and($line['daily_rows'])->toBe(19 + 17 + 2)
+        ->and(array_values(array_filter($day12, fn (array $r): bool => ! $r['is_filled'])))->toBe($newer)
+        ->and(array_column(array_values(array_filter($day12, fn (array $r): bool => $r['is_filled'])), 'variant_key'))
+        ->toBe(['basep-13:holo:-:-', 'sv8pt5-7:normal:-:-']);
 });
 
 test('PriceDigest records the map build and epochs and covers price_points, price_daily and price_latest only', function (): void {

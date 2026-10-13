@@ -19,7 +19,8 @@ use Throwable;
  *   skips a marker that already has an `ok` run unless forced, opens the run, prepares the month's partition, deletes
  *   the day's rows of any other marker (D1: the latest marker per UTC date wins; review F7) and plans the chunks;
  * - chunk(): normalizes and upserts one chunk of at most config('pricing.chunk_rows') de-duplicated rows of a group;
- * - finalize(): rolls the D3 window up, rebuilds price_latest (T05), sums the counts and marks the run `ok`.
+ * - finalize(): rolls the D3 window up with its carry-forward fills (T07), rebuilds price_latest (T05), sums the
+ *   counts and marks the run `ok`.
  *
  * sync() holds the `pricing:ingest` lock (D12) and runs all three inside one transaction, so a failure anywhere
  * leaves no price row; the `failed` run is written after the rollback. The product map is read, never written, and
@@ -41,11 +42,13 @@ final class DayIngest
     public function __construct(private readonly ConnectionInterface $db, private readonly string $snapshotsRoot) {}
 
     /**
-     * The sync ingest: lock, then start, every chunk and finalize in one transaction.
+     * The sync ingest: lock, then start, every chunk and finalize in one transaction. The replay (T07) runs each day
+     * through here with mode `replay` while it already holds the lock; the advisory lock is re-entrant per session.
      *
+     * @param  'sync'|'replay'  $mode
      * @return array{status: 'ok'|'refused'|'skipped_unchanged'|'failed'|'locked', run_id: int|null, marker: CarbonImmutable|null, error: string|null, counts: array<string, int>}
      */
-    public function sync(string $day, bool $force = false): array
+    public function sync(string $day, bool $force = false, string $mode = 'sync'): array
     {
         if (! IngestLock::tryAcquire($this->db)) {
             return ['status' => 'locked', 'run_id' => null, 'marker' => null, 'error' => IngestLock::HELD_MESSAGE, 'counts' => []];
@@ -54,8 +57,8 @@ final class DayIngest
         $this->marker = null;
         $startedAt = CarbonImmutable::now('UTC');
         try {
-            return $this->db->transaction(function () use ($day, $force): array {
-                $start = $this->start($day, 'sync', $force);
+            return $this->db->transaction(function () use ($day, $force, $mode): array {
+                $start = $this->start($day, $mode, $force);
                 if ($start['status'] !== 'running') {
                     return ['status' => $start['status'], 'run_id' => $start['run_id'], 'marker' => $start['marker'], 'error' => $start['error'], 'counts' => []];
                 }
@@ -69,7 +72,7 @@ final class DayIngest
         } catch (Throwable $e) {
             // The transaction rolled back: no price row, chunk or running run of this attempt is left.
             $error = mb_substr($e->getMessage(), 0, 2000);
-            $runId = $this->insertRun($day, $this->marker, 'sync', 'failed', $startedAt, $error);
+            $runId = $this->insertRun($day, $this->marker, $mode, 'failed', $startedAt, $error);
 
             return ['status' => 'failed', 'run_id' => $runId, 'marker' => $this->marker, 'error' => $error, 'counts' => []];
         } finally {
