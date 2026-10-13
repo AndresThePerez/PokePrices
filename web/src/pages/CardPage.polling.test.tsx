@@ -4,6 +4,8 @@ import App from '../App';
 import {
   cardNotFoundPlainProblem,
   cardWithPrices,
+  historyFor,
+  isHistoryUrl,
   jsonResponse,
   problemResponse,
   risingPrice,
@@ -76,9 +78,10 @@ function visit(path: string): void {
 /** Answers each request with the next reply; the last reply repeats. */
 function replies(...answers: (() => Response)[]): string[] {
   const urls: string[] = [];
-  const calls = stubFetch((url) => {
+  stubFetch((url) => {
+    if (isHistoryUrl(url)) return jsonResponse(historyFor(cardWithPrices(risingPrice)));
     urls.push(url);
-    const answer = answers[Math.min(calls.length - 1, answers.length - 1)];
+    const answer = answers[Math.min(urls.length - 1, answers.length - 1)];
     if (answer === undefined) throw new Error('no reply configured');
     return answer();
   });

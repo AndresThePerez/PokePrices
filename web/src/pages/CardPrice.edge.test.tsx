@@ -1,10 +1,13 @@
 import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import App from '../App';
+import type { CardDetail } from '../api/client';
 import {
   cardWithPrices,
   fallingPrice,
   firstClosePrice,
+  historyFor,
+  isHistoryUrl,
   jsonResponse,
   risingPrice,
   stubFetch,
@@ -19,7 +22,7 @@ function visit(path: string): void {
 }
 
 async function prices(body: unknown): Promise<HTMLElement> {
-  stubFetch(() => jsonResponse(body));
+  stubFetch((url) => jsonResponse(isHistoryUrl(url) ? historyFor(body as CardDetail) : body));
   visit('/card/ex10-%3F');
   render(<App />);
   await screen.findByRole('heading', { level: 1, name: 'Unown' });

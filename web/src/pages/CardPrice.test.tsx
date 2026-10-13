@@ -1,6 +1,7 @@
 import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import App from '../App';
+import type { CardDetail } from '../api/client';
 import {
   cardBody,
   cardWithPrices,
@@ -9,6 +10,8 @@ import {
   firstClosePrice,
   flatAtZeroPrice,
   downWithoutPctPrice,
+  historyFor,
+  isHistoryUrl,
   jsonResponse,
   millionPrice,
   pricedCardBody,
@@ -29,7 +32,7 @@ function visit(path: string): void {
 
 /** Renders the card page over one canned body and returns the Prices section. */
 async function prices(body: unknown): Promise<HTMLElement> {
-  stubFetch(() => jsonResponse(body));
+  stubFetch((url) => jsonResponse(isHistoryUrl(url) ? historyFor(body as CardDetail) : body));
   visit('/card/ex10-%3F');
   render(<App />);
   await screen.findByRole('heading', { level: 1, name: 'Unown' });

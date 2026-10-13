@@ -10,6 +10,15 @@ export type CardSearchPage =
 export type Card = components['schemas']['CardResource'];
 export type CardDetail = operations['getCard']['responses'][200]['content']['application/json'];
 
+export type CardPrices =
+  operations['getCardPrices']['responses'][200]['content']['application/json'];
+export type PriceSeries = CardPrices['data'][number];
+export type PricePoint = PriceSeries['points'][number];
+/** The generated range union: '1W' | '1M' | '3M' | 'YTD' | '1Y' (there is no 1D). */
+export type PriceRange = NonNullable<
+  NonNullable<operations['getCardPrices']['parameters']['query']>['range']
+>;
+
 export type ApiFailure = {
   readonly ok: false;
   /** HTTP status, or 0 when no response arrived. */
@@ -107,21 +116,42 @@ export function searchCards(
 const COLLAPSING_SEGMENTS: ReadonlySet<string> = new Set(['', '.', '..']);
 
 /**
+ * The id as one encoded path segment, or null when it collapses under URL resolution ('', '.',
+ * '..'), so /v1/cards/{id} would turn into another URL.
+ */
+function cardSegment(id: string): string | null {
+  const segment = encodeURIComponent(id);
+  return COLLAPSING_SEGMENTS.has(segment) ? null : segment;
+}
+
+const INVALID_ID: ApiFailure = {
+  ok: false,
+  status: 0,
+  type: 'about:blank',
+  title: 'The card id is not valid',
+  requestId: null,
+  problem: null,
+};
+
+/**
  * GET /v1/cards/{id}; the id is one encoded path segment, so ex10-? and a/b arrive intact.
  * An id that collapses under URL resolution ('', '.', '..') never reaches fetch: it resolves
  * as a failure with status 0, because ids also come from API data, not only from the router.
  */
 export function getCard(id: string, options: RequestOptions = {}): Promise<ApiResult<CardDetail>> {
-  const segment = encodeURIComponent(id);
-  if (COLLAPSING_SEGMENTS.has(segment)) {
-    return Promise.resolve({
-      ok: false,
-      status: 0,
-      type: 'about:blank',
-      title: 'The card id is not valid',
-      requestId: null,
-      problem: null,
-    });
-  }
+  const segment = cardSegment(id);
+  if (segment === null) return Promise.resolve({ ...INVALID_ID });
   return request<CardDetail>(`/cards/${segment}`, options);
+}
+
+/** GET /v1/cards/{id}/prices?range=; the same one-segment id and collapsing guard as getCard. */
+export function getCardPrices(
+  id: string,
+  range: PriceRange,
+  options: RequestOptions = {},
+): Promise<ApiResult<CardPrices>> {
+  const segment = cardSegment(id);
+  if (segment === null) return Promise.resolve({ ...INVALID_ID });
+  const params = new URLSearchParams({ range });
+  return request<CardPrices>(`/cards/${segment}/prices?${params.toString()}`, options);
 }

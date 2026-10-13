@@ -10,6 +10,8 @@ import {
   degradedCardBody,
   fallingPrice,
   firstClosePrice,
+  historyFor,
+  isHistoryUrl,
   jsonResponse,
   pricedCardBody,
   problemResponse,
@@ -36,7 +38,11 @@ function visit(path: string): void {
 
 /** Renders /card/ex10-%3F against one canned API answer and waits for the loaded heading. */
 async function renderCard(answer: Response, settledHeading = 'Unown'): Promise<HTMLElement> {
-  stubFetch(() => answer);
+  const text = await answer.text();
+  const card = () => new Response(text, { status: answer.status, headers: answer.headers });
+  stubFetch((url) =>
+    isHistoryUrl(url) ? jsonResponse(historyFor(JSON.parse(text) as CardDetail)) : card(),
+  );
   visit('/card/ex10-%3F');
   render(<App />);
   await screen.findByRole('heading', { level: 1, name: settledHeading });
@@ -204,7 +210,9 @@ describe('CardPage', () => {
           .map((node) => node.textContent);
         expect(dollarLines.length).toBeGreaterThan(0);
         for (const line of dollarLines) {
-          expect(line).toMatch(/^Market price \$\d|^[▲▼] [+-]\$\d.* vs previous close \(/);
+          expect(line).toMatch(
+            /^Market price \$\d|^[▲▼] [+-]\$\d.* vs previous close \(|^[A-Z][^:]*, (?:1W|1M|3M|YTD|1Y): /,
+          );
         }
       }
       cleanup();

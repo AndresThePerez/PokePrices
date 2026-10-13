@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   cardNotFoundProblem,
+  historyBody,
   jsonResponse,
   problemResponse,
   searchPage,
@@ -8,7 +9,7 @@ import {
   upstreamUnavailableProblem,
   validationProblem,
 } from '../test/fixtures';
-import { getCard, searchCards } from './client';
+import { getCard, getCardPrices, searchCards, type PriceRange } from './client';
 
 describe('searchCards', () => {
   it('asks the same-origin /v1/cards endpoint and returns the typed page', async () => {
@@ -151,6 +152,52 @@ describe('getCard', () => {
     const body = { data: { id: 'ex10-?', name: 'Unown' }, meta: { degraded: false } };
     stubFetch(() => jsonResponse(body));
     expect(await getCard('ex10-?')).toEqual({ ok: true, data: body });
+  });
+});
+
+describe('getCardPrices', () => {
+  it('asks /v1/cards/<encoded id>/prices with the range and returns the typed history', async () => {
+    const body = historyBody([]);
+    const calls = stubFetch(() => jsonResponse(body));
+    const result = await getCardPrices('ex10-?', '1M');
+    expect(calls.map((call) => call.url)).toEqual(['/v1/cards/ex10-%3F/prices?range=1M']);
+    expect(new Headers(calls[0]?.init?.headers).get('Accept')).toBe('application/json');
+    expect(result).toEqual({ ok: true, data: body });
+  });
+
+  it('sends each of the five ranges as it is', async () => {
+    const calls = stubFetch(() => jsonResponse(historyBody([])));
+    const ranges: readonly PriceRange[] = ['1W', '1M', '3M', 'YTD', '1Y'];
+    for (const range of ranges) await getCardPrices('base1-4', range);
+    expect(calls.map((call) => call.url)).toEqual([
+      '/v1/cards/base1-4/prices?range=1W',
+      '/v1/cards/base1-4/prices?range=1M',
+      '/v1/cards/base1-4/prices?range=3M',
+      '/v1/cards/base1-4/prices?range=YTD',
+      '/v1/cards/base1-4/prices?range=1Y',
+    ]);
+  });
+
+  it('never fetches for an id that collapses under URL resolution', async () => {
+    const calls = stubFetch(() => jsonResponse(historyBody([])));
+    for (const id of ['', '.', '..']) {
+      expect(await getCardPrices(id, '1M')).toEqual({
+        ok: false,
+        status: 0,
+        type: 'about:blank',
+        title: 'The card id is not valid',
+        requestId: null,
+        problem: null,
+      });
+    }
+    expect(calls).toHaveLength(0);
+  });
+
+  it('passes the abort signal through', async () => {
+    const controller = new AbortController();
+    const calls = stubFetch(() => jsonResponse(historyBody([])));
+    await getCardPrices('ex10-?', '3M', { signal: controller.signal });
+    expect(calls[0]?.init?.signal).toBe(controller.signal);
   });
 });
 

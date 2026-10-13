@@ -5,6 +5,8 @@ import { navigate } from '../router';
 import {
   cardNotFoundPlainProblem,
   cardWithPrices,
+  historyFor,
+  isHistoryUrl,
   jsonResponse,
   problemResponse,
   risingPrice,
@@ -47,9 +49,10 @@ function visit(path: string): void {
 
 function replies(...answers: (() => Response)[]): string[] {
   const urls: string[] = [];
-  const calls = stubFetch((url) => {
+  stubFetch((url) => {
+    if (isHistoryUrl(url)) return jsonResponse(historyFor(cardWithPrices(risingPrice)));
     urls.push(url);
-    const answer = answers[Math.min(calls.length - 1, answers.length - 1)];
+    const answer = answers[Math.min(urls.length - 1, answers.length - 1)];
     if (answer === undefined) throw new Error('no reply configured');
     return answer();
   });
@@ -136,7 +139,8 @@ describe('card page polling, edge cases (D9)', () => {
 
   it('keeps the card on screen when a poll cannot reach the API at all', async () => {
     let calls = 0;
-    stubFetch(() => {
+    stubFetch((url) => {
+      if (isHistoryUrl(url)) return jsonResponse(historyFor(cardWithPrices(risingPrice)));
       calls += 1;
       return calls === 1 ? jsonResponse(cardWithPrices(risingPrice)) : new TypeError('offline');
     });
@@ -150,6 +154,8 @@ describe('card page polling, edge cases (D9)', () => {
   it('shows the loading line, never the previous card, after in-app navigation to another card', async () => {
     const urls: string[] = [];
     vi.stubGlobal('fetch', (input: string | URL): Promise<Response> => {
+      if (isHistoryUrl(String(input)))
+        return Promise.resolve(jsonResponse(historyFor(cardWithPrices(risingPrice))));
       urls.push(String(input));
       if (urls.length === 1) return Promise.resolve(jsonResponse(cardWithPrices(risingPrice)));
       return new Promise<Response>(() => undefined);

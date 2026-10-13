@@ -6,6 +6,8 @@ import {
   cardNotFoundProblem,
   degradedCardBody,
   degradedSearchPage,
+  historyFor,
+  isHistoryUrl,
   jsonResponse,
   pricedCardBody,
   problemResponse,
@@ -199,7 +201,10 @@ describe('dark theme on the existing pages (T02 criterion 6)', () => {
     ['/card/ex10-%3F', () => problemResponse(upstreamUnavailableProblem)],
     ['/card/ex10-%3F', () => problemResponse(cardNotFoundProblem)],
   ] as const)('gives every colour on %s a dark counterpart', async (path, answer) => {
-    stubFetch(() => (answer === null ? new Error('no request expected') : answer()));
+    stubFetch((url) => {
+      if (isHistoryUrl(url)) return jsonResponse(historyFor(pricedCardBody));
+      return answer === null ? new Error('no request expected') : answer();
+    });
     visit(path);
     const { container } = render(<App />);
     if (answer !== null) {

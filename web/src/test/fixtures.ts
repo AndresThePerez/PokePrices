@@ -363,6 +363,109 @@ export const cardNotFoundPlainProblem = {
   request_id: 'req-t48-notfound-0005',
 } satisfies Schemas['Problem'];
 
+export type PricesBody =
+  operations['getCardPrices']['responses'][200]['content']['application/json'];
+export type PriceSeries = PricesBody['data'][number];
+export type PricePoint = PriceSeries['points'][number];
+
+/** One daily point of a price series; a real close of epoch 1 unless `fields` say otherwise. */
+export function pointOf(day: string, close: string, fields: Partial<PricePoint> = {}): PricePoint {
+  return {
+    day,
+    close,
+    is_filled: false,
+    filled_from: null,
+    as_of: `${day}T20:05:44Z`,
+    series_epoch: 1,
+    ...fields,
+  };
+}
+
+/** A filled point: it repeats the close of `from` (P2 D3). */
+export function filledOf(day: string, close: string, from: string, epoch = 1): PricePoint {
+  return pointOf(day, close, {
+    is_filled: true,
+    filled_from: from,
+    as_of: `${from}T20:05:44Z`,
+    series_epoch: epoch,
+  });
+}
+
+/** A series named like the Unown card's variants; history_begins defaults to its first point. */
+export function seriesOf(
+  variantKey: string,
+  points: readonly PricePoint[],
+  historyBegins: string | null = points[0]?.day ?? null,
+): PriceSeries {
+  const [, finish = '-', edition = '-', treatment = '-'] = variantKey.split(':');
+  return {
+    variant_key: variantKey,
+    finish,
+    edition,
+    treatment,
+    history_begins: historyBegins,
+    points: [...points],
+  };
+}
+
+/** GET /v1/cards/{id}/prices over the given series; the window defaults to 1M ending 2026-10-12. */
+export function historyBody(
+  series: readonly PriceSeries[],
+  meta: Partial<PricesBody['meta']> = {},
+): PricesBody {
+  return {
+    data: [...series],
+    meta: {
+      source: 'tcgplayer',
+      feed: 'tcgcsv',
+      basis: 'market',
+      currency: 'USD',
+      cadence: 'daily',
+      range: '1M',
+      from: '2026-09-13',
+      to: '2026-10-12',
+      as_of: '2026-10-12T20:05:44Z',
+      ...meta,
+    },
+  } satisfies PricesBody;
+}
+
+/**
+ * The history the API would serve beside a card body: one series per variant, a priced variant
+ * holding its previous close (when there is one) and its close, an unpriced one no points and
+ * history_begins null. Used by the fetch stubs that route `/prices?range=` URLs (T05).
+ */
+export function historyFor(card: CardBody): PricesBody {
+  const series = card.data.variants.map((variant) => {
+    const price = variant.price;
+    const points: PricePoint[] = [];
+    if (price !== null) {
+      if (price.previous_close !== null && price.previous_day !== null) {
+        points.push(pointOf(price.previous_day, price.previous_close));
+      }
+      points.push(pointOf(price.day, price.close));
+    }
+    return {
+      variant_key: variant.variant_key,
+      finish: variant.finish,
+      edition: variant.edition,
+      treatment: variant.treatment,
+      history_begins: points[0]?.day ?? null,
+      points,
+    };
+  });
+  const days = card.data.variants.flatMap((variant) =>
+    variant.price === null ? [] : [variant.price.day],
+  );
+  const to = days.length === 0 ? null : days.reduce((a, b) => (b > a ? b : a));
+  return historyBody(series, { to, from: to === null ? null : '2026-09-13' });
+}
+
+/** True for a GET /v1/cards/{id}/prices URL (the history request). */
+export function isHistoryUrl(url: string): boolean {
+  return url.includes('/prices?range=');
+}
+
 /** A JSON response; Content-Type defaults to application/json and `headers` may override it. */
 export function jsonResponse(
   body: unknown,

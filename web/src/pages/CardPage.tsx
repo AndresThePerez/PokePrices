@@ -3,7 +3,9 @@
 import { useQuery } from '@tanstack/react-query';
 import Link from '../Link';
 import { getCard, type ApiFailure, type Card, type CardDetail } from '../api/client';
+import { changeLine, grouped, variantLabel } from '../format';
 import { unwrap } from '../query';
+import PriceHistory from './PriceHistory';
 
 const DEGRADED_LINE = 'Catalog data may be out of date: PokéSearch is unavailable';
 const CATALOG_MISSING_LINE = 'This card is no longer in the PokéSearch catalog';
@@ -47,14 +49,6 @@ function catalogLine(catalog: Card['catalog']): string {
 type Variant = Card['variants'][number];
 type Source = Variant['sources'][number];
 
-/** finish, edition and treatment in words; '-' and '' mean "none" in the variant key. */
-function variantLabel(variant: Variant): string {
-  const parts = [variant.finish, variant.edition, variant.treatment].filter(
-    (part) => part !== '' && part !== '-',
-  );
-  return parts.length > 0 ? parts.join(', ') : variant.variant_key;
-}
-
 function sourceLine(source: Source): string {
   return `TCGplayer product ${String(source.product_id)} (${source.subtype}) via TCGCSV, mapped from the collected snapshot of ${source.map_snapshot_day}`;
 }
@@ -72,48 +66,6 @@ function imageHost(url: string): string | null {
 type Price = NonNullable<Variant['price']>;
 
 const PRICE_FOOTNOTE = 'TCGplayer market prices via TCGCSV, collected once a day.';
-const NEUTRAL = 'text-flat';
-const DECIMAL = /^(\d+)(\.\d+)?$/;
-
-/**
- * An unsigned API decimal string with ',' between thousands. The digits are copied, never parsed
- * into a number (no re-rounding, "0.10" stays "0.10"); anything that is not a plain decimal is
- * copied as it came.
- */
-function grouped(amount: string): string {
-  const match = DECIMAL.exec(amount);
-  if (match === null) return amount;
-  const whole = match[1] ?? '';
-  return `${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}${match[2] ?? ''}`;
-}
-
-/** The sign of an API decimal string and its digits without it. */
-function signed(amount: string): { readonly negative: boolean; readonly digits: string } {
-  return { negative: amount.startsWith('-'), digits: amount.replace(/^[-+]/, '') };
-}
-
-/**
- * The change line and its tone. Direction comes from the API's change string; the arrow and the
- * sign carry it, the colour only repeats it. change_pct is printed only when the API sent one.
- */
-function changeLine(price: Price): { readonly text: string; readonly tone: string } {
-  if (price.previous_close === null || price.previous_day === null || price.change === null) {
-    return { text: 'No previous close yet', tone: NEUTRAL };
-  }
-  const versus = `vs previous close (${price.previous_day})`;
-  const change = signed(price.change);
-  if (/^0+(\.0+)?$/.test(change.digits)) return { text: `No change ${versus}`, tone: NEUTRAL };
-  const arrow = change.negative ? '▼ -' : '▲ +';
-  let percent = '';
-  if (price.change_pct !== null) {
-    const pct = signed(price.change_pct);
-    percent = ` (${pct.negative ? '-' : '+'}${pct.digits}%)`;
-  }
-  return {
-    text: `${arrow}$${grouped(change.digits)}${percent} ${versus}`,
-    tone: change.negative ? 'text-down' : 'text-up',
-  };
-}
 
 function VariantPrice({ price }: { readonly price: Price }) {
   const change = changeLine(price);
@@ -241,6 +193,7 @@ function Loaded({ body }: { readonly body: CardDetail }) {
           </p>
         </div>
       </article>
+      {card.variants.some((variant) => variant.price !== null) && <PriceHistory id={card.id} />}
     </>
   );
 }
