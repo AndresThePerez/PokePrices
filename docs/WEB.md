@@ -25,6 +25,29 @@ prices get into the database is in [`OPERATIONS.md`](OPERATIONS.md).
   `Ranked by change vs previous close among variants whose previous close was at least $<amount>.`
   Before any day is ingested the board says `No movers yet`; a day with no ranked rows in the shown
   direction says `No rises ranked for <day>` or `No falls ranked for <day>`.
+- **`/sign-in`.** Email and password. When two-factor is on, a second step asks for an authentication code (or a
+  recovery code). It also offers `Forgot your password?`, `Create an account` and `Try the read-only demo`. A
+  `?next=` address is followed after sign-in only when it is a page of this site. The sixth wrong sign-in in a minute is refused.
+- **`/sign-up`.** Accounts are invite-only: an invite code, an email address and a password of at least 12
+  characters.
+- **`/password/forgot`.** Asks for an email address and says a reset link is on its way, whether or not the address
+  has an account.
+- **`/password/reset`.** Where the reset link lands (`?token=` and `&email=` are removed from the address bar on
+  arrival); the person chooses a new password.
+- **`/account`.** Who is signed in, whether the email is verified (with a button to send the verification email
+  again), two-factor on and off with a QR code and one-time recovery codes, `Download your data (JSON)`,
+  `Delete my account` and `Sign out`. Signed out, it offers sign-in and sign-up. As the demo, it says the demo is
+  read-only.
+- **`/account/verify-email`.** Where the verification link in the email lands. It needs a signed-in person.
+- **`/watchlist`.** The variants a person watches, each row a ticker with its own `as of <day> from TCGCSV (daily
+  close)` line, a `Remove` button, and the card name from PokéSearch (`Card <id>` while it is unavailable).
+- **`/portfolio`.** The variants a person holds with a quantity, each with its value and its own `as of` line, and a
+  total computed by the API that names the days it rests on. A holding without a price is not valued and is named
+  as not counted.
+
+The watchlist and portfolio are filled from the card page, where each priced variant has `Add to watchlist` and
+`Add to portfolio` buttons. The account pages, the sessions behind them and the rules for the demo are described in
+[`ACCOUNTS.md`](ACCOUNTS.md).
 
 Every page also carries the header with links and the display settings (see Display settings).
 
@@ -112,8 +135,7 @@ The header has two native selects on every page:
   colour-blind-safe choice. Stored under the `localStorage` key `pokeprices:palette` (default `green-red`).
 
 Both are applied before the first paint, so a page never flashes the wrong theme. An unknown stored value,
-or a browser that blocks `localStorage`, falls back to the defaults. The settings belong to this browser
-only; account settings that follow a person across browsers arrive with P4 (accounts).
+or a browser that blocks `localStorage`, falls back to the defaults. Display settings stay in this browser's `localStorage`; accounts do not store them.
 
 The same sizing rules hold on every page: tap targets of at least 44 px, and no horizontal scroll at 390 px
 width.

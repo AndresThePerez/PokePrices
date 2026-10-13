@@ -25,10 +25,12 @@ Every PHP and Node tool runs inside the compose services
 (`docker compose -f compose.dev.yml exec -T ...`); nothing is installed on the host. The dev site
 is `http://pokeprices.localhost:8095`. How prices are ingested, checked, replayed and repaired is in
 [`docs/OPERATIONS.md`](docs/OPERATIONS.md). What each web page shows, how the pages refresh and how to
-see a change on the dev site is in [`docs/WEB.md`](docs/WEB.md).
+see a change on the dev site is in [`docs/WEB.md`](docs/WEB.md). How accounts, sessions, the demo, the watchlist and
+portfolio, data export and deletion work is in [`docs/ACCOUNTS.md`](docs/ACCOUNTS.md).
 
 ## Reserved paths
 
 Laravel owns `/v1/*`, `/up`, `/sanctum/*`, `/login`, `/logout`, `/register`, `/forgot-password`,
 `/reset-password`, `/email/*`, `/user/*` and `/two-factor-challenge`. The SPA owns every other
-path, and its auth pages live under `/account/*`.
+path, including its account pages: `/sign-in`, `/sign-up`, `/password/forgot`, `/password/reset`,
+`/account`, `/account/verify-email`, `/watchlist` and `/portfolio`.
