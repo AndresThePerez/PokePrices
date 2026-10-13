@@ -4,8 +4,13 @@ declare(strict_types=1);
 
 namespace App\Domain\Pricing;
 
+use App\Domain\Pricing\Jobs\FinalizeDay;
+use App\Domain\Pricing\Jobs\FinalizeDayCallback;
+use App\Domain\Pricing\Jobs\IngestChunk;
+use App\Domain\Pricing\Jobs\MarkRunFailed;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\ConnectionInterface;
+use Illuminate\Support\Facades\Bus;
 use RuntimeException;
 use stdClass;
 use Throwable;
@@ -25,6 +30,10 @@ use Throwable;
  * sync() holds the `pricing:ingest` lock (D12) and runs all three inside one transaction, so a failure anywhere
  * leaves no price row; the `failed` run is written after the rollback. The product map is read, never written, and
  * loaded once per run. Prices never leave Postgres for Elasticsearch.
+ *
+ * Queued mode (T08) wires the same seams to jobs: StartDayIngest runs start() under the lock and dispatchChunks()
+ * sends one IngestChunk per chunk as a batch whose `then` dispatches FinalizeDay; resume() re-opens a queued run and
+ * re-dispatches only its chunks that are not done.
  */
 final class DayIngest
 {
@@ -164,9 +173,12 @@ final class DayIngest
             if ($run->status !== 'running') {
                 return null;
             }
-            $chunk = $this->db->selectOne('SELECT group_id, "offset", "rows" FROM ingest_run_chunks WHERE id = ? AND ingest_run_id = ? FOR UPDATE', [$chunkId, $runId], false);
+            $chunk = $this->db->selectOne('SELECT group_id, "offset", "rows", status, counts FROM ingest_run_chunks WHERE id = ? AND ingest_run_id = ? FOR UPDATE', [$chunkId, $runId], false);
             if (! $chunk instanceof stdClass) {
                 throw new RuntimeException("chunk {$chunkId} is not a chunk of ingest run {$runId}");
+            }
+            if ($chunk->status === 'done') {
+                return json_decode((string) $chunk->counts, true, 512, JSON_THROW_ON_ERROR);
             }
 
             $marker = CarbonImmutable::parse((string) $run->marker)->utc();
@@ -245,6 +257,95 @@ final class DayIngest
         });
     }
 
+    /**
+     * Queued mode (T08): dispatches the run's chunks as one batch on $queueConnection, queue config('pricing.queue').
+     * The batch's `then` dispatches FinalizeDay and its `catch` marks the run failed; both are invokable serializable
+     * classes (review F4) and the batch does not allow failures, so finalize never runs on a partial day. A run without
+     * a chunk to run goes straight to FinalizeDay.
+     *
+     * @param  list<int>  $chunkIds
+     */
+    public function dispatchChunks(int $runId, array $chunkIds, string $queueConnection, ?string $database = null): void
+    {
+        if ($chunkIds === []) {
+            Bus::dispatch(new FinalizeDay($runId, $queueConnection, $database));
+
+            return;
+        }
+
+        Bus::batch(array_map(fn (int $chunkId): IngestChunk => new IngestChunk($runId, $chunkId, $this->snapshotsRoot, $database), $chunkIds))
+            ->then(new FinalizeDayCallback($runId, $queueConnection, $database))
+            ->catch(new MarkRunFailed($runId, $database))
+            ->name('ingest:'.config('pricing.source').':'.$runId)
+            ->onConnection($queueConnection)
+            ->onQueue((string) config('pricing.queue'))
+            ->dispatch();
+    }
+
+    /**
+     * Re-opens the newest queued run of the day's current marker when it is `running` or `failed`, and re-dispatches
+     * only its chunks that are not done (failed chunks go back to pending); done chunks are not re-read, and finalize
+     * sums each chunk's counts once. It holds the `pricing:ingest` lock while it re-opens the run (D12). A newer `ok`
+     * or `superseded` run of the marker, a sync or replay run, or a day without a readable marker leaves nothing to
+     * resume. started_at is reset to the resume time, so the pending scan's 2 h stall clock restarts.
+     *
+     * @return array{status: 'resumed'|'none'|'locked', run_id: int|null, marker: CarbonImmutable|null, error: string|null, chunks: list<int>}
+     */
+    public function resume(string $day, string $queueConnection, ?string $database = null): array
+    {
+        if (! IngestLock::tryAcquire($this->db)) {
+            return ['status' => 'locked', 'run_id' => null, 'marker' => null, 'error' => IngestLock::HELD_MESSAGE, 'chunks' => []];
+        }
+
+        try {
+            try {
+                $marker = PriceSnapshotReader::at($this->snapshotsRoot, $day)->marker();
+            } catch (DayRefused $e) {
+                return ['status' => 'none', 'run_id' => null, 'marker' => null, 'error' => "nothing to resume for {$day}: {$e->error}", 'chunks' => []];
+            }
+
+            $opened = $this->db->transaction(function () use ($day, $marker): ?array {
+                $run = $this->db->selectOne(
+                    'SELECT id, mode, status FROM ingest_runs WHERE source = ? AND day = ?::date AND marker = ?::timestamptz'
+                    ." AND status IN ('ok', 'running', 'failed', 'superseded') ORDER BY id DESC LIMIT 1 FOR UPDATE",
+                    [(string) config('pricing.source'), $day, $marker->format('Y-m-d H:i:sP')],
+                    false,
+                );
+                if (! $run instanceof stdClass || $run->mode !== 'queued' || ! in_array($run->status, ['running', 'failed'], true)) {
+                    return null;
+                }
+                $runId = (int) $run->id;
+                $this->db->update(
+                    "UPDATE ingest_runs SET status = 'running', error = NULL, finished_at = NULL, started_at = ? WHERE id = ?",
+                    [CarbonImmutable::now('UTC')->format('Y-m-d H:i:sP'), $runId],
+                );
+                $this->db->update("UPDATE ingest_run_chunks SET status = 'pending', error = NULL WHERE ingest_run_id = ? AND status = 'failed'", [$runId]);
+
+                /** @var list<int> $chunkIds */
+                $chunkIds = $this->db->table('ingest_run_chunks')->where('ingest_run_id', $runId)->where('status', '<>', 'done')
+                    ->orderBy('id')->pluck('id')->map(fn (mixed $id): int => (int) $id)->all();
+
+                return ['run_id' => $runId, 'chunks' => $chunkIds];
+            });
+            if ($opened === null) {
+                return ['status' => 'none', 'run_id' => null, 'marker' => $marker, 'error' => "nothing to resume for {$day}: no running or failed queued run of its marker", 'chunks' => []];
+            }
+
+            $error = null;
+            try {
+                $this->dispatchChunks($opened['run_id'], $opened['chunks'], $queueConnection, $database);
+            } catch (Throwable $e) {
+                // A chunk that failed inline (the sync queue) already marked itself and the run failed.
+                report($e);
+                $error = mb_substr($e->getMessage(), 0, 2000);
+            }
+
+            return ['status' => 'resumed', 'run_id' => $opened['run_id'], 'marker' => $marker, 'error' => $error, 'chunks' => $opened['chunks']];
+        } finally {
+            IngestLock::release($this->db);
+        }
+    }
+
     private function insertRun(string $day, ?CarbonImmutable $marker, string $mode, string $status, CarbonImmutable $startedAt, ?string $error): int
     {
         $finished = $status === 'running' ? null : CarbonImmutable::now('UTC')->format('Y-m-d H:i:sP');
@@ -262,12 +363,16 @@ final class DayIngest
         ]);
     }
 
-    /** The run's reader; a reader opened after start (a queued chunk) first checks the folder still holds the run's marker. */
+    /**
+     * The run's reader; a reader opened after start (a queued chunk) first checks the folder still holds the run's
+     * marker. ingest_runs stores the marker to the second (the 'Y-m-d H:i:sP' text every writer uses), so the folder's
+     * marker is compared at that same precision: a fractional-second marker is not a mismatch (T08).
+     */
     private function readerFor(int $runId, string $day, CarbonImmutable $marker): PriceSnapshotReader
     {
         if (! isset($this->readers[$runId])) {
             $reader = PriceSnapshotReader::at($this->snapshotsRoot, $day);
-            if (! $reader->marker()->equalTo($marker)) {
+            if ($reader->marker()->format('Y-m-d H:i:sP') !== $marker->utc()->format('Y-m-d H:i:sP')) {
                 throw new RuntimeException("snapshot day {$day} no longer holds the marker of ingest run {$runId}");
             }
             $this->readers = [$runId => $reader];
