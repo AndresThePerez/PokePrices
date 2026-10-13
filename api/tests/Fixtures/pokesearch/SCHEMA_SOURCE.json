@@ -1,0 +1,15 @@
+{
+  "repository": "pokesearch",
+  "branch": "p1-api-v1",
+  "commit": "617721a0b182b0004648af100ba70c9dc0f3cf14",
+  "path": "docs/api/schema",
+  "files": {
+    "card-response.json": "dcd32d164b3ca13466724ecfc6a493898fe9e60a6cbf671d4364e19925a54113",
+    "card.json": "481dbf8a01ca5f54dc4763bd42571658f5bfc1fdbdaba51a5dd60c4c92d266ac",
+    "cards-batch-response.json": "534f8a9261b24f2d5375587b990ea4d7d6cbf801002c7af7c307fe416c6c916b",
+    "error.json": "f3f7c6fc3776ffee803d5698b4aa191b9e84ec74257ec9ba4df32334d92a35aa",
+    "meta.json": "8df04ed3f59d157bb66fc2f56b27fe8b5501760d270c73562454d750c47161af",
+    "search.json": "f3d706884d4a4c07f93ce3220129b752275ca5aeb95b4392ebd409c1ccb5b3bc",
+    "sets-response.json": "1259782ee7951026309544269237fe26b65f0961191368e83bd5eff19f719783"
+  }
+}

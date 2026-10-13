@@ -1,0 +1,15 @@
+{
+  "recorded_with": "curl -s against the PokéSearch dev stack on 127.0.0.1:8081, body stored verbatim, status from -w %{http_code}",
+  "recorded_at": "2026-10-13T01:55:35Z",
+  "file_names": "cards/ex10-question-mark.json is the plan's cards/ex10-%3F.json, renamed for an ASCII-safe path; every other file keeps the plan's name",
+  "fixtures": {
+    "cards/base1-4.json": {"request": "/api/v1/cards/base1-4", "status": 200, "schema": "card-response.json"},
+    "cards/ex10-question-mark.json": {"request": "/api/v1/cards/ex10-%3F", "status": 200, "schema": "card-response.json"},
+    "cards/ex10-!.json": {"request": "/api/v1/cards/ex10-!", "status": 200, "schema": "card-response.json"},
+    "batch/mixed-missing.json": {"request": "/api/v1/cards?ids=base1-4,ex10-%3F,no-such-1", "status": 200, "schema": "cards-batch-response.json"},
+    "sets.json": {"request": "/api/v1/sets", "status": 200, "schema": "sets-response.json"},
+    "errors/not_found.json": {"request": "/api/v1/cards/no-such-1", "status": 404, "schema": "error.json"},
+    "meta.json": {"request": "/api/meta", "status": 200, "schema": "meta.json"},
+    "search/charizard-p1.json": {"request": "/api/search?q=charizard&page=1", "status": 200, "schema": "search.json"}
+  }
+}
