@@ -1,6 +1,7 @@
 // The PokéPrices card page: /card/:id over GET /v1/cards/{id}. Every date and version it shows
 // comes from the API response (R132), never from the request or render time.
 import { useQuery } from '@tanstack/react-query';
+import CardActions from '../account/CardActions';
 import Link from '../Link';
 import {
   getCard,
@@ -169,6 +170,7 @@ function PricedVariants({
                 points={pointsOf(history.data, variant.variant_key)}
               />
             )}
+            <CardActions cardId={id} variant={variant} />
           </li>
         ))}
       </ul>

@@ -1,13 +1,16 @@
-// /account (D10): who is signed in, whether the email address is verified (with a resend
-// button), the two-factor section (T04) and Sign out. Signed out, it links to sign-in and sign-up. A fresh mount reads the
-// session from GET /v1/me alone, so a signed-in session survives a reload (D13).
+// /account (D10): who is signed in, the read-only demo notice (T07), whether the email address
+// is verified (with a resend button), the two-factor section (T04) and Sign out. Signed out, it
+// links to sign-in and sign-up. A fresh mount reads the session from GET /v1/me alone, so a
+// signed-in session survives a reload (D13).
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { resendVerification, signOut, type ApiFailure, type Me } from '../api/client';
 import Link from '../Link';
 import { navigate } from '../router';
 import { AccountMain, LoadingAccount, ProblemBlock, StatusLine } from './Form';
+import { DemoNotice } from './ListParts';
 import { SECONDARY_BUTTON, TEXT_LINK } from './fields';
+import { forgetLists } from './lists';
 import { ME_KEY, useArrivalStatus, useSession } from './session';
 import TwoFactorSection from './TwoFactor';
 
@@ -66,6 +69,7 @@ function SignOut() {
     }
     // Signed out at once (no stale "Signed in as" on the next visit), then confirmed by the API.
     queryClient.setQueryData(ME_KEY, null);
+    forgetLists(queryClient);
     void queryClient.invalidateQueries({ queryKey: ME_KEY });
     navigate('/');
   }
@@ -91,6 +95,7 @@ function SignedIn({ me }: { readonly me: Me }) {
   return (
     <>
       <p className="mt-6 text-lg font-medium break-all">{`Signed in as ${me.email}`}</p>
+      {me.read_only && <DemoNotice />}
       <Verification verified={me.email_verified} />
       <TwoFactorSection me={me} />
       <SignOut />

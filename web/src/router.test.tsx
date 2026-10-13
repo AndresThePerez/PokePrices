@@ -153,6 +153,39 @@ describe('the account routes (P4 T03 criterion 2, D10)', () => {
   });
 });
 
+describe('the watchlist and portfolio routes (P4 T07, D10)', () => {
+  it('maps /watchlist and /portfolio to their routes', () => {
+    expect(matchRoute('/watchlist', '')).toEqual({ name: 'watchlist' });
+    expect(matchRoute('/portfolio', '')).toEqual({ name: 'portfolio' });
+    expect(matchRoute('/watchlist', '?x=1')).toEqual({ name: 'watchlist' });
+  });
+
+  it('keeps trailing-slash and extra-segment variants not-found', () => {
+    for (const path of [
+      '/watchlist/',
+      '/watchlist/x',
+      '/portfolio/',
+      '/portfolio/base1-4',
+      '/Watchlist',
+      '/PORTFOLIO',
+    ]) {
+      expect(matchRoute(path, '')).toEqual({ name: 'not-found' });
+    }
+  });
+
+  it.each(['/watchlist', '/portfolio'])('accepts next %j now that the route exists', (next) => {
+    expect(safeNext(next)).toBe(next);
+    expect(matchRoute('/sign-in', `?next=${encodeURIComponent(next)}`)).toEqual({
+      name: 'sign-in',
+      next,
+    });
+  });
+
+  it.each(['/watchlist/', '//watchlist', '/portfolio/x'])('refuses next %j', (next) => {
+    expect(safeNext(next)).toBe('/account');
+  });
+});
+
 describe('cardPath', () => {
   it('encodes the id into one path segment that matchRoute reads back unchanged', () => {
     expect(cardPath('ex10-?')).toBe('/card/ex10-%3F');

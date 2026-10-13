@@ -2,10 +2,12 @@ import { useState, type ReactNode } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import AccountPage from './account/AccountPage';
 import ForgotPasswordPage from './account/ForgotPasswordPage';
+import PortfolioPage from './account/PortfolioPage';
 import ResetPasswordPage from './account/ResetPasswordPage';
 import SignInPage from './account/SignInPage';
 import SignUpPage from './account/SignUpPage';
 import VerifyEmailPage from './account/VerifyEmailPage';
+import WatchlistPage from './account/WatchlistPage';
 import Header from './Header';
 import Link from './Link';
 import CardPage from './pages/CardPage';
@@ -55,6 +57,10 @@ function Routes() {
       return <AccountPage />;
     case 'verify-email':
       return <VerifyEmailPage key={route.link} link={route.link} />;
+    case 'watchlist':
+      return <WatchlistPage />;
+    case 'portfolio':
+      return <PortfolioPage />;
     case 'not-found':
       return (
         <Page title="Page not found">

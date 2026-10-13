@@ -858,3 +858,185 @@ export function passwordRequiredResponse(): Response {
 export function emptyJsonResponse(status: number): Response {
   return rawResponse(status, '""', 'application/json');
 }
+
+// ---- Watchlist, portfolio and the demo (P4 T07) ------------------------------------------------
+// Bodies of GET /v1/watchlist and GET /v1/portfolio, checked against the generated schema. Every
+// money value is the API's decimal string; the portfolio's values and total are the API's sums
+// (D9's worked example), never recomputed here or in the pages.
+
+export type WatchlistBody =
+  operations['getWatchlist']['responses'][200]['content']['application/json'];
+export type WatchlistItem = Schemas['WatchlistItemResource'];
+export type PortfolioBody =
+  operations['getPortfolio']['responses'][200]['content']['application/json'];
+export type Holding = Schemas['HoldingResource'];
+
+const charizard = { name: 'Charizard', set_name: 'Base', number: '4' };
+const chimecho = { name: 'Chimecho', set_name: 'Hidden Legends', number: '17' };
+
+/** Charizard holo unlimited: 968.91 on 2026-10-12, up from 950.00 on 2026-10-11. */
+export const charizardPrice = closeOf({
+  close: '968.91',
+  previous_close: '950.00',
+  change: '18.91',
+  change_pct: '1.99',
+});
+
+/** Chimecho reverse holo: 26.34 on 2026-10-11, down from 27.00 on 2026-10-10. */
+export const chimechoPrice = closeOf({
+  close: '26.34',
+  day: '2026-10-11',
+  as_of: '2026-10-11T20:05:44Z',
+  previous_close: '27.00',
+  previous_day: '2026-10-10',
+  change: '-0.66',
+  change_pct: '-2.44',
+});
+
+/** One watchlist item; Charizard holo unlimited unless `fields` say otherwise. */
+export function watchItemOf(fields: Partial<WatchlistItem> = {}): WatchlistItem {
+  return {
+    variant_key: 'base1-4:holo:unlimited:-',
+    card_id: 'base1-4',
+    finish: 'holo',
+    edition: 'unlimited',
+    treatment: '-',
+    card: charizard,
+    price: charizardPrice,
+    ...fields,
+  } satisfies WatchlistItem;
+}
+
+/** The demo's three watchlist rows: an unpriced first edition, a rise and a fall. */
+export const watchlistItems = [
+  watchItemOf({
+    variant_key: 'base1-4:holo:1st:-',
+    edition: '1st',
+    price: null,
+  }),
+  watchItemOf(),
+  watchItemOf({
+    variant_key: 'ex5-17:reverse:-:-',
+    card_id: 'ex5-17',
+    finish: 'reverse',
+    edition: '-',
+    card: chimecho,
+    price: chimechoPrice,
+  }),
+] satisfies WatchlistItem[];
+
+/** GET /v1/watchlist over the given items. */
+export function watchlistBody(
+  items: readonly WatchlistItem[] = watchlistItems,
+  meta: Partial<WatchlistBody['meta']> = {},
+): WatchlistBody {
+  return {
+    data: [...items],
+    meta: { count: items.length, limit: 100, degraded: false, ...meta },
+  } satisfies WatchlistBody;
+}
+
+/** One holding; Charizard holo unlimited × 1 at 968.91 unless `fields` say otherwise. */
+export function holdingOf(fields: Partial<Holding> = {}): Holding {
+  return {
+    ...watchItemOf(),
+    quantity: 1,
+    value: '968.91',
+    ...fields,
+  } satisfies Holding;
+}
+
+/**
+ * D9's worked example: Charizard × 1 at 968.91 (value 968.91), Chimecho × 3 at 26.34 (value
+ * 79.02, a close of the day before) and an unpriced first edition × 2 (value null).
+ */
+export const workedHoldings = [
+  holdingOf({
+    variant_key: 'base1-4:holo:1st:-',
+    edition: '1st',
+    price: null,
+    quantity: 2,
+    value: null,
+  }),
+  holdingOf(),
+  holdingOf({
+    variant_key: 'ex5-17:reverse:-:-',
+    card_id: 'ex5-17',
+    finish: 'reverse',
+    edition: '-',
+    card: chimecho,
+    price: chimechoPrice,
+    quantity: 3,
+    value: '79.02',
+  }),
+] satisfies Holding[];
+
+/** GET /v1/portfolio over the given holdings; meta defaults to D9's worked example. */
+export function portfolioBody(
+  holdings: readonly Holding[] = workedHoldings,
+  meta: Partial<PortfolioBody['meta']> = {},
+): PortfolioBody {
+  return {
+    data: [...holdings],
+    meta: {
+      count: holdings.length,
+      limit: 100,
+      total_value: '1047.93',
+      priced: 2,
+      unpriced: 1,
+      first_day: '2026-10-11',
+      last_day: '2026-10-12',
+      source: 'tcgplayer',
+      feed: 'tcgcsv',
+      basis: 'market',
+      currency: 'USD',
+      degraded: false,
+      ...meta,
+    },
+  } satisfies PortfolioBody;
+}
+
+/** An empty portfolio: no holding, no total, no days. */
+export const emptyPortfolioBody = portfolioBody([], {
+  total_value: null,
+  priced: 0,
+  unpriced: 0,
+  first_day: null,
+  last_day: null,
+});
+
+/** GET /v1/me for the read-only demo account. */
+export const demoMe = {
+  data: { email: 'demo@example.com', email_verified: true, two_factor: false, read_only: true },
+} satisfies MeBody;
+
+/** The 403 every write of the demo account answers (DemoReadOnly). */
+export function demoReadOnlyProblem(instance: string): Schemas['Problem'] {
+  return {
+    type: `${PROBLEM_BASE}demo-read-only`,
+    title: 'Demo Account Is Read-Only',
+    status: 403,
+    instance,
+    request_id: 'req-p4-demo-0008',
+  };
+}
+
+/** The 404 POST /v1/demo/session answers when the demo is off or not seeded. */
+export const demoUnavailableProblem = {
+  type: `${PROBLEM_BASE}demo-unavailable`,
+  title: 'Demo Account Unavailable',
+  status: 404,
+  instance: '/v1/demo/session',
+  request_id: 'req-p4-demo-0009',
+} satisfies Schemas['Problem'];
+
+/** The 503 an account route answers while a dependency is down. */
+export function serviceUnavailableProblem(instance: string): Schemas['Problem'] {
+  return {
+    type: `${PROBLEM_BASE}http-503`,
+    title: 'Service Unavailable',
+    status: 503,
+    instance,
+    request_id: 'req-p4-unavailable-0010',
+  };
+}

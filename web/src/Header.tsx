@@ -73,6 +73,22 @@ export default function Header() {
             </li>
             <li>
               <Link
+                to="/watchlist"
+                className={`inline-flex min-h-11 items-center underline-offset-4 hover:underline ${FOCUS}`}
+              >
+                Watchlist
+              </Link>
+            </li>
+            <li>
+              <Link
+                to="/portfolio"
+                className={`inline-flex min-h-11 items-center underline-offset-4 hover:underline ${FOCUS}`}
+              >
+                Portfolio
+              </Link>
+            </li>
+            <li>
+              <Link
                 to="/account"
                 className={`inline-flex min-h-11 items-center underline-offset-4 hover:underline ${FOCUS}`}
               >

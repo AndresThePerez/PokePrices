@@ -555,3 +555,73 @@ export function disableTwoFactor(): Promise<ApiResult<undefined>> {
 export function twoFactorChallenge(form: TwoFactorChallengeForm): Promise<ApiResult<undefined>> {
   return accountRequest<undefined>('/two-factor-challenge', { method: 'POST', body: form });
 }
+
+// ---- Watchlist, portfolio and the demo (P4 T07) -------------------------------------------------
+// Every price, value and total in these answers is the API's decimal string: the pages print them
+// and never compute one. The variant key travels as one encoded path segment.
+
+export type WatchlistBody =
+  operations['getWatchlist']['responses'][200]['content']['application/json'];
+export type WatchlistItem = components['schemas']['WatchlistItemResource'];
+export type WatchlistEntry =
+  operations['putWatchlistItem']['responses'][200]['content']['application/json'];
+export type PortfolioBody =
+  operations['getPortfolio']['responses'][200]['content']['application/json'];
+export type Holding = components['schemas']['HoldingResource'];
+export type HoldingEntry =
+  operations['putHolding']['responses'][200]['content']['application/json'];
+
+/** The variant key as one encoded path segment, or null when it would collapse ('', '.', '..'). */
+function variantPath(list: 'watchlist' | 'portfolio', variantKey: string): string | null {
+  const segment = cardSegment(variantKey);
+  return segment === null ? null : `/v1/${list}/${segment}`;
+}
+
+/** GET /v1/watchlist: the signed-in account's variants with their prices (401 signed out). */
+export function getWatchlist(options: RequestOptions = {}): Promise<ApiResult<WatchlistBody>> {
+  return accountRequest<WatchlistBody>('/v1/watchlist', { method: 'GET', signal: options.signal });
+}
+
+/** PUT /v1/watchlist/{variantKey}: 200 whether it was added or already there. */
+export function putWatchlistItem(variantKey: string): Promise<ApiResult<WatchlistEntry>> {
+  const path = variantPath('watchlist', variantKey);
+  if (path === null) return Promise.resolve({ ...INVALID_PATH });
+  return accountRequest<WatchlistEntry>(path, { method: 'PUT' });
+}
+
+/** DELETE /v1/watchlist/{variantKey}: 204, also when it was not there. */
+export function deleteWatchlistItem(variantKey: string): Promise<ApiResult<undefined>> {
+  const path = variantPath('watchlist', variantKey);
+  if (path === null) return Promise.resolve({ ...INVALID_PATH });
+  return accountRequest<undefined>(path, { method: 'DELETE' });
+}
+
+/** GET /v1/portfolio: the holdings, their values and the total, all computed by the API. */
+export function getPortfolio(options: RequestOptions = {}): Promise<ApiResult<PortfolioBody>> {
+  return accountRequest<PortfolioBody>('/v1/portfolio', { method: 'GET', signal: options.signal });
+}
+
+/**
+ * PUT /v1/portfolio/{variantKey} { quantity }: sets (never adds to) the quantity held; 200. A
+ * quantity the browser could not read as a whole number is sent as null, so the API's 422 names it.
+ */
+export function putHolding(
+  variantKey: string,
+  quantity: number | null,
+): Promise<ApiResult<HoldingEntry>> {
+  const path = variantPath('portfolio', variantKey);
+  if (path === null) return Promise.resolve({ ...INVALID_PATH });
+  return accountRequest<HoldingEntry>(path, { method: 'PUT', body: { quantity } });
+}
+
+/** DELETE /v1/portfolio/{variantKey}: 204, also when it was not there. */
+export function deleteHolding(variantKey: string): Promise<ApiResult<undefined>> {
+  const path = variantPath('portfolio', variantKey);
+  if (path === null) return Promise.resolve({ ...INVALID_PATH });
+  return accountRequest<undefined>(path, { method: 'DELETE' });
+}
+
+/** POST /v1/demo/session: 204, this browser is signed in to the read-only demo account. */
+export function startDemo(): Promise<ApiResult<undefined>> {
+  return accountRequest<undefined>('/v1/demo/session', { method: 'POST' });
+}

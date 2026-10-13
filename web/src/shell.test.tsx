@@ -31,6 +31,8 @@ describe('shell page honesty', () => {
       ['PokéPrices', '/'],
       ['Search', '/search'],
       ['Movers', '/movers'],
+      ['Watchlist', '/watchlist'],
+      ['Portfolio', '/portfolio'],
       ['Account', '/account'],
     ]);
   });
