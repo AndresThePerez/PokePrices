@@ -260,17 +260,38 @@ test('confidence is numeric(4,3)', function (): void {
     }
 });
 
-test('no column of any table in the schema holds a price (EC-P1-18)', function (): void {
-    $priceColumns = DB::select(
+test('no column of any product-map table holds a price (EC-P1-18)', function (): void {
+    // Rescoped by P2-i1 T02: the price tables are P2's; the invariant P1 owns is that the map tables hold no price.
+    $mapTables = [...T36_TABLES, 'unmapped_cards'];
+    $priceColumns = fn (): array => DB::select(
         "SELECT table_name, column_name FROM information_schema.columns
-         WHERE table_schema = current_schema() AND column_name ILIKE '%price%'",
+         WHERE table_schema = current_schema() AND table_name = ANY (?::text[])
+           AND (column_name ILIKE '%price%' OR column_name IN ('market', 'low', 'mid', 'high', 'direct_low', 'close'))
+         ORDER BY table_name, column_name",
+        ['{'.implode(',', $mapTables).'}'],
     );
     $mapColumns = DB::selectOne(
         'SELECT count(*) AS n FROM information_schema.columns WHERE table_schema = current_schema() AND table_name IN (?, ?, ?, ?, ?, ?)',
         T36_TABLES,
     );
+    $clean = $priceColumns();
 
-    expect($priceColumns)->toBe([])
+    // The query must see a price-like column added to a map table; the savepoint rolls the probe back.
+    $probed = [];
+    try {
+        DB::transaction(function () use ($priceColumns, &$probed): void {
+            DB::statement('ALTER TABLE card_variants ADD COLUMN close numeric(12,2)');
+            DB::statement('ALTER TABLE unmapped_cards ADD COLUMN last_price numeric(12,2)');
+            $probed = array_map(fn (object $c): string => "{$c->table_name}.{$c->column_name}", $priceColumns());
+
+            throw new RuntimeException('roll the probe back');
+        });
+    } catch (RuntimeException) {
+    }
+
+    expect($clean)->toBe([])
+        ->and($probed)->toBe(['card_variants.close', 'unmapped_cards.last_price'])
+        ->and($priceColumns())->toBe([])
         ->and($mapColumns->n)->toBe(64);
 });
 
@@ -577,10 +598,17 @@ test('the models read and write their tables with typed casts', function (): voi
 
 test('the migration rolls back and re-applies cleanly', function (): void {
     // unmapped_cards (a later migration) references map_builds, so it rolls back first and re-applies last,
-    // in the order migrate:rollback and migrate use.
+    // in the order migrate:rollback and migrate use. The P2 price migrations reference card_variants, so they
+    // roll back before it (reverse filename order) and re-apply after it (P2-i1 T02, review F1).
     $migration = require database_path(T36_MIGRATION);
     $cards = require database_path('migrations/2026_10_13_000002_create_unmapped_cards_table.php');
+    $priceFiles = glob(database_path('migrations/2026_10_14_*.php')) ?: [];
+    sort($priceFiles);
+    $prices = array_map(fn (string $f): object => require $f, $priceFiles);
 
+    foreach (array_reverse($prices) as $price) {
+        $price->down();
+    }
     $cards->down();
     $migration->down();
     $afterDown = array_map(fn (string $t): bool => Schema::hasTable($t), T36_TABLES);
@@ -588,8 +616,13 @@ test('the migration rolls back and re-applies cleanly', function (): void {
 
     $migration->up();
     $cards->up();
+    foreach ($prices as $price) {
+        $price->up();
+    }
     $afterUp = array_map(fn (string $t): bool => Schema::hasTable($t), T36_TABLES);
-    expect(Schema::hasTable('unmapped_cards'))->toBeTrue();
+    expect(Schema::hasTable('unmapped_cards'))->toBeTrue()
+        ->and($priceFiles)->not->toBe([])
+        ->and(Schema::hasTable('price_points') && Schema::hasTable('price_daily'))->toBeTrue();
 
     expect($afterDown)->toBe(array_fill(0, 6, false))
         ->and($guard->n)->toBe(0)
