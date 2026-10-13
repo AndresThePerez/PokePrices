@@ -2,9 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Domain\Catalog\VerifyCatalog;
 use Database\Seeders\SetAliasSeeder;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 
 // Reviewer edge cases for T40. R167(a): coverage must account for EVERY dataset card, as mapped or as recorded
 // in the build. The builder only walks price rows of products, so a card no priced product points at leaves no
@@ -39,6 +41,8 @@ function t40eDatasetWithOrphanCard(string $id, string $number): string
 }
 
 beforeEach(function (): void {
+    // A build queues VerifyCatalog (T45); the sync test queue would run it against the real PokéSearch.
+    Queue::fake([VerifyCatalog::class]);
     $this->seed(SetAliasSeeder::class);
 });
 

@@ -2,9 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Domain\Catalog\VerifyCatalog;
 use Database\Seeders\SetAliasSeeder;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 
 // Adversarial edge tests for pokeprices:map:build (plan T39 review). Self-contained: own helpers, own temp roots,
 // the shared synthetic day in tests/Fixtures/tcgcsv is only ever read.
@@ -102,6 +104,8 @@ function t39eRows(string $table, string $order): array
 }
 
 beforeEach(function (): void {
+    // A build queues VerifyCatalog (T45); the sync test queue would run it against the real PokéSearch.
+    Queue::fake([VerifyCatalog::class]);
     $this->seed(SetAliasSeeder::class);
 });
 

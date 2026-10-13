@@ -20,7 +20,8 @@ use LogicException;
  * PokéSearch answers through the catalog cache (plan T42, F-P1-025, review-1 recs 9-10, R13).
  *
  * - Seed ref: Cache::flexible('catalog:v1:seed_ref', [60, 300]) over GET /api/meta. Every upstream read also
- *   writes catalog:v1:seed_ref:last on redis-queue (30 days), the copy used while PokéSearch is down.
+ *   writes catalog:v1:seed_ref:last on redis-queue (30 days), the copy used while PokéSearch is down. A read
+ *   whose ref differs from that copy queues VerifyCatalog (T45).
  * - Card: catalog:v1:card:{seedRef}:{id}, flexible [3600, 86400]; a 404 is remembered 60 s under …:none.
  * - Search: catalog:v1:search:{seedRef}:{sha1(normalised q|page|page_size)}, flexible [300, 900].
  * - Every upstream success also writes a last-good copy, catalog:v1:lastgood:{card|search}:…, for 7 days.
@@ -85,7 +86,12 @@ final class CatalogRepository
         try {
             [$envelope] = $this->remember(self::SEED_KEY, self::SEED_TTL, function (): array {
                 $seed = SeedRef::fromMeta($this->client->meta());
+                $last = SeedRef::fromArray($this->seedLastStore->get(self::SEED_LAST_KEY));
                 $this->seedLastStore->put(self::SEED_LAST_KEY, $seed->toArray(), self::SEED_LAST_SECONDS);
+                if ($last !== null && $last->ref !== $seed->ref) {
+                    // T45: PokéSearch was reseeded; check which mapped cards it still has.
+                    VerifyCatalog::dispatch();
+                }
 
                 return self::envelopeOf($seed->toArray());
             });

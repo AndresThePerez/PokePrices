@@ -2,9 +2,11 @@
 
 declare(strict_types=1);
 
+use App\Domain\Catalog\VerifyCatalog;
 use Database\Seeders\SetAliasSeeder;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Queue;
 
 // pokeprices:map:build over the synthetic TCGCSV day in tests/Fixtures/tcgcsv (plan T39). The set_aliases rows
 // come from the real CSV (SetAliasSeeder), so the fixture groups are joined exactly as the real day would be.
@@ -175,6 +177,8 @@ const T39_EXPECTED_UNMAPPED = [
 ];
 
 beforeEach(function (): void {
+    // A build queues VerifyCatalog (T45); the sync test queue would run it against the real PokéSearch.
+    Queue::fake([VerifyCatalog::class]);
     $this->seed(SetAliasSeeder::class);
 });
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Domain\Catalog\VerifyCatalog;
 use App\Domain\Mapping\MapBuilder;
 use App\Domain\Mapping\SnapshotReader;
 use Carbon\CarbonImmutable;
@@ -61,6 +62,9 @@ final class MapBuild extends Command
         }
 
         $this->line(json_encode(['map_build_id' => $result['build_id']] + $result['counts'], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
+
+        // T45: check the built rows against the PokéSearch catalog, on the connection the build wrote to.
+        VerifyCatalog::dispatch($name === '' ? null : $name);
 
         return self::SUCCESS;
     }

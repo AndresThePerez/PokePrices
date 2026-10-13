@@ -17,15 +17,23 @@ use InvalidArgumentException;
  *
  * Ids are checked against CardId before anything is sent, then percent-encoded with rawurlencode: a path
  * segment on its own, a batch as the comma-joined list ("ex10-?" travels as "ex10-%3F", never truncated).
+ * While the circuit breaker is open every method throws UpstreamUnavailable without sending anything.
  */
 final class PokeSearchClient
 {
     /**
      * Retry-After, in seconds, when PokéSearch failed this call: it has already had its one fast retry, so
-     * the caller is asked to wait a few seconds rather than hammer it. T35's breaker replaces this with the
-     * remaining open time once it opens.
+     * the caller is asked to wait a few seconds rather than hammer it. Once the circuit breaker opens, its
+     * remaining open time replaces this.
      */
     public const int RETRY_AFTER_SECONDS = 5;
+
+    /**
+     * The container builds the client with the request-path circuit breaker (plan T35), so every read through
+     * CatalogRepository, the controllers and the catalog job passes it. A client built without one (the T34
+     * unit tests) calls PokéSearch directly.
+     */
+    public function __construct(private readonly ?CircuitBreaker $breaker = null) {}
 
     /** The pagination fields of a PokéSearch search answer, each an integer passed on unchanged. */
     private const array SEARCH_PAGE_FIELDS = ['total', 'page', 'pages', 'page_size'];
@@ -141,20 +149,29 @@ final class PokeSearchClient
         }
     }
 
-    /** @param array<string, string|int> $query */
+    /**
+     * One GET through the circuit breaker when the client has one. A refused connection, a timeout or a 5xx
+     * is a failure; any other answer, a 404 included, shows PokéSearch is up.
+     *
+     * @param  array<string, string|int>  $query
+     */
     private function get(string $path, array $query = []): Response
     {
-        try {
-            $response = Http::pokesearch()->get($path, $query === [] ? null : $query);
-        } catch (ConnectionException $e) {
-            throw new UpstreamUnavailable(self::RETRY_AFTER_SECONDS, $e);
-        }
+        $send = function () use ($path, $query): Response {
+            try {
+                $response = Http::pokesearch()->get($path, $query === [] ? null : $query);
+            } catch (ConnectionException $e) {
+                throw new UpstreamUnavailable(self::RETRY_AFTER_SECONDS, $e);
+            }
 
-        if ($response->serverError()) {
-            throw new UpstreamUnavailable(self::RETRY_AFTER_SECONDS, $response->toException());
-        }
+            if ($response->serverError()) {
+                throw new UpstreamUnavailable(self::RETRY_AFTER_SECONDS, $response->toException());
+            }
 
-        return $response;
+            return $response;
+        };
+
+        return $this->breaker === null ? $send() : $this->breaker->call($send);
     }
 
     /** @return array<mixed> */

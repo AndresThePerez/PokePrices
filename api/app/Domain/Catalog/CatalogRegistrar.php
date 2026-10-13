@@ -13,8 +13,8 @@ use Illuminate\Support\Facades\Http;
 use Throwable;
 
 /**
- * Registers the catalog's Http::pokesearch() macro (plan T34), the rate tiers (T44) and the lazy-loading
- * guard (T43, P7); AppServiceProvider only delegates here.
+ * Registers the catalog's Http::pokesearch() macro (plan T34), the breaker-wrapped client binding (T35), the
+ * rate tiers (T44) and the lazy-loading guard (T43, P7); AppServiceProvider only delegates here.
  *
  * Timeouts are per attempt: connect 1 s, total 2 s. R130 (F-P1-R1-16): retry once, 100 ms later, and only
  * when the first attempt failed fast (connection refused, or HTTP 502/503/504 within 0.9 s); never after
@@ -34,6 +34,9 @@ final class CatalogRegistrar
     {
         // Macroable rebinds the closure to the Http factory, so the class is named, never self::.
         Http::macro('pokesearch', fn (): PendingRequest => CatalogRegistrar::pendingRequest());
+
+        // T35: every client the container builds (the request path and the catalog job) passes the breaker.
+        app()->bind(PokeSearchClient::class, fn (): PokeSearchClient => new PokeSearchClient(new CircuitBreaker));
 
         RateLimits::register();
 
