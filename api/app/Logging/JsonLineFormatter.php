@@ -26,6 +26,8 @@ final class JsonLineFormatter extends NormalizerFormatter
             'context' => $this->normalize(array_diff_key($context, ['route' => true, 'duration_ms' => true])),
         ];
 
-        return json_encode($line, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR)."\n";
+        // JSON_PRESERVE_ZERO_FRACTION: a float such as price_freshness's age_hours 26.0 stays 26.0, the value the API
+        // and the freshness command print (P2-i1 T10, D8).
+        return json_encode($line, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE | JSON_PRESERVE_ZERO_FRACTION | JSON_THROW_ON_ERROR)."\n";
     }
 }

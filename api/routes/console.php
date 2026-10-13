@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Domain\Pricing\Jobs\IngestPending;
+use App\Domain\Pricing\Jobs\LogFreshness;
 use App\Jobs\ProbeJob;
 use Illuminate\Support\Facades\Schedule;
 
@@ -10,3 +11,6 @@ Schedule::job(new ProbeJob('scheduler'), 'default', 'redis')->everyMinute()->nam
 
 // The pending price scan (plan P2-i1 T08, R177(5)): hourly at :40, a no-op unless a collected day needs work.
 Schedule::job(new IngestPending, 'default', 'redis')->hourlyAt(40)->withoutOverlapping()->name('pokeprices-ingest-pending');
+
+// The freshness log line (plan P2-i1 T10, D8): hourly, info within the 26 h SLO, warning when breached.
+Schedule::job(new LogFreshness, 'default', 'redis')->hourly()->name('pokeprices-freshness');

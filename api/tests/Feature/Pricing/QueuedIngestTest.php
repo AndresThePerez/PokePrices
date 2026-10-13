@@ -655,5 +655,6 @@ test('the scheduler runs the pending scan hourly at :40 without overlapping, bes
         ->and($scan->expression)->toBe('40 * * * *')
         ->and($scan->withoutOverlapping)->toBeTrue()
         ->and($events->get('pokeprices-probe')?->expression)->toBe('* * * * *')
-        ->and($events->keys()->sort()->values()->all())->toBe(['pokeprices-ingest-pending', 'pokeprices-probe']);
+        // T10 adds the hourly freshness log line (same-commit edit, R186).
+        ->and($events->keys()->sort()->values()->all())->toBe(['pokeprices-freshness', 'pokeprices-ingest-pending', 'pokeprices-probe']);
 });

@@ -44,6 +44,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/prices/freshness": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * How old the newest collected PokéPrices prices are, against the 26 hour freshness SLO
+         * @description as_of is the snapshot marker of the newest successfully ingested TCGCSV day (TCGplayer market prices, one close per day) and day is its date; age_hours is the time from as_of to measured_at in hours with one decimal, rounded half up. within_slo is judged on the unrounded age: true while it is under slo_hours (26), so 25.96 hours is within the SLO even though it shows 26.0. measured_at is the server clock and the only clock value in the answer. With no successful ingest, as_of, day and age_hours are null and within_slo is false. last_run is the newest ingest run of any status (null when none ran). A breached SLO is a normal 200 answer: it means no newer day was ingested in time. The answer is never cached.
+         */
+        get: operations["getPriceFreshness"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/ready": {
         parameters: {
             query?: never;
@@ -137,6 +157,24 @@ export interface components {
             set_name: string;
             release_date: string;
             image_small: string;
+        };
+        /** PriceFreshnessResource */
+        PriceFreshnessResource: {
+            source: string;
+            feed: string;
+            as_of: string | null;
+            day: string | null;
+            age_hours: number | null;
+            slo_hours: number;
+            within_slo: boolean;
+            measured_at: string;
+            last_run: {
+                id: number;
+                status: string;
+                mode: string;
+                day: string;
+                finished_at: string | null;
+            } | null;
         };
         /**
          * Problem
@@ -317,6 +355,39 @@ export interface operations {
             503: {
                 headers: {
                     /** @description Seconds before PokéSearch is worth asking again. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getPriceFreshness: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `PriceFreshnessResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["PriceFreshnessResource"];
+                    };
+                };
+            };
+            /** @description Too Many Requests: the rate limit of this route is spent. */
+            429: {
+                headers: {
+                    /** @description Seconds until the limit resets. */
                     "Retry-After": number;
                     [name: string]: unknown;
                 };

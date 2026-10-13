@@ -45,9 +45,10 @@ it('uses hostile tokens verbatim and does not hang', function (string $token): v
     'ten kilobytes' => [str_repeat('x', 10_240)],
 ]);
 
-// P2-i1 T08 adds the hourly pending price scan beside the probe (same-commit edit of this P0 count).
-it('keeps a single probe schedule entry beside the pending price scan and removes the inspire command', function (): void {
+// P2-i1 T08 adds the hourly pending price scan beside the probe, and T10 the hourly freshness log line (same-commit
+// edits of this P0 count, R186).
+it('keeps a single probe schedule entry beside the pending price scan and the freshness log line and removes the inspire command', function (): void {
     expect(collect(app(Schedule::class)->events())->map(fn ($event): string => (string) $event->description)->sort()->values()->all())
-        ->toBe(['pokeprices-ingest-pending', 'pokeprices-probe'])
+        ->toBe(['pokeprices-freshness', 'pokeprices-ingest-pending', 'pokeprices-probe'])
         ->and(array_key_exists('inspire', Artisan::all()))->toBeFalse();
 });
