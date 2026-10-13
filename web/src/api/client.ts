@@ -625,3 +625,15 @@ export function deleteHolding(variantKey: string): Promise<ApiResult<undefined>>
 export function startDemo(): Promise<ApiResult<undefined>> {
   return accountRequest<undefined>('/v1/demo/session', { method: 'POST' });
 }
+
+// ---- Your data (P4 T08) ------------------------------------------------------------------------
+// The export is not fetched here: /account links to GET /v1/me/export and the browser downloads it.
+
+/** The deletion body: the current password, in the JSON body and never in the URL (D4). */
+export type DeleteAccountForm =
+  operations['deleteMe']['requestBody']['content']['application/json'];
+
+/** POST /v1/me/deletion { password }: 204, the account is gone and this browser is signed out. */
+export function deleteAccount(form: DeleteAccountForm): Promise<ApiResult<undefined>> {
+  return accountRequest<undefined>('/v1/me/deletion', { method: 'POST', body: form });
+}

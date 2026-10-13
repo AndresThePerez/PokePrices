@@ -49,6 +49,11 @@ Route::middleware([
     NoStore::class,
 ])->group(function (): void {
     Route::get('/me', MeController::class)->name('me.show');
+    // Your data (plan P4-i1 T08): the export is a read, so the demo may use it; deletion is a POST so the password
+    // travels in the body, never in a URL (review F-P4-03), and its password checks share the password-confirm tier
+    // (5 a minute per user, review F-P4-07).
+    Route::get('/me/export', [MeController::class, 'export'])->name('me.export');
+    Route::post('/me/deletion', [MeController::class, 'deletion'])->middleware('throttle:password-confirm')->name('me.deletion');
 
     // {variantKey} arrives percent-decoded (ex10-%3F:holo:-:- reaches the controller as ex10-?:holo:-:-). It matches
     // any non-empty text, an encoded slash included, so every malformed key reaches VariantKey::isValid and answers

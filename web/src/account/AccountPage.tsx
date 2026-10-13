@@ -1,7 +1,7 @@
 // /account (D10): who is signed in, the read-only demo notice (T07), whether the email address
-// is verified (with a resend button), the two-factor section (T04) and Sign out. Signed out, it
-// links to sign-in and sign-up. A fresh mount reads the session from GET /v1/me alone, so a
-// signed-in session survives a reload (D13).
+// is verified (with a resend button), the two-factor section (T04), Your data and Delete account
+// (T08) and Sign out. Signed out, it links to sign-in and sign-up. A fresh mount reads the session
+// from GET /v1/me alone, so a signed-in session survives a reload (D13).
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { resendVerification, signOut, type ApiFailure, type Me } from '../api/client';
@@ -13,6 +13,7 @@ import { SECONDARY_BUTTON, TEXT_LINK } from './fields';
 import { forgetLists } from './lists';
 import { ME_KEY, useArrivalStatus, useSession } from './session';
 import TwoFactorSection from './TwoFactor';
+import YourData from './YourData';
 
 function Verification({ verified }: { readonly verified: boolean }) {
   const [pending, setPending] = useState(false);
@@ -91,13 +92,14 @@ function SignOut() {
   );
 }
 
-function SignedIn({ me }: { readonly me: Me }) {
+function SignedIn({ me, onDeleted }: { readonly me: Me; readonly onDeleted: () => void }) {
   return (
     <>
       <p className="mt-6 text-lg font-medium break-all">{`Signed in as ${me.email}`}</p>
       {me.read_only && <DemoNotice />}
       <Verification verified={me.email_verified} />
       <TwoFactorSection me={me} />
+      <YourData me={me} onDeleted={onDeleted} />
       <SignOut />
     </>
   );
@@ -106,6 +108,8 @@ function SignedIn({ me }: { readonly me: Me }) {
 export default function AccountPage() {
   const session = useSession();
   const status = useArrivalStatus();
+  // Set when this visit deleted the account (T08): the line stays above the signed-out view.
+  const [deleted, setDeleted] = useState(false);
   let body;
   switch (session.state) {
     case 'loading':
@@ -130,12 +134,20 @@ export default function AccountPage() {
       );
       break;
     case 'signed-in':
-      body = <SignedIn me={session.me} />;
+      body = (
+        <SignedIn
+          me={session.me}
+          onDeleted={() => {
+            setDeleted(true);
+          }}
+        />
+      );
       break;
   }
   return (
     <AccountMain title="Account">
       {status !== null && <StatusLine>{status}</StatusLine>}
+      {deleted && <StatusLine>Your account has been deleted.</StatusLine>}
       {body}
     </AccountMain>
   );

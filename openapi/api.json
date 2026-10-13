@@ -92,6 +92,159 @@
                 }
             }
         },
+        "/me/export": {
+            "get": {
+                "operationId": "exportMe",
+                "description": "Everything Pok\u00e9Prices keeps about the signed-in account, as a JSON download named pokeprices-export.json: the\naccount (email, when the email was verified, whether two-factor authentication is on, when the account was\ncreated), the watchlist and the portfolio ordered by variant key, and the session records newest first (last\nactivity, IP address, browser). Times are RFC 3339 in UTC. It never holds the password, a two-factor secret, a\nrecovery code, a session id or session contents. The read-only demo account may download its data too. The\nanswer is never cached.",
+                "summary": "Download your data",
+                "tags": [
+                    "Account"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`AccountExportResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/AccountExportResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ],
+                                    "additionalProperties": false
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated: sign in first (problem type https://pokeprices.andrestheperez.com/problems/unauthenticated).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests: the rate limit of this route is spent.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds until the limit resets.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/me/deletion": {
+            "post": {
+                "operationId": "deleteMe",
+                "description": "Deletes the signed-in account after checking its current password, sent in the JSON body (never in the URL):\nthe account, its watchlist, its portfolio, every session record and any password reset token, in one\ntransaction. This browser is signed out. A wrong password answers 422 with errors.password; password checks\nare limited to 5 a minute per account (429). The demo account is read-only (403 demo-read-only).",
+                "summary": "Delete your account",
+                "tags": [
+                    "Account"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "password": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "password"
+                                ],
+                                "additionalProperties": false
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "401": {
+                        "description": "Unauthenticated: sign in first (problem type https://pokeprices.andrestheperez.com/problems/unauthenticated).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The demo account is read-only (problem type https://pokeprices.andrestheperez.com/problems/demo-read-only).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "419": {
+                        "description": "The CSRF token is missing or stale: GET /sanctum/csrf-cookie and retry (problem type https://pokeprices.andrestheperez.com/problems/csrf-token-mismatch).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests: the rate limit of this route is spent.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds until the limit resets.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/watchlist": {
             "get": {
                 "operationId": "getWatchlist",
@@ -1487,6 +1640,132 @@
     },
     "components": {
         "schemas": {
+            "AccountExportResource": {
+                "type": "object",
+                "properties": {
+                    "format": {
+                        "type": "string"
+                    },
+                    "version": {
+                        "type": "integer"
+                    },
+                    "account": {
+                        "type": "object",
+                        "properties": {
+                            "email": {
+                                "type": "string"
+                            },
+                            "email_verified_at": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "two_factor": {
+                                "type": "boolean"
+                            },
+                            "created_at": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "email",
+                            "email_verified_at",
+                            "two_factor",
+                            "created_at"
+                        ],
+                        "additionalProperties": false
+                    },
+                    "watchlist": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "variant_key": {
+                                    "type": "string"
+                                },
+                                "added_at": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "variant_key",
+                                "added_at"
+                            ],
+                            "additionalProperties": false
+                        }
+                    },
+                    "portfolio": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "variant_key": {
+                                    "type": "string"
+                                },
+                                "quantity": {
+                                    "type": "integer"
+                                },
+                                "added_at": {
+                                    "type": "string"
+                                },
+                                "updated_at": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "variant_key",
+                                "quantity",
+                                "added_at",
+                                "updated_at"
+                            ],
+                            "additionalProperties": false
+                        }
+                    },
+                    "sessions": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "last_active_at": {
+                                    "type": "string"
+                                },
+                                "ip_address": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
+                                },
+                                "user_agent": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "last_active_at",
+                                "ip_address",
+                                "user_agent"
+                            ],
+                            "additionalProperties": false
+                        }
+                    }
+                },
+                "required": [
+                    "format",
+                    "version",
+                    "account",
+                    "watchlist",
+                    "portfolio",
+                    "sessions"
+                ],
+                "additionalProperties": false,
+                "title": "AccountExportResource"
+            },
             "CardPricesResource": {
                 "type": "array",
                 "items": {
