@@ -16,6 +16,8 @@
     "format:check": "prettier --config .prettierrc.json --ignore-path .prettierignore --check ."
   },
   "dependencies": {
+    "@tanstack/react-query": "5.104.2",
+    "lightweight-charts": "5.2.1",
     "react": "19.3.0",
     "react-dom": "19.3.0"
   },
