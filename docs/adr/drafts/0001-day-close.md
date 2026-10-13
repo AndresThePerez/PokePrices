@@ -76,7 +76,9 @@ real close through the newest ingested day of the source.
 - **Recompute window.** Let P be the newest ingested day before a run and N the newest
   after it. Ingesting day D recomputes the days from the lesser of D and P + 1 up to
   the lesser of D + 14 and N, so the order in which days arrive never changes
-  `price_daily`, `price_latest` or `price_movers`.
+  `price_daily`, `price_latest` or `price_movers`. With no P, the window starts at D;
+  when D is newer than P, the uncollected days between them are filled like any other
+  day.
 - **No wall-clock column.** `price_daily` stores no run or wall-clock value, so identical
   inputs give byte-identical rows.
 
@@ -160,9 +162,15 @@ Rule `draft-v1` fires for a real close on day D when all of these hold:
 - the absolute `change` is at least 1.00 (dollars);
 - D is the newest finalized day of the source when the day is finalized.
 
-Both thresholds are drafts, **pending measurement**: the 5.00 percent and the 1.00
-dollar figures are the planner's starting point, and T13 fills them in (or replaces
-them) from the measured volume over every collected day.
+Both thresholds are filled in from the measured volume and stay at 5.00 percent and
+1.00 dollar. Over the three day-to-day transitions of the collected days (2026-10-10,
+2026-10-11 and 2026-10-12, about 33,000 compared variants each), `draft-v1` crosses
+163.00 variants per day on average (141 to 197). The grid measured beside it gives
+321.00 per day at 3.00 percent and 0.50 dollar, 88.00 at 10.00 percent and 2.00
+dollars, and 47.67 at 20.00 percent and 5.00 dollars: the tight rule roughly doubles
+the draft volume, the loose and coarse rules cut it to about a half and a quarter.
+Another row of the grid is a one-line change in `config/pricing.php` if Andres prefers
+it.
 
 - **Backfill is silent.** A day older than the newest finalized day never fires; it is
   counted as `backfill`. The rule never fires across epochs and never on filled rows.
@@ -190,7 +198,7 @@ them) from the measured volume over every collected day.
   The largest three-day change on the collected days is +956 percent. No suspect-jump
   guard is built; extreme moves are counted in the measurement.
 
-Measured volume: pending (T13).
+Measured volume: draft-v1 mean 163.00 events per day (range 141 to 197 over 2026-10-10 to 2026-10-12, measured on the dev database from `price_daily` after a fresh replay of every collected day; the first sync ingest of the newest day, 2026-10-12, wrote 151 events, equal to that day's measured count); per-day tables for all four rules are in docs/measurements/movement-volume.md.
 
 ## Alternatives considered
 
@@ -243,4 +251,4 @@ Each question has a default the code already uses; none blocks the loop.
 | 9 | Carry-forward cap | 14 days, replacing Research 14's 7 |
 | 10 | Stale badge on the card | None; each variant shows its own as-of day |
 | 11 | Replay and the map | Normalize against the current map (history relabelled); the alternative is `source_product_map_history`, which keeps pre-remap epochs |
-| 12 | The two thresholds | 5.00 percent and 1.00 dollar, pending measurement; T13 fills them from the measured volume |
+| 12 | The two thresholds | 5.00 percent and 1.00 dollar, kept after measurement (163.00 events per day on average); the grid's tight, loose and coarse rows are the alternatives |

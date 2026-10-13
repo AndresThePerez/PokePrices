@@ -295,10 +295,13 @@ test('the pricing:ingest lock stays held against another connection for the whol
 });
 
 test('a dispatched price_events row refuses before the first destructive statement, even beside undispatched ones', function (): void {
-    DB::statement('CREATE TABLE price_events (id bigint PRIMARY KEY, dispatched_at timestamptz NULL)');
+    // The real price_events table (T13): four rows, the third dispatched.
+    $event = fn (string $day, ?string $dispatched): array => ['type' => 'price.moved', 'rule' => 'draft-v1', 'variant_key' => 'basep-8:holo:-:-',
+        'card_id' => 'basep-8', 'source' => 'tcgplayer', 'day' => $day, 'series_epoch' => 1, 'direction' => 'up', 'close' => '28.00',
+        'previous_close' => '25.00', 'previous_day' => '2026-09-30', 'change' => '3.00', 'change_pct' => '12.00',
+        'as_of' => $day.' 20:05:45+00', 'previous_as_of' => '2026-09-30 20:05:42+00', 'ingest_run_id' => 1, 'dispatched_at' => $dispatched];
     DB::table('price_events')->insert([
-        ['id' => 1, 'dispatched_at' => null], ['id' => 2, 'dispatched_at' => null],
-        ['id' => 3, 'dispatched_at' => '2026-10-12 00:00:00+00'], ['id' => 4, 'dispatched_at' => null],
+        $event('2026-10-01', null), $event('2026-10-02', null), $event('2026-10-03', '2026-10-12 00:00:00+00'), $event('2026-10-04', null),
     ]);
     expect(t07eIngest(['2026-10-11'], t07eFixture('snapshots')))->toBe(['2026-10-11' => 0]);
     $statements = [];

@@ -41,10 +41,13 @@ for k in marketPrice series_epoch marker_day_mismatch manifest_mismatch 'latest 
   'within_slo' 'half away from zero' 'map build' 'code sha'; do
   check "the draft carries the key phrase: $k" $GREP -q -F -e "$k" "$F"
 done
-check "the placeholder line is present, exactly once" \
-  sh -c 'test "$('"$GREP"' -c -x -F "Measured volume: pending (T13)." "$0")" = 1' "$F"
-check "the two thresholds are marked pending measurement" \
-  sh -c '[ "$('"$GREP"' -c -i "pending measurement" "$0")" -ge 2 ]' "$F"
+# T13 replaced the placeholder with the measured draft-v1 volume (same-commit clause; tests/p2/T13.sh checks the mean).
+check "the placeholder line is gone (T13 measured the volume)" \
+  sh -c '! '"$GREP"' -q -F "Measured volume: pending (T13)." "$0"' "$F"
+check "exactly one 'Measured volume:' line, with the draft-v1 mean per day and a pointer to the measurement file" \
+  sh -c 'test "$('"$GREP"' -c "^Measured volume: draft-v1 .*[0-9]\.[0-9][0-9] events per day.*docs/measurements/movement-volume.md" "$0")" = 1' "$F"
+check "no threshold is still marked pending measurement" \
+  sh -c '! '"$GREP"' -q -i "pending measurement" "$0"' "$F"
 check "R180a is stated: replay never writes price_events" \
   sh -c ''"$GREP"' -i -q "replay" "$0" && '"$GREP"' -i -q -E "never (writes|writing) .*price_events|price_events.*never" "$0"' "$F"
 check "R180c is stated: replay relabels history with the current map's epochs" \

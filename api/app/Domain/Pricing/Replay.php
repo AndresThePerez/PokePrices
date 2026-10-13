@@ -33,7 +33,7 @@ use stdClass;
 final class Replay
 {
     /** The derived tables a fresh replay truncates; never price_events (R180a). */
-    public const array WIPED_TABLES = ['price_points', 'price_daily', 'price_latest', 'price_movers'];
+    public const array WIPED_TABLES = ['price_points', 'price_daily', 'price_latest', 'price_movers', 'movement_volume'];
 
     public const string NO_DAYS = 'no collected days';
 

@@ -24,8 +24,9 @@ use Throwable;
  *   skips a marker that already has an `ok` run unless forced, opens the run, prepares the month's partition, deletes
  *   the day's rows of any other marker (D1: the latest marker per UTC date wins; review F7) and plans the chunks;
  * - chunk(): normalizes and upserts one chunk of at most config('pricing.chunk_rows') de-duplicated rows of a group;
- * - finalize(): rolls the D3 window up with its carry-forward fills (T07), rebuilds price_latest (T05) and the window's
- *   price_movers (T12), sums the counts and marks the run `ok`.
+ * - finalize(): rolls the D3 window up with its carry-forward fills (T07), rebuilds price_latest (T05), the window's
+ *   price_movers (T12) and movement_volume (T13), then, for a live run only, writes the newest day's movement events
+ *   into the price_events outbox (DetectMovement, T13; never in a replay, R180a), sums the counts and marks the run `ok`.
  *
  * sync() holds the `pricing:ingest` lock (D12) and runs all three inside one transaction, so a failure anywhere
  * leaves no price row; the `failed` run is written after the rollback. The product map is read, never written, and
@@ -207,7 +208,10 @@ final class DayIngest
     }
 
     /**
-     * Rolls up the D3 window, rebuilds price_latest from price_daily (T05) and the window's price_movers (T12), sums the run's counts (start-level plus every done chunk) and marks the run `ok`.
+     * Rolls up the D3 window, rebuilds price_latest from price_daily (T05), the window's price_movers (T12) and
+     * movement_volume (T13), runs DetectMovement when the run is live (mode sync or queued; never replay, R180a), sums
+     * the run's counts (start-level plus every done chunk, plus `events`, `epoch_breaks` and `backfill` for a live
+     * run) and marks the run `ok`, all in one transaction.
      * It refuses a run with any chunk not done: finalize never runs on a partial day.
      *
      * @return array<string, int>
@@ -215,7 +219,7 @@ final class DayIngest
     public function finalize(int $runId): array
     {
         return $this->db->transaction(function () use ($runId): array {
-            $run = $this->db->selectOne('SELECT id, day::text AS day, status, counts FROM ingest_runs WHERE id = ? FOR UPDATE', [$runId], false);
+            $run = $this->db->selectOne('SELECT id, day::text AS day, mode, status, counts FROM ingest_runs WHERE id = ? FOR UPDATE', [$runId], false);
             if (! $run instanceof stdClass || $run->status !== 'running') {
                 throw new RuntimeException("ingest run {$runId} is not running and cannot be finalized");
             }
@@ -226,9 +230,15 @@ final class DayIngest
 
             $source = (string) config('pricing.source');
             $previous = $this->db->selectOne("SELECT max(day)::text AS day FROM ingest_runs WHERE source = ? AND status = 'ok'", [$source], false);
-            $window = DailyRollup::rollup($this->db, (string) $run->day, $previous instanceof stdClass && is_string($previous->day) ? $previous->day : null);
+            $previousDay = $previous instanceof stdClass && is_string($previous->day) ? $previous->day : null;
+            $window = DailyRollup::rollup($this->db, (string) $run->day, $previousDay);
             LatestPrices::rebuild($this->db);
             Movers::rebuild($this->db, $window['from'], $window['to']);
+            MovementVolume::rebuild($this->db, $window['from'], $window['to']);
+            // D6, R180a: only a live run (sync or queued) writes the outbox, and only for the newest finalized day.
+            $movement = $run->mode === 'replay' ? [] : DetectMovement::detect(
+                $this->db, $runId, (string) $run->day, $window, $previousDay === null || strcmp((string) $run->day, $previousDay) >= 0,
+            );
 
             $counts = [];
             $start = json_decode((string) $run->counts, true, 512, JSON_THROW_ON_ERROR);
@@ -247,6 +257,7 @@ final class DayIngest
                 }
             }
             $counts['daily_rows'] = $window['rows'];
+            $counts += $movement;
 
             $this->db->table('ingest_runs')->where('id', $runId)->update([
                 'status' => 'ok',

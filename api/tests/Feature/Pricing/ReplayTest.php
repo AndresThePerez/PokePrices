@@ -148,8 +148,10 @@ test('replay --fresh of the five days is identical in asc and in desc, with the 
         ->and($asc['passes'][2]['digests'])->toBe($asc['passes'][0]['digests'])
         ->and([$asc['identical'], $desc['identical']])->toBe([true, true])
         ->and($digests($desc))->toBe($digests($asc))
-        // The replay never writes price_events (R180a): the table does not exist before T13, and still does not.
-        ->and(DB::selectOne("SELECT to_regclass('price_events') AS t")->t)->toBeNull();
+        // The replay never writes price_events (R180a): the real table (T13) stays empty, though 10-11 and 10-14 cross
+        // the draft rule.
+        ->and(DB::selectOne("SELECT to_regclass('price_events') AS t")->t)->toBe('price_events')
+        ->and(DB::table('price_events')->count())->toBe(0);
 });
 
 test('a replay ends in the state a live ascending ingest of the same days gives', function (): void {
@@ -295,20 +297,21 @@ test('the lock is released after a replay, so another connection can take it', f
 });
 
 test('--fresh refuses while a price_events row has dispatched_at set, and passes while none has', function (): void {
-    // Until T13 creates price_events the guard is inert; a stand-in table with the guarded column proves it reads it.
-    expect(DB::selectOne("SELECT to_regclass('price_events') AS t")->t)->toBeNull();
-    DB::statement('CREATE TABLE price_events (id bigint PRIMARY KEY, dispatched_at timestamptz NULL)');
-    DB::table('price_events')->insert([['id' => 1, 'dispatched_at' => null]]);
-    expect(t07rIngest(['2026-10-11']))->toBe(['2026-10-11' => 0]);
+    // The real price_events table (T13): one undispatched event from a sync ingest, then one dispatched row.
+    expect(t07rIngest(['2026-10-10', '2026-10-11']))->toBe(['2026-10-10' => 0, '2026-10-11' => 0]);
+    $id = (int) DB::table('price_events')->value('id');
 
     [$pending, $pendingOutput] = t07rReplay(['--fresh' => true, '--days' => '2026-10-11']);
-    $events = DB::select('SELECT id, dispatched_at FROM price_events ORDER BY id');
-    DB::table('price_events')->insert([['id' => 2, 'dispatched_at' => '2026-10-12 00:00:00+00']]);
+    $events = DB::select('SELECT id, variant_key, dispatched_at FROM price_events ORDER BY id');
+    DB::table('price_events')->insert([['type' => 'price.moved', 'rule' => 'draft-v1', 'variant_key' => 'svp-46:holo:-:-', 'card_id' => 'svp-46',
+        'source' => 'tcgplayer', 'day' => '2026-10-12', 'series_epoch' => 1, 'direction' => 'down', 'close' => '4.00', 'previous_close' => '5.50',
+        'previous_day' => '2026-10-11', 'change' => '-1.50', 'change_pct' => '-27.27', 'as_of' => '2026-10-12 20:05:44+00',
+        'previous_as_of' => '2026-10-11 20:05:45+00', 'ingest_run_id' => 1, 'dispatched_at' => '2026-10-12 00:00:00+00']]);
     $before = [PriceDigest::compute(DB::connection()), t07rRuns()];
     [$dispatched, $dispatchedOutput] = t07rReplay(['--fresh' => true, '--days' => '2026-10-11']);
 
     expect($pending)->toBe(0, $pendingOutput)
-        ->and($events)->toEqual([(object) ['id' => 1, 'dispatched_at' => null]])
+        ->and($events)->toEqual([(object) ['id' => $id, 'variant_key' => 'basep-8:holo:-:-', 'dispatched_at' => null]])
         ->and($dispatched)->toBe(1)
         ->and($dispatchedOutput)->toContain('dispatched')
         ->and([PriceDigest::compute(DB::connection()), t07rRuns()])->toBe($before)

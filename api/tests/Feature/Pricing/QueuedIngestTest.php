@@ -65,6 +65,8 @@ function t08Ingest(array $options): array
 function t08Wipe(): void
 {
     DB::statement('TRUNCATE price_points, price_daily, price_latest');
+    // A fresh start empties the price_events outbox too (T13): only a test ever deletes events, never ingestion.
+    DB::table('price_events')->delete();
     DB::table('ingest_run_chunks')->delete();
     DB::table('ingest_runs')->delete();
 }

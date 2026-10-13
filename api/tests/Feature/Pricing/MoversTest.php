@@ -334,7 +334,7 @@ test('replay truncates price_movers, rebuilds it and prints an equal movers_chec
     $doc = json_decode(substr($output, (int) strpos($output, '{')), true);
 
     expect($code)->toBe(0, $output)
-        ->and(Replay::WIPED_TABLES)->toBe(['price_points', 'price_daily', 'price_latest', 'price_movers'])
+        ->and(Replay::WIPED_TABLES)->toBe(['price_points', 'price_daily', 'price_latest', 'price_movers', 'movement_volume'])
         ->and(array_column($doc['passes'], 'movers_check'))->toBe([$live, $live, $live])
         ->and($doc['identical'])->toBeTrue()
         ->and(PriceDigest::movers(DB::connection()))->toBe($live);
