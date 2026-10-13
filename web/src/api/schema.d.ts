@@ -64,6 +64,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/cards/{id}/prices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the daily closes of a card's variants over a chart range
+         * @description One series per PokéPrices variant of the card, ordered by variant_key, each with its daily points ascending by day: TCGplayer market prices via TCGCSV, one close per day. range is 1W, 1M, 3M, YTD or 1Y (default 1M); the window ends on to, the newest ingested day, and starts on from (to minus 6, 29, 89 or 364 days, or January 1 of to's year for YTD), so it follows the data, never the clock. Days without a row are gaps. A filled point (is_filled true) repeats the close of filled_from for at most 14 days; every point's as_of is the snapshot marker of the close it shows, and meta.as_of is the marker of the newest ingested day. series_epoch changes when the variant's TCGplayer mapping starts a new series; never compare closes across it. With nothing ingested yet, from, to and as_of are null and every series is empty. The prices come from PokéPrices alone: a valid id PokéPrices holds no variants for answers 200 with data: [], which does not mean the card is unknown (GET /v1/cards/{id} says whether a card exists). An id outside the card id pattern answers 404 card-not-found.
+         */
+        get: operations["getCardPrices"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/movers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the biggest movers of the newest collected day
+         * @description The variants whose TCGplayer market close (via TCGCSV, one close per day) moved most against their previous close, from the ranked snapshot PokéPrices builds when it ingests a day: meta.day is the newest day with movers and meta.as_of its snapshot marker. A variant counts when it has a real close on that day and a previous close of at least meta.min_previous_close (2.00 USD) in the same series epoch within 14 days; direction up lists rises and down lists falls (default up), ranked by the absolute change in percent, then the absolute change, then variant_key; limit is 1 to 50 (default 20). The window is the previous close, which may be more than one day back when a day had no close. Cards are named by card_id only. With no movers yet, data is [] and meta.day and meta.as_of are null.
+         */
+        get: operations["getMovers"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/ready": {
         parameters: {
             query?: never;
@@ -88,6 +128,21 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** CardPricesResource */
+        CardPricesResource: {
+            variant_key: string;
+            finish: string;
+            edition: string;
+            treatment: string;
+            points: {
+                day: string;
+                close: string;
+                is_filled: boolean;
+                filled_from: string | null;
+                as_of: string;
+                series_epoch: number;
+            }[];
+        }[];
         /** CardResource */
         CardResource: {
             id: string;
@@ -157,6 +212,21 @@ export interface components {
             set_name: string;
             release_date: string;
             image_small: string;
+        };
+        /** MoverResource */
+        MoverResource: {
+            rank: number;
+            card_id: string;
+            variant_key: string;
+            finish: string;
+            edition: string;
+            treatment: string;
+            close: string;
+            previous_close: string;
+            previous_day: string;
+            change: string;
+            change_pct: string;
+            series_epoch: number;
         };
         /** PriceFreshnessResource */
         PriceFreshnessResource: {
@@ -382,6 +452,153 @@ export interface operations {
                     "application/json": {
                         data: components["schemas"]["PriceFreshnessResource"];
                     };
+                };
+            };
+            /** @description Too Many Requests: the rate limit of this route is spent. */
+            429: {
+                headers: {
+                    /** @description Seconds until the limit resets. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getCardPrices: {
+        parameters: {
+            query?: {
+                range?: "1W" | "1M" | "3M" | "YTD" | "1Y";
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `CardPricesResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CardPricesResource"];
+                        meta: {
+                            source: string;
+                            feed: string;
+                            /** @constant */
+                            basis: "market";
+                            /** @constant */
+                            currency: "USD";
+                            /** @constant */
+                            cadence: "daily";
+                            range: string;
+                            from: string | null;
+                            to: string | null;
+                            as_of: string | null;
+                        };
+                    };
+                };
+            };
+            /** @description Not Modified: the If-None-Match validator matches the current representation. */
+            304: {
+                headers: {
+                    /** @description The validator of the current representation. */
+                    ETag: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Too Many Requests: the rate limit of this route is spent. */
+            429: {
+                headers: {
+                    /** @description Seconds until the limit resets. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getMovers: {
+        parameters: {
+            query?: {
+                direction?: "up" | "down";
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of `MoverResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["MoverResource"][];
+                        meta: {
+                            day: string | null;
+                            as_of: string | null;
+                            source: string;
+                            feed: string;
+                            /** @constant */
+                            basis: "market";
+                            /** @constant */
+                            currency: "USD";
+                            /** @constant */
+                            window: "previous_close";
+                            min_previous_close: string;
+                            direction: string;
+                            limit: number;
+                        };
+                    };
+                };
+            };
+            /** @description Not Modified: the If-None-Match validator matches the current representation. */
+            304: {
+                headers: {
+                    /** @description The validator of the current representation. */
+                    ETag: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
                 };
             };
             /** @description Too Many Requests: the rate limit of this route is spent. */

@@ -3,7 +3,9 @@
 # collected day in .data/snapshots twice on the dev database: descending first, ascending last, so the database ends
 # in the ascending state. Each run must be identical (three passes, same order), cover exactly the days with SUCCESS,
 # hold rows in price_points, price_daily and price_latest in every pass (never a vacuous pass), and the two orders
-# must give equal digests. price_events is never compared (R180b). The raw snapshot files are only read.
+# must give equal digests. price_movers sits outside the digests (R180b): each run's movers_check must be equal across
+# its passes and across the two orders (T12, R181(1)). price_events is never compared (R180b). The raw snapshot files
+# are only read.
 # Takes minutes; run it with a 20-minute timeout. Needs the running pokeprices stack.
 set -u
 cd "$(dirname "$0")/../.." || exit 1
@@ -50,6 +52,10 @@ for order in desc asc; do
     '[.passes[].digests | .price_points.rows, .price_daily.rows, .price_latest.rows] | length == 9 and all(. > 0)' "$J"
   check "replay --order=$order passes 1, 2 and 3 have equal digests" jq -e \
     '.passes[0].digests == .passes[1].digests and .passes[1].digests == .passes[2].digests' "$J"
+  check "replay --order=$order has a movers_check with rows > 0 and a sha256 in every pass (T12, outside the digests)" jq -e \
+    '[.passes[].movers_check | (.rows > 0) and (.sha256 | test("^[0-9a-f]{64}$"))] == [true, true, true]' "$J"
+  check "replay --order=$order passes 1, 2 and 3 have equal movers_check" jq -e \
+    '.passes[0].movers_check == .passes[1].movers_check and .passes[1].movers_check == .passes[2].movers_check' "$J"
 done
 
 for table in price_points price_daily price_latest; do
@@ -57,6 +63,8 @@ for table in price_points price_daily price_latest; do
     --slurpfile d "$T/desc.json" --slurpfile a "$T/asc.json" \
     '$d[0].passes[2].digests[$t] == $a[0].passes[2].digests[$t] and ($a[0].passes[2].digests[$t].sha256 | test("^[0-9a-f]{64}$"))'
 done
+check "price_movers has an equal movers_check across the desc and asc replays" jq -n -e \
+  --slurpfile d "$T/desc.json" --slurpfile a "$T/asc.json" '$d[0].passes[2].movers_check == $a[0].passes[2].movers_check'
 check "the desc and asc replays covered the same days and map build" jq -n -e \
   --slurpfile d "$T/desc.json" --slurpfile a "$T/asc.json" '$d[0].days == $a[0].days and $d[0].map_build_id == $a[0].map_build_id'
 check_out "the raw snapshot files are unchanged by the replays" "$BEFORE" tree_sums

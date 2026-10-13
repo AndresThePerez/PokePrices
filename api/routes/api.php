@@ -3,7 +3,9 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\CardController;
+use App\Http\Controllers\CardPricesController;
 use App\Http\Controllers\CardSearchController;
+use App\Http\Controllers\MoversController;
 use App\Http\Controllers\PriceFreshnessController;
 use App\Http\Controllers\ReadinessController;
 use Illuminate\Support\Facades\Route;
@@ -15,6 +17,16 @@ Route::get('/ready', ReadinessController::class)->name('ready');
 Route::get('/prices/freshness', PriceFreshnessController::class)
     ->middleware('throttle:public-read')
     ->name('prices.freshness');
+
+// Daily price reads (P2-i1 T11, T12): Postgres only, never PokéSearch (R177(8)), so outside its group. Their bodies
+// change at most once per ingested day: conditional-get:history.
+Route::get('/cards/{id}/prices', CardPricesController::class)
+    ->middleware(['throttle:public-read', 'conditional-get:history'])
+    ->name('cards.prices');
+
+Route::get('/movers', MoversController::class)
+    ->middleware(['throttle:public-read', 'conditional-get:history'])
+    ->name('movers');
 
 // Routes that call PokéSearch; the contract documents their 503 upstream-unavailable and 502 upstream-contract.
 Route::group(['pokesearch' => true], function (): void {

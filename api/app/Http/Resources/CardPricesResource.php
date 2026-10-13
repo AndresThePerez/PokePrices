@@ -1,0 +1,60 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Http\Resources;
+
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
+
+/**
+ * The daily candles of a card's variants as GET /v1/cards/{id}/prices answers them (plan P2-i1 T11): one series per
+ * variant (by variant_key) with its points ascending by day, and the provenance and window in meta. Every point
+ * carries its own as_of, the snapshot marker of the close it shows; meta.as_of is the newest ingested day's marker.
+ */
+final class CardPricesResource extends JsonResource
+{
+    /**
+     * @param  list<array{variant_key: string, finish: string, edition: string, treatment: string, points: list<array{day: string, close: string, is_filled: bool, filled_from: string|null, as_of: string, series_epoch: int}>}>  $series
+     */
+    public function __construct(
+        array $series,
+        private readonly string $range,
+        private readonly ?string $from,
+        private readonly ?string $to,
+        private readonly ?string $asOf,
+    ) {
+        parent::__construct($series);
+    }
+
+    /**
+     * @return list<array{variant_key: string, finish: string, edition: string, treatment: string, points: list<array{day: string, close: string, is_filled: bool, filled_from: string|null, as_of: string, series_epoch: int}>}>
+     */
+    public function toArray(Request $request): array
+    {
+        /** @var list<array{variant_key: string, finish: string, edition: string, treatment: string, points: list<array{day: string, close: string, is_filled: bool, filled_from: string|null, as_of: string, series_epoch: int}>}> $series */
+        $series = $this->resource;
+
+        return $series;
+    }
+
+    /**
+     * @return array{meta: array{source: string, feed: string, basis: string, currency: string, cadence: string, range: string, from: string|null, to: string|null, as_of: string|null}}
+     */
+    public function with(Request $request): array
+    {
+        return [
+            'meta' => [
+                'source' => (string) config('pricing.source'),
+                'feed' => (string) config('pricing.feed'),
+                'basis' => 'market',
+                'currency' => 'USD',
+                'cadence' => 'daily',
+                'range' => $this->range,
+                'from' => $this->from,
+                'to' => $this->to,
+                'as_of' => $this->asOf,
+            ],
+        ];
+    }
+}

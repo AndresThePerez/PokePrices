@@ -24,8 +24,8 @@ use Throwable;
  *   skips a marker that already has an `ok` run unless forced, opens the run, prepares the month's partition, deletes
  *   the day's rows of any other marker (D1: the latest marker per UTC date wins; review F7) and plans the chunks;
  * - chunk(): normalizes and upserts one chunk of at most config('pricing.chunk_rows') de-duplicated rows of a group;
- * - finalize(): rolls the D3 window up with its carry-forward fills (T07), rebuilds price_latest (T05), sums the
- *   counts and marks the run `ok`.
+ * - finalize(): rolls the D3 window up with its carry-forward fills (T07), rebuilds price_latest (T05) and the window's
+ *   price_movers (T12), sums the counts and marks the run `ok`.
  *
  * sync() holds the `pricing:ingest` lock (D12) and runs all three inside one transaction, so a failure anywhere
  * leaves no price row; the `failed` run is written after the rollback. The product map is read, never written, and
@@ -207,7 +207,7 @@ final class DayIngest
     }
 
     /**
-     * Rolls up the D3 window, rebuilds price_latest from price_daily (T05), sums the run's counts (start-level plus every done chunk) and marks the run `ok`.
+     * Rolls up the D3 window, rebuilds price_latest from price_daily (T05) and the window's price_movers (T12), sums the run's counts (start-level plus every done chunk) and marks the run `ok`.
      * It refuses a run with any chunk not done: finalize never runs on a partial day.
      *
      * @return array<string, int>
@@ -228,6 +228,7 @@ final class DayIngest
             $previous = $this->db->selectOne("SELECT max(day)::text AS day FROM ingest_runs WHERE source = ? AND status = 'ok'", [$source], false);
             $window = DailyRollup::rollup($this->db, (string) $run->day, $previous instanceof stdClass && is_string($previous->day) ? $previous->day : null);
             LatestPrices::rebuild($this->db);
+            Movers::rebuild($this->db, $window['from'], $window['to']);
 
             $counts = [];
             $start = json_decode((string) $run->counts, true, 512, JSON_THROW_ON_ERROR);

@@ -371,6 +371,324 @@
                 }
             }
         },
+        "/cards/{id}/prices": {
+            "get": {
+                "operationId": "getCardPrices",
+                "description": "One series per Pok\u00e9Prices variant of the card, ordered by variant_key, each with its daily points ascending by day: TCGplayer market prices via TCGCSV, one close per day. range is 1W, 1M, 3M, YTD or 1Y (default 1M); the window ends on to, the newest ingested day, and starts on from (to minus 6, 29, 89 or 364 days, or January 1 of to's year for YTD), so it follows the data, never the clock. Days without a row are gaps. A filled point (is_filled true) repeats the close of filled_from for at most 14 days; every point's as_of is the snapshot marker of the close it shows, and meta.as_of is the marker of the newest ingested day. series_epoch changes when the variant's TCGplayer mapping starts a new series; never compare closes across it. With nothing ingested yet, from, to and as_of are null and every series is empty. The prices come from Pok\u00e9Prices alone: a valid id Pok\u00e9Prices holds no variants for answers 200 with data: [], which does not mean the card is unknown (GET /v1/cards/{id} says whether a card exists). An id outside the card id pattern answers 404 card-not-found.",
+                "summary": "Read the daily closes of a card's variants over a chart range",
+                "tags": [
+                    "Prices"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "range",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "1W",
+                                "1M",
+                                "3M",
+                                "YTD",
+                                "1Y"
+                            ]
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`CardPricesResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/CardPricesResource"
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "source": {
+                                                    "type": "string"
+                                                },
+                                                "feed": {
+                                                    "type": "string"
+                                                },
+                                                "basis": {
+                                                    "type": "string",
+                                                    "const": "market"
+                                                },
+                                                "currency": {
+                                                    "type": "string",
+                                                    "const": "USD"
+                                                },
+                                                "cadence": {
+                                                    "type": "string",
+                                                    "const": "daily"
+                                                },
+                                                "range": {
+                                                    "type": "string"
+                                                },
+                                                "from": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "to": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "as_of": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                }
+                                            },
+                                            "required": [
+                                                "source",
+                                                "feed",
+                                                "basis",
+                                                "currency",
+                                                "cadence",
+                                                "range",
+                                                "from",
+                                                "to",
+                                                "as_of"
+                                            ],
+                                            "additionalProperties": false
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ],
+                                    "additionalProperties": false
+                                }
+                            }
+                        }
+                    },
+                    "304": {
+                        "description": "Not Modified: the If-None-Match validator matches the current representation.",
+                        "headers": {
+                            "ETag": {
+                                "description": "The validator of the current representation.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "An error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests: the rate limit of this route is spent.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds until the limit resets.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/movers": {
+            "get": {
+                "operationId": "getMovers",
+                "description": "The variants whose TCGplayer market close (via TCGCSV, one close per day) moved most against their previous close, from the ranked snapshot Pok\u00e9Prices builds when it ingests a day: meta.day is the newest day with movers and meta.as_of its snapshot marker. A variant counts when it has a real close on that day and a previous close of at least meta.min_previous_close (2.00 USD) in the same series epoch within 14 days; direction up lists rises and down lists falls (default up), ranked by the absolute change in percent, then the absolute change, then variant_key; limit is 1 to 50 (default 20). The window is the previous close, which may be more than one day back when a day had no close. Cards are named by card_id only. With no movers yet, data is [] and meta.day and meta.as_of are null.",
+                "summary": "Read the biggest movers of the newest collected day",
+                "tags": [
+                    "Prices"
+                ],
+                "parameters": [
+                    {
+                        "name": "direction",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "up",
+                                "down"
+                            ]
+                        }
+                    },
+                    {
+                        "name": "limit",
+                        "in": "query",
+                        "schema": {
+                            "type": "integer",
+                            "minimum": 1,
+                            "maximum": 50
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `MoverResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/MoverResource"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "day": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "as_of": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "source": {
+                                                    "type": "string"
+                                                },
+                                                "feed": {
+                                                    "type": "string"
+                                                },
+                                                "basis": {
+                                                    "type": "string",
+                                                    "const": "market"
+                                                },
+                                                "currency": {
+                                                    "type": "string",
+                                                    "const": "USD"
+                                                },
+                                                "window": {
+                                                    "type": "string",
+                                                    "const": "previous_close"
+                                                },
+                                                "min_previous_close": {
+                                                    "type": "string"
+                                                },
+                                                "direction": {
+                                                    "type": "string"
+                                                },
+                                                "limit": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "day",
+                                                "as_of",
+                                                "source",
+                                                "feed",
+                                                "basis",
+                                                "currency",
+                                                "window",
+                                                "min_previous_close",
+                                                "direction",
+                                                "limit"
+                                            ],
+                                            "additionalProperties": false
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ],
+                                    "additionalProperties": false
+                                }
+                            }
+                        }
+                    },
+                    "304": {
+                        "description": "Not Modified: the If-None-Match validator matches the current representation.",
+                        "headers": {
+                            "ETag": {
+                                "description": "The validator of the current representation.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests: the rate limit of this route is spent.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds until the limit resets.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/ready": {
             "get": {
                 "operationId": "getReady",
@@ -467,6 +785,73 @@
     },
     "components": {
         "schemas": {
+            "CardPricesResource": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "variant_key": {
+                            "type": "string"
+                        },
+                        "finish": {
+                            "type": "string"
+                        },
+                        "edition": {
+                            "type": "string"
+                        },
+                        "treatment": {
+                            "type": "string"
+                        },
+                        "points": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "day": {
+                                        "type": "string"
+                                    },
+                                    "close": {
+                                        "type": "string"
+                                    },
+                                    "is_filled": {
+                                        "type": "boolean"
+                                    },
+                                    "filled_from": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ]
+                                    },
+                                    "as_of": {
+                                        "type": "string"
+                                    },
+                                    "series_epoch": {
+                                        "type": "integer"
+                                    }
+                                },
+                                "required": [
+                                    "day",
+                                    "close",
+                                    "is_filled",
+                                    "filled_from",
+                                    "as_of",
+                                    "series_epoch"
+                                ],
+                                "additionalProperties": false
+                            }
+                        }
+                    },
+                    "required": [
+                        "variant_key",
+                        "finish",
+                        "edition",
+                        "treatment",
+                        "points"
+                    ],
+                    "additionalProperties": false
+                },
+                "title": "CardPricesResource"
+            },
             "CardResource": {
                 "type": "object",
                 "properties": {
@@ -792,6 +1177,63 @@
                 ],
                 "additionalProperties": false,
                 "title": "CardSummaryResource"
+            },
+            "MoverResource": {
+                "type": "object",
+                "properties": {
+                    "rank": {
+                        "type": "integer"
+                    },
+                    "card_id": {
+                        "type": "string"
+                    },
+                    "variant_key": {
+                        "type": "string"
+                    },
+                    "finish": {
+                        "type": "string"
+                    },
+                    "edition": {
+                        "type": "string"
+                    },
+                    "treatment": {
+                        "type": "string"
+                    },
+                    "close": {
+                        "type": "string"
+                    },
+                    "previous_close": {
+                        "type": "string"
+                    },
+                    "previous_day": {
+                        "type": "string"
+                    },
+                    "change": {
+                        "type": "string"
+                    },
+                    "change_pct": {
+                        "type": "string"
+                    },
+                    "series_epoch": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "rank",
+                    "card_id",
+                    "variant_key",
+                    "finish",
+                    "edition",
+                    "treatment",
+                    "close",
+                    "previous_close",
+                    "previous_day",
+                    "change",
+                    "change_pct",
+                    "series_epoch"
+                ],
+                "additionalProperties": false,
+                "title": "MoverResource"
             },
             "PriceFreshnessResource": {
                 "type": "object",

@@ -18,7 +18,8 @@ use Symfony\Component\HttpFoundation\Response;
  * A 200 to a GET or HEAD gets a strong ETag over its body (xxh128) and the route's Cache-Control policy, named
  * as the middleware parameter: conditional-get (or conditional-get:search) sends public, max-age=60,
  * s-maxage=300; conditional-get:card sends public, max-age=60, stale-while-revalidate=300 (T43, review-1
- * rec 12). A matching If-None-Match turns it into a 304 that keeps the ETag and drops the body. A body whose
+ * rec 12); conditional-get:history sends public, max-age=300, stale-while-revalidate=600 for the daily price reads
+ * cards.prices and movers (P2-i1 T11 and T12, review F9), whose bodies change at most once per ingested day. A matching If-None-Match turns it into a 304 that keeps the ETag and drops the body. A body whose
  * meta.degraded is true is a stale copy: it gets Cache-Control no-store, no ETag, and is never answered 304.
  * Any other status passes through untouched. The ETag only holds because these bodies are deterministic: no
  * request id and no upstream timing in a 200.
@@ -29,8 +30,10 @@ final class ConditionalGet
 
     public const string CARD_CACHE_CONTROL = 'public, max-age=60, stale-while-revalidate=300';
 
+    public const string HISTORY_CACHE_CONTROL = 'public, max-age=300, stale-while-revalidate=600';
+
     /** The Cache-Control of a fresh 200, by the policy name a route passes as the middleware parameter. */
-    public const array POLICIES = ['search' => self::CACHE_CONTROL, 'card' => self::CARD_CACHE_CONTROL];
+    public const array POLICIES = ['search' => self::CACHE_CONTROL, 'card' => self::CARD_CACHE_CONTROL, 'history' => self::HISTORY_CACHE_CONTROL];
 
     /** @throws LogicException when the route names a policy that does not exist */
     public function handle(Request $request, Closure $next, string $policy = 'search'): Response

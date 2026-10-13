@@ -18,21 +18,22 @@ use stdClass;
  *   present and decodable, money per D5) and pins that list and each day's marker for all three passes. An empty list,
  *   a refused day or a dispatched price_events row stops it with nothing written.
  * - Pass 1 and pass 2 each wipe the derived tables, then ingest every pinned day in the chosen order (mode `replay`);
- *   pass 3 ingests again without wiping. Each pass ends with a PriceDigest.
- * - The wipe truncates price_points, price_daily and price_latest and, in the same transaction, marks the `ok` and
- *   `running` runs of the source `superseded` (D12). That covers the runs of every pinned day; with a --days subset it
+ *   pass 3 ingests again without wiping. Each pass ends with a PriceDigest and, beside it, the movers check of
+ *   price_movers (T12; outside the digest by R180b, R181(1)).
+ * - The wipe truncates price_points, price_daily, price_latest and price_movers and, in the same transaction, marks
+ *   the `ok` and `running` runs of the source `superseded` (D12). That covers the runs of every pinned day; with a --days subset it
  *   also covers the runs of the other days, whose rows the truncate removes too, so the pending scan re-ingests them.
  *   Chunks read their run FOR SHARE, so a chunk either commits before the wipe or finds its run superseded.
  * - It never writes, updates, deletes or truncates price_events (R180a), never writes the map tables, and only reads
  *   the raw snapshot files.
  *
- * Identical means the three digests are equal, all taken in the same order, at a fixed (day set, map build, code sha)
- * (R180c): the replay normalizes with the current map build and epochs.
+ * Identical means the three digests and the three movers checks are equal, all taken in the same order, at a fixed
+ * (day set, map build, code sha) (R180c): the replay normalizes with the current map build and epochs.
  */
 final class Replay
 {
     /** The derived tables a fresh replay truncates; never price_events (R180a). */
-    public const array WIPED_TABLES = ['price_points', 'price_daily', 'price_latest'];
+    public const array WIPED_TABLES = ['price_points', 'price_daily', 'price_latest', 'price_movers'];
 
     public const string NO_DAYS = 'no collected days';
 
@@ -63,7 +64,7 @@ final class Replay
      *
      * @param  list<string>|null  $days  the days to replay; null for every collected day
      * @param  'asc'|'desc'  $order
-     * @return array{status: 'ok'|'locked'|'refused'|'failed', error: string|null, days: list<string>, map_build_id: int|null, passes: list<array{pass: int, digests: array<string, array{rows: int, sha256: string}>, seconds: float}>, identical: bool}
+     * @return array{status: 'ok'|'locked'|'refused'|'failed', error: string|null, days: list<string>, map_build_id: int|null, passes: list<array{pass: int, digests: array<string, array{rows: int, sha256: string}>, movers_check: array{rows: int, sha256: string}, seconds: float}>, identical: bool}
      */
     public function run(?array $days, string $order): array
     {
@@ -97,9 +98,10 @@ final class Replay
                     }
                 }
                 $digest = PriceDigest::compute($this->db);
-                $full[] = $digest;
+                $movers = PriceDigest::movers($this->db);
+                $full[] = [$digest, $movers];
                 $result['map_build_id'] ??= $digest['map_build_id'];
-                $result['passes'][] = ['pass' => $pass, 'digests' => $digest['tables'], 'seconds' => round((hrtime(true) - $started) / 1e9, 3)];
+                $result['passes'][] = ['pass' => $pass, 'digests' => $digest['tables'], 'movers_check' => $movers, 'seconds' => round((hrtime(true) - $started) / 1e9, 3)];
             }
 
             $result['status'] = 'ok';

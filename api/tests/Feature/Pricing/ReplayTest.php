@@ -139,7 +139,7 @@ test('replay --fresh of the five days is identical in asc and in desc, with the 
         ->and($asc['map_build_id'])->toBe((int) DB::table('map_builds')->max('id'))
         ->and($asc['code_sha'])->toBeNull()
         ->and(array_column($asc['passes'], 'pass'))->toBe([1, 2, 3])
-        ->and(array_keys($asc['passes'][0]))->toBe(['pass', 'digests', 'seconds'])
+        ->and(array_keys($asc['passes'][0]))->toBe(['pass', 'digests', 'movers_check', 'seconds'])
         ->and(array_keys($asc['passes'][0]['digests']))->toBe(['price_points', 'price_daily', 'price_latest'])
         ->and($asc['passes'][0]['digests']['price_daily']['rows'])->toBe(120)
         ->and($asc['passes'][0]['digests']['price_latest']['rows'])->toBeGreaterThan(0)
