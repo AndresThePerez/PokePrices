@@ -40,16 +40,16 @@ check "origin has no separate pushurl" sh -c '! git config --get remote.origin.p
 check "no remote url rewrite (insteadOf) config" sh -c 'test -z "$(git config --get-regexp "^url\\." )"'
 check "main's upstream, if set, is origin" sh -c 'r=$(git config --get branch.main.remote); test -z "$r" || test "$r" = origin'
 check "no packed remote refs" sh -c '! test -e .git/packed-refs || ! '"$GREP"' -q refs/remotes .git/packed-refs'
-check_out "the local branches are exactly main and p1-work" "main p1-work" sh -c 'git for-each-ref --format="%(refname:short)" refs/heads | LC_ALL=C sort | paste -sd" " -'
-check "HEAD is a symbolic ref to refs/heads/main or refs/heads/p1-work" sh -c 'case $(git symbolic-ref HEAD) in refs/heads/main|refs/heads/p1-work) exit 0 ;; esac; exit 1'
+check "the local branches are main and p<N>-work branches only" sh -c 'n=0; m=0; for b in $(git for-each-ref --format="%(refname:short)" refs/heads); do if test "$b" = main; then m=1; elif printf "%s\n" "$b" | '"$GREP"' -q -E "^p[0-9]+-work$"; then n=$((n + 1)); else exit 1; fi; done; test "$m" -eq 1 && test "$n" -ge 1'
+check "HEAD is a symbolic ref to refs/heads/main or a refs/heads/p<N>-work branch" sh -c 'r=$(git symbolic-ref HEAD) || exit 1; test "$r" = refs/heads/main || printf "%s\n" "$r" | '"$GREP"' -q -E "^refs/heads/p[0-9]+-work$"'
 check_out "history has exactly one root commit" 1 sh -c 'git rev-list --max-parents=0 HEAD | wc -l | tr -d " "'
 check_out "no tags" 0 sh -c 'git tag | wc -l | tr -d " "'
 
 # --- 4. commit-message hygiene over the whole history --------------------------------------
 check "first commit subject is exact" sh -c \
   'test "$(git log --reverse --format=%s | head -n 1)" = "[P0-i1-T01] Initialise the Pok'"$(printf '\303\251')"'Prices repository with ignores and a minimal dev compose file"'
-check "every subject carries a [P<n>-i<k>-T<NN>] prefix" sh -c \
-  'test -z "$(git log --format=%s | '"$GREP"' -v -E "^\[P[0-9]+-i[0-9]+-T[0-9]{2}[a-z]?\] .+")"'
+check "every subject carries a [P<n>-i<k>-T<NN>] or [P<n>-i<k>-HG<nn>] prefix" sh -c \
+  'test -z "$(git log --format=%s | '"$GREP"' -v -E "^\[P[0-9]+-i[0-9]+-(T[0-9]{2}[a-z]?|HG[0-9]{2})\] .+")"'
 check "no commit has a trailer" sh -c 'for c in $(git rev-list HEAD); do test -z "$(git log -1 --format=%B $c | git interpret-trailers --parse)" || exit 1; done'
 check "no commit message names a tool, vendor, session or co-author" sh -c \
   '! git log --format="%B" | '"$GREP"' -i -E "claude|anthropic|co-authored|generated with"'

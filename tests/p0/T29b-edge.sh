@@ -50,7 +50,7 @@ check "old pre-amendment hash is gone from the tree" sh -c "! git grep -q "ee4ee
 check "the file the T02 literal names equals the hash file" sh -c "[ \"\$(sed -n 's/^APPROVED=//p' tests/p0/T02-edge.sh)\" = \"\$(cut -d' ' -f1 gates/manifest-P0.approved.sha256)\" ]"
 
 # 5. widened subject regex: accepts the intended form and still rejects forgeries
-RE='^\[P[0-9]+-i[0-9]+-T[0-9]{2}[a-z]?\] .+'
+RE='^\[P[0-9]+-i[0-9]+-(T[0-9]{2}[a-z]?|HG[0-9]{2})\] .+'
 RE_LINE=$($GREP -F 'every subject carries' -A1 tests/p0/T01-edge.sh | $GREP -o -E '\^\\\[P[^"]*' | head -n1)
 check_out "T01-edge uses the documented widened regex" "$RE" printf '%s' "$RE_LINE"
 acc() { printf '%s\n' "$2" | $GREP -q -E "$RE"; }

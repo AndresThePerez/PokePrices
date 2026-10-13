@@ -5,7 +5,7 @@ cd "$(dirname "$0")/../.." || exit 1
 . tests/p0/lib.sh
 APC=$(command -v agent-precommit || printf '%s' "$HOME/.local/bin/agent-precommit")
 check "inside a git work tree" git rev-parse --is-inside-work-tree
-check "current branch is main or p1-work" sh -c 'case $(git symbolic-ref --short HEAD) in main|p1-work) exit 0 ;; esac; exit 1'
+check "current branch is main or a p<N>-work branch" sh -c 'b=$(git symbolic-ref --short HEAD) || exit 1; test "$b" = main || printf "%s\n" "$b" | /usr/bin/grep -q -E "^p[0-9]+-work$"'
 check_out "origin is the GitHub URL" git@github.com:AndresThePerez/PokePrices.git git remote get-url origin
 check_out "exactly one remote" 1 sh -c 'git remote | wc -l | tr -d " "'
 check_out "origin is the only remote" origin git remote

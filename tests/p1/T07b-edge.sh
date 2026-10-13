@@ -19,6 +19,9 @@ mkclone() {
   c=$D/$1
   git clone -q "$ROOT" "$c" &&
     git -C "$c" checkout -q -B p1-work "$HEAD_SHA" &&
+    for b in $(git -C "$c" for-each-ref --format='%(refname:short)' refs/heads); do
+      case $b in p1-work) ;; *) git -C "$c" branch -q -D "$b" || return 1 ;; esac
+    done &&
     git -C "$c" branch -q -f --no-track main "$BASE" &&
     git -C "$c" update-ref refs/remotes/origin/main "$BASE" &&
     git -C "$c" config branch.main.remote origin
@@ -27,12 +30,12 @@ runin() {
   cp tests/p0/T01.sh tests/p0/T01-edge.sh tests/p0/lib.sh "$D/$1/tests/p0/" &&
   (cd "$D/$1" && sh tests/p0/T01.sh > "$D/$1.T01" 2>/dev/null; TMPDIR=$D sh tests/p0/T01-edge.sh > "$D/$1.edge" 2>/dev/null)
 }
-C1='current branch is main or p1-work'
+C1='current branch is main or a p<N>-work branch'
 C2A='origin is the only remote'
 C2B='origin/main exists and is an ancestor of HEAD'
 C3U="main's upstream, if set, is origin"
-C3B='the local branches are exactly main and p1-work'
-C3H='HEAD is a symbolic ref to refs/heads/main or refs/heads/p1-work'
+C3B='the local branches are main and p<N>-work branches only'
+C3H='HEAD is a symbolic ref to refs/heads/main or a refs/heads/p<N>-work branch'
 okl()  { $GREP -q -x -F "ok - $2" "$D/$1"; }
 badl() { $GREP -q -F "not ok - $2" "$D/$1"; }
 
@@ -42,7 +45,7 @@ check "detached HEAD: T01 fails '$C1'" badl detached.T01 "$C1"
 check "detached HEAD: T01-edge fails '$C3H'" badl detached.edge "$C3H"
 check "detached HEAD: the branch-list check does not depend on HEAD and still passes" okl detached.edge "$C3B"
 
-# ---- prefix traps: HEAD on main2 / p1-work-old must not match main|p1-work ------------------------------
+# ---- prefix traps: HEAD on main2 / p1-work-old must not match main or p<N>-work ------------------------------
 mkclone main2 && git -C "$D/main2" checkout -q -b main2 && runin main2
 check "main2 clone: T01 fails '$C1'" badl main2.T01 "$C1"
 check "main2 clone: T01-edge fails '$C3H'" badl main2.edge "$C3H"
@@ -51,12 +54,29 @@ mkclone old && git -C "$D/old" checkout -q -b p1-work-old && runin old
 check "p1-work-old clone: T01 fails '$C1'" badl old.T01 "$C1"
 check "p1-work-old clone: T01-edge fails '$C3H'" badl old.edge "$C3H"
 
+# ---- P2-i1-T01 prefix traps: p2-work-x, p-work and p2work must not match ^p[0-9]+-work$ -------------------
+mkclone p2x && git -C "$D/p2x" checkout -q -b p2-work-x && runin p2x
+check "p2-work-x clone: T01 fails '$C1'" badl p2x.T01 "$C1"
+check "p2-work-x clone: T01-edge fails '$C3H'" badl p2x.edge "$C3H"
+check "p2-work-x clone: T01-edge fails '$C3B'" badl p2x.edge "$C3B"
+mkclone pnone && git -C "$D/pnone" checkout -q -b p-work && runin pnone
+check "p-work clone: T01 fails '$C1'" badl pnone.T01 "$C1"
+check "p-work clone: T01-edge fails '$C3H'" badl pnone.edge "$C3H"
+mkclone p2nodash && git -C "$D/p2nodash" checkout -q -b p2work && runin p2nodash
+check "p2work clone: T01 fails '$C1'" badl p2nodash.T01 "$C1"
+check "p2work clone: T01-edge fails '$C3B'" badl p2nodash.edge "$C3B"
+# ---- a second phase branch next to p1-work is allowed, and HEAD on it passes all three -------------------
+mkclone p2ok && git -C "$D/p2ok" checkout -q -b p2-work && runin p2ok
+check "p2-work clone: T01 passes '$C1'" okl p2ok.T01 "$C1"
+check "p2-work clone: T01-edge passes '$C3B'" okl p2ok.edge "$C3B"
+check "p2-work clone: T01-edge passes '$C3H'" okl p2ok.edge "$C3H"
+
 # ---- a third local branch with HEAD on p1-work: only the branch-list check objects ---------------------
 mkclone third && git -C "$D/third" branch p1-work-old && runin third
 check "third-branch clone: T01-edge fails '$C3B'" badl third.edge "$C3B"
 check "third-branch clone: T01 still passes '$C1'" okl third.T01 "$C1"
 check "third-branch clone: T01-edge still passes '$C3H'" okl third.edge "$C3H"
-# ---- p1-work missing: the set is exactly {main, p1-work}, so main alone fails ---------------------------
+# ---- no phase branch at all: main alone is not main plus a p<N>-work branch, so it fails ---------------------------
 mkclone onlymain && git -C "$D/onlymain" checkout -q main && git -C "$D/onlymain" branch -q -D p1-work && runin onlymain
 check "main-only clone: T01-edge fails '$C3B'" badl onlymain.edge "$C3B"
 check "main-only clone: T01 passes '$C1' and '$C2B'" sh -c '/usr/bin/grep -q -x -F "ok - $1" "$0/onlymain.T01" && /usr/bin/grep -q -x -F "ok - $2" "$0/onlymain.T01"' "$D" "$C1" "$C2B"

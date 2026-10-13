@@ -1,6 +1,6 @@
 #!/bin/sh
-# P1-i1-T07b (R149): the P0 push-state checks in tests/p0/T01.sh and T01-edge.sh accept the P1 branch
-# (p1-work) and the pushed main. Each scenario is a throwaway clone under .gates/tmp/P1-i1-T07b/ with
+# P1-i1-T07b (R149): the P0 push-state checks in tests/p0/T01.sh and T01-edge.sh accept any phase work branch
+# (p<N>-work, P2-i1-T01) and the pushed main. Each scenario is a throwaway clone under .gates/tmp/P1-i1-T07b/ with
 # the working tree's T01.sh, T01-edge.sh and lib.sh copied in; the real scripts run inside the clone
 # and their check lines are read back (R96: the subject is the real script, never a parent function).
 set -u
@@ -19,6 +19,9 @@ mkclone() {
   c=$D/$1
   git clone -q "$ROOT" "$c" &&
     git -C "$c" checkout -q -B p1-work "$HEAD_SHA" &&
+    for b in $(git -C "$c" for-each-ref --format='%(refname:short)' refs/heads); do
+      case $b in p1-work) ;; *) git -C "$c" branch -q -D "$b" || return 1 ;; esac
+    done &&
     git -C "$c" branch -q -f --no-track main "$BASE" &&
     git -C "$c" update-ref refs/remotes/origin/main "$BASE" &&
     git -C "$c" config branch.main.remote origin
@@ -31,12 +34,12 @@ runin() {
   (cd "$D/$1" && sh tests/p0/T01.sh > "$D/$1.T01" 2>/dev/null; TMPDIR=$D sh tests/p0/T01-edge.sh > "$D/$1.edge" 2>/dev/null)
 }
 # The descriptions of the six new check lines.
-C1='current branch is main or p1-work'
+C1='current branch is main or a p<N>-work branch'
 C2A='origin is the only remote'
 C2B='origin/main exists and is an ancestor of HEAD'
 C3U="main's upstream, if set, is origin"
-C3B='the local branches are exactly main and p1-work'
-C3H='HEAD is a symbolic ref to refs/heads/main or refs/heads/p1-work'
+C3B='the local branches are main and p<N>-work branches only'
+C3H='HEAD is a symbolic ref to refs/heads/main or a refs/heads/p<N>-work branch'
 
 # ---- positive: p1-work, origin/main at 0736223, FETCH_HEAD present, three remote-tracking refs ---------
 mkclone ok && : > "$D/ok/.git/FETCH_HEAD" && runin ok
@@ -54,6 +57,13 @@ check "ok clone: no T01-edge line mentions FETCH_HEAD" sh -c '! '"$GREP"' -q FET
 check "the FETCH_HEAD check is gone from T01-edge.sh" sh -c '! '"$GREP"' -q FETCH_HEAD tests/p0/T01-edge.sh'
 check "the old P0 push-state descriptions are gone" sh -c '! '"$GREP"' -q -e "no remote-tracking refs" -e "only the main branch exists" -e "main has no upstream configured" -e "\"current branch is main\"" tests/p0/T01.sh tests/p0/T01-edge.sh'
 
+# ---- positive (P2-i1-T01): HEAD on p2-work with p1-work and main also present; a two-digit phase works too ---------
+mkclone phase2 && git -C "$D/phase2" checkout -q -b p2-work && git -C "$D/phase2" branch -q p12-work && runin phase2
+check "phase2 clone: T01 passes '$C1'" $GREP -q -x -F "ok - $C1" "$D/phase2.T01"
+check "phase2 clone: T01-edge passes '$C3B' with main, p1-work, p2-work and p12-work" $GREP -q -x -F "ok - $C3B" "$D/phase2.edge"
+check "phase2 clone: T01-edge passes '$C3H'" $GREP -q -x -F "ok - $C3H" "$D/phase2.edge"
+check "the P1-specific branch descriptions are gone" sh -c '! '"$GREP"' -q -e "main or p1-work" -e "main and p1-work" -e "refs/heads/p1-work" tests/p0/T01.sh tests/p0/T01-edge.sh'
+
 # ---- positive: HEAD on main (after the HG-19 fast-forward), main without an upstream -------------------
 mkclone onmain && git -C "$D/onmain" checkout -q main && git -C "$D/onmain" config --unset branch.main.remote && runin onmain
 check "onmain clone: T01 passes '$C1'" $GREP -q -x -F "ok - $C1" "$D/onmain.T01"
@@ -64,7 +74,7 @@ check "onmain clone: T01-edge passes '$C3H'" $GREP -q -x -F "ok - $C3H" "$D/onma
 # ---- negative: HEAD on a branch named other fails the three branch checks ------------------------------
 mkclone other && git -C "$D/other" checkout -q -b other && runin other
 check "other clone: T01 fails '$C1'" $GREP -q -x -F "not ok - $C1" "$D/other.T01"
-check "other clone: T01-edge fails '$C3B'" $GREP -q -F "not ok - $C3B (" "$D/other.edge"
+check "other clone: T01-edge fails '$C3B'" $GREP -q -x -F "not ok - $C3B" "$D/other.edge"
 check "other clone: T01-edge fails '$C3H'" $GREP -q -x -F "not ok - $C3H" "$D/other.edge"
 
 # ---- negative: origin/main is not an ancestor of HEAD (a side commit on top of 0736223) ----------------
