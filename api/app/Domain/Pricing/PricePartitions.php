@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Pricing;
 
 use Carbon\CarbonImmutable;
+use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -15,15 +16,16 @@ final class PricePartitions
 {
     /**
      * Creates the partition of the UTC calendar month holding $observedAt unless it exists, and returns its name
-     * (price_points_yYYYYmMM, bounds [month start, next month start) at 00:00+00).
+     * (price_points_yYYYYmMM, bounds [month start, next month start) at 00:00+00). $db is the connection the run
+     * writes through (T04's --connection); the default connection when omitted.
      */
-    public static function ensureFor(CarbonImmutable $observedAt): string
+    public static function ensureFor(CarbonImmutable $observedAt, ?ConnectionInterface $db = null): string
     {
         $from = $observedAt->utc()->startOfMonth();
         $to = $from->addMonthNoOverflow();
         $name = sprintf('price_points_y%04dm%02d', $from->year, $from->month);
 
-        DB::statement(sprintf(
+        ($db ?? DB::connection())->statement(sprintf(
             "CREATE TABLE IF NOT EXISTS %s PARTITION OF price_points FOR VALUES FROM ('%s') TO ('%s')",
             $name,
             $from->format('Y-m-d H:i:sP'),

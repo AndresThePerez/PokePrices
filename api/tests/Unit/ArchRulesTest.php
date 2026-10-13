@@ -45,3 +45,27 @@ arch('mapping code is strict-typed and final')
 arch('the product map is built from collected files only, never from the network')
     ->expect(['App\Domain\Mapping', 'App\Console\Commands\MapBuild'])
     ->not->toUse(['Illuminate\Support\Facades\Http', 'Illuminate\Http\Client', 'GuzzleHttp']);
+
+// Plan P2-i1 D10 (T04): pricing and ingest code lives in App\Domain\Pricing, strict-typed and final, and reads
+// collected files only: no HTTP client and no Elasticsearch client (prices are never written to Elasticsearch).
+test('the pricing reader, normalizer, writer, rollup, day ingest, lock, digest and the ingest command exist', function (string $class): void {
+    expect(class_exists($class))->toBeTrue();
+})->with([
+    'App\Domain\Pricing\PriceSnapshotReader',
+    'App\Domain\Pricing\PriceNormalizer',
+    'App\Domain\Pricing\PricePointWriter',
+    'App\Domain\Pricing\DailyRollup',
+    'App\Domain\Pricing\DayIngest',
+    'App\Domain\Pricing\IngestLock',
+    'App\Domain\Pricing\PriceDigest',
+    'App\Console\Commands\PricesIngest',
+]);
+
+arch('pricing code is strict-typed and final')
+    ->expect(['App\Domain\Pricing', 'App\Console\Commands\PricesIngest'])
+    ->toUseStrictTypes()
+    ->toBeFinal();
+
+arch('pricing code never uses the network or an Elasticsearch client')
+    ->expect(['App\Domain\Pricing', 'App\Console\Commands\PricesIngest'])
+    ->not->toUse(['Illuminate\Support\Facades\Http', 'Illuminate\Http\Client', 'GuzzleHttp', 'Elastic', 'Elasticsearch']);
