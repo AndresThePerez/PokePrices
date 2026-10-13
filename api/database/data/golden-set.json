@@ -1,0 +1,1336 @@
+[
+  {
+    "row": 1,
+    "variant_key": "base1-4:holo:unlimited:-",
+    "expect": {
+      "group_id": 604,
+      "product_id": 42382,
+      "sub_type_name": "Holofoil"
+    },
+    "forbid": [
+      {
+        "group_id": 1663,
+        "product_id": 106999
+      },
+      {
+        "group_id": 604,
+        "product_id": 657516
+      }
+    ],
+    "classes": [
+      "charizard_unlimited"
+    ],
+    "oracle": "yes (holofoil)",
+    "why": "Base Charizard, unlimited: lives in group 604 labelled Holofoil."
+  },
+  {
+    "row": 2,
+    "variant_key": "base1-4:holo:shadowless:-",
+    "expect": {
+      "group_id": 1663,
+      "product_id": 106999,
+      "sub_type_name": "Unlimited Holofoil"
+    },
+    "forbid": [
+      {
+        "group_id": 604,
+        "product_id": 42382
+      }
+    ],
+    "classes": [
+      "charizard_shadowless",
+      "group_1663"
+    ],
+    "oracle": "no-key",
+    "why": "Base Charizard, shadowless: in group 1663, Unlimited means shadowless."
+  },
+  {
+    "row": 3,
+    "variant_key": "base1-4:holo:1st:-",
+    "expect": {
+      "group_id": 1663,
+      "product_id": 106999,
+      "sub_type_name": "1st Edition Holofoil"
+    },
+    "forbid": [
+      {
+        "group_id": 604,
+        "product_id": 42382
+      }
+    ],
+    "classes": [
+      "charizard_1st",
+      "group_1663"
+    ],
+    "oracle": "no-key",
+    "why": "Base Charizard, 1st Edition: market is null on the day, so only the golden set checks it."
+  },
+  {
+    "row": 4,
+    "variant_key": "base1-4:holo:unlimited:error-black-dot",
+    "expect": {
+      "group_id": 604,
+      "product_id": 657516,
+      "sub_type_name": "Holofoil"
+    },
+    "forbid": [
+      {
+        "group_id": 604,
+        "product_id": 42382
+      }
+    ],
+    "classes": [
+      "other"
+    ],
+    "oracle": "no-key",
+    "why": "Black Dot Error: same number 4/102 and same name prefix as row 1; must never take row 1's product."
+  },
+  {
+    "row": 5,
+    "variant_key": "base1-2:holo:unlimited:-",
+    "expect": {
+      "group_id": 604,
+      "product_id": 42360,
+      "sub_type_name": "Holofoil"
+    },
+    "forbid": [
+      {
+        "group_id": 1663,
+        "product_id": 106997
+      }
+    ],
+    "classes": [
+      "wotc_holo"
+    ],
+    "oracle": "yes (holofoil)",
+    "why": "Base Blastoise, unlimited: second-highest WotC holo."
+  },
+  {
+    "row": 6,
+    "variant_key": "base1-2:holo:shadowless:-",
+    "expect": {
+      "group_id": 1663,
+      "product_id": 106997,
+      "sub_type_name": "Unlimited Holofoil"
+    },
+    "forbid": [
+      {
+        "group_id": 604,
+        "product_id": 42360
+      }
+    ],
+    "classes": [
+      "group_1663"
+    ],
+    "oracle": "no-key",
+    "why": "Base Blastoise, shadowless."
+  },
+  {
+    "row": 7,
+    "variant_key": "base1-8:holo:1st:-",
+    "expect": {
+      "group_id": 1840,
+      "product_id": 42425,
+      "sub_type_name": "1st Edition Holofoil"
+    },
+    "forbid": [
+      {
+        "group_id": 1840,
+        "product_id": 107004
+      }
+    ],
+    "classes": [
+      "wrong_group_trap"
+    ],
+    "oracle": "stale (updatedAt 2023/03/27)",
+    "why": "Machamp is in group 1840 Deck Exclusives, not 604 or 1663 (OQ6)."
+  },
+  {
+    "row": 8,
+    "variant_key": "base1-8:holo:1st:shadowless",
+    "expect": {
+      "group_id": 1840,
+      "product_id": 107004,
+      "sub_type_name": "1st Edition Holofoil"
+    },
+    "forbid": [
+      {
+        "group_id": 1840,
+        "product_id": 42425
+      }
+    ],
+    "classes": [
+      "other"
+    ],
+    "oracle": "no-key",
+    "why": "Machamp (Base Set Shadowless): OQ6 default key 1st + treatment shadowless."
+  },
+  {
+    "row": 9,
+    "variant_key": "base1-73:normal:unlimited:-",
+    "expect": {
+      "group_id": 604,
+      "product_id": 86271,
+      "sub_type_name": "Normal"
+    },
+    "forbid": [],
+    "classes": [
+      "name_alias"
+    ],
+    "oracle": "yes (normal)",
+    "why": "Product spelled Imposter, card Impostor: a plain name check rejects the right product."
+  },
+  {
+    "row": 10,
+    "variant_key": "base1-55:normal:unlimited:-",
+    "expect": {
+      "group_id": 604,
+      "product_id": 42399,
+      "sub_type_name": "Normal"
+    },
+    "forbid": [],
+    "classes": [
+      "name_alias"
+    ],
+    "oracle": "yes (normal)",
+    "why": "Nidoran with the male sign against Nidoran M."
+  },
+  {
+    "row": 11,
+    "variant_key": "basep-1:normal:-:-",
+    "expect": {
+      "group_id": 1418,
+      "product_id": 121772,
+      "sub_type_name": "Normal"
+    },
+    "forbid": [
+      {
+        "group_id": 1418,
+        "product_id": 88065
+      }
+    ],
+    "classes": [
+      "basep"
+    ],
+    "oracle": "stale (updatedAt 2023/03/27)",
+    "why": "Wizards promos map to 1418 WoTC Promo; the Misprint product sits on the same number."
+  },
+  {
+    "row": 12,
+    "variant_key": "basep-8:normal:-:-",
+    "expect": {
+      "group_id": 1418,
+      "product_id": 87394,
+      "sub_type_name": "Normal"
+    },
+    "forbid": [
+      {
+        "group_id": 1418,
+        "product_id": 607818
+      }
+    ],
+    "classes": [
+      "basep"
+    ],
+    "oracle": "yes (normal)",
+    "why": "Mew (8): the Glossy Finish product sits on the same number."
+  },
+  {
+    "row": 13,
+    "variant_key": "basep-9:holo:-:-",
+    "expect": {
+      "group_id": 1418,
+      "product_id": 87395,
+      "sub_type_name": "Holofoil"
+    },
+    "forbid": [],
+    "classes": [
+      "basep"
+    ],
+    "oracle": "yes (holofoil)",
+    "why": "basep-8 and basep-9 are both Mew."
+  },
+  {
+    "row": 14,
+    "variant_key": "basep-11:holo:-:-",
+    "expect": {
+      "group_id": 1418,
+      "product_id": 85074,
+      "sub_type_name": "Holofoil"
+    },
+    "forbid": [
+      {
+        "group_id": 1418,
+        "product_id": 618732
+      }
+    ],
+    "classes": [
+      "basep"
+    ],
+    "oracle": "yes (holofoil)",
+    "why": "Eevee: JR East Stamp Rally product on the same number."
+  },
+  {
+    "row": 15,
+    "variant_key": "basep-13:holo:-:-",
+    "expect": {
+      "group_id": 1418,
+      "product_id": 90311,
+      "sub_type_name": "Holofoil"
+    },
+    "forbid": [
+      {
+        "group_id": 1840,
+        "product_id": 125073
+      }
+    ],
+    "classes": [
+      "basep",
+      "wrong_group_trap"
+    ],
+    "oracle": "yes (holofoil)",
+    "why": "Under the wrong group the name tie-break picks the 1840 Venusaur exactly."
+  },
+  {
+    "row": 16,
+    "variant_key": "basep-18:normal:-:-",
+    "expect": {
+      "group_id": 1418,
+      "product_id": 89851,
+      "sub_type_name": "Normal"
+    },
+    "forbid": [
+      {
+        "group_id": 1840,
+        "product_id": 177123
+      }
+    ],
+    "classes": [
+      "basep",
+      "wrong_group_trap"
+    ],
+    "oracle": "yes (normal)",
+    "why": "A single-candidate wrong match in 1840 (Mightyena 18/108 Cosmos Holo)."
+  },
+  {
+    "row": 17,
+    "variant_key": "basep-21:normal:-:-",
+    "expect": {
+      "group_id": 1418,
+      "product_id": 87557,
+      "sub_type_name": "Normal"
+    },
+    "forbid": [
+      {
+        "group_id": 1840,
+        "product_id": 264821
+      }
+    ],
+    "classes": [
+      "basep",
+      "wrong_group_trap"
+    ],
+    "oracle": "yes (normal)",
+    "why": "A wrong-group exact-name match (Moltres 021/172)."
+  },
+  {
+    "row": 18,
+    "variant_key": "basep-42:normal:-:-",
+    "expect": {
+      "group_id": 1418,
+      "product_id": 88240,
+      "sub_type_name": "Normal"
+    },
+    "forbid": [],
+    "classes": [
+      "basep",
+      "name_alias"
+    ],
+    "oracle": "yes (normal)",
+    "why": "Pokemon Tower with and without the accent."
+  },
+  {
+    "row": 19,
+    "variant_key": "basep-48:normal:-:-",
+    "expect": {
+      "group_id": 1418,
+      "product_id": 83648,
+      "sub_type_name": "Normal"
+    },
+    "forbid": [
+      {
+        "group_id": 1418,
+        "product_id": 83647
+      }
+    ],
+    "classes": [
+      "basep"
+    ],
+    "oracle": "yes (normal)",
+    "why": "The product name carries the number in parentheses; Articuno (22) is a different card."
+  },
+  {
+    "row": 20,
+    "variant_key": "basep-52:normal:-:-",
+    "expect": {
+      "group_id": 1418,
+      "product_id": 86120,
+      "sub_type_name": "Normal"
+    },
+    "forbid": [
+      {
+        "group_id": 1418,
+        "product_id": 244348
+      }
+    ],
+    "classes": [
+      "basep"
+    ],
+    "oracle": "yes (normal)",
+    "why": "A bracketed Pokemon Center NY stamp on the same number."
+  },
+  {
+    "row": 21,
+    "variant_key": "tk1a-8:normal:-:-",
+    "expect": {
+      "group_id": 1543,
+      "product_id": 88335,
+      "sub_type_name": "Normal"
+    },
+    "forbid": [
+      {
+        "group_id": 1543,
+        "product_id": 88336
+      }
+    ],
+    "classes": [
+      "trainer_kit"
+    ],
+    "oracle": "none",
+    "why": "Trainer kit 1, Latias deck: Potion (Latias) against Potion (Latios)."
+  },
+  {
+    "row": 22,
+    "variant_key": "tk1b-8:normal:-:-",
+    "expect": {
+      "group_id": 1543,
+      "product_id": 88336,
+      "sub_type_name": "Normal"
+    },
+    "forbid": [
+      {
+        "group_id": 1543,
+        "product_id": 88335
+      }
+    ],
+    "classes": [
+      "trainer_kit"
+    ],
+    "oracle": "none",
+    "why": "Trainer kit 1, Latios deck."
+  },
+  {
+    "row": 23,
+    "variant_key": "tk1a-9:normal:-:-",
+    "expect": {
+      "group_id": 1543,
+      "product_id": 85239,
+      "sub_type_name": "Normal"
+    },
+    "forbid": [
+      {
+        "group_id": 1543,
+        "product_id": 85240
+      }
+    ],
+    "classes": [
+      "trainer_kit"
+    ],
+    "oracle": "none",
+    "why": "Energy Search (Latias)."
+  },
+  {
+    "row": 24,
+    "variant_key": "tk1b-9:normal:-:-",
+    "expect": {
+      "group_id": 1543,
+      "product_id": 85240,
+      "sub_type_name": "Normal"
+    },
+    "forbid": [
+      {
+        "group_id": 1543,
+        "product_id": 85239
+      }
+    ],
+    "classes": [
+      "trainer_kit"
+    ],
+    "oracle": "none",
+    "why": "Energy Search (Latios)."
+  },
+  {
+    "row": 25,
+    "variant_key": "tk1a-1:normal:-:-",
+    "expect": {
+      "group_id": 1543,
+      "product_id": 83694,
+      "sub_type_name": "Normal"
+    },
+    "forbid": [
+      {
+        "group_id": 1543,
+        "product_id": 85131
+      }
+    ],
+    "classes": [
+      "trainer_kit"
+    ],
+    "oracle": "none",
+    "why": "Number 1 is Bagon in tk1a and Electrike in tk1b."
+  },
+  {
+    "row": 26,
+    "variant_key": "tk2a-9:normal:-:-",
+    "expect": {
+      "group_id": 1542,
+      "product_id": 88339,
+      "sub_type_name": "Normal"
+    },
+    "forbid": [
+      {
+        "group_id": 1542,
+        "product_id": 88340
+      }
+    ],
+    "classes": [
+      "trainer_kit"
+    ],
+    "oracle": "none",
+    "why": "tk2 Potion is number 9 in Plusle and number 10 in Minun."
+  },
+  {
+    "row": 27,
+    "variant_key": "tk2b-10:normal:-:-",
+    "expect": {
+      "group_id": 1542,
+      "product_id": 88340,
+      "sub_type_name": "Normal"
+    },
+    "forbid": [
+      {
+        "group_id": 1542,
+        "product_id": 88339
+      }
+    ],
+    "classes": [
+      "trainer_kit"
+    ],
+    "oracle": "none",
+    "why": "Minun deck Potion."
+  },
+  {
+    "row": 28,
+    "variant_key": "tk2a-11:normal:-:-",
+    "expect": {
+      "group_id": 1542,
+      "product_id": 86763,
+      "sub_type_name": "Normal"
+    },
+    "forbid": [
+      {
+        "group_id": 1542,
+        "product_id": 86764
+      }
+    ],
+    "classes": [
+      "trainer_kit"
+    ],
+    "oracle": "none",
+    "why": "Lightning Energy (Plusle)."
+  },
+  {
+    "row": 29,
+    "variant_key": "tk2b-12:normal:-:-",
+    "expect": {
+      "group_id": 1542,
+      "product_id": 86764,
+      "sub_type_name": "Normal"
+    },
+    "forbid": [
+      {
+        "group_id": 1542,
+        "product_id": 86763
+      }
+    ],
+    "classes": [
+      "trainer_kit"
+    ],
+    "oracle": "none",
+    "why": "Lightning Energy (Minun)."
+  },
+  {
+    "row": 30,
+    "variant_key": "ex10-!:holo:-:-",
+    "expect": {
+      "group_id": 1398,
+      "product_id": 90166,
+      "sub_type_name": "Holofoil"
+    },
+    "forbid": [
+      {
+        "group_id": 1398,
+        "product_id": 90167
+      }
+    ],
+    "classes": [
+      "unown_punctuation"
+    ],
+    "oracle": "yes (holofoil)",
+    "why": "Unown !: a normaliser that strips punctuation merges ! and ?."
+  },
+  {
+    "row": 31,
+    "variant_key": "ex10-?:holo:-:-",
+    "expect": {
+      "group_id": 1398,
+      "product_id": 90167,
+      "sub_type_name": "Holofoil"
+    },
+    "forbid": [
+      {
+        "group_id": 1398,
+        "product_id": 90166
+      }
+    ],
+    "classes": [
+      "unown_punctuation"
+    ],
+    "oracle": "yes (holofoil)",
+    "why": "Unown ?: the numbers are !/28 and ?/28, not identical."
+  },
+  {
+    "row": 32,
+    "variant_key": "ex10-A:holo:-:-",
+    "expect": {
+      "group_id": 1398,
+      "product_id": 90168,
+      "sub_type_name": "Holofoil"
+    },
+    "forbid": [],
+    "classes": [
+      "letter_number"
+    ],
+    "oracle": "yes (holofoil)",
+    "why": "Letter numbering."
+  },
+  {
+    "row": 33,
+    "variant_key": "ex11-15:holo:-:-",
+    "expect": {
+      "group_id": 1429,
+      "product_id": 89540,
+      "sub_type_name": "Holofoil"
+    },
+    "forbid": [],
+    "classes": [
+      "delta_species"
+    ],
+    "oracle": "yes (holofoil)",
+    "why": "Starmie delta against Starmie - 015/113 (Delta Species). Finish from the day: Holofoil and Reverse Holofoil priced."
+  },
+  {
+    "row": 34,
+    "variant_key": "ex11-68:normal:-:-",
+    "expect": {
+      "group_id": 1429,
+      "product_id": 85097,
+      "sub_type_name": "Normal"
+    },
+    "forbid": [],
+    "classes": [
+      "delta_species"
+    ],
+    "oracle": "yes (normal)",
+    "why": "Eevee delta, but the product name has no delta tag. Finish from the day: Normal and Reverse Holofoil priced."
+  },
+  {
+    "row": 35,
+    "variant_key": "ex13-98:normal:-:-",
+    "expect": {
+      "group_id": 1379,
+      "product_id": 84754,
+      "sub_type_name": "Normal"
+    },
+    "forbid": [
+      {
+        "group_id": 1411,
+        "product_id": 84755
+      }
+    ],
+    "classes": [
+      "delta_energy",
+      "wrong_group_trap"
+    ],
+    "oracle": "yes (normal)",
+    "why": "Delta Rainbow Energy is in Holon Phantoms (98/110) and Dragon Frontiers; a wrong-group map passes name agreement."
+  },
+  {
+    "row": 36,
+    "variant_key": "ex15-88:normal:-:-",
+    "expect": {
+      "group_id": 1411,
+      "product_id": 84755,
+      "sub_type_name": "Normal"
+    },
+    "forbid": [
+      {
+        "group_id": 1379,
+        "product_id": 84754
+      }
+    ],
+    "classes": [
+      "delta_energy",
+      "wrong_group_trap"
+    ],
+    "oracle": "yes (normal)",
+    "why": "The other side of row 35 (88/101)."
+  },
+  {
+    "row": 37,
+    "variant_key": "ex11-104:normal:-:-",
+    "expect": {
+      "group_id": 1429,
+      "product_id": 86136,
+      "sub_type_name": "Normal"
+    },
+    "forbid": [
+      {
+        "group_id": 1411,
+        "product_id": 86137
+      }
+    ],
+    "classes": [
+      "delta_energy",
+      "wrong_group_trap"
+    ],
+    "oracle": "yes (normal)",
+    "why": "Holon Energy FF has the same name in two delta-era sets (104/113 and 84/101)."
+  },
+  {
+    "row": 38,
+    "variant_key": "ex15-100:holo:-:-",
+    "expect": {
+      "group_id": 1411,
+      "product_id": 84198,
+      "sub_type_name": "Holofoil"
+    },
+    "forbid": [],
+    "classes": [
+      "delta_species",
+      "name_alias"
+    ],
+    "oracle": "yes (holofoil)",
+    "why": "Charizard star delta against Charizard Star (Delta Species)."
+  },
+  {
+    "row": 39,
+    "variant_key": "ex13-3:holo:-:-",
+    "expect": {
+      "group_id": 1379,
+      "product_id": 84760,
+      "sub_type_name": "Holofoil"
+    },
+    "forbid": [
+      {
+        "group_id": 1379,
+        "product_id": 84762
+      },
+      {
+        "group_id": 1379,
+        "product_id": 84764
+      },
+      {
+        "group_id": 1379,
+        "product_id": 84767
+      }
+    ],
+    "classes": [
+      "delta_species"
+    ],
+    "oracle": "yes (holofoil)",
+    "why": "Deoxys (Delta Species - Attack Forme): the delta tag carries a forme suffix."
+  },
+  {
+    "row": 40,
+    "variant_key": "ex11-36:normal:-:-",
+    "expect": {
+      "group_id": 1429,
+      "product_id": 84833,
+      "sub_type_name": "Normal"
+    },
+    "forbid": [],
+    "classes": [
+      "name_alias"
+    ],
+    "oracle": "yes (normal)",
+    "why": "Ditto (Bulbasaur): the tag is a look-alike name, not a foreign set."
+  },
+  {
+    "row": 41,
+    "variant_key": "sv8pt5-5:holo:-:-",
+    "expect": {
+      "group_id": 23821,
+      "product_id": 610360,
+      "sub_type_name": "Holofoil"
+    },
+    "forbid": [
+      {
+        "group_id": 23821,
+        "product_id": 610540
+      },
+      {
+        "group_id": 23821,
+        "product_id": 610641
+      }
+    ],
+    "classes": [
+      "pattern_trap"
+    ],
+    "oracle": "yes (holofoil)",
+    "why": "Leafeon has a real holofoil and both pattern products are also labelled Holofoil."
+  },
+  {
+    "row": 42,
+    "variant_key": "sv8pt5-5:reverse:-:-",
+    "expect": {
+      "group_id": 23821,
+      "product_id": 610360,
+      "sub_type_name": "Reverse Holofoil"
+    },
+    "forbid": [
+      {
+        "group_id": 23821,
+        "product_id": 610540
+      },
+      {
+        "group_id": 23821,
+        "product_id": 610641
+      }
+    ],
+    "classes": [
+      "pattern_trap"
+    ],
+    "oracle": "yes (reverseHolofoil)",
+    "why": "Plain reverse holo."
+  },
+  {
+    "row": 43,
+    "variant_key": "sv8pt5-5:reverse:-:pokeball",
+    "expect": {
+      "group_id": 23821,
+      "product_id": 610540,
+      "sub_type_name": "Holofoil"
+    },
+    "forbid": [
+      {
+        "group_id": 23821,
+        "product_id": 610360
+      }
+    ],
+    "classes": [
+      "pattern",
+      "pattern_pokeball"
+    ],
+    "oracle": "no-key",
+    "why": "Poke Ball pattern: subTypeName says Holofoil; the finish comes from the name tag."
+  },
+  {
+    "row": 44,
+    "variant_key": "sv8pt5-5:reverse:-:masterball",
+    "expect": {
+      "group_id": 23821,
+      "product_id": 610641,
+      "sub_type_name": "Holofoil"
+    },
+    "forbid": [
+      {
+        "group_id": 23821,
+        "product_id": 610360
+      }
+    ],
+    "classes": [
+      "pattern",
+      "pattern_masterball"
+    ],
+    "oracle": "no-key",
+    "why": "Master Ball pattern: far above the plain card if collapsed."
+  },
+  {
+    "row": 45,
+    "variant_key": "sv8pt5-74:reverse:-:masterball",
+    "expect": {
+      "group_id": 23821,
+      "product_id": 610691,
+      "sub_type_name": "Holofoil"
+    },
+    "forbid": [
+      {
+        "group_id": 23821,
+        "product_id": 610429
+      }
+    ],
+    "classes": [
+      "pattern",
+      "pattern_masterball"
+    ],
+    "oracle": "no-key",
+    "why": "Eevee Master Ball pattern."
+  },
+  {
+    "row": 46,
+    "variant_key": "me2pt5-55:reverse:-:energy",
+    "expect": {
+      "group_id": 24541,
+      "product_id": 677037,
+      "sub_type_name": "Reverse Holofoil"
+    },
+    "forbid": [
+      {
+        "group_id": 24541,
+        "product_id": 676897
+      },
+      {
+        "group_id": 24541,
+        "product_id": 675867
+      }
+    ],
+    "classes": [
+      "pattern",
+      "pattern_energy"
+    ],
+    "oracle": "no-key",
+    "why": "Energy Symbol Pattern; here the label is Reverse Holofoil."
+  },
+  {
+    "row": 47,
+    "variant_key": "me2pt5-55:reverse:-:friendball",
+    "expect": {
+      "group_id": 24541,
+      "product_id": 676897,
+      "sub_type_name": "Reverse Holofoil"
+    },
+    "forbid": [
+      {
+        "group_id": 24541,
+        "product_id": 677037
+      },
+      {
+        "group_id": 24541,
+        "product_id": 675867
+      }
+    ],
+    "classes": [
+      "pattern"
+    ],
+    "oracle": "no-key",
+    "why": "(Friend Ball) has no Pattern in the name."
+  },
+  {
+    "row": 48,
+    "variant_key": "svp-46:holo:-:-",
+    "expect": {
+      "group_id": 22872,
+      "product_id": 517271,
+      "sub_type_name": "Holofoil"
+    },
+    "forbid": [],
+    "classes": [
+      "cosmos_holo"
+    ],
+    "oracle": "yes (holofoil)",
+    "why": "OQ7 default: the only product is the Cosmos holo, so it takes the untagged key."
+  },
+  {
+    "row": 49,
+    "variant_key": "svp-137:holo:-:-",
+    "expect": {
+      "group_id": 22872,
+      "product_id": 585578,
+      "sub_type_name": "Holofoil"
+    },
+    "forbid": [],
+    "classes": [
+      "cosmos_holo"
+    ],
+    "oracle": "yes (holofoil)",
+    "why": "Spelled Cosmo Holo; the only product, so OQ7's default keys it untagged (the draft wrote :cosmos)."
+  },
+  {
+    "row": 50,
+    "variant_key": "svp-5:holo:-:-",
+    "expect": {
+      "group_id": 22872,
+      "product_id": 487751,
+      "sub_type_name": "Holofoil"
+    },
+    "forbid": [
+      {
+        "group_id": 22872,
+        "product_id": 522650
+      }
+    ],
+    "classes": [
+      "stamp_variant"
+    ],
+    "oracle": "yes (holofoil)",
+    "why": "The canonical promo is itself tagged (Prerelease); the Staff stamp is the expensive one (OQ7)."
+  },
+  {
+    "row": 51,
+    "variant_key": "bp-1:reverse:-:-",
+    "expect": {
+      "group_id": 1455,
+      "product_id": 85106,
+      "sub_type_name": "Reverse Holofoil"
+    },
+    "forbid": [
+      {
+        "group_id": 1455,
+        "product_id": 167078
+      }
+    ],
+    "classes": [
+      "stamp_variant"
+    ],
+    "oracle": "yes (reverseHolofoil)",
+    "why": "Best of Game Winner stamp on the same number. Finish from the day: only Reverse Holofoil priced."
+  },
+  {
+    "row": 52,
+    "variant_key": "np-24:normal:-:-",
+    "expect": {
+      "group_id": 1423,
+      "product_id": 84293,
+      "sub_type_name": "Normal"
+    },
+    "forbid": [
+      {
+        "group_id": 1423,
+        "product_id": 228153
+      }
+    ],
+    "classes": [
+      "stamp_variant"
+    ],
+    "oracle": "yes (normal)",
+    "why": "(e-League) against (e-League) [Winner]. Finish from the day: Normal priced."
+  },
+  {
+    "row": 53,
+    "variant_key": "me4-84:holo:-:-",
+    "expect": {
+      "group_id": 24655,
+      "product_id": 693458,
+      "sub_type_name": "Holofoil"
+    },
+    "forbid": [],
+    "classes": [
+      "me_era",
+      "name_alias"
+    ],
+    "oracle": "no-prices",
+    "why": "Bubbly Water Energy against Bubbly W Energy. Finish from the day: Holofoil and Reverse Holofoil priced."
+  },
+  {
+    "row": 54,
+    "variant_key": "me4-86:holo:-:-",
+    "expect": {
+      "group_id": 24655,
+      "product_id": 693527,
+      "sub_type_name": "Holofoil"
+    },
+    "forbid": [],
+    "classes": [
+      "me_era",
+      "name_alias"
+    ],
+    "oracle": "no-prices",
+    "why": "Nitro Fire Energy against Nitro R Energy. Finish from the day: Holofoil and Reverse Holofoil priced."
+  },
+  {
+    "row": 55,
+    "variant_key": "g1-RC5:holo:-:-",
+    "expect": {
+      "group_id": 1729,
+      "product_id": 113746,
+      "sub_type_name": "Holofoil"
+    },
+    "forbid": [
+      {
+        "group_id": 1728,
+        "product_id": 113669
+      },
+      {
+        "group_id": 1728,
+        "product_id": 113670
+      }
+    ],
+    "classes": [
+      "wrong_group_trap"
+    ],
+    "oracle": "yes (holofoil)",
+    "why": "RC numbering lives in the secondary group 1729; the 1728 Charizard products must not take it."
+  },
+  {
+    "row": 56,
+    "variant_key": "g1-43:normal:-:-",
+    "expect": {
+      "group_id": 1728,
+      "product_id": 113701,
+      "sub_type_name": "Normal"
+    },
+    "forbid": [
+      {
+        "group_id": 1728,
+        "product_id": 600060
+      }
+    ],
+    "classes": [
+      "stamp_variant"
+    ],
+    "oracle": "yes (normal)",
+    "why": "Stamped product on the same number."
+  },
+  {
+    "row": 57,
+    "variant_key": "me55c-4:holo:-:-",
+    "expect": {
+      "group_id": 24837,
+      "product_id": 714372,
+      "sub_type_name": "Holofoil"
+    },
+    "forbid": [
+      {
+        "group_id": 2931,
+        "product_id": 250320
+      },
+      {
+        "group_id": 604,
+        "product_id": 42382
+      },
+      {
+        "group_id": 1663,
+        "product_id": 106999
+      }
+    ],
+    "classes": [
+      "me_era",
+      "wrong_group_trap"
+    ],
+    "oracle": "no-prices",
+    "why": "Four groups have a Charizard numbered 4/102; only the golden set sees a wrong group here."
+  },
+  {
+    "row": 58,
+    "variant_key": "me5-1:normal:-:-",
+    "expect": {
+      "group_id": 24688,
+      "product_id": 704758,
+      "sub_type_name": "Normal"
+    },
+    "forbid": [],
+    "classes": [
+      "me_era"
+    ],
+    "oracle": "no-prices",
+    "why": "Anchor row for the oracle-blind new set me5."
+  },
+  {
+    "row": 59,
+    "variant_key": "me55-23:holo:-:-",
+    "expect": {
+      "group_id": 24722,
+      "product_id": 712934,
+      "sub_type_name": "Holofoil"
+    },
+    "forbid": [
+      {
+        "group_id": 24722,
+        "product_id": 716309
+      },
+      {
+        "group_id": 24722,
+        "product_id": 712935
+      },
+      {
+        "group_id": 24722,
+        "product_id": 712936
+      },
+      {
+        "group_id": 24722,
+        "product_id": 716310
+      },
+      {
+        "group_id": 24722,
+        "product_id": 712937
+      },
+      {
+        "group_id": 24722,
+        "product_id": 716311
+      },
+      {
+        "group_id": 24722,
+        "product_id": 712938
+      }
+    ],
+    "classes": [
+      "me_era"
+    ],
+    "oracle": "no-prices",
+    "why": "me55 has eight Pikachu (23-30) that differ only by number."
+  },
+  {
+    "row": 60,
+    "variant_key": "xy9-98:normal:-:-",
+    "expect": {
+      "group_id": 1701,
+      "product_id": 111630,
+      "sub_type_name": "Normal"
+    },
+    "forbid": [],
+    "classes": [
+      "letter_number"
+    ],
+    "oracle": "yes (normal)",
+    "why": "The day has one Delinquent product (98/122); it belongs to xy9-98, and xy9-98a stays unmapped (no priced product)."
+  },
+  {
+    "row": 61,
+    "variant_key": "bwp-BW13:holo:-:cosmos",
+    "expect": {
+      "group_id": 1407,
+      "product_id": 87475,
+      "sub_type_name": "Holofoil"
+    },
+    "forbid": [
+      {
+        "group_id": 1407,
+        "product_id": 96881
+      }
+    ],
+    "classes": [
+      "cosmos_holo",
+      "other"
+    ],
+    "oracle": "no-key",
+    "why": "Two tagged products (Cosmos, Cracked Ice) and no untagged one: each keeps its tag."
+  },
+  {
+    "row": 62,
+    "variant_key": "sve-1:holo:-:cosmos",
+    "expect": {
+      "group_id": 24382,
+      "product_id": 517177,
+      "sub_type_name": "Holofoil"
+    },
+    "forbid": [
+      {
+        "group_id": 24382,
+        "product_id": 475425
+      }
+    ],
+    "classes": [
+      "cosmos_holo",
+      "other"
+    ],
+    "oracle": "no-key",
+    "why": "Cosmos holo energy beside the plain Normal product of the same card."
+  },
+  {
+    "row": 63,
+    "variant_key": "basep-8:normal:-:glossy",
+    "expect": {
+      "group_id": 1418,
+      "product_id": 607818,
+      "sub_type_name": "Normal"
+    },
+    "forbid": [
+      {
+        "group_id": 1418,
+        "product_id": 87394
+      }
+    ],
+    "classes": [
+      "basep"
+    ],
+    "oracle": "no-key",
+    "why": "The other side of row 12: the Glossy Finish product has its own key."
+  },
+  {
+    "row": 64,
+    "variant_key": "basep-52:normal:-:stamp-pokemon-center-ny",
+    "expect": {
+      "group_id": 1418,
+      "product_id": 244348,
+      "sub_type_name": "Normal"
+    },
+    "forbid": [
+      {
+        "group_id": 1418,
+        "product_id": 86120
+      }
+    ],
+    "classes": [
+      "basep"
+    ],
+    "oracle": "no-key",
+    "why": "The other side of row 20: the Pokemon Center NY stamp has its own key."
+  },
+  {
+    "row": 65,
+    "variant_key": "sv8pt5-74:reverse:-:pokeball",
+    "expect": {
+      "group_id": 23821,
+      "product_id": 610590,
+      "sub_type_name": "Holofoil"
+    },
+    "forbid": [
+      {
+        "group_id": 23821,
+        "product_id": 610429
+      },
+      {
+        "group_id": 23821,
+        "product_id": 610691
+      }
+    ],
+    "classes": [
+      "pattern",
+      "pattern_pokeball"
+    ],
+    "oracle": "no-key",
+    "why": "Eevee Poke Ball pattern beside the plain reverse and the Master Ball pattern."
+  },
+  {
+    "row": 66,
+    "variant_key": "svp-5:holo:-:stamp-prerelease-staff",
+    "expect": {
+      "group_id": 22872,
+      "product_id": 522650,
+      "sub_type_name": "Holofoil"
+    },
+    "forbid": [
+      {
+        "group_id": 22872,
+        "product_id": 487751
+      }
+    ],
+    "classes": [
+      "other",
+      "stamp_variant"
+    ],
+    "oracle": "no-key",
+    "why": "The other side of row 50: the Staff stamp keeps its own key."
+  }
+]
