@@ -68,5 +68,5 @@ case $out in *"refuse to run against database pokeprices;"*) printf 'ok - the R6
 
 # --- 4. the real run, serial and parallel, in random order -------------------------------------
 check "serial pest run is green" $PEST -c phpunit.xml
-check "parallel random-order pest run is green" $PEST -c phpunit.xml --parallel --processes=4 --order-by=random
+check "parallel random-order pest run is green" $PEST -c phpunit.xml --parallel --processes=3 --order-by=random
 finish

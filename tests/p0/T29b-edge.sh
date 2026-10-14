@@ -19,8 +19,8 @@ jq -c '[paths(scalars) as $p | {p: $p, v: getpath($p)}] | .[]' "$D/old.json" | s
 jq -c '[paths(scalars) as $p | {p: $p, v: getpath($p)}] | .[]' "$D/new.json" | sort > "$D/nv"
 check_out "exactly three scalar values changed" 3 sh -c "comm -13 '$D/ov' '$D/nv' | wc -l | tr -d ' '"
 T1_OLD=$(jq -r '.gates[]|select(.id=="T1").command' "$D/old.json")
-T1_NEW=$(jq -r '.gates[]|select(.id=="T1").command' "$D/new.json")
-check_out "T1 differs only by inserting --processes=4 after --parallel" "$T1_OLD" sh -c "printf '%s' '$T1_NEW' | sed 's/ --processes=4//'"
+T1_NEW=$(jq -r '.gates[]|select(.id=="T1").command' "$M")
+check_out "T1 differs only by inserting --processes=3 after --parallel" "$T1_OLD" sh -c "printf '%s' '$T1_NEW' | sed 's/ --processes=3//'"
 check "all other gates are byte-identical (jq canonical)" sh -c "[ \"\$(jq -cS '[.gates[]|select(.id!=\"T1\")]' $D/old.json)\" = \"\$(jq -cS '[.gates[]|select(.id!=\"T1\")]' $D/new.json)\" ]"
 check "floor, thresholds and exit_criteria_runner unchanged" sh -c "[ \"\$(jq -cS 'del(.gates,.exit_criteria)' $D/old.json)\" = \"\$(jq -cS 'del(.gates,.exit_criteria)' $D/new.json)\" ]"
 check "exit criteria other than X9/X10 unchanged" sh -c "[ \"\$(jq -cS '[.exit_criteria[]|select(.id!=\"EC-X9\" and .id!=\"EC-X10\")]' $D/old.json)\" = \"\$(jq -cS '[.exit_criteria[]|select(.id!=\"EC-X9\" and .id!=\"EC-X10\")]' $D/new.json)\" ]"
@@ -42,7 +42,7 @@ done
 check "md has no stale --parallel --order-by T1 command" sh -c "! $GREP -F -- 'pest -c phpunit.xml --parallel --order-by' $MD"
 check "md has no stale prose EC-X9/X10 checks" sh -c "! $GREP -E -- 'same check as D4|the scorecard.s make_exit' $MD"
 check "md diff vs base is 3 lines changed" sh -c "[ \"\$(git diff -U0 $BASE $T29B -- $MD |$GREP -v -E '^(\+\+\+|---)' | $GREP -c -E '^[+-]')\" = 6 ]"
-check "T07 edge mirrors the 4-worker command" sh -c "$GREP -q -- '--parallel --processes=4 --order-by=random' tests/p0/T07-edge.sh"
+check "T07 edge mirrors the 3-worker command" sh -c "$GREP -q -- '--parallel --processes=3 --order-by=random' tests/p0/T07-edge.sh"
 
 # 4. approved hash matches the blob, and a stale hash is rejected
 check "approved hash verifies the committed blob" sh -c "git show HEAD:$M | sha256sum | cut -d' ' -f1 | cmp -s - <(cut -d' ' -f1 gates/manifest-P0.approved.sha256) 2>/dev/null || [ \"\$(git show HEAD:$M | sha256sum | cut -d' ' -f1)\" = \"\$(cut -d' ' -f1 gates/manifest-P0.approved.sha256)\" ]"

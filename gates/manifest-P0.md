@@ -114,7 +114,7 @@ This file renders exactly the fields of `manifest-P0.json`; the JSON is the mach
 ### T1: Pest suite passes, parallel, random order, nothing skipped
 
 - hard: true; scope: any; runs_in: api; timeout_s: 1200; built_by: P0-i1-T25
-- command: `docker compose -f compose.dev.yml exec -T -w /workspace/api api vendor/bin/pest -c phpunit.xml --parallel --processes=4 --order-by=random --log-junit="/workspace/$GATES_OUT/T1.junit.xml"`
+- command: `docker compose -f compose.dev.yml exec -T -w /workspace/api api vendor/bin/pest -c phpunit.xml --parallel --processes=3 --order-by=random --log-junit="/workspace/$GATES_OUT/T1.junit.xml"`
 - banner_cmd: `docker compose -f compose.dev.yml exec -T -w /workspace/api api vendor/bin/pest --version`; banner_re: `Pest`
 - artifact: `$GATES_OUT/T1.junit.xml`
 - value_parser: `python3 -I scripts/lib/junit.py "$GATES_OUT/T1.junit.xml" --tests-dir api/tests --field bad`
