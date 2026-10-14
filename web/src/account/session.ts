@@ -12,6 +12,12 @@ export const ME_KEY = ['me'] as const;
 /** The root of every per-user query key. Public keys (cards, prices, movers) never use it. */
 export const ACCOUNT_KEY = ['account'] as const;
 
+/**
+ * The localStorage key a session transition writes, so the other open tabs of this origin forget
+ * the last account too. Its value is a nonce: never an email or anything else about the account.
+ */
+export const SESSION_SIGNAL_KEY = 'pokeprices:session';
+
 /** A per-user query key: ['account', ...parts]. */
 export function accountKey<const Parts extends readonly unknown[]>(
   ...parts: Parts
@@ -20,13 +26,40 @@ export function accountKey<const Parts extends readonly unknown[]>(
 }
 
 /**
- * Forgets everything the last account owned: its in-flight per-user fetches are cancelled and
- * every ['account', …] query is removed. Run at every session transition (sign-out, sign-in,
- * sign-up, demo, deletion, and an identity change seen in ['me']); each caller handles ['me'].
+ * The query meta of a one-time read (the verification link): a signed-out ['me'] answer never
+ * marks it stale, so the same account coming back does not send it a second time.
  */
-export function endSession(queryClient: QueryClient): void {
+export const ONE_TIME = { oneTime: true } as const;
+
+/** Whether a query carries ONE_TIME. */
+export function isOneTime(meta: Readonly<Record<string, unknown>> | undefined): boolean {
+  return meta?.['oneTime'] === true;
+}
+
+/**
+ * Forgets everything the last account owned in this tab: its in-flight per-user fetches are
+ * cancelled and every ['account', …] query is removed. Writes no signal (see endSession).
+ */
+export function forgetAccount(queryClient: QueryClient): void {
   void queryClient.cancelQueries({ queryKey: ACCOUNT_KEY });
   queryClient.removeQueries({ queryKey: ACCOUNT_KEY });
+}
+
+let signals = 0;
+
+/**
+ * A session transition this tab made (sign-out, sign-in, sign-up, demo, deletion): forgets the
+ * last account (forgetAccount) and writes SESSION_SIGNAL_KEY so the other tabs forget it too.
+ * Each caller handles ['me']. Blocked storage only loses the signal.
+ */
+export function endSession(queryClient: QueryClient): void {
+  forgetAccount(queryClient);
+  signals += 1;
+  try {
+    window.localStorage.setItem(SESSION_SIGNAL_KEY, `${String(Date.now())}.${String(signals)}`);
+  } catch {
+    // Blocked or full storage: the other tabs learn it from their next ['me'] answer instead.
+  }
 }
 
 /** The account an ['me'] answer names (its email; GET /v1/me has no id), or null when signed out. */

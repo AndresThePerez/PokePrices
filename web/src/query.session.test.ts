@@ -46,6 +46,60 @@ describe('createQueryClient: identity changes seen in ["me"]', () => {
   });
 });
 
+describe('createQueryClient: an ["me"] update without an answer (F4)', () => {
+  it('a rebuilt ["me"] query still fetching marks nothing stale and clears nothing', () => {
+    const client = createQueryClient();
+    client.setQueryData(['me'], A);
+    client.setQueryData(['account', 'webhooks'], { data: ['a-hook'] });
+    // ['me'] was garbage-collected; the next read builds it again and starts fetching.
+    client.removeQueries({ queryKey: ['me'] });
+    void client.query({
+      queryKey: ['me'],
+      queryFn: () => new Promise<never>(() => undefined),
+    });
+    expect(client.getQueryState(['me'])?.data).toBeUndefined();
+    expect(client.getQueryState(['account', 'webhooks'])?.isInvalidated).toBe(false);
+    expect(client.getQueryData(['account', 'webhooks'])).toEqual({ data: ['a-hook'] });
+  });
+});
+
+describe('createQueryClient: another tab signals a session transition (F2, F5)', () => {
+  it('drops the account data once, and the next ["me"] answer does not drop what came after', () => {
+    const client = createQueryClient();
+    client.mount();
+    client.setQueryData(['me'], A);
+    client.setQueryData(['account', 'watchlist'], { data: ['a-row'] });
+    client.setQueryData(['card', 'ex5-17'], { data: 'public' });
+    window.dispatchEvent(new StorageEvent('storage', { key: 'pokeprices:session', newValue: '1' }));
+    expect(client.getQueryData(['account', 'watchlist'])).toBeUndefined();
+    expect(client.getQueryData(['card', 'ex5-17'])).toEqual({ data: 'public' });
+    expect(client.getQueryState(['me'])?.isInvalidated).toBe(true);
+    // B's own list answers before B's ['me'] answer does.
+    client.setQueryData(['account', 'watchlist'], { data: ['b-row'] });
+    client.setQueryData(['me'], B);
+    expect(client.getQueryData(['account', 'watchlist'])).toEqual({ data: ['b-row'] });
+    // From then on, B is the account a change is measured against.
+    client.setQueryData(['me'], A);
+    expect(client.getQueryData(['account', 'watchlist'])).toBeUndefined();
+    client.unmount();
+  });
+
+  it('ignores another key and listens only while mounted', () => {
+    const client = createQueryClient();
+    client.setQueryData(['account', 'watchlist'], { data: ['a-row'] });
+    window.dispatchEvent(new StorageEvent('storage', { key: 'pokeprices:session', newValue: '1' }));
+    expect(client.getQueryData(['account', 'watchlist'])).toEqual({ data: ['a-row'] });
+    client.mount();
+    window.dispatchEvent(
+      new StorageEvent('storage', { key: 'pokeprices:theme', newValue: 'dark' }),
+    );
+    expect(client.getQueryData(['account', 'watchlist'])).toEqual({ data: ['a-row'] });
+    client.unmount();
+    window.dispatchEvent(new StorageEvent('storage', { key: 'pokeprices:session', newValue: '2' }));
+    expect(client.getQueryData(['account', 'watchlist'])).toEqual({ data: ['a-row'] });
+  });
+});
+
 describe('createQueryClient: a 401 on a per-user query', () => {
   it('invalidates ["me"]; a 401 on a public query does not', async () => {
     const client = createQueryClient();
