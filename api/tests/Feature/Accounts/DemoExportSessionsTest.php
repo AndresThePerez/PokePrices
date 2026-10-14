@@ -115,13 +115,19 @@ it('exports the demo caller\'s own session record when no other demo visitor is 
 it('exports no demo session record when the caller\'s own session has no stored row yet', function (): void {
     $demo = dxsDemo();
     dxsSession('session-demo-visitor-a-000000000000001', $demo->id, '192.0.2.20', 'other-visitor/2.0', 30);
-    config(['session.driver' => 'array']);
 
+    // Signed in without a session cookie, on the database driver: the request starts a new session whose row is
+    // written only after the answer, so while the export runs the demo has a session id but no stored row of it.
     $response = AccountRows::signIn($this, $demo)->withHeaders(Accounts::FIRST_PARTY)->getJson('/v1/me/export');
+    $sessionId = (string) Accounts::sessionId($response);
 
-    expect($response->getStatusCode())->toBe(200)
+    expect(config('session.driver'))->toBe('database')
+        ->and($response->getStatusCode())->toBe(200)
         ->and($response->json('data.sessions'))->toBe([])
-        ->and((string) $response->getContent())->not->toContain('192.0.2.20');
+        ->and((string) $response->getContent())->not->toContain('192.0.2.20')
+        ->and($sessionId)->not->toBe('')
+        ->and($sessionId)->not->toBe('session-demo-visitor-a-000000000000001')
+        ->and(DB::table('sessions')->where('id', $sessionId)->value('user_id'))->toBe($demo->id);
 });
 
 it('fails closed: without a session id the demo gets no session record, a real account still gets all of its own', function (): void {
@@ -134,6 +140,10 @@ it('fails closed: without a session id the demo gets no session record, a real a
 
     expect($export->of($demo)['sessions'])->toBe([])
         ->and($export->of($demo, null)['sessions'])->toBe([])
+        ->and($export->of($demo, '')['sessions'])->toBe([])
+        ->and(array_column($export->of($demo, 'session-demo-visitor-a-000000000000001')['sessions'], 'ip_address'))->toBe(['192.0.2.20'])
+        ->and($export->of($demo, 'session-person-newer-0000000000000002')['sessions'])->toBe([])
+        ->and(array_column($export->of($person, '')['sessions'], 'ip_address'))->toBe(['198.51.100.22', '198.51.100.21'])
         ->and(array_column($export->of($person)['sessions'], 'ip_address'))->toBe(['198.51.100.22', '198.51.100.21'])
         ->and(array_column($export->of($person, 'session-person-newer-0000000000000002')['sessions'], 'ip_address'))->toBe(['198.51.100.22', '198.51.100.21']);
 });

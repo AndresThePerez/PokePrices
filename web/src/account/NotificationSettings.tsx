@@ -73,7 +73,8 @@ function SettingsForm({
     }
     // Refetched, never written to the cache from the answer: an answer that lands after a session
     // transition finds no query to refresh (endSession removed it) or refreshes the next account's
-    // own one. Only this form holds the answer, and only while the read again fails.
+    // own one (a query still read was reset and asked again with the new session). Only this form
+    // holds the answer, and only while the read again fails.
     const before = queryClient.getQueryState(NOTIFICATIONS_KEY)?.dataUpdateCount ?? 0;
     await queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_KEY });
     const after = queryClient.getQueryState(NOTIFICATIONS_KEY)?.dataUpdateCount ?? 0;

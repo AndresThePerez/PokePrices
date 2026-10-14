@@ -50,7 +50,7 @@ final class AccountExport
             ],
             'watchlist' => $this->watchlist($user->id),
             'portfolio' => $this->portfolio($user->id),
-            'sessions' => $this->sessions($user->id, $user->is_demo ? ($sessionId ?? '') : null),
+            'sessions' => $this->sessions($user, $sessionId),
             'notifications' => $this->notifications($user->id),
             'webhooks' => $this->webhooks($user->id),
             'deliveries' => $this->deliveries($user->id),
@@ -161,27 +161,24 @@ final class AccountExport
 
     /**
      * The session records of the user, newest activity first. Only the three columns a person may see are selected:
-     * never the session id or the payload. With $only set, just the row of that session id (the demo's own); an empty
-     * $only matches no row, so the demo without a session id gets an empty list, never every visitor's.
+     * never the session id or the payload. A real account gets every record it has, whatever $sessionId is. The demo
+     * (every visitor signs in as the one demo user) gets only the row of the caller's own $sessionId, and with no
+     * session id (null or empty) none at all: it fails closed, never every visitor's.
      *
      * @return list<array{last_active_at: string, ip_address: string|null, user_agent: string|null}>
      */
-    private function sessions(int $userId, ?string $only): array
+    private function sessions(User $user, ?string $sessionId): array
     {
-        if ($only === '') {
+        $ownOnly = $user->is_demo;
+        if ($ownOnly && ($sessionId === null || $sessionId === '')) {
             return [];
         }
-        $rows = $only === null
-            ? $this->db->select(
-                'SELECT last_activity, ip_address, user_agent FROM sessions WHERE user_id = ? ORDER BY last_activity DESC',
-                [$userId],
-                false,
-            )
-            : $this->db->select(
-                'SELECT last_activity, ip_address, user_agent FROM sessions WHERE user_id = ? AND id = ?',
-                [$userId, $only],
-                false,
-            );
+        $rows = $this->db->select(
+            'SELECT last_activity, ip_address, user_agent FROM sessions WHERE user_id = ?'
+                .($ownOnly ? ' AND id = ?' : '').' ORDER BY last_activity DESC',
+            $ownOnly ? [$user->id, $sessionId] : [$user->id],
+            false,
+        );
 
         return array_values(array_map(static fn (object $row): array => [
             'last_active_at' => gmdate(self::PHP_TIME, is_numeric($row->last_activity ?? null) ? (int) $row->last_activity : 0),

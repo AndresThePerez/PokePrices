@@ -8,6 +8,7 @@ import {
   forgetAccount,
   identityOf,
   isOneTime,
+  onSessionEnd,
 } from './account/session';
 import type { ApiResult } from './api/client';
 
@@ -59,9 +60,12 @@ class SessionQueryClient extends QueryClient {
 /**
  * A fresh client with the D9 defaults; App creates one per mount. It keeps one account's data from
  * showing under another: when ['me'] names a different account than the last one it named (A to B,
- * or A, signed out, then B), every ['account', …] query is dropped (forgetAccount), and a 401 on any
- * of them asks GET /v1/me again. Another tab's sign-out or sign-in (its endSession signal) drops them
- * too and marks ['me'] stale; no request goes out unless a page here shows ['me'].
+ * or A, signed out, then B), every ['account', …] query is forgotten (forgetAccount), and so is
+ * everything cached before the first account this client learns of (a public page reads per-user
+ * data without ['me']); a 401 on any of them asks GET /v1/me again. This tab's own sign-out or
+ * sign-in (endSession) and another tab's (its signal) forget them too; the signal also drops an
+ * ['me'] request still in flight (it carries the old session's cookie) and marks ['me'] stale; no
+ * request goes out unless a page here shows ['me'].
  */
 export function createQueryClient(): QueryClient {
   const queryCache = new QueryCache({
@@ -71,19 +75,29 @@ export function createQueryClient(): QueryClient {
       }
     },
   });
+  // The account the last ['me'] answer named; null until the first one names an account.
   let identity: string | null = null;
-  // Set by another tab's signal: everything is already forgotten, so the next ['me'] answer only
-  // names the account a later change is measured against (its own per-user answers that arrived
-  // first are not dropped a second time).
+  // Set by a session transition (this tab's endSession or another tab's signal): everything is
+  // already forgotten, so the next ['me'] answer only names the account a later change is measured
+  // against (its own per-user answers that arrived first are not dropped a second time).
   let forgotten = false;
   const client = new SessionQueryClient(
     { queryCache, defaultOptions: { queries: { ...QUERY_DEFAULTS } } },
     () => {
       forgotten = true;
       forgetAccount(client);
-      void client.invalidateQueries({ queryKey: ME_KEY });
+      void client.invalidateQueries({ queryKey: ME_KEY, refetchType: 'none' });
+      // An answer to a request sent before the change would name the old account: cancel it (a
+      // first load is left with no answer, an earlier answer is put back), then mark ['me'] stale
+      // again and ask where a page shows it.
+      void client
+        .cancelQueries({ queryKey: ME_KEY })
+        .then(() => client.invalidateQueries({ queryKey: ME_KEY }));
     },
   );
+  onSessionEnd(client, () => {
+    forgotten = true;
+  });
   queryCache.subscribe((event) => {
     const key: unknown = event.query.queryKey;
     if (event.type !== 'updated' || !isMe(key)) return;
@@ -108,8 +122,10 @@ export function createQueryClient(): QueryClient {
       }
       return;
     }
-    // The tab that made the change wrote the signal; writing it again here would echo between tabs.
-    if (identity !== null && next !== identity) forgetAccount(client);
+    // A different account, or the first one: whatever was cached before cannot be told apart from
+    // another account's. The tab that made the change wrote the signal; writing it again here
+    // would echo between tabs.
+    if (next !== identity) forgetAccount(client);
     identity = next;
   });
   return client;

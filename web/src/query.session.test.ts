@@ -2,6 +2,7 @@
 // the account ['me'] names changes, everything under it is dropped; a 401 on a per-user query asks
 // GET /v1/me again. Public keys are never touched.
 import { describe, expect, it } from 'vitest';
+import { endSession } from './account/session';
 import { createQueryClient } from './query';
 
 const A = { email: 'collector@example.com', email_verified: true, two_factor: false };
@@ -137,5 +138,79 @@ describe('createQueryClient: a 401 on a per-user query', () => {
       })
       .catch(() => undefined);
     expect(client.getQueryState(['me'])?.isInvalidated).toBe(false);
+  });
+});
+
+describe('createQueryClient: an ["me"] request in flight when another tab signals (review)', () => {
+  it('an inactive ["me"] fetch answering A after the signal is not taken as the account', async () => {
+    const client = createQueryClient();
+    client.mount();
+    let release: ((me: typeof A) => void) | undefined;
+    // Asked with the pre-switch cookie by a page that no longer shows ['me'].
+    void client
+      .query({
+        queryKey: ['me'],
+        queryFn: () =>
+          new Promise<typeof A>((resolve) => {
+            release = resolve;
+          }),
+      })
+      .catch(() => undefined);
+    window.dispatchEvent(new StorageEvent('storage', { key: 'pokeprices:session', newValue: '1' }));
+    release?.(A);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    // A page showing ['me'] asks again (with B's cookie) instead of reading A as fresh.
+    expect(client.getQueryData(['me'])).toBeUndefined();
+    const read = await client.query({
+      queryKey: ['me'],
+      queryFn: () => Promise.resolve(B),
+      staleTime: 300_000,
+    });
+    expect(read).toEqual(B);
+    // B is the baseline: B's own data stays, and a later A drops it.
+    client.setQueryData(['account', 'watchlist'], { data: ['b-row'] });
+    client.setQueryData(['me'], B);
+    expect(client.getQueryData(['account', 'watchlist'])).toEqual({ data: ['b-row'] });
+    client.setQueryData(['me'], A);
+    expect(client.getQueryData(['account', 'watchlist'])).toBeUndefined();
+    client.unmount();
+  });
+});
+
+describe('createQueryClient: the first account this client learns of (review)', () => {
+  it('drops the per-user data cached before it, and keeps what comes after', () => {
+    const client = createQueryClient();
+    client.setQueryData(['account', 'portfolio'], { data: ['a-holding'] });
+    client.setQueryData(['card', 'ex5-17'], { data: 'public' });
+    client.setQueryData(['me'], B);
+    expect(client.getQueryData(['account', 'portfolio'])).toBeUndefined();
+    expect(client.getQueryData(['card', 'ex5-17'])).toEqual({ data: 'public' });
+    client.setQueryData(['account', 'portfolio'], { data: ['b-holding'] });
+    client.setQueryData(['me'], { ...B, email_verified: false });
+    expect(client.getQueryData(['account', 'portfolio'])).toEqual({ data: ['b-holding'] });
+  });
+
+  it('a signed-out first answer sets no account: the next account still drops what came before', () => {
+    const client = createQueryClient();
+    client.setQueryData(['me'], null);
+    client.setQueryData(['account', 'portfolio'], { data: ['a-holding'] });
+    client.setQueryData(['me'], B);
+    expect(client.getQueryData(['account', 'portfolio'])).toBeUndefined();
+  });
+});
+
+describe('createQueryClient: a session transition made in this tab (review)', () => {
+  it('forgets once: the next ["me"] answer is the baseline, not a second change', () => {
+    const client = createQueryClient();
+    client.setQueryData(['me'], A);
+    client.setQueryData(['account', 'watchlist'], { data: ['a-row'] });
+    endSession(client);
+    expect(client.getQueryData(['account', 'watchlist'])).toBeUndefined();
+    // B's list arrives before B's ['me'] answer (a page that showed the old ['me'] still asked).
+    client.setQueryData(['account', 'watchlist'], { data: ['b-row'] });
+    client.setQueryData(['me'], B);
+    expect(client.getQueryData(['account', 'watchlist'])).toEqual({ data: ['b-row'] });
+    client.setQueryData(['me'], A);
+    expect(client.getQueryData(['account', 'watchlist'])).toBeUndefined();
   });
 });
