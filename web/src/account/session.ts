@@ -1,11 +1,39 @@
 // The PokéPrices session (D11): the ['me'] query and the signed-in, signed-out, loading and
 // failed states every account page reads. A 401 from GET /v1/me is the signed-out state (null),
-// not a problem. The header never reads it, so public pages keep their exact request lists.
-import { useQuery } from '@tanstack/react-query';
+// not a problem. The header never reads it, so public pages keep their exact request lists. Every
+// query key that holds one account's data lives under ['account', …] (accountKey), so a session
+// transition forgets all of it at once (endSession); ['me'] itself is outside it.
+import { useQuery, type QueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { getMe, type ApiFailure, type Me, type RequestOptions } from '../api/client';
 
 export const ME_KEY = ['me'] as const;
+
+/** The root of every per-user query key. Public keys (cards, prices, movers) never use it. */
+export const ACCOUNT_KEY = ['account'] as const;
+
+/** A per-user query key: ['account', ...parts]. */
+export function accountKey<const Parts extends readonly unknown[]>(
+  ...parts: Parts
+): readonly ['account', ...Parts] {
+  return [...ACCOUNT_KEY, ...parts];
+}
+
+/**
+ * Forgets everything the last account owned: its in-flight per-user fetches are cancelled and
+ * every ['account', …] query is removed. Run at every session transition (sign-out, sign-in,
+ * sign-up, demo, deletion, and an identity change seen in ['me']); each caller handles ['me'].
+ */
+export function endSession(queryClient: QueryClient): void {
+  void queryClient.cancelQueries({ queryKey: ACCOUNT_KEY });
+  queryClient.removeQueries({ queryKey: ACCOUNT_KEY });
+}
+
+/** The account an ['me'] answer names (its email; GET /v1/me has no id), or null when signed out. */
+export function identityOf(data: unknown): string | null {
+  if (typeof data !== 'object' || data === null || !('email' in data)) return null;
+  return typeof data.email === 'string' ? data.email : null;
+}
 
 export type Session =
   | { readonly state: 'loading' }

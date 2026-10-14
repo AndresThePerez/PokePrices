@@ -6,7 +6,7 @@ import { isVerificationLink, verifyEmail, type ApiFailure } from '../api/client'
 import Link from '../Link';
 import { AccountMain, LoadingAccount, ProblemBlock } from './Form';
 import { TEXT_LINK } from './fields';
-import { ME_KEY, useSession } from './session';
+import { ME_KEY, accountKey, useSession } from './session';
 
 const INVALID =
   'This verification link is not valid or has expired. Send a new one from your account.';
@@ -34,7 +34,7 @@ function Verify({ link }: { readonly link: string }) {
   const queryClient = useQueryClient();
   // One GET of the link per page visit: never polled, never retried, never refetched on focus.
   const verification = useQuery<true, ApiFailure>({
-    queryKey: ['verify-email', link],
+    queryKey: accountKey('verify-email', link),
     queryFn: async ({ signal }): Promise<true> => {
       const result = await verifyEmail(link, { signal });
       if (!result.ok) {

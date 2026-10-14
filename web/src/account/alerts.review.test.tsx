@@ -275,10 +275,14 @@ describe('review: the stored-Discord state with no Discord webhook', () => {
   }
 
   it('shows Discord selected but disabled with its hint, and still saves a switch to email', async () => {
+    const switched = notificationsBody({
+      channel: 'email',
+      digest: true,
+      discord_available: false,
+    });
     const { calls } = await openSettings({
-      'PUT /v1/me/notifications': jsonResponse(
-        notificationsBody({ channel: 'email', digest: true, discord_available: false }),
-      ),
+      'GET /v1/me/notifications': [jsonResponse(STORED), jsonResponse(switched)],
+      'PUT /v1/me/notifications': jsonResponse(switched),
     });
     const discord = within(group()).getByRole<HTMLInputElement>('radio', { name: 'Discord' });
     expect(discord.checked).toBe(true);
@@ -295,8 +299,8 @@ describe('review: the stored-Discord state with no Discord webhook', () => {
     expect(
       within(group()).getByRole<HTMLInputElement>('radio', { name: /^Email \(/ }).checked,
     ).toBe(true);
-    // No second GET for the settings: the PUT answer is the new state.
-    expect(calls.filter((call) => call.key === 'GET /v1/me/notifications')).toHaveLength(1);
+    // The saved settings are read again, never written from the PUT answer: one more GET.
+    expect(calls.filter((call) => call.key === 'GET /v1/me/notifications')).toHaveLength(2);
   });
 
   it('shows the channel 422 under the group when the stored Discord is saved unchanged, and Save works again', async () => {

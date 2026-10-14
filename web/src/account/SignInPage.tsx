@@ -10,8 +10,7 @@ import { navigate } from '../router';
 import DemoButton from './DemoButton';
 import { AccountMain, Field, LoadingAccount, ProblemBlock, StatusLine } from './Form';
 import { PRIMARY_BUTTON, TEXT_LINK, firstErrors } from './fields';
-import { forgetLists } from './lists';
-import { ME_KEY, useArrivalStatus, useSession } from './session';
+import { ME_KEY, endSession, useArrivalStatus, useSession } from './session';
 
 const FIELDS = ['email', 'password'] as const;
 
@@ -39,7 +38,7 @@ function TwoFactorChallenge({ next }: { readonly next: string }) {
       setFailure(result);
       return;
     }
-    forgetLists(queryClient);
+    endSession(queryClient);
     await queryClient.invalidateQueries({ queryKey: ME_KEY, refetchType: 'all' });
     navigate(next);
   }
@@ -126,7 +125,7 @@ function SignInForm({ next }: { readonly next: string }) {
       setChallenge(true);
       return;
     }
-    forgetLists(queryClient);
+    endSession(queryClient);
     await queryClient.invalidateQueries({ queryKey: ME_KEY, refetchType: 'all' });
     navigate(next);
   }

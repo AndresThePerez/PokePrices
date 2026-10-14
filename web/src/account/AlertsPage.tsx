@@ -3,7 +3,7 @@
 // sign-up. The demo and an unverified account read the page and are told, in words, why they cannot
 // change it: no form and no button. Requests: GET /v1/me, then GET /v1/webhooks once signed in, and
 // GET /v1/me/notifications only for an account that may change its settings.
-import type { ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import Link from '../Link';
 import { WEBHOOKS_LOADING, useNotifications, useWebhooks } from './alerts';
 import { ProblemBlock } from './Form';
@@ -86,8 +86,10 @@ export default function AlertsPage() {
     body = <SignedOut />;
   } else {
     const { me } = session;
+    // Keyed by the account: another account remounts it, dropping every secret held in state
+    // (a webhook's one-time signing secret, the settings draft).
     body = (
-      <>
+      <Fragment key={me.email}>
         {me.read_only ? (
           <p className={NOTICE}>{DEMO_LINE}</p>
         ) : (
@@ -104,7 +106,7 @@ export default function AlertsPage() {
           </>
         )}
         <Webhooks list={webhooks.data} error={webhooks.error} canWrite={canWrite} />
-      </>
+      </Fragment>
     );
   }
 

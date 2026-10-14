@@ -1,7 +1,8 @@
 // The sections T07 adds to /alerts (P5 D10), above Webhooks: "Where alerts go" (email or Discord,
 // the daily digest, Save) and "Per-card alerts" (a pointer to the watchlist). Only a verified account
 // that is not the demo sees them. The form shows the saved settings until a choice is changed; Save
-// sends exactly { channel, digest } and its answer becomes the saved settings. No clock is read.
+// sends exactly { channel, digest } and, once it succeeds, the saved settings are read again. No
+// clock is read.
 import { useQueryClient } from '@tanstack/react-query';
 import { useId, useState, type SubmitEvent } from 'react';
 import {
@@ -66,9 +67,9 @@ function SettingsForm({
       setFailure(result);
       return;
     }
-    if (queryClient.getQueryState(NOTIFICATIONS_KEY) !== undefined) {
-      queryClient.setQueryData<NotificationsBody>(NOTIFICATIONS_KEY, result.data);
-    }
+    // Refetched, never written from the answer: an answer that lands after a session transition
+    // finds no query to refresh (endSession removed it) or refreshes the next account's own one.
+    await queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_KEY });
     setDraft(null);
     setSaved(true);
   }
