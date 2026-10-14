@@ -163,8 +163,9 @@ may read but not write.
   `last_day` (the earliest and latest day among priced holdings, so the total names the days it rests on), `source`,
   `feed`, `basis`, `currency` and `degraded`. Worked example: one `base1-4:holo:unlimited:-` at `"968.91"` and three
   `ex5-17:reverse:-:-` at `"26.34"` give values `"968.91"` and `"79.02"` and `total_value` `"1047.93"`.
-- **Not kept.** No cost basis, gain or loss, history of holdings, alert thresholds or per-card (rather than
-  per-variant) watching.
+- **Not kept.** No cost basis, gain or loss, history of holdings, or per-card (rather than per-variant) watching.
+  A watchlist row can carry an alert threshold (`alert_pct`, the last key of each watchlist item; portfolio holdings
+  have none); how alerts work is in [`ALERTS.md`](ALERTS.md).
 - **Idempotent writes.** Every state-changing `/v1` call is idempotent in effect (PUT sets, DELETE removes), so there
   is no `Idempotency-Key` header.
 
@@ -172,13 +173,20 @@ may read but not write.
 
 - **Download.** `GET /v1/me/export` (the `Download your data (JSON)` link on `/account`) answers `200` with
   `Content-Disposition: attachment; filename="pokeprices-export.json"`. The body is
-  `{"data": {"format": "pokeprices-account-export", "version": 1, "account": …, "watchlist": […], "portfolio": […],
-  "sessions": […]}}`:
+  `{"data": {"format": "pokeprices-account-export", "version": 2, "account": …, "watchlist": […], "portfolio": […],
+  "sessions": […], "notifications": {…}, "webhooks": […], "deliveries": […]}}`:
   - `account`: `email`, `email_verified_at`, `two_factor` (a boolean) and `created_at`.
-  - `watchlist`: `variant_key` and `added_at`, in byte order of the key.
+  - `watchlist`: `variant_key`, `added_at` and `alert_pct` (the per-card alert threshold, or `null`), in byte order of
+    the key.
   - `portfolio`: `variant_key`, `quantity`, `added_at` and `updated_at`, in byte order of the key.
   - `sessions`: the records kept about the person's sign-ins, `last_active_at`, `ip_address` and `user_agent`, newest
     first.
+  - `notifications`: `channel` (`email` or `discord`) and `digest`; with no stored settings, `email` and `false`.
+  - `webhooks`: for each webhook `kind`, `url_hint`, `description`, `created_at` and `disabled`, ordered by
+    `created_at`. Never the URL or the signing secret.
+  - `deliveries`: for each message `kind`, `channel`, `day`, `status`, `attempts`, `created_at` and `delivered_at`,
+    newest first, at most the newest 500 (delivered and failed rows are kept 30 days, so this is everything kept in
+    practice; see [`ALERTS.md`](ALERTS.md)). Never the message body.
   - It never holds the password hash, a remember token, the two-factor secret, a recovery code, a session id or a
     session payload. The demo may download its data. The answer is `no-store`.
 - **Delete.** `Delete my account` on `/account` calls `POST /v1/me/deletion` with the body
@@ -187,9 +195,12 @@ may read but not write.
   id and the person's `password_reset_tokens` row; the current session is then invalidated. A wrong password is `422`
   under `errors.password`; the demo is refused with `403`; the sixth wrong try in a minute is `429`. The same address
   can register again later with the invite code.
-- **Never send the password in the query string.** The endpoint reads merged input at present, so
-  `POST /v1/me/deletion?password=…` would also be accepted; a URL ends up in logs and history. The app never does
-  that, and nobody should. Reading the body only is a named open item in the draft ADR.
+- **Never send the password in the query string.** The password is read from the request body only: a `password`,
+  `password_confirmation` or `current_password` in the query string is ignored, so such a request fails validation.
+  A URL ends up in logs and history, so nobody should send one anyway.
+- **Still read from the query string.** The guard covers those three keys only. Fortify's two-factor `code` and
+  `recovery_code` and the password-reset `token` are still read from the query string if a client sends them there;
+  the app never does. This is an open item in `docs/adr/drafts/0004-alert-delivery.md`.
 - **Password reset ends other sessions.** After a successful reset, no other browser stays signed in.
 - Display settings (theme and colours) stay in the browser's `localStorage`; accounts do not store them, so they are
   not in the export.

@@ -364,8 +364,10 @@ run goes `ok`.
     finalized day exists yet, so each repaired day is momentarily the newest finalized day when it finalizes. The
     movement rule can therefore write `price_events` rows for days that originally fired nothing (days first
     ingested as a backfill or out of order). Nothing dispatches these rows in P2 (`dispatched_at` stays null).
-    The outbox key prevents duplicates: an event already in the outbox is never rewritten. Whether such rows are
-    ever delivered is a decision for P5 planning, which owns delivery.
+    The outbox key prevents duplicates: an event already in the outbox is never rewritten. Alerts and webhooks never
+    send them: until the newest day that was finalized before the crash is finalized again, nothing is sent, and after
+    that only that day's events are sent, never an event added to a day that was already sent (see docs/ALERTS.md,
+    "Crash repair and the deliverable day").
 
 ### An unmapped surge
 

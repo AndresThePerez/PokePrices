@@ -36,14 +36,31 @@ prices get into the database is in [`OPERATIONS.md`](OPERATIONS.md).
   arrival); the person chooses a new password.
 - **`/account`.** Who is signed in, whether the email is verified (with a button to send the verification email
   again), two-factor on and off with a QR code and one-time recovery codes, `Download your data (JSON)`,
-  `Delete my account` and `Sign out`. Signed out, it offers sign-in and sign-up. As the demo, it says the demo is
-  read-only.
+  `Delete my account`, a link to `Alerts and webhooks` and `Sign out`. Signed out, it offers sign-in and sign-up. As
+  the demo, it says the demo is read-only.
 - **`/account/verify-email`.** Where the verification link in the email lands. It needs a signed-in person.
 - **`/watchlist`.** The variants a person watches, each row a ticker with its own `as of <day> from TCGCSV (daily
-  close)` line, a `Remove` button, and the card name from PokéSearch (`Card <id>` while it is unavailable).
+  close)` line, a `Remove` button, and the card name from PokéSearch (`Card <id>` while it is unavailable). For a
+  signed-in, verified account each row also shows `Alert: at <n>%` or `Alert: off`, a select `Alert threshold`
+  (`Off`, `5%`, `10%`, `20%`, `50%`, plus the stored value when it is another number) and a `Save alert` button; `Off`
+  removes the threshold. Below the list a line explains that an alert is sent when a card's daily close moves by at
+  least its threshold and at least $1.00 against the previous close, with a link to `/alerts`. An unverified account
+  sees `Verify your email address to set alerts.` instead of the control, and the demo sees no control.
 - **`/portfolio`.** The variants a person holds with a quantity, each with its value and its own `as of` line, and a
   total computed by the API that names the days it rests on. A holding without a price is not valued and is named
   as not counted.
+- **`/alerts`.** `Alerts and webhooks`, linked from `/account` (the header is unchanged). It needs a signed-in
+  account: signed out it offers `Sign in` and `Create an account`; as the demo it says the read-only demo cannot set
+  alerts or add webhooks and shows no form; an unverified account is asked to verify its email address and sees its
+  lists without a form. A verified account sees three sections:
+  - `Where alerts go`: a choice of `Email (<address>)` or `Discord` (disabled until a Discord webhook is added), the
+    checkbox `Send me a daily digest` and `Save`;
+  - `Per-card alerts`: a pointer to the watchlist, where each threshold is set;
+  - `Webhooks`: each webhook as `<url_hint>`, its type (`Signed webhook` or `Discord`), the date it was added and the
+    status of its last message, with `Send a test message` and `Delete`; and the form `Add a webhook`. A new signed
+    webhook's secret is shown once, in a box, until `I have stored the secret` is pressed; it is never shown again.
+
+  The messages themselves, who gets them and the delivery rules are in [`ALERTS.md`](ALERTS.md).
 
 The watchlist and portfolio are filled from the card page, where each priced variant has `Add to watchlist` and
 `Add to portfolio` buttons. The account pages, the sessions behind them and the rules for the demo are described in
