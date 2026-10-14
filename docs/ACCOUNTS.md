@@ -180,7 +180,8 @@ may read but not write.
     the key.
   - `portfolio`: `variant_key`, `quantity`, `added_at` and `updated_at`, in byte order of the key.
   - `sessions`: the records kept about the person's sign-ins, `last_active_at`, `ip_address` and `user_agent`, newest
-    first.
+    first. Every demo visitor shares the one demo account, so the demo's export lists only the caller's own session,
+    never another visitor's.
   - `notifications`: `channel` (`email` or `discord`) and `digest`; with no stored settings, `email` and `false`.
   - `webhooks`: for each webhook `kind`, `url_hint`, `description`, `created_at` and `disabled`, ordered by
     `created_at`. Never the URL or the signing secret.

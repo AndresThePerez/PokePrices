@@ -49,7 +49,10 @@ final class MeController
      */
     public function export(Request $request, AccountExport $export): AccountExportResource
     {
-        return new AccountExportResource($export->of(self::user($request)));
+        // The session id narrows the demo's session records to the caller's own (Q0-i1 T02); without one, none.
+        $sessionId = $request->hasSession() ? $request->session()->getId() : null;
+
+        return new AccountExportResource($export->of(self::user($request), $sessionId));
     }
 
     /**
