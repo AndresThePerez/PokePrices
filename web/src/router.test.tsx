@@ -258,3 +258,25 @@ describe('App routes', () => {
     expect(heading()).toBe('Search cards');
   });
 });
+
+describe('the alerts route (P5 T04, D10)', () => {
+  it('maps /alerts to its route, with or without a query', () => {
+    expect(matchRoute('/alerts', '')).toEqual({ name: 'alerts' });
+    expect(matchRoute('/alerts', '?x=1')).toEqual({ name: 'alerts' });
+  });
+
+  it('keeps trailing-slash, extra-segment and other-case variants not-found', () => {
+    for (const path of ['/alerts/', '/alerts/x', '/Alerts', '/alert', '/webhooks']) {
+      expect(matchRoute(path, '')).toEqual({ name: 'not-found' });
+    }
+  });
+
+  it('accepts next=/alerts, so sign-in brings the visitor back', () => {
+    expect(safeNext('/alerts')).toBe('/alerts');
+    expect(matchRoute('/sign-in', '?next=%2Falerts')).toEqual({ name: 'sign-in', next: '/alerts' });
+  });
+
+  it.each(['/alerts/', '//alerts', '/alerts/x'])('refuses next %j', (next) => {
+    expect(safeNext(next)).toBe('/account');
+  });
+});

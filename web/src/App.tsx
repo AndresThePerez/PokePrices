@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import AccountPage from './account/AccountPage';
+import AlertsPage from './account/AlertsPage';
 import ForgotPasswordPage from './account/ForgotPasswordPage';
 import PortfolioPage from './account/PortfolioPage';
 import ResetPasswordPage from './account/ResetPasswordPage';
@@ -61,6 +62,8 @@ function Routes() {
       return <WatchlistPage />;
     case 'portfolio':
       return <PortfolioPage />;
+    case 'alerts':
+      return <AlertsPage />;
     case 'not-found':
       return (
         <Page title="Page not found">

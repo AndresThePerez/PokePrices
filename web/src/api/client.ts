@@ -248,8 +248,9 @@ const SESSION_PATHS: ReadonlySet<string> = new Set([
   '/two-factor-challenge',
 ]);
 
-/** The /v1 account paths: the account itself, the lists and the demo session. */
-const ACCOUNT_API = /^\/v1\/(?:me|watchlist|portfolio)(?:[/?]|$)|^\/v1\/demo\/session$/;
+/** The /v1 account paths: the account itself, the lists, the webhooks and alerts, the demo. */
+const ACCOUNT_API =
+  /^\/v1\/(?:me|watchlist|portfolio|webhooks|alerts)(?:[/?]|$)|^\/v1\/demo\/session$/;
 
 /** D10: a verification link is /email/verify/<id>/<hash>?<query>, nothing else. */
 const VERIFY_LINK = /^\/email\/verify\/([^/?#]+)\/([^/?#]+)\?/;
@@ -636,4 +637,55 @@ export type DeleteAccountForm =
 /** POST /v1/me/deletion { password }: 204, the account is gone and this browser is signed out. */
 export function deleteAccount(form: DeleteAccountForm): Promise<ApiResult<undefined>> {
   return accountRequest<undefined>('/v1/me/deletion', { method: 'POST', body: form });
+}
+
+// ---- Webhooks (P5 T04) -------------------------------------------------------------------------
+// The signing secret of a new signed webhook arrives once, in the 201 answer: it is returned to the
+// caller only, never cached or stored here. A webhook is addressed by its numeric id.
+
+export type WebhooksBody =
+  operations['getWebhooks']['responses'][200]['content']['application/json'];
+export type WebhookEndpoint = components['schemas']['WebhookEndpointResource'];
+export type WebhookForm = operations['createWebhook']['requestBody']['content']['application/json'];
+export type WebhookCreated =
+  operations['createWebhook']['responses'][201]['content']['application/json'];
+export type WebhookTestAnswer =
+  operations['testWebhook']['responses'][202]['content']['application/json'];
+
+const INVALID_WEBHOOK: ApiFailure = {
+  ok: false,
+  status: 0,
+  type: 'about:blank',
+  title: 'The webhook id is not valid',
+  requestId: null,
+  problem: null,
+};
+
+/** /v1/webhooks/{id} for a whole, non-negative, safe id; null for anything else. */
+function webhookPath(id: number): string | null {
+  return Number.isSafeInteger(id) && id >= 0 ? `/v1/webhooks/${String(id)}` : null;
+}
+
+/** GET /v1/webhooks: the signed-in account's webhooks, never a URL or a secret (401 signed out). */
+export function getWebhooks(options: RequestOptions = {}): Promise<ApiResult<WebhooksBody>> {
+  return accountRequest<WebhooksBody>('/v1/webhooks', { method: 'GET', signal: options.signal });
+}
+
+/** POST /v1/webhooks { kind, url, description? }: 201 with the secret of a signed webhook, once. */
+export function createWebhook(form: WebhookForm): Promise<ApiResult<WebhookCreated>> {
+  return accountRequest<WebhookCreated>('/v1/webhooks', { method: 'POST', body: form });
+}
+
+/** DELETE /v1/webhooks/{id}: 204, also when the account has no webhook with this id. */
+export function deleteWebhook(id: number): Promise<ApiResult<undefined>> {
+  const path = webhookPath(id);
+  if (path === null) return Promise.resolve({ ...INVALID_WEBHOOK });
+  return accountRequest<undefined>(path, { method: 'DELETE' });
+}
+
+/** POST /v1/webhooks/{id}/test: 202 { message_id }; the message is sent by the next sweep. */
+export function testWebhook(id: number): Promise<ApiResult<WebhookTestAnswer>> {
+  const path = webhookPath(id);
+  if (path === null) return Promise.resolve({ ...INVALID_WEBHOOK });
+  return accountRequest<WebhookTestAnswer>(`${path}/test`, { method: 'POST' });
 }

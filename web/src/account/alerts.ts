@@ -1,0 +1,31 @@
+// Shared pieces of /alerts (P5 D10) that are not components: the movement rule's figures, the
+// query keys and the date part of an API timestamp. The page reads no clock: every date it shows
+// is the date part of a timestamp the API sent.
+import { useQuery } from '@tanstack/react-query';
+import { getWebhooks, type ApiFailure, type WebhooksBody } from '../api/client';
+import { unwrap } from '../query';
+
+/** The movement rule (draft-v1, ADR 0001): a close moves by at least this percentage … */
+export const MOVEMENT_PCT = 5;
+/** … and at least this many dollars (the API's decimal string, printed as it is). */
+export const MOVEMENT_ABS = '1.00';
+
+export const WEBHOOKS_KEY = ['webhooks'] as const;
+export const NOTIFICATIONS_KEY = ['notifications'] as const;
+
+/** The loading line of /alerts (D10). */
+export const WEBHOOKS_LOADING = 'Loading your alerts and webhooks…';
+
+/** The YYYY-MM-DD date part of an RFC 3339 timestamp; the time of day is never shown. */
+export function datePart(timestamp: string): string {
+  return timestamp.slice(0, 10);
+}
+
+/** The account's webhooks (P3 D9 defaults), asked for only once the session is signed in. */
+export function useWebhooks(enabled: boolean) {
+  return useQuery<WebhooksBody, ApiFailure>({
+    queryKey: WEBHOOKS_KEY,
+    queryFn: ({ signal }) => unwrap(getWebhooks({ signal })),
+    enabled,
+  });
+}

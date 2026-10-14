@@ -1,7 +1,8 @@
 // /account (D10): who is signed in, the read-only demo notice (T07), whether the email address
 // is verified (with a resend button), the two-factor section (T04), Your data and Delete account
-// (T08) and Sign out. Signed out, it links to sign-in and sign-up. A fresh mount reads the session
-// from GET /v1/me alone, so a signed-in session survives a reload (D13).
+// (T08) and Sign out, with a static link to /alerts after the two-factor section (P5 T04). Signed
+// out, it links to sign-in and sign-up. A fresh mount reads the session from GET /v1/me alone, so a
+// signed-in session survives a reload (D13).
 import { useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { resendVerification, signOut, type ApiFailure, type Me } from '../api/client';
@@ -99,6 +100,11 @@ function SignedIn({ me, onDeleted }: { readonly me: Me; readonly onDeleted: () =
       {me.read_only && <DemoNotice />}
       <Verification verified={me.email_verified} />
       <TwoFactorSection me={me} />
+      <p className="mt-8 border-t border-slate-200 pt-6 dark:border-slate-700">
+        <Link to="/alerts" className={TEXT_LINK}>
+          Alerts and webhooks
+        </Link>
+      </p>
       <YourData me={me} onDeleted={onDeleted} />
       <SignOut />
     </>

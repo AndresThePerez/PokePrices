@@ -21,6 +21,7 @@ export type Route =
   | { readonly name: 'verify-email'; readonly link: string | null }
   | { readonly name: 'watchlist' }
   | { readonly name: 'portfolio' }
+  | { readonly name: 'alerts' }
   | { readonly name: 'not-found' };
 
 const NAVIGATE_EVENT = 'pokeprices:navigate';
@@ -74,6 +75,8 @@ export function matchRoute(pathname: string, search: string): Route {
       return { name: 'watchlist' };
     case '/portfolio':
       return { name: 'portfolio' };
+    case '/alerts':
+      return { name: 'alerts' };
   }
   const encodedId = CARD.exec(pathname)?.[1];
   if (encodedId !== undefined) {

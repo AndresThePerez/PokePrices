@@ -1040,3 +1040,73 @@ export function serviceUnavailableProblem(instance: string): Schemas['Problem'] 
     request_id: 'req-p4-unavailable-0010',
   };
 }
+
+// ---- Webhooks (P5 T04) -------------------------------------------------------------------------
+// Every URL is an RFC 2606 host and every secret an obvious fake (base64 of zeros).
+
+type WebhooksBody = operations['getWebhooks']['responses'][200]['content']['application/json'];
+type WebhookCreatedBody =
+  operations['createWebhook']['responses'][201]['content']['application/json'];
+export type WebhookEndpoint = Schemas['WebhookEndpointResource'];
+
+/** A fake signing secret, built at run time: whsec_ and the base64 of 32 zero characters. */
+export const FAKE_SIGNING_SECRET = `whsec_${btoa('0'.repeat(32))}`;
+
+/** One webhook as GET /v1/webhooks lists it; the default is a signed webhook never sent to. */
+export function webhookOf(fields: Partial<WebhookEndpoint> = {}): WebhookEndpoint {
+  return {
+    id: 41,
+    kind: 'standard',
+    url_hint: 'https://hooks.example.com/…',
+    description: 'Home bot',
+    created_at: '2026-10-12T20:05:45Z',
+    disabled: false,
+    last_delivery: null,
+    ...fields,
+  } satisfies WebhookEndpoint;
+}
+
+/** A Discord webhook (no description), last message delivered. */
+export const discordWebhook = webhookOf({
+  id: 42,
+  kind: 'discord',
+  url_hint: 'https://discord.com/…',
+  description: null,
+  created_at: '2026-10-13T20:05:46Z',
+  last_delivery: { status: 'delivered', at: '2026-10-14T20:05:47Z' },
+});
+
+/** GET /v1/webhooks with the given webhooks. */
+export function webhooksBody(data: readonly WebhookEndpoint[] = []): WebhooksBody {
+  return { data: [...data], meta: { count: data.length, limit: 5 } } satisfies WebhooksBody;
+}
+
+/** The 201 POST /v1/webhooks answers: the webhook plus its secret (null for Discord). */
+export function webhookCreatedBody(
+  endpoint: WebhookEndpoint,
+  secret: string | null,
+): WebhookCreatedBody {
+  return { data: { ...endpoint, secret } } satisfies WebhookCreatedBody;
+}
+
+/** The 403 an alert-creating route answers an unverified account (RequireAlertEligibility). */
+export function emailNotVerifiedProblem(instance: string): Schemas['Problem'] {
+  return {
+    type: `${PROBLEM_BASE}email-not-verified`,
+    title: 'Verify Your Email First',
+    status: 403,
+    instance,
+    request_id: 'req-p5-unverified-0011',
+  };
+}
+
+/** The 409 POST /v1/webhooks/{id}/test answers for a turned-off webhook. */
+export function webhookDisabledProblem(instance: string): Schemas['Problem'] {
+  return {
+    type: `${PROBLEM_BASE}webhook-disabled`,
+    title: 'Webhook Turned Off',
+    status: 409,
+    instance,
+    request_id: 'req-p5-disabled-0012',
+  };
+}
