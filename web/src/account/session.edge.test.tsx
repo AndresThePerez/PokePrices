@@ -198,11 +198,25 @@ describe('a late answer of the last account never repopulates a cleared key (C1,
   });
 
   it('A saves settings, signs out and the demo opens /alerts: the late PUT adds no request and no A setting', async () => {
+    const A_SETTINGS = notificationsBody({
+      channel: 'discord',
+      digest: false,
+      discord_available: true,
+    });
+    const A_SAVED = notificationsBody({
+      channel: 'discord',
+      digest: true,
+      discord_available: true,
+    });
     let me: Response = jsonResponse(signedInMe);
     const calls = stubAccountFetch({
       'GET /v1/me': () => me,
       'GET /v1/webhooks': jsonResponse(webhooksBody([])),
-      'GET /v1/me/notifications': jsonResponse(notificationsBody()),
+      // A's settings, then (asked again with the demo's cookie when the switch is seen) the demo's.
+      'GET /v1/me/notifications': [
+        jsonResponse(A_SETTINGS),
+        jsonResponse(notificationsBody({ channel: 'email', digest: false })),
+      ],
       'POST /logout': new Response(null, { status: 204 }),
       'POST /demo': jsonResponse({}),
     });
@@ -230,14 +244,21 @@ describe('a late answer of the last account never repopulates a cleared key (C1,
     await settle();
     const settingsReads = count(calls, 'GET /v1/me/notifications');
     await act(async () => {
-      releasePut?.(jsonResponse(notificationsBody({ digest: true })));
+      releasePut?.(jsonResponse(A_SAVED));
       await Promise.resolve();
     });
     await settle();
     expect(count(calls, 'GET /v1/me/notifications')).toBe(settingsReads);
     expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
     expect(screen.queryByText('Email (collector@example.com)')).toBeNull();
-    expect(client().getQueryData(['account', 'notifications'])).toBeUndefined();
+    // Neither A's settings nor A's late PUT answer is cached: at most the demo's own read, asked
+    // with the demo's cookie when the switch was seen.
+    const cached = client().getQueryData(['account', 'notifications']);
+    expect(cached).not.toEqual(A_SETTINGS);
+    expect(cached).not.toEqual(A_SAVED);
+    expect([undefined, notificationsBody({ channel: 'email', digest: false })]).toContainEqual(
+      cached,
+    );
   });
 });
 

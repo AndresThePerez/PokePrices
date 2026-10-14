@@ -27,7 +27,8 @@ export function accountKey<const Parts extends readonly unknown[]>(
 
 /**
  * The query meta of a one-time read (the verification link): a signed-out ['me'] answer never
- * marks it stale, so the same account coming back does not send it a second time.
+ * marks it stale, so the same account coming back does not send it a second time, and a forget
+ * leaves it alone while its page still shows it (one GET per page visit, whatever ['me'] says).
  */
 export const ONE_TIME = { oneTime: true } as const;
 
@@ -37,12 +38,27 @@ export function isOneTime(meta: Readonly<Record<string, unknown>> | undefined): 
 }
 
 /**
- * Forgets everything the last account owned in this tab: its in-flight per-user fetches are
- * cancelled and every ['account', …] query is removed. Writes no signal (see endSession).
+ * Forgets everything the last account owned in this tab. An ['account', …] query no page reads is
+ * removed (its fetch cancelled); one a page still reads is reset, so that page sees it empty at
+ * once and an enabled reader asks again with the session the browser holds now. A one-time read
+ * its page still shows is kept (ONE_TIME). Writes no signal (see endSession).
  */
 export function forgetAccount(queryClient: QueryClient): void {
-  void queryClient.cancelQueries({ queryKey: ACCOUNT_KEY });
-  queryClient.removeQueries({ queryKey: ACCOUNT_KEY });
+  queryClient.removeQueries({
+    queryKey: ACCOUNT_KEY,
+    predicate: (query) => query.getObserversCount() === 0,
+  });
+  void queryClient.resetQueries({
+    queryKey: ACCOUNT_KEY,
+    predicate: (query) => !isOneTime(query.meta),
+  });
+}
+
+const transitionListeners = new WeakMap<QueryClient, () => void>();
+
+/** Registers the client's own reaction to a transition this tab makes (see createQueryClient). */
+export function onSessionEnd(queryClient: QueryClient, listener: () => void): void {
+  transitionListeners.set(queryClient, listener);
 }
 
 let signals = 0;
@@ -50,15 +66,17 @@ let signals = 0;
 /**
  * A session transition this tab made (sign-out, sign-in, sign-up, demo, deletion): forgets the
  * last account (forgetAccount) and writes SESSION_SIGNAL_KEY so the other tabs forget it too.
- * Each caller handles ['me']. Blocked storage only loses the signal.
+ * Each caller handles ['me']. Blocked storage only loses the signal: another tab then forgets the
+ * last account when its own ['me'] answer names a different one, or names its first one.
  */
 export function endSession(queryClient: QueryClient): void {
+  transitionListeners.get(queryClient)?.();
   forgetAccount(queryClient);
   signals += 1;
   try {
     window.localStorage.setItem(SESSION_SIGNAL_KEY, `${String(Date.now())}.${String(signals)}`);
   } catch {
-    // Blocked or full storage: the other tabs learn it from their next ['me'] answer instead.
+    // Blocked or full storage: see above.
   }
 }
 

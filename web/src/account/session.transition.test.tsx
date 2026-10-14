@@ -229,7 +229,8 @@ describe('an identity change seen only through ["me"] clears what the last accou
     await pollMe();
     expect(await screen.findByRole('link', { name: 'Chimecho' })).toBeTruthy();
     await settle();
-    // Same account: its fresh list is reused, not fetched again.
+    // Same account: the cached list was kept (only marked stale by the signed-out answer), so it
+    // shows at once and is asked for once more, not dropped and loaded from nothing.
     expect(count(calls, 'GET /v1/watchlist')).toBe(2);
   });
 });

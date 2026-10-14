@@ -114,9 +114,13 @@ function HoldingForm({
   if (portfolio.error?.status === 401) {
     body = <SignInPrompt cardId={cardId} />;
   } else if (portfolio.data !== undefined) {
+    const initial = heldQuantity(portfolio.data, variantKey);
+    // Keyed by the quantity held: when the answer changes under the open form (another tab
+    // switched accounts and the portfolio was asked again), the form starts over from it.
     body = (
       <QuantityForm
-        initial={heldQuantity(portfolio.data, variantKey)}
+        key={initial}
+        initial={initial}
         pending={pending}
         error={error}
         onSave={onSave}
