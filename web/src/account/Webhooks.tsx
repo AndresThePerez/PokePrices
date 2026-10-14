@@ -4,7 +4,7 @@
 // gone from the DOM after "I have stored the secret" and when the page is left. Dates are the date
 // parts of the API's timestamps; nothing here reads the clock.
 import { useQueryClient } from '@tanstack/react-query';
-import { useId, useRef, useState, type ReactNode, type SubmitEvent } from 'react';
+import { useId, useState, type ReactNode, type SubmitEvent } from 'react';
 import {
   createWebhook,
   deleteWebhook,
@@ -14,7 +14,15 @@ import {
   type WebhookForm,
   type WebhooksBody,
 } from '../api/client';
-import { MOVEMENT_ABS, MOVEMENT_PCT, WEBHOOKS_KEY, WEBHOOKS_LOADING, datePart } from './alerts';
+import {
+  MOVEMENT_ABS,
+  MOVEMENT_PCT,
+  NOTIFICATIONS_KEY,
+  WEBHOOKS_KEY,
+  WEBHOOKS_LOADING,
+  datePart,
+  useOnce,
+} from './alerts';
 import { ProblemBlock, StatusLine } from './Form';
 import { FOCUS, MUTED, PRIMARY_BUTTON, SECONDARY_BUTTON, firstErrors } from './fields';
 
@@ -69,22 +77,6 @@ function statusLine(endpoint: WebhookEndpoint): { readonly text: string; readonl
   }
 }
 
-/** A button that runs its action once per click: a second click while it runs does nothing. */
-function useOnce(): readonly [boolean, (action: () => Promise<void>) => void] {
-  const running = useRef(false);
-  const [pending, setPending] = useState(false);
-  function run(action: () => Promise<void>): void {
-    if (running.current) return;
-    running.current = true;
-    setPending(true);
-    void action().finally(() => {
-      running.current = false;
-      setPending(false);
-    });
-  }
-  return [pending, run];
-}
-
 function WebhookRow({
   endpoint,
   canWrite,
@@ -118,7 +110,13 @@ function WebhookRow({
       setFailure({ context: 'Could not delete the webhook', failure: result });
       return;
     }
-    await queryClient.invalidateQueries({ queryKey: WEBHOOKS_KEY });
+    // Deleting the Discord webhook changes whether Discord can be chosen (and may reset the channel).
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: WEBHOOKS_KEY }),
+      endpoint.kind === 'discord'
+        ? queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_KEY })
+        : undefined,
+    ]);
   }
 
   return (
@@ -258,7 +256,13 @@ function AddWebhook() {
     const created = result.data.data;
     if (created.secret === null) setDiscordAdded(true);
     else setSecret(created.secret);
-    await queryClient.invalidateQueries({ queryKey: WEBHOOKS_KEY });
+    // A new Discord webhook makes Discord a channel that can be chosen.
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: WEBHOOKS_KEY }),
+      created.kind === 'discord'
+        ? queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_KEY })
+        : undefined,
+    ]);
   }
 
   function submit(event: SubmitEvent<HTMLFormElement>): void {

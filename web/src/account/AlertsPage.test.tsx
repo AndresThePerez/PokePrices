@@ -12,6 +12,7 @@ import {
   discordWebhook,
   jsonResponse,
   lightOnlyClasses,
+  notificationsBody,
   problemResponse,
   serverErrorProblem,
   shortControls,
@@ -95,8 +96,12 @@ describe('the alerts page states (P5 T04 criterion 1, D10)', () => {
     expect(within(main()).getByText(INTRO)).toBeTruthy();
     expect(screen.getByRole('heading', { level: 3, name: 'Add a webhook' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Add webhook' })).toBeTruthy();
-    // Criterion 5: GET /v1/me, then GET /v1/webhooks, nothing else (no notifications until T07).
-    expect(calls.map((call) => call.key)).toEqual(['GET /v1/me', 'GET /v1/webhooks']);
+    // Criterion 5 (P5 T07 supersession, R240): GET /v1/me, GET /v1/webhooks, then the settings.
+    expect(calls.map((call) => call.key)).toEqual([
+      'GET /v1/me',
+      'GET /v1/webhooks',
+      'GET /v1/me/notifications',
+    ]);
   });
 
   it('lists one webhook of each type with its hint, description, type and added date', async () => {
@@ -206,6 +211,7 @@ describe('the alerts page states (P5 T04 criterion 1, D10)', () => {
     open({
       'GET /v1/me': jsonResponse(signedInMe),
       'GET /v1/webhooks': problemResponse(serverErrorProblem('/v1/webhooks')),
+      'GET /v1/me/notifications': jsonResponse(notificationsBody()),
     });
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toContain('Could not load your webhooks: Internal Server Error');

@@ -4,7 +4,7 @@ import type { QueryClient } from '@tanstack/react-query';
 import type { ApiFailure, WatchlistItem } from '../api/client';
 import { variantLabel } from '../format';
 import { cardPath } from '../router';
-import { WEBHOOKS_KEY } from './alerts';
+import { NOTIFICATIONS_KEY, WEBHOOKS_KEY } from './alerts';
 
 export const WATCHLIST_KEY = ['watchlist'] as const;
 export const PORTFOLIO_KEY = ['portfolio'] as const;
@@ -54,11 +54,12 @@ export function quantityOf(text: string): number | null {
 }
 
 /**
- * Another account's lists and webhooks must never show under this session (sign-out, sign-in,
+ * Another account's lists, webhooks and alert settings must never show under this session (sign-out, sign-in,
  * sign-up, demo).
  */
 export function forgetLists(queryClient: QueryClient): void {
   queryClient.removeQueries({ queryKey: WATCHLIST_KEY });
   queryClient.removeQueries({ queryKey: PORTFOLIO_KEY });
   queryClient.removeQueries({ queryKey: WEBHOOKS_KEY });
+  queryClient.removeQueries({ queryKey: NOTIFICATIONS_KEY });
 }

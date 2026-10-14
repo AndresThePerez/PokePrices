@@ -15,6 +15,7 @@ import {
   domHolds,
   emailNotVerifiedProblem,
   jsonResponse,
+  notificationsBody,
   problemResponse,
   rawResponse,
   serverErrorProblem,
@@ -139,6 +140,7 @@ describe('the signing secret on every exit path (P5 T04 criterion 2, D10 "shown 
     const calls = stubAccountFetch({
       'GET /v1/me': jsonResponse(signedInMe),
       'GET /v1/webhooks': jsonResponse(webhooksBody()),
+      'GET /v1/me/notifications': jsonResponse(notificationsBody()),
       'POST /v1/webhooks': problemResponse({
         type: 'https://pokeprices.andrestheperez.com/problems/http-419',
         title: 'Page Expired',
@@ -252,6 +254,7 @@ describe('a refused add or delete never wedges the page (D10 problem blocks, dou
     const calls = stubAccountFetch({
       'GET /v1/me': jsonResponse(signedInMe),
       'GET /v1/webhooks': jsonResponse(webhooksBody()),
+      'GET /v1/me/notifications': jsonResponse(notificationsBody()),
       'POST /v1/webhooks': problemResponse(emailNotVerifiedProblem('/v1/webhooks')),
     });
     render(
@@ -278,6 +281,7 @@ describe('a refused add or delete never wedges the page (D10 problem blocks, dou
     const calls = stubAccountFetch({
       'GET /v1/me': jsonResponse(signedInMe),
       'GET /v1/webhooks': [jsonResponse(webhooksBody([webhookOf()])), jsonResponse(webhooksBody())],
+      'GET /v1/me/notifications': jsonResponse(notificationsBody()),
       'DELETE /v1/webhooks/41': [
         problemResponse(tooManyRequestsProblem('/v1/webhooks/41')),
         rawResponse(204, null),

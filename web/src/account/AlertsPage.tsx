@@ -1,12 +1,14 @@
-// /alerts (P5 D10): where a verified account manages its webhooks (T04; T07 adds "Where alerts go"
-// and "Per-card alerts" above them). Signed out, it offers sign-in (and back here) and sign-up. The
-// demo and an unverified account read the page and are told, in words, why they cannot change it:
-// no form and no button. Requests: GET /v1/me, then GET /v1/webhooks once signed in.
+// /alerts (P5 D10): where a verified account manages its webhooks (T04) and, above them, where
+// alerts go and the per-card pointer (T07). Signed out, it offers sign-in (and back here) and
+// sign-up. The demo and an unverified account read the page and are told, in words, why they cannot
+// change it: no form and no button. Requests: GET /v1/me, then GET /v1/webhooks once signed in, and
+// GET /v1/me/notifications only for an account that may change its settings.
 import type { ReactNode } from 'react';
 import Link from '../Link';
-import { WEBHOOKS_LOADING, useWebhooks } from './alerts';
+import { WEBHOOKS_LOADING, useNotifications, useWebhooks } from './alerts';
 import { ProblemBlock } from './Form';
 import { MUTED, TEXT_LINK } from './fields';
+import NotificationSettings, { PerCardAlerts } from './NotificationSettings';
 import { useSession } from './session';
 import Webhooks from './Webhooks';
 
@@ -66,7 +68,11 @@ function Unverified() {
 
 export default function AlertsPage() {
   const session = useSession();
+  const canWrite =
+    session.state === 'signed-in' && session.me.email_verified && !session.me.read_only;
+  // Declared in this order so the requests go out in it: webhooks, then the settings.
   const webhooks = useWebhooks(session.state === 'signed-in');
+  const notifications = useNotifications(canWrite);
 
   let body;
   if (session.state === 'loading') {
@@ -80,13 +86,22 @@ export default function AlertsPage() {
     body = <SignedOut />;
   } else {
     const { me } = session;
-    const canWrite = me.email_verified && !me.read_only;
     body = (
       <>
         {me.read_only ? (
           <p className={NOTICE}>{DEMO_LINE}</p>
         ) : (
           !me.email_verified && <Unverified />
+        )}
+        {canWrite && (
+          <>
+            <NotificationSettings
+              email={me.email}
+              settings={notifications.data}
+              error={notifications.error}
+            />
+            <PerCardAlerts />
+          </>
         )}
         <Webhooks list={webhooks.data} error={webhooks.error} canWrite={canWrite} />
       </>

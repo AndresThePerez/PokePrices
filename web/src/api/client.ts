@@ -689,3 +689,50 @@ export function testWebhook(id: number): Promise<ApiResult<WebhookTestAnswer>> {
   if (path === null) return Promise.resolve({ ...INVALID_WEBHOOK });
   return accountRequest<WebhookTestAnswer>(`${path}/test`, { method: 'POST' });
 }
+
+// ---- Alert settings and per-card alerts (P5 T07) -----------------------------------------------
+
+export type NotificationsBody =
+  operations['getNotifications']['responses'][200]['content']['application/json'];
+export type NotificationSettings = NotificationsBody['data'];
+export type NotificationsForm =
+  operations['putNotifications']['requestBody']['content']['application/json'];
+export type AlertEntry = operations['putAlert']['responses'][200]['content']['application/json'];
+
+/** GET /v1/me/notifications: where alerts and the digest go, and whether Discord can be chosen. */
+export function getNotifications(
+  options: RequestOptions = {},
+): Promise<ApiResult<NotificationsBody>> {
+  return accountRequest<NotificationsBody>('/v1/me/notifications', {
+    method: 'GET',
+    signal: options.signal,
+  });
+}
+
+/** PUT /v1/me/notifications { channel, digest }: 200 with the saved settings. */
+export function putNotifications(form: NotificationsForm): Promise<ApiResult<NotificationsBody>> {
+  return accountRequest<NotificationsBody>('/v1/me/notifications', {
+    method: 'PUT',
+    body: { channel: form.channel, digest: form.digest },
+  });
+}
+
+/** /v1/alerts/{variantKey}: the key as one segment, encoded once; null when it would collapse. */
+function alertPath(variantKey: string): string | null {
+  const segment = cardSegment(variantKey);
+  return segment === null ? null : `/v1/alerts/${segment}`;
+}
+
+/** PUT /v1/alerts/{variantKey} { pct }: sets the whole-percent threshold of a watchlist item. */
+export function putAlert(variantKey: string, pct: number): Promise<ApiResult<AlertEntry>> {
+  const path = alertPath(variantKey);
+  if (path === null) return Promise.resolve({ ...INVALID_PATH });
+  return accountRequest<AlertEntry>(path, { method: 'PUT', body: { pct } });
+}
+
+/** DELETE /v1/alerts/{variantKey}: 204, the item has no threshold (also when it had none). */
+export function deleteAlert(variantKey: string): Promise<ApiResult<undefined>> {
+  const path = alertPath(variantKey);
+  if (path === null) return Promise.resolve({ ...INVALID_PATH });
+  return accountRequest<undefined>(path, { method: 'DELETE' });
+}

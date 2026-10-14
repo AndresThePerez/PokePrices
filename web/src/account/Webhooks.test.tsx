@@ -18,6 +18,7 @@ import {
   domHolds,
   emailNotVerifiedProblem,
   jsonResponse,
+  notificationsBody,
   problemResponse,
   rawResponse,
   sentBody,
@@ -217,6 +218,7 @@ describe('adding a webhook (P5 T04 criterion 2)', () => {
     stubAccountFetch({
       'GET /v1/me': jsonResponse(signedInMe),
       'GET /v1/webhooks': jsonResponse(webhooksBody()),
+      'GET /v1/me/notifications': jsonResponse(notificationsBody()),
       'POST /v1/webhooks': problemResponse(
         accountValidationProblem('/v1/webhooks', {
           kind: ['Choose a signed webhook or Discord.'],
@@ -250,6 +252,7 @@ describe('adding a webhook (P5 T04 criterion 2)', () => {
     stubAccountFetch({
       'GET /v1/me': jsonResponse(signedInMe),
       'GET /v1/webhooks': jsonResponse(webhooksBody()),
+      'GET /v1/me/notifications': jsonResponse(notificationsBody()),
       'POST /v1/webhooks': problemResponse(emailNotVerifiedProblem('/v1/webhooks')),
     });
     renderPage(createQueryClient());
@@ -262,6 +265,7 @@ describe('adding a webhook (P5 T04 criterion 2)', () => {
     stubAccountFetch({
       'GET /v1/me': jsonResponse(signedInMe),
       'GET /v1/webhooks': jsonResponse(webhooksBody()),
+      'GET /v1/me/notifications': jsonResponse(notificationsBody()),
       'POST /v1/webhooks': problemResponse(tooManyRequestsProblem('/v1/webhooks')),
     });
     renderPage(createQueryClient());
@@ -328,6 +332,7 @@ describe('test message and delete (P5 T04 criterion 3)', () => {
     stubAccountFetch({
       'GET /v1/me': jsonResponse(signedInMe),
       'GET /v1/webhooks': jsonResponse(webhooksBody([webhookOf()])),
+      'GET /v1/me/notifications': jsonResponse(notificationsBody()),
       'POST /v1/webhooks/41/test': problemResponse(problem),
     });
     renderPage(createQueryClient());
@@ -357,6 +362,7 @@ describe('test message and delete (P5 T04 criterion 3)', () => {
     expect(calls.map((call) => call.key)).toEqual([
       'GET /v1/me',
       'GET /v1/webhooks',
+      'GET /v1/me/notifications',
       'GET /sanctum/csrf-cookie',
       'DELETE /v1/webhooks/41',
       'GET /v1/webhooks',
@@ -367,6 +373,7 @@ describe('test message and delete (P5 T04 criterion 3)', () => {
     stubAccountFetch({
       'GET /v1/me': jsonResponse(signedInMe),
       'GET /v1/webhooks': jsonResponse(webhooksBody([webhookOf()])),
+      'GET /v1/me/notifications': jsonResponse(notificationsBody()),
       'DELETE /v1/webhooks/41': problemResponse(serverErrorProblem('/v1/webhooks/41')),
     });
     renderPage(createQueryClient());

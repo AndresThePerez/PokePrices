@@ -1,19 +1,25 @@
 // /watchlist (D10): the signed-in account's variants over GET /v1/watchlist, each row the P3
 // movers row with its own "as of" line (rows can carry different days). Signed out, it offers
-// sign-in, sign-up and the demo; the demo sees its rows without a Remove button.
+// sign-in, sign-up and the demo; the demo sees its rows without a Remove button. A verified account
+// that is not the demo also sets each row's alert threshold here (P5 T07); an unverified one is told
+// to verify first. The page asks for nothing beyond the session and the list.
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import {
+  deleteAlert,
   deleteWatchlistItem,
   getWatchlist,
+  putAlert,
   type ApiFailure,
   type WatchlistBody,
   type WatchlistItem,
 } from '../api/client';
 import { variantLabel } from '../format';
+import Link from '../Link';
 import { unwrap } from '../query';
+import { MOVEMENT_ABS, useOnce } from './alerts';
 import { ProblemBlock } from './Form';
-import { SECONDARY_BUTTON } from './fields';
+import { FOCUS, MUTED, SECONDARY_BUTTON, TEXT_LINK, firstErrors } from './fields';
 import {
   DegradedLine,
   DemoNotice,
@@ -29,14 +35,121 @@ import { useSession } from './session';
 
 const EMPTY = 'Your watchlist is empty. Open a card from Search and choose Add to watchlist.';
 const LOADING = 'Loading your watchlist…';
+const UNVERIFIED_LINE = 'Verify your email address to set alerts.';
 
-function WatchRow({
-  item,
-  readOnly,
-}: {
-  readonly item: WatchlistItem;
-  readonly readOnly: boolean;
-}) {
+/** Who may do what on this page: remove rows (not the demo), set alerts (verified, not the demo). */
+type Access = 'read-only' | 'unverified' | 'alerts';
+
+/** The D10 thresholds; a stored value that is not one of them is offered too, in order. */
+const THRESHOLDS: readonly number[] = [5, 10, 20, 50];
+
+function thresholdsWith(stored: number | null): readonly number[] {
+  if (stored === null || THRESHOLDS.includes(stored)) return THRESHOLDS;
+  return [...THRESHOLDS, stored].sort((a, b) => a - b);
+}
+
+const SELECT =
+  `mt-1 block min-h-11 rounded-md border px-3 py-2 text-base ` +
+  `border-slate-400 bg-white text-slate-900 dark:border-slate-500 dark:bg-slate-900 dark:text-slate-100 ` +
+  `aria-invalid:border-red-700 dark:aria-invalid:border-red-400 ${FOCUS}`;
+
+/** The row's alert: its line, the threshold select and Save alert (Off deletes, a number puts). */
+function AlertControl({ item }: { readonly item: WatchlistItem }) {
+  const queryClient = useQueryClient();
+  const id = useId();
+  const errorId = `${id}-error`;
+  const [choice, setChoice] = useState(item.alert_pct === null ? 'off' : String(item.alert_pct));
+  const [pending, run] = useOnce();
+  const [failure, setFailure] = useState<ApiFailure | null>(null);
+  const errors = firstErrors(failure);
+  const fieldError = errors.pct ?? errors.variant_key;
+  const name = `${cardLabel(item)}, ${variantLabel(item)}`;
+
+  async function save(value: string): Promise<void> {
+    setFailure(null);
+    const result =
+      value === 'off'
+        ? await deleteAlert(item.variant_key)
+        : await putAlert(item.variant_key, Number(value));
+    if (!result.ok) {
+      // The last good list stays on screen; the failure shows beside the row.
+      setFailure(result);
+      return;
+    }
+    await queryClient.invalidateQueries({ queryKey: WATCHLIST_KEY });
+  }
+
+  return (
+    <>
+      <p className="mt-2 text-sm font-medium">
+        {item.alert_pct === null ? 'Alert: off' : `Alert: at ${String(item.alert_pct)}%`}
+      </p>
+      <div className="flex flex-wrap items-end gap-x-2 gap-y-1">
+        <div>
+          <label htmlFor={id} className="text-sm font-medium">
+            Alert threshold
+          </label>
+          <select
+            id={id}
+            name="alert_pct"
+            value={choice}
+            aria-label={`Alert threshold for ${name}`}
+            aria-invalid={fieldError === undefined ? undefined : true}
+            aria-describedby={fieldError === undefined ? undefined : errorId}
+            onChange={(event) => {
+              setChoice(event.target.value);
+            }}
+            className={SELECT}
+          >
+            <option value="off">Off</option>
+            {thresholdsWith(item.alert_pct).map((pct) => (
+              <option key={pct} value={String(pct)}>{`${String(pct)}%`}</option>
+            ))}
+          </select>
+        </div>
+        <button
+          type="button"
+          disabled={pending}
+          aria-label={`Save the alert for ${name}`}
+          onClick={() => {
+            run(() => save(choice));
+          }}
+          className={SECONDARY_BUTTON}
+        >
+          Save alert
+        </button>
+        {fieldError !== undefined && (
+          <p id={errorId} className="basis-full text-sm font-medium text-red-700 dark:text-red-300">
+            {fieldError}
+          </p>
+        )}
+      </div>
+      {failure !== null && (
+        <ProblemBlock
+          context="Could not save the alert"
+          failure={failure}
+          fields={['pct', 'variant_key']}
+        />
+      )}
+    </>
+  );
+}
+
+/** Under the list: how an alert is decided, and where to choose where it goes. */
+function AlertExplainer() {
+  return (
+    <p className="mt-4 text-sm">
+      {`An alert is sent when a card's daily close moves by at least its threshold and at least ` +
+        `$${MOVEMENT_ABS} against the previous close. Choose where alerts go on `}
+      <Link to="/alerts" className={TEXT_LINK}>
+        Alerts and webhooks
+      </Link>
+      .
+    </p>
+  );
+}
+
+function WatchRow({ item, access }: { readonly item: WatchlistItem; readonly access: Access }) {
   const queryClient = useQueryClient();
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState<ApiFailure | null>(null);
@@ -59,8 +172,9 @@ function WatchRow({
       <div className="min-w-0 wrap-anywhere">
         <RowName row={item} />
         <PriceLines price={item.price} missing={NO_PRICE} />
+        {access === 'alerts' && <AlertControl key={String(item.alert_pct)} item={item} />}
       </div>
-      {!readOnly && (
+      {access !== 'read-only' && (
         <div className="mt-3 sm:mt-0">
           <button
             type="button"
@@ -84,7 +198,7 @@ function WatchRow({
   );
 }
 
-function Loaded({ body, readOnly }: { readonly body: WatchlistBody; readonly readOnly: boolean }) {
+function Loaded({ body, access }: { readonly body: WatchlistBody; readonly access: Access }) {
   return (
     <>
       {body.meta.degraded && <DegradedLine />}
@@ -97,9 +211,11 @@ function Loaded({ body, readOnly }: { readonly body: WatchlistBody; readonly rea
             className="mt-6 divide-y divide-slate-200 border-y border-slate-200 dark:divide-slate-700 dark:border-slate-700"
           >
             {body.data.map((item) => (
-              <WatchRow key={item.variant_key} item={item} readOnly={readOnly} />
+              <WatchRow key={item.variant_key} item={item} access={access} />
             ))}
           </ul>
+          {access === 'alerts' && <AlertExplainer />}
+          {access === 'unverified' && <p className={`mt-4 text-sm ${MUTED}`}>{UNVERIFIED_LINE}</p>}
           <ListFootnote />
         </>
       )}
@@ -117,6 +233,10 @@ export default function WatchlistPage() {
     enabled: signedIn,
   });
   const readOnly = session.state === 'signed-in' && session.me.read_only;
+  let access: Access = 'read-only';
+  if (session.state === 'signed-in' && !readOnly) {
+    access = session.me.email_verified ? 'alerts' : 'unverified';
+  }
 
   let body;
   if (session.state === 'loading') {
@@ -127,7 +247,7 @@ export default function WatchlistPage() {
     body = <SignedOutList list="watchlist" />;
   } else if (query.data !== undefined) {
     // A failed poll or write keeps the last good list on screen.
-    body = <Loaded body={query.data} readOnly={readOnly} />;
+    body = <Loaded body={query.data} access={access} />;
   } else if (query.error?.status === 401) {
     body = <SignedOutList list="watchlist" />;
   } else if (query.error !== null) {

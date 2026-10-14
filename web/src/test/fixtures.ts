@@ -1118,3 +1118,23 @@ export function webhookDisabledProblem(instance: string): Schemas['Problem'] {
     request_id: 'req-p5-disabled-0012',
   };
 }
+
+// ---- Alert settings and per-card alerts (P5 T07) -----------------------------------------------
+
+type NotificationsBody =
+  operations['getNotifications']['responses'][200]['content']['application/json'];
+type AlertBody = operations['putAlert']['responses'][200]['content']['application/json'];
+
+/** GET or PUT /v1/me/notifications; the default is email, no digest, no Discord webhook. */
+export function notificationsBody(
+  fields: Partial<NotificationsBody['data']> = {},
+): NotificationsBody {
+  return {
+    data: { channel: 'email', digest: false, discord_available: false, ...fields },
+  } satisfies NotificationsBody;
+}
+
+/** The 200 PUT /v1/alerts/{variantKey} answers. */
+export function alertBody(variantKey: string, pct: number): AlertBody {
+  return { data: { variant_key: variantKey, alert_pct: pct } } satisfies AlertBody;
+}
