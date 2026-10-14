@@ -11,9 +11,10 @@ use Illuminate\Support\Str;
 use InvalidArgumentException;
 
 /**
- * A webhook.test message for one signed webhook (plan P5-i1 D4, T02; T03 adds the Discord envelope). It carries no
- * price, so it is the one payload whose timestamp is a clock time: the delivery's created_at, and its text says so.
- * The delivery is due at once; the next sweep sends it like any other.
+ * A webhook.test message for one webhook (plan P5-i1 D4; T02 for a signed webhook, T03 for Discord). For a signed
+ * webhook it carries no price, so it is the one payload whose timestamp is a clock time: the delivery's created_at,
+ * and its text says so. For a Discord webhook the body is the Discord envelope with DiscordMessage::TEST_TEXT, on
+ * channel discord. The delivery is due at once; the next sweep sends it like any other.
  */
 final class TestMessage
 {
@@ -21,11 +22,11 @@ final class TestMessage
 
     public static function queue(WebhookEndpoint $endpoint): Delivery
     {
-        if ($endpoint->kind !== 'standard') {
-            throw new InvalidArgumentException('Only a signed webhook takes a webhook.test message here.');
+        if ($endpoint->kind !== 'standard' && $endpoint->kind !== 'discord') {
+            throw new InvalidArgumentException('A webhook.test message needs a signed or Discord webhook.');
         }
         $now = CarbonImmutable::now()->utc()->startOfSecond();
-        $body = json_encode([
+        $body = $endpoint->kind === 'discord' ? DiscordMessage::envelope(DiscordMessage::TEST_TEXT) : json_encode([
             'type' => 'webhook.test',
             'timestamp' => $now->format('Y-m-d\TH:i:s\Z'),
             'data' => ['message' => self::TEXT],
@@ -36,7 +37,7 @@ final class TestMessage
             'message_id' => 'msg_'.Str::ulid(),
             'user_id' => $endpoint->user_id,
             'kind' => 'webhook.test',
-            'channel' => 'webhook',
+            'channel' => $endpoint->kind === 'discord' ? 'discord' : 'webhook',
             'endpoint_id' => $endpoint->id,
             'event_id' => null,
             'day' => null,

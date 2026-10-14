@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Domain\Accounts\AlertEligibility;
+use App\Http\Middleware\RequireAlertEligibility;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use Tests\Support\Accounts;
@@ -31,11 +32,14 @@ it('refuses the demo account even when verified', function (): void {
         ->and(Gate::forUser($demo)->allows('create-alerts'))->toBeFalse();
 });
 
-it('is not attached to any route in P4', function (): void {
-    $uses = collect(Route::getRoutes()->getRoutes())
-        ->flatMap(fn ($route): array => Route::gatherRouteMiddleware($route))
-        ->filter(fn (mixed $m): bool => is_string($m) && str_contains($m, 'create-alerts'))
+// P5-i1 T03 attaches the seam (same-commit supersession of 'is not attached to any route in P4'); T05 extends the list.
+it('is attached to exactly the alert-creating routes', function (): void {
+    $names = collect(Route::getRoutes()->getRoutes())
+        ->filter(fn ($route): bool => in_array(RequireAlertEligibility::class, Route::gatherRouteMiddleware($route), true))
+        ->map(fn ($route): ?string => $route->getName())
+        ->sort()
+        ->values()
         ->all();
 
-    expect($uses)->toBe([]);
+    expect($names)->toBe(['webhooks.store', 'webhooks.test']);
 });

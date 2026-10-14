@@ -825,6 +825,402 @@
                 }
             }
         },
+        "/webhooks": {
+            "get": {
+                "operationId": "getWebhooks",
+                "description": "The signed-in account's webhooks, ordered by id: kind standard is a signed webhook (Standard Webhooks), kind discord a Discord webhook. url_hint is the URL's scheme and host only; the full URL and the signing secret are never shown again. disabled is true once the receiver said the webhook no longer exists (410, or Discord's 404 or 401). last_delivery is the newest message to it: its status and when (delivered, else created; RFC 3339 UTC), or null before the first. meta.limit is the most signed webhooks an account holds (plus one Discord webhook). The answer is never cached.",
+                "summary": "Read your webhooks",
+                "tags": [
+                    "Account"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `WebhookEndpointResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/WebhookEndpointResource"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "count": {
+                                                    "type": "integer"
+                                                },
+                                                "limit": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "count",
+                                                "limit"
+                                            ],
+                                            "additionalProperties": false
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ],
+                                    "additionalProperties": false
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated: sign in first (problem type https://pokeprices.andrestheperez.com/problems/unauthenticated).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests: the rate limit of this route is spent.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds until the limit resets.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "operationId": "createWebhook",
+                "description": "Registers a signed webhook (kind standard) or a Discord webhook (kind discord) for the signed-in account. The URL must be https and reach a public address (Pok\u00e9Prices does not send to private, local or reserved networks); a Discord URL looks like https://discord.com/api/webhooks/<id>/<token>. The 201 answer carries the signing secret of a signed webhook, once: it is never shown again (to change it, delete the webhook and add it again); for Discord secret is null. An account holds at most 5 signed webhooks and one Discord webhook. Refusals answer 422 with errors.kind, errors.url or errors.description. Only a verified account may add webhooks (403 email-not-verified); the demo account is read-only (403 demo-read-only).",
+                "summary": "Add a webhook",
+                "tags": [
+                    "Account"
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "kind": {
+                                        "type": "string",
+                                        "enum": [
+                                            "standard",
+                                            "discord"
+                                        ]
+                                    },
+                                    "url": {
+                                        "type": "string"
+                                    },
+                                    "description": {
+                                        "type": [
+                                            "string",
+                                            "null"
+                                        ],
+                                        "minLength": 1,
+                                        "maxLength": 100
+                                    }
+                                },
+                                "required": [
+                                    "kind",
+                                    "url"
+                                ],
+                                "additionalProperties": false
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "`WebhookCreatedResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/WebhookCreatedResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ],
+                                    "additionalProperties": false
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated: sign in first (problem type https://pokeprices.andrestheperez.com/problems/unauthenticated).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The demo account is read-only (problem type https://pokeprices.andrestheperez.com/problems/demo-read-only), or the account's email address is not verified yet (problem type https://pokeprices.andrestheperez.com/problems/email-not-verified).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "419": {
+                        "description": "The CSRF token is missing or stale: GET /sanctum/csrf-cookie and retry (problem type https://pokeprices.andrestheperez.com/problems/csrf-token-mismatch).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests: the rate limit of this route is spent.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds until the limit resets.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/webhooks/{id}": {
+            "delete": {
+                "operationId": "deleteWebhook",
+                "description": "Deletes the signed-in account's webhook with this id, and every message still waiting for it. The answer is 204 also when the account has no webhook with this id (nothing changes). The demo account is read-only (403 demo-read-only).",
+                "summary": "Delete a webhook",
+                "tags": [
+                    "Account"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No content"
+                    },
+                    "401": {
+                        "description": "Unauthenticated: sign in first (problem type https://pokeprices.andrestheperez.com/problems/unauthenticated).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The demo account is read-only (problem type https://pokeprices.andrestheperez.com/problems/demo-read-only).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "419": {
+                        "description": "The CSRF token is missing or stale: GET /sanctum/csrf-cookie and retry (problem type https://pokeprices.andrestheperez.com/problems/csrf-token-mismatch).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests: the rate limit of this route is spent.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds until the limit resets.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/webhooks/{id}/test": {
+            "post": {
+                "operationId": "testWebhook",
+                "description": "Queues one test message to the signed-in account's webhook with this id and answers 202 with its message_id (the webhook-id header of a signed webhook); it is sent within a few minutes. A signed webhook receives a webhook.test message that carries no price; a Discord webhook a short text. 404 webhook-not-found when the account has no webhook with this id; 409 webhook-disabled when the webhook is turned off. At most 5 test messages a minute (429). Only a verified account may send test messages (403 email-not-verified); the demo account is read-only (403 demo-read-only).",
+                "summary": "Send a test message",
+                "tags": [
+                    "Account"
+                ],
+                "parameters": [
+                    {
+                        "name": "id",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "message_id": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required": [
+                                                "message_id"
+                                            ],
+                                            "additionalProperties": false
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ],
+                                    "additionalProperties": false
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated: sign in first (problem type https://pokeprices.andrestheperez.com/problems/unauthenticated).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "403": {
+                        "description": "The demo account is read-only (problem type https://pokeprices.andrestheperez.com/problems/demo-read-only), or the account's email address is not verified yet (problem type https://pokeprices.andrestheperez.com/problems/email-not-verified).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "An error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "409": {
+                        "description": "An error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "419": {
+                        "description": "The CSRF token is missing or stale: GET /sanctum/csrf-cookie and retry (problem type https://pokeprices.andrestheperez.com/problems/csrf-token-mismatch).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests: the rate limit of this route is spent.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds until the limit resets.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/demo/session": {
             "post": {
                 "operationId": "startDemoSession",
@@ -2704,6 +3100,146 @@
                 ],
                 "additionalProperties": false,
                 "title": "WatchlistItemResource"
+            },
+            "WebhookCreatedResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "discord",
+                            "standard"
+                        ]
+                    },
+                    "url_hint": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "description": "RFC 3339 UTC"
+                    },
+                    "disabled": {
+                        "type": "boolean"
+                    },
+                    "last_delivery": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "properties": {
+                            "status": {
+                                "type": "string",
+                                "enum": [
+                                    "pending",
+                                    "delivered",
+                                    "failed"
+                                ]
+                            },
+                            "at": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "status",
+                            "at"
+                        ],
+                        "additionalProperties": false
+                    },
+                    "secret": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "whsec_ and the base64 key, shown once; null for Discord."
+                    }
+                },
+                "required": [
+                    "id",
+                    "kind",
+                    "url_hint",
+                    "description",
+                    "created_at",
+                    "disabled",
+                    "last_delivery",
+                    "secret"
+                ],
+                "additionalProperties": false,
+                "title": "WebhookCreatedResource"
+            },
+            "WebhookEndpointResource": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "discord",
+                            "standard"
+                        ]
+                    },
+                    "url_hint": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "created_at": {
+                        "type": "string",
+                        "description": "RFC 3339 UTC"
+                    },
+                    "disabled": {
+                        "type": "boolean"
+                    },
+                    "last_delivery": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "properties": {
+                            "status": {
+                                "type": "string",
+                                "enum": [
+                                    "pending",
+                                    "delivered",
+                                    "failed"
+                                ]
+                            },
+                            "at": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "status",
+                            "at"
+                        ],
+                        "additionalProperties": false
+                    }
+                },
+                "required": [
+                    "id",
+                    "kind",
+                    "url_hint",
+                    "description",
+                    "created_at",
+                    "disabled",
+                    "last_delivery"
+                ],
+                "additionalProperties": false,
+                "title": "WebhookEndpointResource"
             }
         }
     }

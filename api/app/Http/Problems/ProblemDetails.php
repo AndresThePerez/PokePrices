@@ -42,7 +42,7 @@ final class ProblemDetails
         return self::response(500, 'server-error', 'Server Error', $request);
     }
 
-    /** The P1 slugs first (F-P1-027), the P4 demo slugs, then the P0 404/405 slugs, the P4 409/419 slugs, then http-<n> for every other status. */
+    /** The P1 slugs first (F-P1-027), the P4 demo slugs, the P5 alert slugs, then the P0 404/405 slugs, the P4 409/419 slugs, then http-<n> for every other status. */
     private static function fromHttpException(HttpExceptionInterface $e, Request $request): JsonResponse
     {
         $status = $e->getStatusCode();
@@ -53,6 +53,9 @@ final class ProblemDetails
             $e instanceof CardNotFound => self::response(404, 'card-not-found', 'Card Not Found', $request, null, ['catalog_missing' => $e->catalogMissing]),
             $e instanceof DemoReadOnly => self::response(403, 'demo-read-only', 'Demo Account Is Read-Only', $request),
             $e instanceof DemoUnavailable => self::response(404, 'demo-unavailable', 'Demo Account Unavailable', $request),
+            $e instanceof EmailNotVerified => self::response(403, 'email-not-verified', 'Verify Your Email First', $request),
+            $e instanceof WebhookNotFound => self::response(404, 'webhook-not-found', 'Webhook Not Found', $request),
+            $e instanceof WebhookDisabled => self::response(409, 'webhook-disabled', 'Webhook Turned Off', $request),
             $e instanceof NotFoundHttpException => self::response(404, 'not-found', 'Not Found', $request),
             $e instanceof MethodNotAllowedHttpException => self::response(405, 'method-not-allowed', 'Method Not Allowed', $request),
             $e instanceof AlreadySignedIn => self::response(409, 'already-signed-in', 'Already Signed In', $request),

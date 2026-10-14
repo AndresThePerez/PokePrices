@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Domain\Alerts\AlertRateLimits;
 use App\Domain\Catalog\CatalogRegistrar;
 use App\OpenApi\ContractDocument;
 use Dedoc\Scramble\Scramble;
@@ -26,6 +27,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // The webhook-test limiter (plan P5-i1 D9, D14), keyed user:<id>.
+        AlertRateLimits::register();
+
         // Servers, contact, the readiness problem schema and closed objects (R78, .spectral.yaml).
         Scramble::configure()->withDocumentTransformers(function (OpenApi $openApi): void {
             (new ContractDocument)($openApi);

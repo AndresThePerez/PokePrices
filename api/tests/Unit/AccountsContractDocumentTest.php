@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Http\Middleware\DemoReadOnly;
+use App\Http\Middleware\RequireAlertEligibility;
 use App\OpenApi\ContractDocument;
 use Dedoc\Scramble\Support\Generator\Components;
 use Dedoc\Scramble\Support\Generator\InfoObject;
@@ -137,4 +138,32 @@ it('adds the 403 demo-read-only problem to non-GET routes carrying DemoReadOnly 
         ->and(accCodes($spec, '/open', 'post'))->toBe(['200'])
         ->and($readOnly['description'])->toBe('The demo account is read-only (problem type https://pokeprices.andrestheperez.com/problems/demo-read-only).')
         ->and($readOnly['content'])->toBe(['application/problem+json' => ['schema' => ['$ref' => '#/components/schemas/Problem']]]);
+});
+
+// Plan P5-i1 T03 criterion 8 (D9): ContractDocument adds 403 email-not-verified to routes carrying
+// App\Http\Middleware\RequireAlertEligibility, by route metadata; with DemoReadOnly too, the one 403 names both.
+it('adds the 403 email-not-verified problem to routes carrying RequireAlertEligibility, naming demo-read-only too where both apply', function (): void {
+    $router = accRouter(function (Router $r): void {
+        $r->middleware(['auth:sanctum', DemoReadOnly::class])->group(function (Router $r): void {
+            $r->get('v1/hooks', fn (): null => null);
+            $r->post('v1/hooks', fn (): null => null)->middleware(RequireAlertEligibility::class);
+            $r->delete('v1/hooks/{id}', fn (): null => null);
+        });
+        $r->post('v1/gated', fn (): null => null)->middleware(RequireAlertEligibility::class);
+    });
+
+    $spec = accTransform($router, [
+        accOperation('v1/hooks'), accOperation('v1/hooks', 'post'), accOperation('v1/hooks/{id}', 'delete'), accOperation('v1/gated', 'post'),
+    ]);
+    $both = $spec['paths']['/hooks']['post']['responses']['403'];
+    $alone = $spec['paths']['/gated']['post']['responses']['403'];
+
+    expect(accCodes($spec, '/hooks', 'get'))->toBe(['200', '401'])
+        ->and(accCodes($spec, '/hooks', 'post'))->toBe(['200', '401', '403'])
+        ->and(accCodes($spec, '/hooks/{id}', 'delete'))->toBe(['200', '401', '403'])
+        ->and(accCodes($spec, '/gated', 'post'))->toBe(['200', '403'])
+        ->and($both['description'])->toBe('The demo account is read-only (problem type https://pokeprices.andrestheperez.com/problems/demo-read-only), or the account\'s email address is not verified yet (problem type https://pokeprices.andrestheperez.com/problems/email-not-verified).')
+        ->and($alone['description'])->toBe('The account\'s email address is not verified yet (problem type https://pokeprices.andrestheperez.com/problems/email-not-verified).')
+        ->and($spec['paths']['/hooks/{id}']['delete']['responses']['403']['description'])->toBe('The demo account is read-only (problem type https://pokeprices.andrestheperez.com/problems/demo-read-only).')
+        ->and($alone['content'])->toBe(['application/problem+json' => ['schema' => ['$ref' => '#/components/schemas/Problem']]]);
 });

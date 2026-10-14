@@ -38,7 +38,9 @@ use Illuminate\Support\Arr;
  * - middleware STATEFUL (Sanctum's EnsureFrontendRequestsAreStateful) on an operation whose method is not GET or
  *   HEAD: 419 csrf-token-mismatch (plan P4-i1 D4);
  * - middleware DEMO_READ_ONLY (App\Http\Middleware\DemoReadOnly) on an operation whose method is not GET or HEAD:
- *   403 demo-read-only (plan P4-i1 D4).
+ *   403 demo-read-only (plan P4-i1 D4);
+ * - middleware ALERT_ELIGIBILITY (App\Http\Middleware\RequireAlertEligibility): 403 email-not-verified (plan P5-i1
+ *   D9); where demo-read-only applies too, the one 403 description names both problem types.
  */
 final class ContractDocument
 {
@@ -55,6 +57,8 @@ final class ContractDocument
     public const string STATEFUL = 'Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful';
 
     public const string DEMO_READ_ONLY = 'App\Http\Middleware\DemoReadOnly';
+
+    public const string ALERT_ELIGIBILITY = 'App\Http\Middleware\RequireAlertEligibility';
 
     /** @param Router|null $router the routes to read; null means the application's, aliases and groups registered */
     public function __construct(private readonly ?Router $router = null) {}
@@ -217,8 +221,16 @@ final class ContractDocument
         if ($writes && array_filter($middleware, fn (string $name): bool => is_a($name, self::STATEFUL, true)) !== []) {
             self::response($responses, 419, 'The CSRF token is missing or stale: GET /sanctum/csrf-cookie and retry (problem type '.ProblemDetails::BASE.'csrf-token-mismatch).');
         }
-        if ($writes && array_filter($middleware, fn (string $name): bool => is_a($name, self::DEMO_READ_ONLY, true)) !== []) {
-            $description = 'The demo account is read-only (problem type '.ProblemDetails::BASE.'demo-read-only).';
+        $readOnly = $writes && array_filter($middleware, fn (string $name): bool => is_a($name, self::DEMO_READ_ONLY, true)) !== [];
+        $eligibility = array_filter($middleware, fn (string $name): bool => is_a($name, self::ALERT_ELIGIBILITY, true)) !== [];
+        $notVerified = 'the account\'s email address is not verified yet (problem type '.ProblemDetails::BASE.'email-not-verified).';
+        $description = match (true) {
+            $readOnly && $eligibility => 'The demo account is read-only (problem type '.ProblemDetails::BASE.'demo-read-only), or '.$notVerified,
+            $readOnly => 'The demo account is read-only (problem type '.ProblemDetails::BASE.'demo-read-only).',
+            $eligibility => ucfirst($notVerified),
+            default => null,
+        };
+        if ($description !== null) {
             self::response($responses, 403, $description)->setDescription($description);
         }
     }

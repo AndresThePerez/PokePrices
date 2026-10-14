@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use App\Http\Middleware\RequireAlertEligibility;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Route;
 
 // Plan P4-i1 T05 criterion 2 and T06 criterion 5 (D4, D6): the /v1 contract documents the watchlist, portfolio and
 // demo-session operations with exactly their statuses, 403 demo-read-only on every non-GET account operation and
@@ -55,7 +57,8 @@ it('documents 403 demo-read-only as a problem on every non-GET account operation
                 continue;
             }
             $writes++;
-            expect($operation['responses']['403']['description'] ?? null)->toBe('The demo account is read-only (problem type https://pokeprices.andrestheperez.com/problems/demo-read-only).', "{$method} {$path}")
+            // P5-i1 T03 (R235, same-commit supersession): an operation gated by RequireAlertEligibility names both 403s.
+            expect($operation['responses']['403']['description'] ?? null)->toBe('The demo account is read-only (problem type https://pokeprices.andrestheperez.com/problems/demo-read-only)'.(collect(Route::getRoutes()->getRoutes())->contains(fn ($r): bool => $r->uri() === 'v1'.$path && in_array(strtoupper($method), $r->methods(), true) && in_array(RequireAlertEligibility::class, Route::gatherRouteMiddleware($r), true)) ? ', or the account\'s email address is not verified yet (problem type https://pokeprices.andrestheperez.com/problems/email-not-verified).' : '.'), "{$method} {$path}")
                 ->and($operation['responses']['403']['content'])->toBe(['application/problem+json' => ['schema' => ['$ref' => '#/components/schemas/Problem']]]);
         }
     }

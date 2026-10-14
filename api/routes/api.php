@@ -12,8 +12,10 @@ use App\Http\Controllers\PortfolioController;
 use App\Http\Controllers\PriceFreshnessController;
 use App\Http\Controllers\ReadinessController;
 use App\Http\Controllers\WatchlistController;
+use App\Http\Controllers\WebhookController;
 use App\Http\Middleware\DemoReadOnly;
 use App\Http\Middleware\NoStore;
+use App\Http\Middleware\RequireAlertEligibility;
 use App\Http\Middleware\ThrottleBeforeSession;
 use Illuminate\Support\Facades\Route;
 use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
@@ -65,6 +67,18 @@ Route::middleware([
     Route::get('/portfolio', [PortfolioController::class, 'index'])->name('portfolio.index');
     Route::put('/portfolio/{variantKey}', [PortfolioController::class, 'put'])->where('variantKey', '.+')->name('portfolio.put');
     Route::delete('/portfolio/{variantKey}', [PortfolioController::class, 'destroy'])->where('variantKey', '.+')->name('portfolio.destroy');
+
+    // Webhooks (plan P5-i1 D9, T03). Adding one and sending a test message need a verified, non-demo account
+    // (RequireAlertEligibility, P4 D15 attached; the demo meets DemoReadOnly first). The parameter is {id}, numeric
+    // and at most 18 digits (review A02): anything else is the framework's 404, and the controller looks the id up
+    // only among the caller's own webhooks, so another user's id is answered as if it did not exist.
+    Route::get('/webhooks', [WebhookController::class, 'index'])->name('webhooks.index');
+    Route::post('/webhooks', [WebhookController::class, 'store'])->middleware(RequireAlertEligibility::class)->name('webhooks.store');
+    Route::delete('/webhooks/{id}', [WebhookController::class, 'destroy'])->where('id', '[0-9]{1,18}')->name('webhooks.destroy');
+    Route::post('/webhooks/{id}/test', [WebhookController::class, 'test'])
+        ->where('id', '[0-9]{1,18}')
+        ->middleware([RequireAlertEligibility::class, 'throttle:webhook-test'])
+        ->name('webhooks.test');
 });
 
 // One-click entry to the read-only demo (D6, D8): outside the account group (a visitor is not signed in yet), stateful

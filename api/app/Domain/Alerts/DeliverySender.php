@@ -19,14 +19,17 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * One attempt of one claimed delivery (plan P5-i1 D7; channel webhook here, T03 adds discord and T06 email).
+ * One attempt of one claimed delivery (plan P5-i1 D7; channel webhook from T02, discord from T03, T06 adds email).
  *
  * send() acts only on a row that is still pending AND whose next_attempt_at is the lease its claim set (compare and
  * set), so a delivered or failed row, or a row another sweep re-claimed, is never sent again. A row whose endpoint
- * is gone or turned off fails with no_channel and no request. Otherwise it makes one attempt: the address guard
- * (D6), then one signed POST (D5) pinned to the approved address, redirects off, 2 s connect and 5 s total
- * timeouts, at most 64 KiB of the response read. The UPDATE that records the outcome is the one that raises
- * attempts, under the same compare and set.
+ * is gone or turned off, or is not of the row's channel (webhook: a signed endpoint; discord: a Discord endpoint), fails
+ * with no_channel and no request. Otherwise it makes one attempt: the address guard (D6), then one POST pinned to the
+ * approved address, redirects off, 2 s connect and 5 s total timeouts, at most 64 KiB of the response read: signed
+ * (D5) for a webhook; for Discord the stored envelope with no signature headers, and only to a URL of D6's Discord
+ * shape. The UPDATE that records the outcome is the one that raises attempts, under the same compare and set. A 410
+ * turns the endpoint off, and so do a Discord endpoint's 404 and 401 (Discord's answers for a deleted webhook or a
+ * bad token, review A10.6).
  *
  * Containment (review A05, A08): everything after loading the row runs inside catch (Throwable). An exception is
  * recorded as last_error internal (retryable, so it still ends failed after the last attempt) and logged as its
@@ -67,12 +70,14 @@ final class DeliverySender
 
         try {
             $endpoint = $delivery->endpoint_id === null ? null : WebhookEndpoint::query()->find($delivery->endpoint_id);
-            if (! $endpoint instanceof WebhookEndpoint || $endpoint->disabled_at !== null) {
+            if (! $endpoint instanceof WebhookEndpoint || $endpoint->disabled_at !== null || ! self::serves($endpoint, $delivery->channel)) {
                 $attempted = false;
                 $error = 'no_channel';
             } else {
-                [$status, $error, $retryAfter] = $this->webhook($delivery, $endpoint);
-                $disable = $status === 410;
+                [$status, $error, $retryAfter] = $endpoint->kind === 'discord'
+                    ? $this->discord($endpoint->url, $delivery->body)
+                    : $this->webhook($delivery, $endpoint);
+                $disable = $status === 410 || ($endpoint->kind === 'discord' && ($status === 404 || $status === 401));
             }
         } catch (Throwable $e) {
             $status = null;
@@ -140,7 +145,40 @@ final class DeliverySender
         if (! $check->allowed()) {
             return [null, $check->error === 'unresolvable' ? 'unresolvable' : 'blocked_address', null];
         }
+        $headers = WebhookSigner::headers((string) $endpoint->secret, $delivery->message_id, CarbonImmutable::now()->getTimestamp(), $delivery->body);
 
+        return $this->post($url, $check, $headers, $delivery->body);
+    }
+
+    /**
+     * One POST of a Discord envelope through the guard, with no signature headers: [HTTP status or null, last_error
+     * or null, Retry-After seconds or null]. A URL that is not of D6's Discord shape is refused as blocked_address,
+     * without a request. Also the live switch's one send (pokeprices:alerts:discord-test, D13). Exceptions other than
+     * a failed connection propagate; callers contain them.
+     *
+     * @return array{0: int|null, 1: string|null, 2: int|null}
+     */
+    public function discord(#[\SensitiveParameter] string $url, string $body): array
+    {
+        if (! DiscordMessage::isWebhookUrl($url)) {
+            return [null, 'blocked_address', null];
+        }
+        $check = $this->guard->check($url);
+        if (! $check->allowed()) {
+            return [null, $check->error === 'unresolvable' ? 'unresolvable' : 'blocked_address', null];
+        }
+
+        return $this->post($url, $check, [], $body);
+    }
+
+    /**
+     * One POST to the address the guard approved: [HTTP status or null, last_error or null, Retry-After or null].
+     *
+     * @param  array<string, string>  $headers
+     * @return array{0: int|null, 1: string|null, 2: int|null}
+     */
+    private function post(#[\SensitiveParameter] string $url, GuardResult $check, array $headers, string $body): array
+    {
         $options = [
             'stream' => true,
             'allow_redirects' => false,
@@ -155,8 +193,6 @@ final class DeliverySender
             $options['curl'] = [CURLOPT_RESOLVE => $pin];
         }
 
-        $headers = WebhookSigner::headers((string) $endpoint->secret, $delivery->message_id, CarbonImmutable::now()->getTimestamp(), $delivery->body);
-
         try {
             // The curl handler for every request: Guzzle's default sends "stream" requests through PHP streams,
             // which would ignore CURLOPT_RESOLVE and resolve the host again.
@@ -164,7 +200,7 @@ final class DeliverySender
                 ->setHandler(new CurlHandler)
                 ->withUserAgent(self::USER_AGENT)
                 ->withHeaders($headers)
-                ->withBody($delivery->body, 'application/json')
+                ->withBody($body, 'application/json')
                 ->post($url);
         } catch (ConnectionException $e) {
             return [null, self::timedOut($e) ? 'timeout' : 'connection', null];
@@ -198,6 +234,12 @@ final class DeliverySender
             $read += strlen($chunk);
         }
         $body->close();
+    }
+
+    /** Whether the endpoint serves the row's channel: a webhook row needs a signed endpoint, a discord row a Discord one. */
+    private static function serves(WebhookEndpoint $endpoint, string $channel): bool
+    {
+        return ($channel === 'webhook' && $endpoint->kind === 'standard') || ($channel === 'discord' && $endpoint->kind === 'discord');
     }
 
     private static function retryable(?int $status, ?string $error): bool

@@ -2,10 +2,13 @@
 
 declare(strict_types=1);
 
-// Alert delivery settings (plan P5-i1 D14). T01 adds the catalog grace, T02 the webhook and delivery keys; later
-// tasks add theirs.
+// Alert delivery settings (plan P5-i1 D14). T01 adds the catalog grace, T02 the webhook and delivery keys, T03 the
+// per-user webhook limits, the Discord test switch and the webhook-test limiter; later tasks add theirs.
 return [
     'webhooks' => [
+        // Per user (D9): at most this many signed webhooks and Discord webhooks, disabled ones included.
+        'limit' => 5,
+        'discord_limit' => 1,
         // Exact host:port pairs that skip the address guard and may use http (D6). WEBHOOK_PRIVATE_ALLOW is a
         // comma-separated list; without it, only the dev stack (APP_ENV local) allow-lists the local sink.
         'private_allow' => array_values(array_filter(
@@ -34,4 +37,11 @@ return [
     // Minutes after the deliverable day's newest ok run finished during which a degraded catalog read defers the
     // creation of deliveries (D3, review A10.1); after it, deliveries are created with whatever names the read gave.
     'catalog_grace_minutes' => 30,
+
+    // The live Discord switch (D13, R230, HG-04): DISCORD_TEST_WEBHOOK_URL is set by Andres in the environment only,
+    // never committed; unset, pokeprices:alerts:discord-test sends nothing.
+    'discord' => ['test_webhook_url' => env('DISCORD_TEST_WEBHOOK_URL')],
+
+    // Requests per minute, per user (App\Domain\Alerts\AlertRateLimits): POST /v1/webhooks/{id}/test.
+    'rate_limits' => ['webhook-test' => 5],
 ];
