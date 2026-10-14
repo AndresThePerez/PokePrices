@@ -13,13 +13,16 @@ use GuzzleHttp\Exception\ResponseTimeoutException;
 use GuzzleHttp\Handler\CurlHandler;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
+use Illuminate\Mail\Message;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Throwable;
+use UnexpectedValueException;
 
 /**
- * One attempt of one claimed delivery (plan P5-i1 D7; channel webhook from T02, discord from T03, T06 adds email).
+ * One attempt of one claimed delivery (plan P5-i1 D7; channel webhook from T02, discord from T03, email from T06).
  *
  * send() acts only on a row that is still pending AND whose next_attempt_at is the lease its claim set (compare and
  * set), so a delivered or failed row, or a row another sweep re-claimed, is never sent again. A row whose endpoint
@@ -27,9 +30,11 @@ use Throwable;
  * with no_channel and no request. Otherwise it makes one attempt: the address guard (D6), then one POST pinned to the
  * approved address, redirects off, 2 s connect and 5 s total timeouts, at most 64 KiB of the response read: signed
  * (D5) for a webhook; for Discord the stored envelope with no signature headers, and only to a URL of D6's Discord
- * shape. The UPDATE that records the outcome is the one that raises attempts, under the same compare and set. A 410
- * turns the endpoint off, and so do a Discord endpoint's 404 and 401 (Discord's answers for a deleted webhook or a
- * bad token, review A10.6).
+ * shape; for email one raw message (Mail::raw, the default mailer) with the stored subject and text to the person's
+ * address as it is at send time (never stored in the row; no_channel when there is none), delivered when the mailer
+ * does not throw. The UPDATE that records the outcome is the one that raises attempts, under the same compare and
+ * set. A 410 turns the endpoint off, and so do a Discord endpoint's 404 and 401 (Discord's answers for a deleted
+ * webhook or a bad token, review A10.6).
  *
  * Containment (review A05, A08): everything after loading the row runs inside catch (Throwable). An exception is
  * recorded as last_error internal (retryable, so it still ends failed after the last attempt) and logged as its
@@ -67,10 +72,20 @@ final class DeliverySender
         $retryAfter = null;
         $attempted = true;
         $disable = false;
+        $mailed = false;
 
         try {
             $endpoint = $delivery->endpoint_id === null ? null : WebhookEndpoint::query()->find($delivery->endpoint_id);
-            if (! $endpoint instanceof WebhookEndpoint || $endpoint->disabled_at !== null || ! self::serves($endpoint, $delivery->channel)) {
+            if ($delivery->channel === 'email') {
+                $address = $delivery->endpoint_id === null ? self::address($delivery->user_id) : null;
+                if ($address === null) {
+                    $attempted = false;
+                    $error = 'no_channel';
+                } else {
+                    self::email($address, $delivery->body);
+                    $mailed = true;
+                }
+            } elseif (! $endpoint instanceof WebhookEndpoint || $endpoint->disabled_at !== null || ! self::serves($endpoint, $delivery->channel)) {
                 $attempted = false;
                 $error = 'no_channel';
             } else {
@@ -88,7 +103,7 @@ final class DeliverySender
         $now = CarbonImmutable::now();
         $attempts = $delivery->attempts + ($attempted ? 1 : 0);
         $outcome = match (true) {
-            $error === null && $status !== null && $status >= 200 && $status < 300 => 'delivered',
+            $error === null && ($mailed || ($status !== null && $status >= 200 && $status < 300)) => 'delivered',
             $attempted && self::retryable($status, $error) && $attempts < (int) config('alerts.delivery.max_attempts', 6) => 'retry',
             default => 'failed',
         };
@@ -234,6 +249,30 @@ final class DeliverySender
             $read += strlen($chunk);
         }
         $body->close();
+    }
+
+    /** The person's current address, read at send time; null when the person or the address is gone. */
+    private static function address(int $userId): ?string
+    {
+        $email = DB::table('users')->where('id', $userId)->value('email');
+
+        return is_string($email) && $email !== '' ? $email : null;
+    }
+
+    /**
+     * One raw message of the stored {"subject", "text"} to $address on the default mailer (the log mailer on the dev
+     * stack, the array mailer under Pest). A malformed body or a mailer failure throws; send() contains it.
+     */
+    private static function email(#[\SensitiveParameter] string $address, string $body): void
+    {
+        $message = json_decode($body, true, 4, JSON_THROW_ON_ERROR);
+        if (! is_array($message) || ! is_string($message['subject'] ?? null) || ! is_string($message['text'] ?? null)) {
+            throw new UnexpectedValueException('email body without subject and text');
+        }
+        $subject = $message['subject'];
+        Mail::raw($message['text'], function (Message $mail) use ($address, $subject): void {
+            $mail->to($address)->subject($subject);
+        });
     }
 
     /** Whether the endpoint serves the row's channel: a webhook row needs a signed endpoint, a discord row a Discord one. */

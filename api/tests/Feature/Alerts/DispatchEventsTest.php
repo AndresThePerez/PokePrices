@@ -84,7 +84,7 @@ it('delivers an event once to each active standard endpoint of each eligible wat
     $rows = DB::select('SELECT user_id, kind, channel, endpoint_id, event_id, day::text AS day, status, attempts, claims, next_attempt_at, last_status, last_error, delivered_at FROM deliveries ORDER BY endpoint_id');
 
     expect($code)->toBe(0)
-        ->and($line['created'])->toBe(['price.moved' => 4])
+        ->and($line['created'])->toBe(['price.moved' => 4, 'alert.triggered' => 0, 'digest' => 0])
         ->and(AlertRows::moved())->toBe([[$event, $w1], [$event, $w2], [$event, $h1], [$event, $h2]])
         ->and(array_map(fn (object $r): array => [(int) $r->user_id, $r->kind, $r->channel, (int) $r->event_id, $r->day, $r->status, (int) $r->attempts, (int) $r->claims, $r->last_status, $r->last_error, $r->delivered_at], $rows))
         ->toBe([
@@ -154,7 +154,7 @@ it('reads card names only when a delivery is missing', function (): void {
     [, $line] = AlertRows::dispatch();
 
     expect($first)->toBe([['base1-4']])
-        ->and($line['created'])->toBe(['price.moved' => 0])
+        ->and($line['created'])->toBe(['price.moved' => 0, 'alert.triggered' => 0, 'digest' => 0])
         ->and(p5CatalogRequests())->toBe(0);
 });
 
@@ -177,11 +177,11 @@ it('creates nothing while the catalog is degraded within 30 minutes of the day\'
     $body = json_decode((string) DB::table('deliveries')->value('body'), true);
 
     expect([$within, $after])->toBe([0, 0])
-        ->and($withinLine)->toMatchArray(['deliverable_day' => '2026-10-12', 'skipped' => 'catalog degraded', 'created' => ['price.moved' => 0]])
+        ->and($withinLine)->toMatchArray(['deliverable_day' => '2026-10-12', 'skipped' => 'catalog degraded', 'created' => ['price.moved' => 0, 'alert.triggered' => 0, 'digest' => 0]])
         ->and($withinRows)->toBe(0)
         ->and($warnings)->toHaveCount(1)
         ->and($warnings[0]['level'])->toBe('warning')
-        ->and($afterLine)->toMatchArray(['skipped' => null, 'created' => ['price.moved' => 1]])
+        ->and($afterLine)->toMatchArray(['skipped' => null, 'created' => ['price.moved' => 1, 'alert.triggered' => 0, 'digest' => 0]])
         ->and($body['data']['card'])->toBeNull()
         ->and(array_keys($body['data']))->toContain('card');
 });
@@ -250,7 +250,7 @@ it('reports events, measured and scoped_events, and logs the same object as aler
 
     expect($code)->toBe(0)
         ->and(array_keys($line))->toBe(['source', 'deliverable_day', 'newest_day', 'floor', 'watermark', 'ceiling', 'events', 'measured', 'scoped_events', 'created', 'skipped', 'passed_over'])
-        ->and($line)->toMatchArray(['source' => 'tcgplayer', 'deliverable_day' => '2026-10-12', 'events' => 3, 'measured' => 3, 'scoped_events' => 2, 'created' => ['price.moved' => 1]])
+        ->and($line)->toMatchArray(['source' => 'tcgplayer', 'deliverable_day' => '2026-10-12', 'events' => 3, 'measured' => 3, 'scoped_events' => 2, 'created' => ['price.moved' => 1, 'alert.triggered' => 0, 'digest' => 0]])
         ->and(substr_count(trim($output), "\n"))->toBe(0)
         ->and($logged)->toHaveCount(1)
         ->and($logged[0]['level'])->toBe('info')
@@ -265,7 +265,7 @@ it('reports no finalized day with exit 0 and creates nothing', function (): void
     expect($code)->toBe(0)
         ->and($line)->toBe([
             'source' => 'tcgplayer', 'deliverable_day' => null, 'newest_day' => null, 'floor' => null, 'watermark' => null,
-            'ceiling' => null, 'events' => 0, 'measured' => null, 'scoped_events' => 0, 'created' => ['price.moved' => 0],
+            'ceiling' => null, 'events' => 0, 'measured' => null, 'scoped_events' => 0, 'created' => ['price.moved' => 0, 'alert.triggered' => 0, 'digest' => 0],
             'skipped' => 'no finalized day', 'passed_over' => [],
         ])
         ->and(AlertRows::days())->toBe([])
@@ -282,7 +282,7 @@ it('runs the same dispatch from the queued job as from the command', function ()
     dispatch(new DispatchEvents);
 
     expect(AlertRows::moved())->toBe([[$event, $endpoint]])
-        ->and(AlertRows::logged('alerts_dispatch')[0]['context']['created'])->toBe(['price.moved' => 1]);
+        ->and(AlertRows::logged('alerts_dispatch')[0]['context']['created'])->toBe(['price.moved' => 1, 'alert.triggered' => 0, 'digest' => 0]);
 });
 
 it('schedules DispatchEvents every five minutes without overlapping as pokeprices-alerts-dispatch on redis/default', function (): void {

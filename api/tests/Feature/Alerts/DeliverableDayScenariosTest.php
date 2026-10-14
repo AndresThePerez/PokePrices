@@ -77,7 +77,7 @@ test('(a) first start: only the newest finalized day is delivered, and its ceili
         ->and(AlertRows::days())->toBe([['tcgplayer', '2026-10-12', max($twelveA, $twelveC)]])
         ->and($line)->toMatchArray([
             'deliverable_day' => '2026-10-12', 'newest_day' => '2026-10-12', 'floor' => '2026-10-12', 'watermark' => null,
-            'ceiling' => max($twelveA, $twelveC), 'events' => 2, 'created' => ['price.moved' => 2], 'skipped' => null, 'passed_over' => [],
+            'ceiling' => max($twelveA, $twelveC), 'events' => 2, 'created' => ['price.moved' => 2, 'alert.triggered' => 0, 'digest' => 0], 'skipped' => null, 'passed_over' => [],
         ]);
 });
 
@@ -154,7 +154,7 @@ test('(d) newest older than the watermark: nothing is deliverable and the skip i
     expect($code)->toBe(0)
         ->and($line)->toMatchArray([
             'deliverable_day' => null, 'newest_day' => '2026-10-11', 'watermark' => '2026-10-12', 'ceiling' => null,
-            'created' => ['price.moved' => 0],
+            'created' => ['price.moved' => 0, 'alert.triggered' => 0, 'digest' => 0],
             'skipped' => 'newest finalized day 2026-10-11 is older than the last dispatched day 2026-10-12',
         ])
         ->and(AlertRows::moved())->toBe($before)
@@ -173,7 +173,7 @@ test('(e) a replay-only newest day with no event: nothing is delivered and the d
     expect($code)->toBe(0)
         ->and(AlertRows::moved())->toBe([])
         ->and(AlertRows::days())->toBe([['tcgplayer', '2026-10-12', null]])
-        ->and($line)->toMatchArray(['deliverable_day' => '2026-10-12', 'ceiling' => null, 'events' => 0, 'created' => ['price.moved' => 0]]);
+        ->and($line)->toMatchArray(['deliverable_day' => '2026-10-12', 'ceiling' => null, 'events' => 0, 'created' => ['price.moved' => 0, 'alert.triggered' => 0, 'digest' => 0]]);
 });
 
 test('(f) a watermark below the pre-crash newest day: nothing during the repair, then only the newest day', function (): void {
@@ -203,7 +203,7 @@ test('(f) a watermark below the pre-crash newest day: nothing during the repair,
 
     expect($during)->toBe([[null, [$eleven]], [null, [$eleven]], [null, [$eleven]]])
         ->and($last['deliverable_day'])->toBe('2026-10-12')
-        ->and($last['created'])->toBe(['price.moved' => 2])
+        ->and($last['created'])->toBe(['price.moved' => 2, 'alert.triggered' => 0, 'digest' => 0])
         ->and(p5DeliveredEvents())->toBe([$eleven, $twelveB, $twelveC])
         ->and(p5DeliveredEvents())->not->toContain($extra);
 });
@@ -221,7 +221,7 @@ test('(g) an event added to a dispatched day is never delivered, even to a new w
     expect($added)->toBeGreaterThan($old)
         ->and(AlertRows::moved())->toBe([[$old, $first], [$old, $second]])
         ->and(AlertRows::days())->toBe([['tcgplayer', '2026-10-12', $old]])
-        ->and($line)->toMatchArray(['ceiling' => $old, 'events' => 1, 'created' => ['price.moved' => 1]]);
+        ->and($line)->toMatchArray(['ceiling' => $old, 'events' => 1, 'created' => ['price.moved' => 1, 'alert.triggered' => 0, 'digest' => 0]]);
 });
 
 test('(h) the operator reset re-opens a mistaken watermark; a later or malformed date is refused', function (): void {
@@ -253,7 +253,7 @@ test('(h) the operator reset re-opens a mistaken watermark; a later or malformed
         ->and($resetCode)->toBe(0)
         ->and($reset)->toBe(['reset_after' => '2026-10-12', 'deleted' => 1])
         ->and($afterReset)->toBe([])
-        ->and($line)->toMatchArray(['deliverable_day' => '2026-10-12', 'created' => ['price.moved' => 1]])
+        ->and($line)->toMatchArray(['deliverable_day' => '2026-10-12', 'created' => ['price.moved' => 1, 'alert.triggered' => 0, 'digest' => 0]])
         ->and(AlertRows::moved())->toBe([[$twelve, $endpoint]]);
 });
 

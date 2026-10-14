@@ -91,10 +91,7 @@ final class DiscordMessage
     /** The web's variantLabel (web/src/format.ts): finish, edition, treatment without '-' or '', else the key. */
     public static function variantLabel(string $variantKey): string
     {
-        $parts = array_slice(explode(':', $variantKey), 1, 3);
-        $words = array_values(array_filter($parts, fn (string $part): bool => $part !== '' && $part !== '-'));
-
-        return $words === [] ? $variantKey : implode(', ', $words);
+        return VariantLabel::of($variantKey);
     }
 
     /** The web's grouped(): an unsigned decimal string with ',' between thousands, digits copied, never parsed. */

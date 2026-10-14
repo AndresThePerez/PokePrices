@@ -6,6 +6,8 @@ namespace App\Domain\Alerts\Jobs;
 
 use App\Domain\Alerts\Deliverable;
 use App\Domain\Alerts\DeliverableDay;
+use App\Domain\Alerts\DiscordMessage;
+use App\Domain\Alerts\NotificationText;
 use App\Domain\Alerts\PriceMovedPayload;
 use App\Domain\Catalog\CatalogRepository;
 use Carbon\CarbonImmutable;
@@ -19,14 +21,19 @@ use stdClass;
 
 /**
  * Watchlist-scoped fan-out of movement events (plan P5-i1 T01, D2, D3, D4, D8; scheduled every five minutes as
- * pokeprices-alerts-dispatch; pokeprices:alerts:dispatch runs it in-line).
+ * pokeprices-alerts-dispatch; pokeprices:alerts:dispatch runs it in-line). T06 adds alerts and the daily digest.
  *
  * Only the events DeliverableDay allows are read. Each becomes one price.moved delivery (channel webhook) per active
  * standard endpoint of each eligible user (verified, not the demo) holding its variant on the watchlist or the
- * portfolio; Discord endpoints never receive price.moved. Creation is INSERT ... ON CONFLICT DO NOTHING on
- * deliveries_moved_unique, so any number of runs creates each delivery once, and a watcher added later gets the
- * day's deliveries on the next run. Card names are read once, only when a delivery is missing; while that read is
- * degraded within config('alerts.catalog_grace_minutes') of the day's newest ok run, nothing is created this run.
+ * portfolio; Discord endpoints never receive price.moved. Each also becomes one alert.triggered delivery per eligible
+ * user whose watchlist row for its variant has a threshold the absolute change reaches; and each eligible user with
+ * the digest on whose watchlist or portfolio holds at least one deliverable event gets one digest for the day.
+ * Alerts and digests go to the user's channel: their active Discord endpoint when they chose Discord and have one at
+ * fan-out time, else email (the address is read when the email is sent). Creation is INSERT ... ON CONFLICT DO
+ * NOTHING on deliveries_moved_unique, deliveries_alert_unique and deliveries_digest_unique, so any number of runs
+ * creates each delivery once, and a watcher added later gets the day's deliveries on the next run. Card names are
+ * read once, only when a delivery is missing; while that read is degraded within config('alerts.catalog_grace_minutes')
+ * of the day's newest ok run, nothing is created this run.
  *
  * Writes deliveries and dispatch_days only. Logs alerts_dispatch (info, the summary the command prints) and an
  * alerts_dispatch_skipped warning for every skip: repair in progress, newest older than the last dispatched day,
@@ -61,7 +68,7 @@ final class DispatchEvents implements ShouldQueue
     /**
      * One dispatch run at $now; returns the summary line (D8).
      *
-     * @return array{source: string, deliverable_day: string|null, newest_day: string|null, floor: string|null, watermark: string|null, ceiling: int|null, events: int, measured: int|null, scoped_events: int, created: array{'price.moved': int}, skipped: string|null, passed_over: list<string>}
+     * @return array{source: string, deliverable_day: string|null, newest_day: string|null, floor: string|null, watermark: string|null, ceiling: int|null, events: int, measured: int|null, scoped_events: int, created: array{'price.moved': int, 'alert.triggered': int, digest: int}, skipped: string|null, passed_over: list<string>}
      */
     public static function run(ConnectionInterface $db, CatalogRepository $catalog, CarbonImmutable $now): array
     {
@@ -89,7 +96,7 @@ final class DispatchEvents implements ShouldQueue
         $events = 0;
         $measured = null;
         $scoped = 0;
-        $created = 0;
+        $created = ['price.moved' => 0, 'alert.triggered' => 0, 'digest' => 0];
         if ($deliverable !== null) {
             $passed = DeliverableDay::passedOver($db, $source, $terms);
             if ($passed !== []) {
@@ -99,13 +106,19 @@ final class DispatchEvents implements ShouldQueue
             $measured = self::measured($db, $source, $deliverable->day);
 
             $missing = self::missing($db, $source, $deliverable);
-            if ($missing !== []) {
-                $names = self::names($catalog, $missing);
+            $alerts = self::missingAlerts($db, $source, $deliverable);
+            $digests = self::missingDigests($db, $source, $deliverable);
+            if ($missing !== [] || $alerts !== [] || $digests !== []) {
+                $names = self::names($catalog, [...$missing, ...$alerts, ...$digests]);
                 if ($names['degraded'] && self::withinGrace($db, $source, $deliverable->day, $now)) {
                     $skipped = 'catalog degraded';
                     self::skip($source, 'catalog degraded', $terms, [$deliverable->day]);
                 } else {
-                    $created = self::create($db, $missing, $names['cards'], $now);
+                    $created = [
+                        'price.moved' => self::create($db, $missing, $names['cards'], $now),
+                        'alert.triggered' => self::createAlerts($db, $alerts, $names['cards'], $now),
+                        'digest' => self::createDigests($db, $deliverable->day, $digests, $names['cards'], $now),
+                    ];
                 }
             }
         }
@@ -120,7 +133,7 @@ final class DispatchEvents implements ShouldQueue
             'events' => $events,
             'measured' => $measured,
             'scoped_events' => $scoped,
-            'created' => ['price.moved' => $created],
+            'created' => $created,
             'skipped' => $skipped,
             'passed_over' => $passed,
         ];
@@ -186,6 +199,65 @@ final class DispatchEvents implements ShouldQueue
     }
 
     /**
+     * Every (event, user) pair that should have an alert.triggered delivery and has none: an eligible user whose
+     * watchlist row for the event's variant has a threshold that abs(change_pct) reaches, with the event's payload
+     * columns, the threshold and the user's Discord endpoint when Discord is their channel and it is active.
+     *
+     * @return list<stdClass>
+     */
+    private static function missingAlerts(ConnectionInterface $db, string $source, Deliverable $deliverable): array
+    {
+        $rows = $db->select(
+            'WITH '.DeliverableDay::eventsCte().' SELECT '.PriceMovedPayload::COLUMNS.', '.<<<'SQL'
+                w.user_id AS notify_user_id, w.alert_pct,
+                CASE WHEN s.channel = 'discord' THEN d.id END AS discord_endpoint_id
+                FROM deliverable_events e
+                JOIN watchlist_items w ON w.variant_key = e.variant_key AND w.alert_pct IS NOT NULL AND abs(e.change_pct) >= w.alert_pct
+                JOIN users u ON u.id = w.user_id AND u.email_verified_at IS NOT NULL AND NOT u.is_demo
+                LEFT JOIN notification_settings s ON s.user_id = w.user_id
+                LEFT JOIN webhook_endpoints d ON d.user_id = w.user_id AND d.kind = 'discord' AND d.disabled_at IS NULL
+                WHERE NOT EXISTS (
+                    SELECT 1 FROM deliveries x WHERE x.kind = 'alert.triggered' AND x.user_id = w.user_id AND x.event_id = e.id
+                )
+                ORDER BY e.id, w.user_id
+                SQL,
+            DeliverableDay::eventsBindings($source, $deliverable),
+            false,
+        );
+
+        return array_values(array_filter($rows, fn (mixed $r): bool => $r instanceof stdClass));
+    }
+
+    /**
+     * The deliverable events of every eligible user with the digest on and no digest for the day yet, one row per
+     * (user, event) of their watchlist or portfolio (a variant on both once), with the user's Discord endpoint when
+     * Discord is their channel and it is active; ordered by user. A user with no deliverable event has no row.
+     *
+     * @return list<stdClass>
+     */
+    private static function missingDigests(ConnectionInterface $db, string $source, Deliverable $deliverable): array
+    {
+        $rows = $db->select(
+            'WITH '.DeliverableDay::eventsCte().', '.self::WATCHED.' SELECT '.PriceMovedPayload::COLUMNS.', '.<<<'SQL'
+                s.user_id AS notify_user_id,
+                CASE WHEN s.channel = 'discord' THEN d.id END AS discord_endpoint_id
+                FROM notification_settings s
+                JOIN eligible_watched w ON w.user_id = s.user_id
+                JOIN deliverable_events e ON e.variant_key = w.variant_key
+                LEFT JOIN webhook_endpoints d ON d.user_id = s.user_id AND d.kind = 'discord' AND d.disabled_at IS NULL
+                WHERE s.digest AND NOT EXISTS (
+                    SELECT 1 FROM deliveries x WHERE x.kind = 'digest' AND x.user_id = s.user_id AND x.day = ?::date
+                )
+                ORDER BY s.user_id, e.id
+                SQL,
+            [...DeliverableDay::eventsBindings($source, $deliverable), $deliverable->day],
+            false,
+        );
+
+        return array_values(array_filter($rows, fn (mixed $r): bool => $r instanceof stdClass));
+    }
+
+    /**
      * One batched catalog read of the missing events' card ids.
      *
      * @param  list<stdClass>  $missing
@@ -238,6 +310,78 @@ final class DispatchEvents implements ShouldQueue
                 'INSERT INTO deliveries (message_id, user_id, kind, channel, endpoint_id, event_id, day, body, next_attempt_at) VALUES '
                 .implode(', ', $values)
                 ." ON CONFLICT (event_id, endpoint_id) WHERE kind = 'price.moved' DO NOTHING",
+                $bindings,
+            );
+        }
+
+        return $created;
+    }
+
+    /**
+     * Inserts the missing alerts (ON CONFLICT DO NOTHING on deliveries_alert_unique); returns how many it created.
+     *
+     * @param  list<stdClass>  $alerts
+     * @param  array<string, array{name: string, set_name: string, number: string}|null>  $cards
+     */
+    private static function createAlerts(ConnectionInterface $db, array $alerts, array $cards, CarbonImmutable $now): int
+    {
+        $rows = [];
+        foreach ($alerts as $row) {
+            $message = NotificationText::alert($row, $cards[(string) $row->card_id] ?? null, (int) $row->alert_pct);
+            $discord = $row->discord_endpoint_id === null ? null : (int) $row->discord_endpoint_id;
+            $body = $discord === null ? NotificationText::emailBody($message) : DiscordMessage::envelope($message['text']);
+            $rows[] = [(int) $row->notify_user_id, $discord, (int) $row->id, (string) $row->day, $body];
+        }
+
+        return self::insertNotifications($db, 'alert.triggered', $rows, $now, '(user_id, event_id) WHERE kind = \'alert.triggered\'');
+    }
+
+    /**
+     * Inserts one digest per user of $digests (ON CONFLICT DO NOTHING on deliveries_digest_unique); returns how many
+     * it created.
+     *
+     * @param  list<stdClass>  $digests
+     * @param  array<string, array{name: string, set_name: string, number: string}|null>  $cards
+     */
+    private static function createDigests(ConnectionInterface $db, string $day, array $digests, array $cards, CarbonImmutable $now): int
+    {
+        $byUser = [];
+        foreach ($digests as $row) {
+            $userId = (int) $row->notify_user_id;
+            $byUser[$userId]['discord'] = $row->discord_endpoint_id === null ? null : (int) $row->discord_endpoint_id;
+            $byUser[$userId]['moves'][] = ['event' => $row, 'card' => $cards[(string) $row->card_id] ?? null];
+        }
+
+        $rows = [];
+        foreach ($byUser as $userId => $digest) {
+            $body = $digest['discord'] === null
+                ? NotificationText::emailBody(NotificationText::digest($day, $digest['moves'], (int) config('alerts.digest.max_lines', 25)))
+                : DiscordMessage::envelope(NotificationText::discordDigest($day, $digest['moves']));
+            $rows[] = [$userId, $digest['discord'], null, $day, $body];
+        }
+
+        return self::insertNotifications($db, 'digest', $rows, $now, '(user_id, day) WHERE kind = \'digest\'');
+    }
+
+    /**
+     * Inserts alert or digest deliveries, channel discord with the endpoint when one is given, else email.
+     *
+     * @param  list<array{0: int, 1: int|null, 2: int|null, 3: string, 4: string}>  $rows  [user_id, discord endpoint id, event_id, day, body]
+     */
+    private static function insertNotifications(ConnectionInterface $db, string $kind, array $rows, CarbonImmutable $now, string $conflict): int
+    {
+        $due = $now->utc()->format('Y-m-d H:i:sP');
+        $created = 0;
+        foreach (array_chunk($rows, self::INSERT_CHUNK) as $chunk) {
+            $values = [];
+            $bindings = [];
+            foreach ($chunk as [$userId, $endpointId, $eventId, $day, $body]) {
+                $values[] = '(?, ?, ?, ?, ?::bigint, ?::bigint, ?::date, ?, ?::timestamptz)';
+                array_push($bindings, 'msg_'.Str::ulid(), $userId, $kind, $endpointId === null ? 'email' : 'discord', $endpointId, $eventId, $day, $body, $due);
+            }
+            $created += $db->affectingStatement(
+                'INSERT INTO deliveries (message_id, user_id, kind, channel, endpoint_id, event_id, day, body, next_attempt_at) VALUES '
+                .implode(', ', $values)." ON CONFLICT {$conflict} DO NOTHING",
                 $bindings,
             );
         }

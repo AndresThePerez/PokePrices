@@ -80,7 +80,7 @@ it('keeps a competing dispatch\'s delivery untouched and creates only the missin
     [$code, $line] = AlertRows::dispatch();
 
     expect($code)->toBe(0)
-        ->and($line['created'])->toBe(['price.moved' => 1])
+        ->and($line['created'])->toBe(['price.moved' => 1, 'alert.triggered' => 0, 'digest' => 0])
         ->and(AlertRows::moved())->toBe([[$event, $first], [$event, $second]])
         ->and(DB::table('deliveries')->where('endpoint_id', $first)->pluck('body', 'message_id')->all())->toBe(['msg_RIVAL' => 'rival-body']);
 });
@@ -122,8 +122,8 @@ it('creates 1001 deliveries for one event over three INSERT chunks, once each, w
     [, $first] = AlertRows::dispatch();
     [, $second] = AlertRows::dispatch();
 
-    expect($first['created'])->toBe(['price.moved' => 1001])
-        ->and($second['created'])->toBe(['price.moved' => 0])
+    expect($first['created'])->toBe(['price.moved' => 1001, 'alert.triggered' => 0, 'digest' => 0])
+        ->and($second['created'])->toBe(['price.moved' => 0, 'alert.triggered' => 0, 'digest' => 0])
         ->and(DB::table('deliveries')->count())->toBe(1001)
         ->and(DB::table('deliveries')->distinct()->count('message_id'))->toBe(1001)
         ->and(DB::table('deliveries')->distinct()->count('endpoint_id'))->toBe(1001)
@@ -187,11 +187,11 @@ it('delivers nothing for a day recorded with a null ceiling even when events app
     [, $reopened] = AlertRows::dispatch();
 
     expect($empty)->toMatchArray(['deliverable_day' => '2026-10-12', 'ceiling' => null, 'events' => 0])
-        ->and($later)->toMatchArray(['ceiling' => null, 'events' => 0, 'scoped_events' => 0, 'created' => ['price.moved' => 0]])
+        ->and($later)->toMatchArray(['ceiling' => null, 'events' => 0, 'scoped_events' => 0, 'created' => ['price.moved' => 0, 'alert.triggered' => 0, 'digest' => 0]])
         ->and($before)->toBe([[['tcgplayer', '2026-10-12', null]], []])
         ->and($resetCode)->toBe(0)
         ->and($reset)->toBe(['reset_after' => '2026-10-11', 'deleted' => 1])
-        ->and($reopened)->toMatchArray(['ceiling' => $event, 'events' => 1, 'created' => ['price.moved' => 1]])
+        ->and($reopened)->toMatchArray(['ceiling' => $event, 'events' => 1, 'created' => ['price.moved' => 1, 'alert.triggered' => 0, 'digest' => 0]])
         ->and(AlertRows::days())->toBe([['tcgplayer', '2026-10-12', $event]]);
 });
 
@@ -263,7 +263,7 @@ it('changes no row of any table except deliveries and dispatch_days', function (
 
     [, $line] = AlertRows::dispatch();
 
-    expect($line['created'])->toBe(['price.moved' => 2])
+    expect($line['created'])->toBe(['price.moved' => 2, 'alert.triggered' => 0, 'digest' => 0])
         ->and(count($tables))->toBeGreaterThan(10)
         ->and($snapshot())->toBe($before)
         ->and(DB::table('price_events')->whereNotNull('dispatched_at')->count())->toBe(0);

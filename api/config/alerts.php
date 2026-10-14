@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 // Alert delivery settings (plan P5-i1 D14). T01 adds the catalog grace, T02 the webhook and delivery keys, T03 the
-// per-user webhook limits, the Discord test switch and the webhook-test limiter; later tasks add theirs.
+// per-user webhook limits, the Discord test switch and the webhook-test limiter, T05 the export cap, T06 the digest.
 return [
     'webhooks' => [
         // Per user (D9): at most this many signed webhooks and Discord webhooks, disabled ones included.
@@ -48,4 +48,7 @@ return [
 
     // Requests per minute, per user (App\Domain\Alerts\AlertRateLimits): POST /v1/webhooks/{id}/test.
     'rate_limits' => ['webhook-test' => 5],
+
+    // The daily digest (D4): at most this many move lines, then "…and <k> more" with a link to the watchlist.
+    'digest' => ['max_lines' => 25],
 ];
