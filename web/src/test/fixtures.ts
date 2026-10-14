@@ -893,8 +893,8 @@ export const chimechoPrice = closeOf({
   change_pct: '-2.44',
 });
 
-/** One watchlist item; Charizard holo unlimited unless `fields` say otherwise. */
-export function watchItemOf(fields: Partial<WatchlistItem> = {}): WatchlistItem {
+/** The fields a watchlist item and a holding share (Charizard holo unlimited); P5 T05 split them out. */
+function variantFieldsOf(): Omit<WatchlistItem, 'alert_pct'> {
   return {
     variant_key: 'base1-4:holo:unlimited:-',
     card_id: 'base1-4',
@@ -903,6 +903,14 @@ export function watchItemOf(fields: Partial<WatchlistItem> = {}): WatchlistItem 
     treatment: '-',
     card: charizard,
     price: charizardPrice,
+  };
+}
+
+/** One watchlist item; Charizard holo unlimited, no alert, unless `fields` say otherwise. */
+export function watchItemOf(fields: Partial<WatchlistItem> = {}): WatchlistItem {
+  return {
+    ...variantFieldsOf(),
+    alert_pct: null,
     ...fields,
   } satisfies WatchlistItem;
 }
@@ -939,7 +947,7 @@ export function watchlistBody(
 /** One holding; Charizard holo unlimited × 1 at 968.91 unless `fields` say otherwise. */
 export function holdingOf(fields: Partial<Holding> = {}): Holding {
   return {
-    ...watchItemOf(),
+    ...variantFieldsOf(),
     quantity: 1,
     value: '968.91',
     ...fields,

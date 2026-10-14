@@ -16,14 +16,15 @@ final class Watchlist
     public function __construct(private readonly ConnectionInterface $db) {}
 
     /**
-     * The user's items ordered by card id, then variant key: variant_key, card_id, finish, edition, treatment and
-     * the price_<column> values of its latest close (null columns without one), in one statement.
+     * The user's items ordered by card id, then variant key: variant_key, card_id, finish, edition, treatment, the
+     * price_<column> values of its latest close (null columns without one) and its alert_pct (plan P5-i1 T05), in one
+     * statement.
      *
      * @return list<array<string, mixed>>
      */
     public function items(int $userId): array
     {
-        $sql = 'SELECT '.VariantRows::selectAndJoin('w').' FROM watchlist_items w '.VariantRows::joins('w')
+        $sql = 'SELECT '.VariantRows::selectAndJoin('w').', w.alert_pct FROM watchlist_items w '.VariantRows::joins('w')
             .' WHERE w.user_id = ? '.VariantRows::orderBy('w');
 
         return VariantRows::arrays($this->db->select($sql, [(string) config('pricing.source'), $userId], false));

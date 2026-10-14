@@ -38,6 +38,10 @@ return [
     // creation of deliveries (D3, review A10.1); after it, deliveries are created with whatever names the read gave.
     'catalog_grace_minutes' => 30,
 
+    // GET /v1/me/export lists at most this many of a person's deliveries, newest first (D9, review A10.4); with the
+    // 30-day retention that is everything kept in practice.
+    'export_deliveries_limit' => 500,
+
     // The live Discord switch (D13, R230, HG-04): DISCORD_TEST_WEBHOOK_URL is set by Andres in the environment only,
     // never committed; unset, pokeprices:alerts:discord-test sends nothing.
     'discord' => ['test_webhook_url' => env('DISCORD_TEST_WEBHOOK_URL')],

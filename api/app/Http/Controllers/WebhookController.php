@@ -90,13 +90,13 @@ final class WebhookController
     /**
      * Delete a webhook.
      *
-     * Deletes the signed-in account's webhook with this id, and every message still waiting for it. The answer is 204 also when the account has no webhook with this id (nothing changes). The demo account is read-only (403 demo-read-only).
+     * Deletes the signed-in account's webhook with this id, and every message still waiting for it. Deleting the Discord webhook while alerts go to Discord sets them back to email. The answer is 204 also when the account has no webhook with this id (nothing changes). The demo account is read-only (403 demo-read-only).
      *
      * @operationId deleteWebhook
      */
     public function destroy(Request $request, string $id): Response
     {
-        DB::delete('DELETE FROM webhook_endpoints WHERE id = ? AND user_id = ?', [(int) $id, self::userId($request)]);
+        WebhookEndpoints::delete(DB::connection(), self::userId($request), (int) $id);
 
         return response()->noContent();
     }

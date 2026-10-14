@@ -327,7 +327,7 @@ it('gates exactly the alert-creating webhook routes behind the create-alerts Gat
         ->filter(fn ($route): bool => in_array(RequireAlertEligibility::class, Route::gatherRouteMiddleware($route), true))
         ->map(fn ($route): ?string => $route->getName())->sort()->values()->all();
 
-    expect($names)->toBe(['webhooks.store', 'webhooks.test'])
+    expect($names)->toBe(['alerts.put', 'notifications.put', 'webhooks.store', 'webhooks.test'])
         ->and(AlertEligibility::GATE)->toBe('create-alerts');
 });
 

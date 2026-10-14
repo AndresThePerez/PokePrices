@@ -61,6 +61,7 @@ it('lists the watchlist with names and the price block, ordered by card_id then 
                 'variant_key' => 'base1-4:holo:1st:-', 'card_id' => 'base1-4', 'finish' => 'holo', 'edition' => '1st', 'treatment' => '-',
                 'card' => ['name' => 'Name of base1-4', 'set_name' => 'Set of base1-4', 'number' => '4'],
                 'price' => null,
+                'alert_pct' => null,
             ],
             [
                 'variant_key' => 'base1-4:holo:unlimited:-', 'card_id' => 'base1-4', 'finish' => 'holo', 'edition' => 'unlimited', 'treatment' => '-',
@@ -70,6 +71,7 @@ it('lists the watchlist with names and the price block, ordered by card_id then 
                     'close' => '968.91', 'day' => '2026-10-11', 'as_of' => '2026-10-11T20:05:45Z', 'previous_close' => null,
                     'previous_day' => null, 'change' => null, 'change_pct' => null, 'series_epoch' => 1,
                 ],
+                'alert_pct' => null,
             ],
             [
                 'variant_key' => 'ex5-17:reverse:-:-', 'card_id' => 'ex5-17', 'finish' => 'reverse', 'edition' => '-', 'treatment' => '-',
@@ -79,6 +81,7 @@ it('lists the watchlist with names and the price block, ordered by card_id then 
                     'close' => '26.34', 'day' => '2026-10-12', 'as_of' => '2026-10-12T20:05:45Z', 'previous_close' => '25.00',
                     'previous_day' => '2026-10-11', 'change' => '1.34', 'change_pct' => '5.36', 'series_epoch' => 1,
                 ],
+                'alert_pct' => null,
             ],
         ],
         'meta' => ['count' => 3, 'limit' => 100, 'degraded' => false],

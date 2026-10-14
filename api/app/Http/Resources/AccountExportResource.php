@@ -17,7 +17,7 @@ final class AccountExportResource extends JsonResource
     public const string FILENAME = 'pokeprices-export.json';
 
     /**
-     * @param  array{format: string, version: int, account: array{email: string, email_verified_at: string|null, two_factor: bool, created_at: string|null}, watchlist: list<array{variant_key: string, added_at: string}>, portfolio: list<array{variant_key: string, quantity: int, added_at: string, updated_at: string}>, sessions: list<array{last_active_at: string, ip_address: string|null, user_agent: string|null}>}  $export
+     * @param  array{format: string, version: int, account: array{email: string, email_verified_at: string|null, two_factor: bool, created_at: string|null}, watchlist: list<array{variant_key: string, added_at: string, alert_pct: int|null}>, portfolio: list<array{variant_key: string, quantity: int, added_at: string, updated_at: string}>, sessions: list<array{last_active_at: string, ip_address: string|null, user_agent: string|null}>, notifications: array{channel: string, digest: bool}, webhooks: list<array{kind: string, url_hint: string, description: string|null, created_at: string, disabled: bool}>, deliveries: list<array{kind: string, channel: string, day: string|null, status: string, attempts: int, created_at: string, delivered_at: string|null}>}  $export
      */
     public function __construct(array $export)
     {
@@ -25,11 +25,11 @@ final class AccountExportResource extends JsonResource
     }
 
     /**
-     * @return array{format: string, version: int, account: array{email: string, email_verified_at: string|null, two_factor: bool, created_at: string|null}, watchlist: list<array{variant_key: string, added_at: string}>, portfolio: list<array{variant_key: string, quantity: int, added_at: string, updated_at: string}>, sessions: list<array{last_active_at: string, ip_address: string|null, user_agent: string|null}>}
+     * @return array{format: string, version: int, account: array{email: string, email_verified_at: string|null, two_factor: bool, created_at: string|null}, watchlist: list<array{variant_key: string, added_at: string, alert_pct: int|null}>, portfolio: list<array{variant_key: string, quantity: int, added_at: string, updated_at: string}>, sessions: list<array{last_active_at: string, ip_address: string|null, user_agent: string|null}>, notifications: array{channel: string, digest: bool}, webhooks: list<array{kind: string, url_hint: string, description: string|null, created_at: string, disabled: bool}>, deliveries: list<array{kind: string, channel: string, day: string|null, status: string, attempts: int, created_at: string, delivered_at: string|null}>}
      */
     public function toArray(Request $request): array
     {
-        /** @var array{format: string, version: int, account: array{email: string, email_verified_at: string|null, two_factor: bool, created_at: string|null}, watchlist: list<array{variant_key: string, added_at: string}>, portfolio: list<array{variant_key: string, quantity: int, added_at: string, updated_at: string}>, sessions: list<array{last_active_at: string, ip_address: string|null, user_agent: string|null}>} $export */
+        /** @var array{format: string, version: int, account: array{email: string, email_verified_at: string|null, two_factor: bool, created_at: string|null}, watchlist: list<array{variant_key: string, added_at: string, alert_pct: int|null}>, portfolio: list<array{variant_key: string, quantity: int, added_at: string, updated_at: string}>, sessions: list<array{last_active_at: string, ip_address: string|null, user_agent: string|null}>, notifications: array{channel: string, digest: bool}, webhooks: list<array{kind: string, url_hint: string, description: string|null, created_at: string, disabled: bool}>, deliveries: list<array{kind: string, channel: string, day: string|null, status: string, attempts: int, created_at: string, delivered_at: string|null}>} $export */
         $export = $this->resource;
 
         return $export;

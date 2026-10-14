@@ -37,10 +37,11 @@ export interface paths {
          * Download your data
          * @description Everything PokéPrices keeps about the signed-in account, as a JSON download named pokeprices-export.json: the
          *     account (email, when the email was verified, whether two-factor authentication is on, when the account was
-         *     created), the watchlist and the portfolio ordered by variant key, and the session records newest first (last
-         *     activity, IP address, browser). Times are RFC 3339 in UTC. It never holds the password, a two-factor secret, a
-         *     recovery code, a session id or session contents. The read-only demo account may download its data too. The
-         *     answer is never cached.
+         *     created), the watchlist (with each alert threshold) and the portfolio ordered by variant key, the session records
+         *     newest first (last activity, IP address, browser), where alerts go, the webhooks (their url_hint only) and the
+         *     newest 500 deliveries (kind, channel, day, status, attempts, when). Times are RFC 3339 in UTC. It never holds
+         *     the password, a two-factor secret, a recovery code, a session id, session contents, a webhook URL, a signing
+         *     secret or a message body. The read-only demo account may download its data too. The answer is never cached.
          */
         get: operations["exportMe"];
         put?: never;
@@ -198,7 +199,7 @@ export interface paths {
         post?: never;
         /**
          * Delete a webhook
-         * @description Deletes the signed-in account's webhook with this id, and every message still waiting for it. The answer is 204 also when the account has no webhook with this id (nothing changes). The demo account is read-only (403 demo-read-only).
+         * @description Deletes the signed-in account's webhook with this id, and every message still waiting for it. Deleting the Discord webhook while alerts go to Discord sets them back to email. The answer is 204 also when the account has no webhook with this id (nothing changes). The demo account is read-only (403 demo-read-only).
          */
         delete: operations["deleteWebhook"];
         options?: never;
@@ -220,6 +221,54 @@ export interface paths {
          * @description Queues one test message to the signed-in account's webhook with this id and answers 202 with its message_id (the webhook-id header of a signed webhook); it is sent within a few minutes. A signed webhook receives a webhook.test message that carries no price; a Discord webhook a short text. 404 webhook-not-found when the account has no webhook with this id; 409 webhook-disabled when the webhook is turned off. At most 5 test messages a minute (429). Only a verified account may send test messages (403 email-not-verified); the demo account is read-only (403 demo-read-only).
          */
         post: operations["testWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/alerts/{variantKey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Set an alert on a watchlist card
+         * @description Sets the alert threshold of one variant on the signed-in account's watchlist: a whole percentage from the movement rule's 5 (and at least $1.00) to 100. When that card's daily close moves by at least the threshold against the previous close, an alert is sent where alerts go (GET /v1/me/notifications). A key that names no PokéPrices variant or a variant not on the watchlist answers 422 with errors.variant_key; a pct that is not such a whole number answers 422 with errors.pct. Only a verified account may set alerts (403 email-not-verified); the demo account is read-only (403 demo-read-only).
+         */
+        put: operations["putAlert"];
+        post?: never;
+        /**
+         * Turn an alert off
+         * @description Clears the alert threshold of the variant on the signed-in account's watchlist; 204 also when it had none, the variant is not on the watchlist or the key is malformed. The demo account is read-only (403 demo-read-only).
+         */
+        delete: operations["deleteAlert"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/me/notifications": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read where alerts go
+         * @description Where the signed-in account's alerts and daily digest are sent: channel email (the account's email address) or discord (its Discord webhook); digest says whether a daily digest is sent, once per collected day, listing the watched cards that moved; discord_available says whether the account has a Discord webhook that is not turned off. Without a saved choice the answer is email with no digest. The answer is never cached.
+         */
+        get: operations["getNotifications"];
+        /**
+         * Choose where alerts go
+         * @description Saves where the signed-in account's alerts and daily digest are sent (channel email or discord) and whether a daily digest is sent (digest true or false); the answer is the same body as GET. Choosing discord needs a Discord webhook that is not turned off (422 errors.channel otherwise). Only a verified account may choose (403 email-not-verified); the demo account is read-only (403 demo-read-only).
+         */
+        put: operations["putNotifications"];
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -386,6 +435,7 @@ export interface components {
             watchlist: {
                 variant_key: string;
                 added_at: string;
+                alert_pct: number | null;
             }[];
             portfolio: {
                 variant_key: string;
@@ -398,6 +448,31 @@ export interface components {
                 ip_address: string | null;
                 user_agent: string | null;
             }[];
+            notifications: {
+                channel: string;
+                digest: boolean;
+            };
+            webhooks: {
+                kind: string;
+                url_hint: string;
+                description: string | null;
+                created_at: string;
+                disabled: boolean;
+            }[];
+            deliveries: {
+                kind: string;
+                channel: string;
+                day: string | null;
+                status: string;
+                attempts: number;
+                created_at: string;
+                delivered_at: string | null;
+            }[];
+        };
+        /** AlertResource */
+        AlertResource: {
+            variant_key: string;
+            alert_pct: number;
         };
         /** CardPricesResource */
         CardPricesResource: {
@@ -548,6 +623,13 @@ export interface components {
             change_pct: string;
             series_epoch: number;
         };
+        /** NotificationSettingsResource */
+        NotificationSettingsResource: {
+            /** @enum {string} */
+            channel: "discord" | "email";
+            digest: boolean;
+            discord_available: boolean;
+        };
         /** PriceFreshnessResource */
         PriceFreshnessResource: {
             source: string;
@@ -616,6 +698,7 @@ export interface components {
                 change_pct: string | null;
                 series_epoch: number;
             } | null;
+            alert_pct: number | null;
         };
         /** WebhookCreatedResource */
         WebhookCreatedResource: {
@@ -1427,6 +1510,260 @@ export interface operations {
             };
             /** @description The CSRF token is missing or stale: GET /sanctum/csrf-cookie and retry (problem type https://pokeprices.andrestheperez.com/problems/csrf-token-mismatch). */
             419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Too Many Requests: the rate limit of this route is spent. */
+            429: {
+                headers: {
+                    /** @description Seconds until the limit resets. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    putAlert: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                variantKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    pct: number;
+                };
+            };
+        };
+        responses: {
+            /** @description `AlertResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["AlertResource"];
+                    };
+                };
+            };
+            /** @description Unauthenticated: sign in first (problem type https://pokeprices.andrestheperez.com/problems/unauthenticated). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The demo account is read-only (problem type https://pokeprices.andrestheperez.com/problems/demo-read-only), or the account's email address is not verified yet (problem type https://pokeprices.andrestheperez.com/problems/email-not-verified). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The CSRF token is missing or stale: GET /sanctum/csrf-cookie and retry (problem type https://pokeprices.andrestheperez.com/problems/csrf-token-mismatch). */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Too Many Requests: the rate limit of this route is spent. */
+            429: {
+                headers: {
+                    /** @description Seconds until the limit resets. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    deleteAlert: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                variantKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description Unauthenticated: sign in first (problem type https://pokeprices.andrestheperez.com/problems/unauthenticated). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The demo account is read-only (problem type https://pokeprices.andrestheperez.com/problems/demo-read-only). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The CSRF token is missing or stale: GET /sanctum/csrf-cookie and retry (problem type https://pokeprices.andrestheperez.com/problems/csrf-token-mismatch). */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Too Many Requests: the rate limit of this route is spent. */
+            429: {
+                headers: {
+                    /** @description Seconds until the limit resets. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getNotifications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `NotificationSettingsResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["NotificationSettingsResource"];
+                    };
+                };
+            };
+            /** @description Unauthenticated: sign in first (problem type https://pokeprices.andrestheperez.com/problems/unauthenticated). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Too Many Requests: the rate limit of this route is spent. */
+            429: {
+                headers: {
+                    /** @description Seconds until the limit resets. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    putNotifications: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    channel: "email" | "discord";
+                    digest: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description `NotificationSettingsResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["NotificationSettingsResource"];
+                    };
+                };
+            };
+            /** @description Unauthenticated: sign in first (problem type https://pokeprices.andrestheperez.com/problems/unauthenticated). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The demo account is read-only (problem type https://pokeprices.andrestheperez.com/problems/demo-read-only), or the account's email address is not verified yet (problem type https://pokeprices.andrestheperez.com/problems/email-not-verified). */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description The CSRF token is missing or stale: GET /sanctum/csrf-cookie and retry (problem type https://pokeprices.andrestheperez.com/problems/csrf-token-mismatch). */
+            419: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Validation error */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

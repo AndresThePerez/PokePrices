@@ -32,7 +32,8 @@ it('refuses the demo account even when verified', function (): void {
         ->and(Gate::forUser($demo)->allows('create-alerts'))->toBeFalse();
 });
 
-// P5-i1 T03 attaches the seam (same-commit supersession of 'is not attached to any route in P4'); T05 extends the list.
+// P5-i1 T03 attaches the seam (same-commit supersession of 'is not attached to any route in P4'); T05 extends the list
+// with alerts.put and notifications.put (same-commit supersession).
 it('is attached to exactly the alert-creating routes', function (): void {
     $names = collect(Route::getRoutes()->getRoutes())
         ->filter(fn ($route): bool => in_array(RequireAlertEligibility::class, Route::gatherRouteMiddleware($route), true))
@@ -41,5 +42,5 @@ it('is attached to exactly the alert-creating routes', function (): void {
         ->values()
         ->all();
 
-    expect($names)->toBe(['webhooks.store', 'webhooks.test']);
+    expect($names)->toBe(['alerts.put', 'notifications.put', 'webhooks.store', 'webhooks.test']);
 });

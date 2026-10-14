@@ -134,7 +134,7 @@ it('exports exactly D6\'s shape: the account, both lists by variant key and the 
         ->and($response->headers->get('Content-Disposition'))->toBe('attachment; filename="pokeprices-export.json"')
         ->and($response->json())->toBe(['data' => [
             'format' => 'pokeprices-account-export',
-            'version' => 1,
+            'version' => 2,
             'account' => [
                 'email' => 'collector@example.com',
                 'email_verified_at' => '2026-10-01T09:45:00Z',
@@ -142,8 +142,8 @@ it('exports exactly D6\'s shape: the account, both lists by variant key and the 
                 'created_at' => '2026-10-01T09:30:00Z',
             ],
             'watchlist' => [
-                ['variant_key' => 'base1-4:holo:unlimited:-', 'added_at' => '2026-10-03T10:00:00Z'],
-                ['variant_key' => 'ex5-17:reverse:-:-', 'added_at' => '2026-10-02T11:15:30Z'],
+                ['variant_key' => 'base1-4:holo:unlimited:-', 'added_at' => '2026-10-03T10:00:00Z', 'alert_pct' => null],
+                ['variant_key' => 'ex5-17:reverse:-:-', 'added_at' => '2026-10-02T11:15:30Z', 'alert_pct' => null],
             ],
             'portfolio' => [
                 ['variant_key' => 'base1-4:holo:1st:-', 'quantity' => 1, 'added_at' => '2026-10-06T07:00:00Z', 'updated_at' => '2026-10-06T07:00:00Z'],
@@ -153,6 +153,9 @@ it('exports exactly D6\'s shape: the account, both lists by variant key and the 
                 ['last_active_at' => '2025-10-10T08:53:20Z', 'ip_address' => '198.51.100.52', 'user_agent' => null],
                 ['last_active_at' => '2025-10-09T08:53:20Z', 'ip_address' => '192.0.2.51', 'user_agent' => 'older-agent/1.0'],
             ],
+            'notifications' => ['channel' => 'email', 'digest' => false],
+            'webhooks' => [],
+            'deliveries' => [],
         ]]);
 });
 
@@ -205,7 +208,7 @@ it('never exports another user\'s rows or sessions, and a user without rows gets
 
     expect($theirs->json('data.account.email'))->toBe('other@example.com')
         ->and($theirs->json('data.account.two_factor'))->toBeFalse()
-        ->and($theirs->json('data.watchlist'))->toBe([['variant_key' => 'zz9-9:normal:-:-', 'added_at' => '2026-10-07T10:00:00Z']])
+        ->and($theirs->json('data.watchlist'))->toBe([['variant_key' => 'zz9-9:normal:-:-', 'added_at' => '2026-10-07T10:00:00Z', 'alert_pct' => null]])
         ->and(array_column($theirs->json('data.portfolio'), 'quantity'))->toBe([7])
         ->and($theirs->json('data.sessions'))->toBe([['last_active_at' => '2025-10-10T12:40:00Z', 'ip_address' => '203.0.113.53', 'user_agent' => 'other-agent/9.9']])
         ->and((string) $theirs->getContent())->not->toContain('collector@example.com')
@@ -402,7 +405,7 @@ it('documents GET /v1/me/export with 200, 401 and 429 and a closed body of D6\'s
     $ref = $schema['properties']['data']['$ref'] ?? null;
     $data = is_string($ref) ? $spec['components']['schemas'][substr($ref, strlen('#/components/schemas/'))] : $schema['properties']['data'];
     expect($schema['additionalProperties'])->toBeFalse()
-        ->and(array_keys($data['properties']))->toBe(['format', 'version', 'account', 'watchlist', 'portfolio', 'sessions'])
+        ->and(array_keys($data['properties']))->toBe(['format', 'version', 'account', 'watchlist', 'portfolio', 'sessions', 'notifications', 'webhooks', 'deliveries'])
         ->and($data['additionalProperties'])->toBeFalse()
         ->and(array_keys($data['properties']['account']['properties']))->toBe(['email', 'email_verified_at', 'two_factor', 'created_at'])
         ->and(array_keys($data['properties']['sessions']['items']['properties']))->toBe(['last_active_at', 'ip_address', 'user_agent']);

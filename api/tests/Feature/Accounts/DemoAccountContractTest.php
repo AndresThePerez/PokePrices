@@ -74,7 +74,8 @@ it('documents the closed list bodies: watchlist items, portfolio holdings and th
     $meta = $portfolio['properties']['meta'];
 
     $itemKeys = ['variant_key', 'card_id', 'finish', 'edition', 'treatment', 'card', 'price'];
-    expect(array_keys($item['properties']))->toBe($itemKeys)
+    // P5-i1 T05 (same-commit supersession): the watchlist item gains alert_pct as its last key; the holding does not.
+    expect(array_keys($item['properties']))->toBe([...$itemKeys, 'alert_pct'])
         ->and($item['additionalProperties'])->toBeFalse()
         ->and(array_keys($holding['properties']))->toBe([...$itemKeys, 'quantity', 'value'])
         ->and($holding['additionalProperties'])->toBeFalse()

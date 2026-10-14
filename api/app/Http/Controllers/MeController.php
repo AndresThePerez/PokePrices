@@ -39,10 +39,11 @@ final class MeController
      *
      * Everything PokéPrices keeps about the signed-in account, as a JSON download named pokeprices-export.json: the
      * account (email, when the email was verified, whether two-factor authentication is on, when the account was
-     * created), the watchlist and the portfolio ordered by variant key, and the session records newest first (last
-     * activity, IP address, browser). Times are RFC 3339 in UTC. It never holds the password, a two-factor secret, a
-     * recovery code, a session id or session contents. The read-only demo account may download its data too. The
-     * answer is never cached.
+     * created), the watchlist (with each alert threshold) and the portfolio ordered by variant key, the session records
+     * newest first (last activity, IP address, browser), where alerts go, the webhooks (their url_hint only) and the
+     * newest 500 deliveries (kind, channel, day, status, attempts, when). Times are RFC 3339 in UTC. It never holds
+     * the password, a two-factor secret, a recovery code, a session id, session contents, a webhook URL, a signing
+     * secret or a message body. The read-only demo account may download its data too. The answer is never cached.
      *
      * @operationId exportMe
      */

@@ -228,7 +228,7 @@ it('counts test messages per user across all of their webhooks', function (): vo
         ->and(DB::table('deliveries')->where('user_id', $user->id)->count())->toBe(5);
 });
 
-it('documents email-not-verified in the committed contract on exactly the two gated operations', function (): void {
+it('documents email-not-verified in the committed contract on exactly the four gated operations', function (): void {
     $spec = json_decode((string) file_get_contents(base_path('../openapi/api.json')), true, 512, JSON_THROW_ON_ERROR);
     $gated = [];
     foreach ($spec['paths'] as $path => $operations) {
@@ -242,7 +242,7 @@ it('documents email-not-verified in the committed contract on exactly the two ga
     }
     sort($gated);
 
-    expect($gated)->toBe(['POST 403 createWebhook', 'POST 403 testWebhook'])
+    expect($gated)->toBe(['POST 403 createWebhook', 'POST 403 testWebhook', 'PUT 403 putAlert', 'PUT 403 putNotifications'])
         ->and(preg_match('~whsec_[A-Za-z0-9+/\\\\]{43}=~', (string) json_encode($spec, JSON_UNESCAPED_SLASHES)))->toBe(0);
 });
 

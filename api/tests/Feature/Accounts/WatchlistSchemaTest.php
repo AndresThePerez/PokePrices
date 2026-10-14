@@ -39,8 +39,10 @@ it('creates watchlist_items exactly as D5', function (): void {
         'user_id' => ['type' => 'bigint', 'nullable' => false, 'default' => null, 'identity' => ''],
         'variant_key' => ['type' => 'text', 'nullable' => false, 'default' => null, 'identity' => ''],
         'created_at' => ['type' => 'timestamp with time zone', 'nullable' => false, 'default' => 'now()', 'identity' => ''],
+        'alert_pct' => ['type' => 'smallint', 'nullable' => true, 'default' => null, 'identity' => ''],
     ])
         ->and(wlsConstraints('watchlist_items'))->toBe([
+            'watchlist_items_alert_pct_check' => 'CHECK (((alert_pct IS NULL) OR ((alert_pct >= 1) AND (alert_pct <= 100))))',
             'watchlist_items_pkey' => 'PRIMARY KEY (id)',
             'watchlist_items_user_id_foreign' => 'FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE',
             'watchlist_items_user_variant_unique' => 'UNIQUE (user_id, variant_key)',

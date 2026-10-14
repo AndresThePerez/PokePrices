@@ -146,4 +146,20 @@ final class WebhookEndpoints
             return $row instanceof stdClass ? (int) $row->id : 0;
         });
     }
+
+    /**
+     * Deletes the user's endpoint with this id (nothing when the user has none: another user's id changes nothing),
+     * its deliveries with it (cascade), and, when it was the Discord webhook, sets the notification channel back to
+     * email in the same transaction (D9, T05), under the per-user lock.
+     */
+    public static function delete(ConnectionInterface $db, int $userId, int $id): void
+    {
+        $db->transaction(function () use ($db, $userId, $id): void {
+            AccountLock::forUser($db, $userId);
+            $deleted = $db->selectOne('DELETE FROM webhook_endpoints WHERE id = ? AND user_id = ? RETURNING kind', [$id, $userId], false);
+            if ($deleted instanceof stdClass && $deleted->kind === 'discord') {
+                NotificationSettings::resetDiscord($db, $userId);
+            }
+        });
+    }
 }

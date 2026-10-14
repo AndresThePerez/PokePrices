@@ -2,12 +2,14 @@
 
 declare(strict_types=1);
 
+use App\Http\Controllers\AlertController;
 use App\Http\Controllers\CardController;
 use App\Http\Controllers\CardPricesController;
 use App\Http\Controllers\CardSearchController;
 use App\Http\Controllers\DemoSessionController;
 use App\Http\Controllers\MeController;
 use App\Http\Controllers\MoversController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PortfolioController;
 use App\Http\Controllers\PriceFreshnessController;
 use App\Http\Controllers\ReadinessController;
@@ -79,6 +81,14 @@ Route::middleware([
         ->where('id', '[0-9]{1,18}')
         ->middleware([RequireAlertEligibility::class, 'throttle:webhook-test'])
         ->name('webhooks.test');
+
+    // Per-card alerts and where they go (plan P5-i1 D9, T05). Setting a threshold and choosing the channel need a
+    // verified, non-demo account; clearing a threshold and reading the settings do not. {variantKey} matches any
+    // non-empty text, as on the watchlist routes, so a malformed key answers 422 (PUT) or 204 (DELETE) before any query.
+    Route::put('/alerts/{variantKey}', [AlertController::class, 'put'])->where('variantKey', '.+')->middleware(RequireAlertEligibility::class)->name('alerts.put');
+    Route::delete('/alerts/{variantKey}', [AlertController::class, 'destroy'])->where('variantKey', '.+')->name('alerts.destroy');
+    Route::get('/me/notifications', [NotificationController::class, 'show'])->name('notifications.show');
+    Route::put('/me/notifications', [NotificationController::class, 'put'])->middleware(RequireAlertEligibility::class)->name('notifications.put');
 });
 
 // One-click entry to the read-only demo (D6, D8): outside the account group (a visitor is not signed in yet), stateful

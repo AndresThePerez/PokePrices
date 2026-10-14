@@ -14,8 +14,11 @@ export const DEMO_NOTICE =
   'You are signed in to the read-only demo account. Its watchlist and portfolio cannot be changed.';
 export const NO_PRICE = 'No price in the collected snapshots';
 
-/** The row fields both lists share (a holding is a watchlist item plus quantity and value). */
-export type ListRow = WatchlistItem;
+/**
+ * The row fields both lists share (a holding is a watchlist item, without its alert threshold,
+ * plus quantity and value).
+ */
+export type ListRow = Omit<WatchlistItem, 'alert_pct'>;
 
 /** The card's name from the PokéSearch catalog, else its id (P3 movers row). */
 export function cardLabel(row: ListRow): string {

@@ -10,7 +10,9 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /**
  * One variant on the watchlist as GET /v1/watchlist lists it (plan P4-i1 D6): the variant, its card's name, set name
  * and number from the PokéSearch catalog (null when PokéSearch does not have the id or is unavailable without a last
- * good copy), and the card page's price block from price_latest (null without a close in the collected snapshots).
+ * good copy), the card page's price block from price_latest (null without a close in the collected snapshots) and,
+ * last, its alert threshold in whole percent (plan P5-i1 D9; null when no alert is set). Holdings share fields(),
+ * which has no alert_pct.
  */
 final class WatchlistItemResource extends JsonResource
 {
@@ -21,14 +23,18 @@ final class WatchlistItemResource extends JsonResource
     }
 
     /**
-     * @return array{variant_key: string, card_id: string, finish: string, edition: string, treatment: string, card: array{name: string, set_name: string, number: string}|null, price: array{source: string, feed: string, basis: string, currency: string, cadence: string, close: string, day: string, as_of: string, previous_close: string|null, previous_day: string|null, change: string|null, change_pct: string|null, series_epoch: int}|null}
+     * @return array{variant_key: string, card_id: string, finish: string, edition: string, treatment: string, card: array{name: string, set_name: string, number: string}|null, price: array{source: string, feed: string, basis: string, currency: string, cadence: string, close: string, day: string, as_of: string, previous_close: string|null, previous_day: string|null, change: string|null, change_pct: string|null, series_epoch: int}|null, alert_pct: int|null}
      */
     public function toArray(Request $request): array
     {
         /** @var array<string, mixed> $row */
         $row = $this->resource;
+        $pct = $row['alert_pct'] ?? null;
 
-        return self::fields($row);
+        return self::fields($row) + [
+            /** @var int|null */
+            'alert_pct' => is_numeric($pct) ? (int) $pct : null,
+        ];
     }
 
     /**
