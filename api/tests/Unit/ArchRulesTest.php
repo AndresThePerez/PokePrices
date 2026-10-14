@@ -86,3 +86,23 @@ arch('account code is strict-typed, final classes in App\Domain\Accounts')
     ->toBeClasses()
     ->toUseStrictTypes()
     ->toBeFinal();
+
+// Plan P5-i1 T01 criterion 11 (review A10.2): alert code is strict-typed, final classes in App\Domain\Alerts; the
+// one interface T02 adds (HostResolver) is the exception.
+test('the deliverable-day predicate, the payload, the models and the dispatch job exist in App\Domain\Alerts', function (string $class): void {
+    expect(class_exists($class))->toBeTrue();
+})->with([
+    'App\Domain\Alerts\DeliverableDay',
+    'App\Domain\Alerts\PriceMovedPayload',
+    'App\Domain\Alerts\Models\WebhookEndpoint',
+    'App\Domain\Alerts\Models\Delivery',
+    'App\Domain\Alerts\Jobs\DispatchEvents',
+    'App\Console\Commands\AlertsDispatch',
+]);
+
+arch('alert code is strict-typed, final classes in App\Domain\Alerts')
+    ->expect('App\Domain\Alerts')
+    ->toBeClasses()
+    ->toUseStrictTypes()
+    ->toBeFinal()
+    ->ignoring('App\Domain\Alerts\HostResolver');

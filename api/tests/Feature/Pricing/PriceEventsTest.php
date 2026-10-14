@@ -233,8 +233,9 @@ test('price_events has exactly the planned columns; money and change_pct are num
         'ingest_run_id:bigint:NOT NULL',
         'dispatched_at:timestamp with time zone:NULL',
     ])
-        // P5 adds delivery; P2 has no deliveries table.
-        ->and(DB::selectOne("SELECT to_regclass('deliveries') AS t")->t)->toBeNull();
+        // P5-i1 T01 added the deliveries table (same-commit edit, R233); nothing in it references price_events.
+        ->and(DB::selectOne("SELECT to_regclass('deliveries') AS t")->t)->not->toBeNull()
+        ->and(DB::select("SELECT conname FROM pg_constraint WHERE conrelid = 'deliveries'::regclass AND (confrelid = 'price_events'::regclass OR pg_get_constraintdef(oid) LIKE '%price_events%')"))->toBe([]);
 });
 
 test('each price_events key and CHECK rejects a violating row', function (array $overrides, string $state, string $constraint): void {

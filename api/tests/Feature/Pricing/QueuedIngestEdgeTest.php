@@ -366,7 +366,8 @@ test('the :40 scan is registered for the scheduler, and the scan job serializes 
     $restored = unserialize(serialize($job));
 
     expect($code)->toBe(0)
-        ->and($output)->toContain('40 * * * *')
+        // P5-i1 T01's */5 entry widens schedule:list's columns, so the expression is read from the event (R233).
+        ->and($scan->expression)->toBe('40 * * * *')
         ->and($output)->toContain('pokeprices-ingest-pending')
         ->and($output)->toContain('pokeprices-probe')
         ->and($scan->withoutOverlapping)->toBeTrue()

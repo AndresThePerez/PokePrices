@@ -658,5 +658,6 @@ test('the scheduler runs the pending scan hourly at :40 without overlapping, bes
         ->and($scan->withoutOverlapping)->toBeTrue()
         ->and($events->get('pokeprices-probe')?->expression)->toBe('* * * * *')
         // T10 adds the hourly freshness log line (same-commit edit, R186).
-        ->and($events->keys()->sort()->values()->all())->toBe(['pokeprices-freshness', 'pokeprices-ingest-pending', 'pokeprices-probe']);
+        // P5-i1 T01 adds the alerts dispatch (same-commit edit, R186 class).
+        ->and($events->keys()->sort()->values()->all())->toBe(['pokeprices-alerts-dispatch', 'pokeprices-freshness', 'pokeprices-ingest-pending', 'pokeprices-probe']);
 });
