@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Domain\Alerts\Jobs\DeliverDue;
 use App\Domain\Alerts\Jobs\DispatchEvents;
 use App\Domain\Pricing\Jobs\IngestPending;
 use App\Domain\Pricing\Jobs\LogFreshness;
@@ -18,3 +19,6 @@ Schedule::job(new LogFreshness, 'default', 'redis')->hourly()->name('pokeprices-
 
 // The alerts dispatch (plan P5-i1 T01, D2, D8): every five minutes, price.moved deliveries of the deliverable day.
 Schedule::job(new DispatchEvents, 'default', 'redis')->everyFiveMinutes()->withoutOverlapping()->name('pokeprices-alerts-dispatch');
+
+// The delivery sweep (plan P5-i1 T02, D7, D8): every minute, due deliveries sent in-line within the sweep caps.
+Schedule::job(new DeliverDue, 'default', 'redis')->everyMinute()->withoutOverlapping()->name('pokeprices-deliveries');
