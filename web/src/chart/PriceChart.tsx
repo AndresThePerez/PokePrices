@@ -33,7 +33,7 @@ interface Colours {
 }
 
 /** D8's light-theme values: what a token that reads empty or whitespace is replaced by. */
-const LIGHT: Colours = { line: '#0369a1', filled: '#64748b', text: '#475569', grid: '#e2e8f0' };
+const LIGHT: Colours = { line: '#44403c', filled: '#a8a29e', text: '#57534e', grid: '#ebe5dc' };
 
 function readColours(): Colours {
   const style = getComputedStyle(document.documentElement);

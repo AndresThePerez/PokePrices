@@ -23,7 +23,7 @@ const CHART_FAILED = 'The chart could not be drawn. Show the data table to read 
 const ATTRIBUTION = 'Chart by TradingView Lightweight Charts';
 
 /** The D8 light-theme hexes the chart falls back to when a custom property reads empty. */
-const LIGHT = { line: '#0369a1', filled: '#64748b', text: '#475569', grid: '#e2e8f0' };
+const LIGHT = { line: '#44403c', filled: '#a8a29e', text: '#57534e', grid: '#ebe5dc' };
 const DARK = { line: '#38bdf8', filled: '#64748b', text: '#94a3b8', grid: '#1e293b' };
 
 /** A gap after 2026-10-02 and a mapping change on 2026-10-06: three segments (D6). */

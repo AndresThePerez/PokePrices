@@ -312,28 +312,86 @@ function declarations(body: string): Map<string, string> {
   return map;
 }
 
+const SANS =
+  "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
+const MONO = "ui-monospace, 'SFMono-Regular', Menlo, Consolas, 'Liberation Mono', monospace";
+
 const LIGHT = {
-  '--color-up': '#047857',
-  '--color-down': '#b91c1c',
-  '--color-flat': '#475569',
-  '--color-chart-line': '#0369a1',
-  '--color-chart-filled': '#64748b',
-  '--color-chart-text': '#475569',
-  '--color-chart-grid': '#e2e8f0',
+  '--color-surface': '#faf7f2',
+  '--color-surface-raised': '#ffffff',
+  '--color-surface-sunken': '#f1ece4',
+  '--color-ink': '#1c1917',
+  '--color-ink-muted': '#57534e',
+  '--color-line': '#8a8178',
+  '--color-line-subtle': '#e7e0d6',
+  '--color-accent': '#a21caf',
+  '--color-accent-tint': '#f8e8f9',
+  '--color-on-accent': '#ffffff',
+  '--color-focus': '#a21caf',
+  '--color-info': '#86198f',
+  '--color-info-tint': '#f8e8f9',
+  '--color-warn': '#8a4b08',
+  '--color-warn-tint': '#fdf3e1',
+  '--color-problem': '#b91c1c',
+  '--color-problem-tint': '#fdeaea',
+  '--color-up': '#03654a',
+  '--color-down': '#a91b1b',
+  '--color-flat': '#57534e',
+  '--color-chart-line': '#44403c',
+  '--color-chart-filled': '#a8a29e',
+  '--color-chart-text': '#57534e',
+  '--color-chart-grid': '#ebe5dc',
+  '--font-sans': SANS,
+  '--font-mono': MONO,
+  '--text-xs': '0.75rem',
+  '--text-xs--line-height': '1rem',
+  '--text-meta': '0.8125rem',
+  '--text-meta--line-height': '1.125rem',
+  '--text-sm': '0.875rem',
+  '--text-sm--line-height': '1.25rem',
+  '--text-base': '1rem',
+  '--text-base--line-height': '1.375rem',
+  '--text-lg': '1.25rem',
+  '--text-lg--line-height': '1.625rem',
+  '--text-2xl': '1.75rem',
+  '--text-2xl--line-height': '2.125rem',
+  '--text-4xl': '2.25rem',
+  '--text-4xl--line-height': '2.5rem',
+  '--radius-sm': '2px',
+  '--radius-md': '4px',
+  '--radius-lg': '6px',
+  '--shadow-panel': '0 1px 2px rgb(28 25 23 / 0.06), 0 2px 6px rgb(28 25 23 / 0.06)',
 };
 const DARK = {
+  '--color-surface': '#171412',
+  '--color-surface-raised': '#221e1b',
+  '--color-surface-sunken': '#2b2622',
+  '--color-ink': '#f4efe7',
+  '--color-ink-muted': '#b5ab9e',
+  '--color-line': '#73695f',
+  '--color-line-subtle': '#332d28',
+  '--color-accent': '#f0abfc',
+  '--color-accent-tint': '#3a2440',
+  '--color-on-accent': '#171412',
+  '--color-focus': '#f0abfc',
+  '--color-info': '#f0abfc',
+  '--color-info-tint': '#3a2440',
+  '--color-warn': '#fcd34d',
+  '--color-warn-tint': '#3a2c12',
+  '--color-problem': '#fca5a5',
+  '--color-problem-tint': '#3b1d1d',
   '--color-up': '#34d399',
   '--color-down': '#f87171',
-  '--color-flat': '#94a3b8',
-  '--color-chart-line': '#38bdf8',
-  '--color-chart-filled': '#64748b',
-  '--color-chart-text': '#94a3b8',
-  '--color-chart-grid': '#1e293b',
+  '--color-flat': '#b5ab9e',
+  '--color-chart-line': '#e7e0d6',
+  '--color-chart-filled': '#78716c',
+  '--color-chart-text': '#b5ab9e',
+  '--color-chart-grid': '#2e2924',
 };
-const BLUE_ORANGE_LIGHT = { '--color-up': '#1d4ed8', '--color-down': '#c2410c' };
+const BLUE_ORANGE_LIGHT = { '--color-up': '#1d48c8', '--color-down': '#a3370a' };
 const BLUE_ORANGE_DARK = { '--color-up': '#60a5fa', '--color-down': '#fb923c' };
 
-describe('colour tokens in index.css (D8, review F-P3-02)', () => {
+describe('design tokens in index.css (D8, review F-P3-02, D1-i1-T01)', () => {
   it('keeps the Tailwind import and adds a dark variant keyed on data-theme, never on prefers-color-scheme', () => {
     expect(indexCss).toContain("@import 'tailwindcss';");
     expect(indexCss).toContain(
@@ -356,6 +414,24 @@ describe('colour tokens in index.css (D8, review F-P3-02)', () => {
     const matching = rules(indexCss).filter((rule) => rule.selector === selector);
     expect(matching).toHaveLength(1);
     expect(Object.fromEntries(declarations(matching[0]?.body ?? ''))).toEqual(expected);
+  });
+
+  it('paints the page from the tokens and rings keyboard focus in the focus colour', () => {
+    const byName = new Map(rules(indexCss).map((rule) => [rule.selector, rule.body]));
+    const html = (byName.get('html') ?? '').replace(/\s+/g, ' ');
+    expect(html).toContain('background-color: var(--color-surface);');
+    expect(html).toContain('color: var(--color-ink);');
+    expect(html).toContain('font-family: var(--font-sans);');
+    expect(html).toContain('color-scheme: light;');
+    expect((byName.get('html[data-theme=dark]') ?? '').replace(/\s+/g, ' ')).toContain(
+      'color-scheme: dark;',
+    );
+    const focus = (byName.get(':focus-visible') ?? '').replace(/\s+/g, ' ');
+    expect(focus).toContain('outline: 2px solid var(--color-focus);');
+    expect(focus).toContain('outline-offset: 2px;');
+    const num = (byName.get('@utility num') ?? '').replace(/\s+/g, ' ');
+    expect(num).toContain('font-family: var(--font-mono);');
+    expect(num).toContain('font-variant-numeric: tabular-nums;');
   });
 
   it('declares no token anywhere else', () => {
