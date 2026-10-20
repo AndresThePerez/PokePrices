@@ -24,6 +24,8 @@ const LINK = `/email/verify/7/0a1b2c?expires=1700000000&signature=${SIGNATURE}`;
 const PAGE = `/account/verify-email?link=${encodeURIComponent(LINK)}`;
 const INVALID =
   'This verification link is not valid or has expired. Send a new one from your account.';
+/** The same account as unverifiedMe once its address is verified (same email: same account). */
+const verifiedMe = { data: { ...unverifiedMe.data, email_verified: true } };
 
 function visit(path: string): void {
   window.history.replaceState(null, '', path);
@@ -43,7 +45,7 @@ function main(): HTMLElement {
 describe('the verify-email page (T03 criterion 3, D10)', () => {
   it('verifies a signed-in account, refetches the session and links to the account', async () => {
     const calls = stubAccountFetch({
-      'GET /v1/me': [jsonResponse(unverifiedMe), jsonResponse(signedInMe)],
+      'GET /v1/me': [jsonResponse(unverifiedMe), jsonResponse(verifiedMe)],
       [`GET ${LINK}`]: rawResponse(204, null),
     });
     visit(PAGE);
@@ -108,7 +110,7 @@ describe('the verify-email page (T03 criterion 3, D10)', () => {
       'GET /v1/me': [
         problemResponse(unauthenticatedProblem),
         jsonResponse(unverifiedMe),
-        jsonResponse(signedInMe),
+        jsonResponse(verifiedMe),
       ],
       'POST /login': jsonResponse({ two_factor: false }),
       [`GET ${LINK}`]: rawResponse(204, null),

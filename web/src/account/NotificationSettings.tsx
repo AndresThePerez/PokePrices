@@ -1,7 +1,8 @@
 // The sections T07 adds to /alerts (P5 D10), above Webhooks: "Where alerts go" (email or Discord,
 // the daily digest, Save) and "Per-card alerts" (a pointer to the watchlist). Only a verified account
 // that is not the demo sees them. The form shows the saved settings until a choice is changed; Save
-// sends exactly { channel, digest } and its answer becomes the saved settings. No clock is read.
+// sends exactly { channel, digest } and, once it succeeds, the saved settings are read again (if that
+// read fails, the form shows what the PUT answered until a later read succeeds). No clock is read.
 import { useQueryClient } from '@tanstack/react-query';
 import { useId, useState, type SubmitEvent } from 'react';
 import {
@@ -47,7 +48,11 @@ function SettingsForm({
   const [pending, run] = useOnce();
   const [failure, setFailure] = useState<ApiFailure | null>(null);
   const [saved, setSaved] = useState(false);
-  const shown: Draft = draft ?? { channel: settings.channel, digest: settings.digest };
+  // What the PUT answered, held while the cache has had no newer read (dataUpdateCount unchanged).
+  const [held, setHeld] = useState<{ readonly values: Draft; readonly reads: number } | null>(null);
+  const reads = queryClient.getQueryState(NOTIFICATIONS_KEY)?.dataUpdateCount ?? 0;
+  const confirmed = held !== null && held.reads === reads ? held.values : null;
+  const shown: Draft = draft ?? confirmed ?? { channel: settings.channel, digest: settings.digest };
   const channelError = firstErrors(failure).channel;
   const discordHintId = settings.discord_available ? undefined : `${id}-discord-hint`;
   const channelErrorId = channelError === undefined ? undefined : `${id}-channel-error`;
@@ -66,9 +71,19 @@ function SettingsForm({
       setFailure(result);
       return;
     }
-    if (queryClient.getQueryState(NOTIFICATIONS_KEY) !== undefined) {
-      queryClient.setQueryData<NotificationsBody>(NOTIFICATIONS_KEY, result.data);
-    }
+    // Refetched, never written to the cache from the answer: an answer that lands after a session
+    // transition finds no query to refresh (endSession removed it) or refreshes the next account's
+    // own one (a query still read was reset and asked again with the new session). Only this form
+    // holds the answer, and only while the read again fails.
+    const before = queryClient.getQueryState(NOTIFICATIONS_KEY)?.dataUpdateCount ?? 0;
+    await queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_KEY });
+    const after = queryClient.getQueryState(NOTIFICATIONS_KEY)?.dataUpdateCount ?? 0;
+    const answer = result.data.data;
+    setHeld(
+      after === before
+        ? { values: { channel: answer.channel, digest: answer.digest }, reads: after }
+        : null,
+    );
     setDraft(null);
     setSaved(true);
   }

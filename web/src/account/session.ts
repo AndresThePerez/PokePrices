@@ -1,11 +1,90 @@
 // The PokéPrices session (D11): the ['me'] query and the signed-in, signed-out, loading and
 // failed states every account page reads. A 401 from GET /v1/me is the signed-out state (null),
-// not a problem. The header never reads it, so public pages keep their exact request lists.
-import { useQuery } from '@tanstack/react-query';
+// not a problem. The header never reads it, so public pages keep their exact request lists. Every
+// query key that holds one account's data lives under ['account', …] (accountKey), so a session
+// transition forgets all of it at once (endSession); ['me'] itself is outside it.
+import { useQuery, type QueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { getMe, type ApiFailure, type Me, type RequestOptions } from '../api/client';
 
 export const ME_KEY = ['me'] as const;
+
+/** The root of every per-user query key. Public keys (cards, prices, movers) never use it. */
+export const ACCOUNT_KEY = ['account'] as const;
+
+/**
+ * The localStorage key a session transition writes, so the other open tabs of this origin forget
+ * the last account too. Its value is a nonce: never an email or anything else about the account.
+ */
+export const SESSION_SIGNAL_KEY = 'pokeprices:session';
+
+/** A per-user query key: ['account', ...parts]. */
+export function accountKey<const Parts extends readonly unknown[]>(
+  ...parts: Parts
+): readonly ['account', ...Parts] {
+  return [...ACCOUNT_KEY, ...parts];
+}
+
+/**
+ * The query meta of a one-time read (the verification link): a signed-out ['me'] answer never
+ * marks it stale, so the same account coming back does not send it a second time, and a forget
+ * leaves it alone while its page still shows it (one GET per page visit, whatever ['me'] says).
+ */
+export const ONE_TIME = { oneTime: true } as const;
+
+/** Whether a query carries ONE_TIME. */
+export function isOneTime(meta: Readonly<Record<string, unknown>> | undefined): boolean {
+  return meta?.['oneTime'] === true;
+}
+
+/**
+ * Forgets everything the last account owned in this tab. An ['account', …] query no page reads is
+ * removed (its fetch cancelled); one a page still reads is reset, so that page sees it empty at
+ * once and an enabled reader asks again with the session the browser holds now. A one-time read
+ * its page still shows is kept (ONE_TIME). Writes no signal (see endSession).
+ */
+export function forgetAccount(queryClient: QueryClient): void {
+  queryClient.removeQueries({
+    queryKey: ACCOUNT_KEY,
+    predicate: (query) => query.getObserversCount() === 0,
+  });
+  void queryClient.resetQueries({
+    queryKey: ACCOUNT_KEY,
+    predicate: (query) => !isOneTime(query.meta),
+  });
+}
+
+const transitionListeners = new WeakMap<QueryClient, () => void>();
+
+/** Registers the client's own reaction to a transition this tab makes (see createQueryClient). */
+export function onSessionEnd(queryClient: QueryClient, listener: () => void): void {
+  transitionListeners.set(queryClient, listener);
+}
+
+let signals = 0;
+
+/**
+ * A session transition this tab made (sign-out, sign-in, sign-up, demo, deletion): forgets the
+ * last account (forgetAccount) and writes SESSION_SIGNAL_KEY so the other tabs forget it too.
+ * Each caller handles ['me']. Blocked storage only loses the signal: another tab then forgets the
+ * last account when its own ['me'] answer names a different one, or names its first one.
+ */
+export function endSession(queryClient: QueryClient): void {
+  transitionListeners.get(queryClient)?.();
+  forgetAccount(queryClient);
+  signals += 1;
+  try {
+    window.localStorage.setItem(SESSION_SIGNAL_KEY, `${String(Date.now())}.${String(signals)}`);
+  } catch {
+    // Blocked or full storage: see above.
+  }
+}
+
+/** The account an ['me'] answer names (its email; GET /v1/me has no id), or null when signed out. */
+export function identityOf(data: unknown): string | null {
+  if (typeof data !== 'object' || data === null || !('email' in data)) return null;
+  return typeof data.email === 'string' ? data.email : null;
+}
 
 export type Session =
   | { readonly state: 'loading' }

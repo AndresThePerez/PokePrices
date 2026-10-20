@@ -14,6 +14,10 @@ use Illuminate\Database\ConnectionInterface;
  * address, browser). Version 2 (plan P5-i1 D9) adds where alerts go, the webhooks (url_hint only) and the newest
  * deliveries (at most alerts.export_deliveries_limit, without their body).
  *
+ * Every demo visitor signs in as the one demo user, so the demo's session records are those of other visitors too:
+ * for the demo only the caller's own record (the row of $sessionId) is exported, and none without a session id
+ * (plan Q0-i1 T02, security finding A1). A real account gets every session record it has.
+ *
  * It never holds a secret: no password hash, remember token, two-factor secret, recovery code, session id, session
  * payload, webhook URL, signing secret or delivery body is ever selected. Times are RFC 3339 in UTC to the second.
  */
@@ -33,7 +37,7 @@ final class AccountExport
     /**
      * @return array{format: string, version: int, account: array{email: string, email_verified_at: string|null, two_factor: bool, created_at: string|null}, watchlist: list<array{variant_key: string, added_at: string, alert_pct: int|null}>, portfolio: list<array{variant_key: string, quantity: int, added_at: string, updated_at: string}>, sessions: list<array{last_active_at: string, ip_address: string|null, user_agent: string|null}>, notifications: array{channel: string, digest: bool}, webhooks: list<array{kind: string, url_hint: string, description: string|null, created_at: string, disabled: bool}>, deliveries: list<array{kind: string, channel: string, day: string|null, status: string, attempts: int, created_at: string, delivered_at: string|null}>}
      */
-    public function of(User $user): array
+    public function of(User $user, ?string $sessionId = null): array
     {
         return [
             'format' => self::FORMAT,
@@ -46,7 +50,7 @@ final class AccountExport
             ],
             'watchlist' => $this->watchlist($user->id),
             'portfolio' => $this->portfolio($user->id),
-            'sessions' => $this->sessions($user->id),
+            'sessions' => $this->sessions($user, $sessionId),
             'notifications' => $this->notifications($user->id),
             'webhooks' => $this->webhooks($user->id),
             'deliveries' => $this->deliveries($user->id),
@@ -157,15 +161,22 @@ final class AccountExport
 
     /**
      * The session records of the user, newest activity first. Only the three columns a person may see are selected:
-     * never the session id or the payload.
+     * never the session id or the payload. A real account gets every record it has, whatever $sessionId is. The demo
+     * (every visitor signs in as the one demo user) gets only the row of the caller's own $sessionId, and with no
+     * session id (null or empty) none at all: it fails closed, never every visitor's.
      *
      * @return list<array{last_active_at: string, ip_address: string|null, user_agent: string|null}>
      */
-    private function sessions(int $userId): array
+    private function sessions(User $user, ?string $sessionId): array
     {
+        $ownOnly = $user->is_demo;
+        if ($ownOnly && ($sessionId === null || $sessionId === '')) {
+            return [];
+        }
         $rows = $this->db->select(
-            'SELECT last_activity, ip_address, user_agent FROM sessions WHERE user_id = ? ORDER BY last_activity DESC',
-            [$userId],
+            'SELECT last_activity, ip_address, user_agent FROM sessions WHERE user_id = ?'
+                .($ownOnly ? ' AND id = ?' : '').' ORDER BY last_activity DESC',
+            $ownOnly ? [$user->id, $sessionId] : [$user->id],
             false,
         );
 

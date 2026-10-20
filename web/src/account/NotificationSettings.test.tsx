@@ -127,7 +127,7 @@ describe('Where alerts go (P5 T07 criterion 1)', () => {
   it('Save PUTs exactly channel and digest once, then says Saved.', async () => {
     const saved = notificationsBody({ digest: true });
     const { calls } = open(
-      verified(jsonResponse(notificationsBody()), {
+      verified([jsonResponse(notificationsBody()), jsonResponse(saved)], {
         'PUT /v1/me/notifications': jsonResponse(saved),
       }),
     );
@@ -147,8 +147,8 @@ describe('Where alerts go (P5 T07 criterion 1)', () => {
     expect(
       screen.getByRole<HTMLInputElement>('checkbox', { name: 'Send me a daily digest' }).checked,
     ).toBe(true);
-    // The answer is the new state: no extra GET.
-    expect(calls.filter((call) => call.key === 'GET /v1/me/notifications')).toHaveLength(1);
+    // The saved settings are read again, never written from the answer: one more GET.
+    expect(calls.filter((call) => call.key === 'GET /v1/me/notifications')).toHaveLength(2);
   });
 
   it('sends the chosen Discord channel', async () => {

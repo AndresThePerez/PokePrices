@@ -6,8 +6,7 @@ import { signUp, type ApiFailure } from '../api/client';
 import { navigate } from '../router';
 import { AccountMain, Field, ProblemBlock } from './Form';
 import { MUTED, PRIMARY_BUTTON, firstErrors } from './fields';
-import { forgetLists } from './lists';
-import { ME_KEY } from './session';
+import { ME_KEY, endSession } from './session';
 
 const FIELDS = ['invite_code', 'email', 'password', 'password_confirmation'] as const;
 const CREATED = 'Account created. Check your email for the verification link.';
@@ -40,7 +39,7 @@ export default function SignUpPage() {
       setFailure(result);
       return;
     }
-    forgetLists(queryClient);
+    endSession(queryClient);
     await queryClient.invalidateQueries({ queryKey: ME_KEY, refetchType: 'all' });
     navigate('/account', CREATED);
   }

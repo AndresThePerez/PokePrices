@@ -43,13 +43,17 @@ final class MeController
      * newest first (last activity, IP address, browser), where alerts go, the webhooks (their url_hint only) and the
      * newest 500 deliveries (kind, channel, day, status, attempts, when). Times are RFC 3339 in UTC. It never holds
      * the password, a two-factor secret, a recovery code, a session id, session contents, a webhook URL, a signing
-     * secret or a message body. The read-only demo account may download its data too. The answer is never cached.
+     * secret or a message body. The read-only demo account may download its data too; as every demo visitor shares
+     * that account, its session records are only the caller's own, never another visitor's. The answer is never cached.
      *
      * @operationId exportMe
      */
     public function export(Request $request, AccountExport $export): AccountExportResource
     {
-        return new AccountExportResource($export->of(self::user($request)));
+        // The session id narrows the demo's session records to the caller's own (Q0-i1 T02); without one, none.
+        $sessionId = $request->hasSession() ? $request->session()->getId() : null;
+
+        return new AccountExportResource($export->of(self::user($request), $sessionId));
     }
 
     /**

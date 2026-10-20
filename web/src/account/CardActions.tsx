@@ -1,6 +1,6 @@
 // The card page's Add to watchlist and Add to portfolio controls (D10), on every variant row of the
 // Prices list. Nothing here fetches before a click: the public card page keeps its exact request
-// list. Opening Add to portfolio reads ['portfolio'] once, to prefill the quantity already held.
+// list. Opening Add to portfolio reads PORTFOLIO_KEY once, to prefill the quantity already held.
 // The two controls are <input type="button">: their words are the input's value, not text in the
 // row, so a row's text stays the price lines it was (P3 exact-text tests).
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -111,17 +111,21 @@ function HoldingForm({
     queryFn: ({ signal }) => unwrap(getPortfolio({ signal })),
   });
   let body;
-  if (portfolio.data !== undefined) {
+  if (portfolio.error?.status === 401) {
+    body = <SignInPrompt cardId={cardId} />;
+  } else if (portfolio.data !== undefined) {
+    const initial = heldQuantity(portfolio.data, variantKey);
+    // Keyed by the quantity held: when the answer changes under the open form (another tab
+    // switched accounts and the portfolio was asked again), the form starts over from it.
     body = (
       <QuantityForm
-        initial={heldQuantity(portfolio.data, variantKey)}
+        key={initial}
+        initial={initial}
         pending={pending}
         error={error}
         onSave={onSave}
       />
     );
-  } else if (portfolio.error?.status === 401) {
-    body = <SignInPrompt cardId={cardId} />;
   } else if (portfolio.error !== null) {
     body = <ProblemBlock context="Could not load your portfolio" failure={portfolio.error} />;
   } else {

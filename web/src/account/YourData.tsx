@@ -8,8 +8,7 @@ import { useId, useState, type SubmitEvent } from 'react';
 import { deleteAccount, type ApiFailure, type Me } from '../api/client';
 import { Field, ProblemBlock } from './Form';
 import { FOCUS, TEXT_LINK, firstErrors } from './fields';
-import { forgetLists } from './lists';
-import { ME_KEY } from './session';
+import { ME_KEY, endSession } from './session';
 
 const EXPORT_PATH = '/v1/me/export';
 const EXPORT_FILE = 'pokeprices-export.json';
@@ -67,9 +66,9 @@ function DeleteForm({ onDeleted }: { readonly onDeleted: () => void }) {
       return;
     }
     onDeleted();
-    // Signed out at once, then confirmed by the API; the lists of the deleted account are dropped.
+    // Signed out at once, then confirmed by the API; everything of the deleted account is dropped.
     queryClient.setQueryData(ME_KEY, null);
-    forgetLists(queryClient);
+    endSession(queryClient);
     void queryClient.invalidateQueries({ queryKey: ME_KEY });
   }
 

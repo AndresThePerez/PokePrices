@@ -11,8 +11,7 @@ import { navigate } from '../router';
 import { AccountMain, LoadingAccount, ProblemBlock, StatusLine } from './Form';
 import { DemoNotice } from './ListParts';
 import { SECONDARY_BUTTON, TEXT_LINK } from './fields';
-import { forgetLists } from './lists';
-import { ME_KEY, useArrivalStatus, useSession } from './session';
+import { ME_KEY, endSession, useArrivalStatus, useSession } from './session';
 import TwoFactorSection from './TwoFactor';
 import YourData from './YourData';
 
@@ -71,7 +70,7 @@ function SignOut() {
     }
     // Signed out at once (no stale "Signed in as" on the next visit), then confirmed by the API.
     queryClient.setQueryData(ME_KEY, null);
-    forgetLists(queryClient);
+    endSession(queryClient);
     void queryClient.invalidateQueries({ queryKey: ME_KEY });
     navigate('/');
   }
@@ -141,7 +140,10 @@ export default function AccountPage() {
       break;
     case 'signed-in':
       body = (
+        // Keyed by the account: another account remounts it, dropping every secret held in state
+        // (the two-factor QR, setup key and recovery codes, a typed password).
         <SignedIn
+          key={session.me.email}
           me={session.me}
           onDeleted={() => {
             setDeleted(true);

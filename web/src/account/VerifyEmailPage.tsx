@@ -6,7 +6,7 @@ import { isVerificationLink, verifyEmail, type ApiFailure } from '../api/client'
 import Link from '../Link';
 import { AccountMain, LoadingAccount, ProblemBlock } from './Form';
 import { TEXT_LINK } from './fields';
-import { ME_KEY, useSession } from './session';
+import { ME_KEY, ONE_TIME, accountKey, useSession } from './session';
 
 const INVALID =
   'This verification link is not valid or has expired. Send a new one from your account.';
@@ -32,9 +32,10 @@ function SignInFirst({ link }: { readonly link: string }) {
 function Verify({ link }: { readonly link: string }) {
   const session = useSession();
   const queryClient = useQueryClient();
-  // One GET of the link per page visit: never polled, never retried, never refetched on focus.
+  // One GET of the link per page visit: never polled, never retried, never refetched on focus, and
+  // never marked stale by a signed-out ['me'] answer (ONE_TIME).
   const verification = useQuery<true, ApiFailure>({
-    queryKey: ['verify-email', link],
+    queryKey: accountKey('verify-email', link),
     queryFn: async ({ signal }): Promise<true> => {
       const result = await verifyEmail(link, { signal });
       if (!result.ok) {
@@ -48,6 +49,7 @@ function Verify({ link }: { readonly link: string }) {
     staleTime: Infinity,
     refetchInterval: false,
     refetchOnWindowFocus: false,
+    meta: ONE_TIME,
   });
 
   if (session.state === 'loading') return <LoadingAccount />;

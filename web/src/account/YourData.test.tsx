@@ -209,13 +209,13 @@ describe('Your data on /account (T08 criterion 3, D10)', () => {
     render(<App />);
     await screen.findByRole('heading', { level: 1, name: 'Watchlist' });
     await waitFor(() => {
-      expect(created.clients[0]?.getQueryData(['watchlist'])).toBeDefined();
+      expect(created.clients[0]?.getQueryData(['account', 'watchlist'])).toBeDefined();
     });
     act(() => {
       navigate('/portfolio');
     });
     await waitFor(() => {
-      expect(created.clients[0]?.getQueryData(['portfolio'])).toBeDefined();
+      expect(created.clients[0]?.getQueryData(['account', 'portfolio'])).toBeDefined();
     });
     act(() => {
       navigate('/account');
@@ -237,8 +237,8 @@ describe('Your data on /account (T08 criterion 3, D10)', () => {
     expect(sentBody(deletions[0])).toEqual({ password: PASSWORD });
     expect(calls.filter((call) => call.key === 'GET /v1/me')).toHaveLength(2);
     const client = created.clients[0];
-    expect(client?.getQueryCache().find({ queryKey: ['watchlist'] })).toBeUndefined();
-    expect(client?.getQueryCache().find({ queryKey: ['portfolio'] })).toBeUndefined();
+    expect(client?.getQueryCache().find({ queryKey: ['account', 'watchlist'] })).toBeUndefined();
+    expect(client?.getQueryCache().find({ queryKey: ['account', 'portfolio'] })).toBeUndefined();
     expect(client?.getQueryData(['me'])).toBeNull();
     expect(domHolds(PASSWORD)).toBe(false);
   });

@@ -7,8 +7,7 @@ import { startDemo, type ApiFailure } from '../api/client';
 import { navigate } from '../router';
 import { ProblemBlock } from './Form';
 import { SECONDARY_BUTTON } from './fields';
-import { forgetLists } from './lists';
-import { ME_KEY } from './session';
+import { ME_KEY, endSession } from './session';
 
 export default function DemoButton() {
   const queryClient = useQueryClient();
@@ -24,8 +23,8 @@ export default function DemoButton() {
       setFailure(result);
       return;
     }
-    // Another account's lists never show under the demo's session.
-    forgetLists(queryClient);
+    // Nothing of another account shows under the demo's session.
+    endSession(queryClient);
     await queryClient.invalidateQueries({ queryKey: ME_KEY, refetchType: 'all' });
     navigate('/watchlist');
   }

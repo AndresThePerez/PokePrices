@@ -11,14 +11,15 @@ import {
   type WebhooksBody,
 } from '../api/client';
 import { unwrap } from '../query';
+import { accountKey } from './session';
 
 /** The movement rule (draft-v1, ADR 0001): a close moves by at least this percentage … */
 export const MOVEMENT_PCT = 5;
 /** … and at least this many dollars (the API's decimal string, printed as it is). */
 export const MOVEMENT_ABS = '1.00';
 
-export const WEBHOOKS_KEY = ['webhooks'] as const;
-export const NOTIFICATIONS_KEY = ['notifications'] as const;
+export const WEBHOOKS_KEY = accountKey('webhooks');
+export const NOTIFICATIONS_KEY = accountKey('notifications');
 
 /** The loading line of /alerts (D10). */
 export const WEBHOOKS_LOADING = 'Loading your alerts and webhooks…';

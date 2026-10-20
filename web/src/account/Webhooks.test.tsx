@@ -9,7 +9,8 @@ import App from '../App';
 import { createQueryClient } from '../query';
 import { navigate } from '../router';
 import AlertsPage from './AlertsPage';
-import { forgetLists } from './lists';
+import { WEBHOOKS_KEY } from './alerts';
+import { endSession } from './session';
 import {
   FAKE_SIGNING_SECRET,
   accountValidationProblem,
@@ -388,10 +389,10 @@ describe('test message and delete (P5 T04 criterion 3)', () => {
 });
 
 describe('another account never sees these webhooks (P5 T04)', () => {
-  it('forgetLists drops the webhook list with the watchlist and portfolio', () => {
+  it('endSession drops the webhook list with the watchlist and portfolio', () => {
     const client = createQueryClient();
-    client.setQueryData(['webhooks'], webhooksBody([webhookOf()]));
-    forgetLists(client);
-    expect(client.getQueryData(['webhooks'])).toBeUndefined();
+    client.setQueryData(WEBHOOKS_KEY, webhooksBody([webhookOf()]));
+    endSession(client);
+    expect(client.getQueryData(WEBHOOKS_KEY)).toBeUndefined();
   });
 });
