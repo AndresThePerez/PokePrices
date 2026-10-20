@@ -18,11 +18,12 @@ import MoversPage from './pages/MoversPage';
 import SearchPage from './pages/SearchPage';
 import { createQueryClient } from './query';
 import { useRoute } from './router';
+import { TEXT_LINK } from './ui/classes';
 
 function Page({ title, children }: { readonly title: string; readonly children: ReactNode }) {
   return (
     <main className="mx-auto max-w-3xl p-6">
-      <h1 className="text-3xl font-semibold">{title}</h1>
+      <h1 className="text-2xl font-semibold">{title}</h1>
       {children}
     </main>
   );
@@ -70,10 +71,7 @@ function Routes() {
         <Page title="Page not found">
           <p className="mt-2 text-base">PokéPrices has no page at {pathname}.</p>
           <p className="mt-4 text-base">
-            <Link
-              to="/"
-              className="inline-flex min-h-11 items-center underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-700 dark:focus-visible:outline-sky-400"
-            >
+            <Link to="/" className={TEXT_LINK}>
               Go to the home page
             </Link>
           </p>

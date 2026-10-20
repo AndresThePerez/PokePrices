@@ -3,14 +3,12 @@ import { useEffect, useState, type SubmitEvent } from 'react';
 import Link from '../Link';
 import { cardPath, navigate } from '../router';
 import { searchCards, type ApiFailure, type ApiResult, type CardSearchPage } from '../api/client';
+import { Button } from '../ui/Button';
+import { FOCUS, MUTED, TEXT_LINK } from '../ui/classes';
+import { Input } from '../ui/Field';
 import Notice from '../ui/Notice';
 
 const DEGRADED_LINE = 'Catalog data may be out of date: PokéSearch is unavailable';
-const FOCUS =
-  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-700 dark:focus-visible:outline-sky-400';
-/** Muted text, readable in both themes. */
-const MUTED = 'text-slate-600 dark:text-slate-400';
-const PAGER_LINK = `inline-flex min-h-11 items-center underline underline-offset-4 ${FOCUS}`;
 
 /** A page number from the URL; anything that is not a positive integer reads as page 1. */
 function readPage(raw: string | null): number {
@@ -32,9 +30,9 @@ function SearchForm({ initial }: { readonly initial: string }) {
   }
   return (
     <form role="search" onSubmit={submit} className="mt-4 flex flex-wrap items-end gap-3">
-      <label className="flex min-w-0 grow flex-col gap-1 text-sm font-medium">
+      <label className="flex min-w-0 grow flex-col gap-1 text-sm font-semibold">
         Card name
-        <input
+        <Input
           type="search"
           name="q"
           value={text}
@@ -43,15 +41,12 @@ function SearchForm({ initial }: { readonly initial: string }) {
           onChange={(event) => {
             setText(event.target.value);
           }}
-          className={`min-h-11 rounded-md border border-slate-400 bg-white px-3 py-2 text-base font-normal dark:border-slate-500 dark:bg-slate-900 ${FOCUS}`}
+          className="font-normal"
         />
       </label>
-      <button
-        type="submit"
-        className={`min-h-11 min-w-11 rounded-md bg-slate-900 px-4 py-2 font-semibold text-white dark:bg-slate-100 dark:text-slate-900 ${FOCUS}`}
-      >
+      <Button variant="primary" type="submit">
         Search
-      </button>
+      </Button>
     </form>
   );
 }
@@ -83,7 +78,7 @@ function Pager({
   return (
     <nav aria-label="Result pages" className="mt-6 flex items-center gap-6 text-sm">
       {page > 1 && (
-        <Link to={searchPath(q, previous)} className={PAGER_LINK}>
+        <Link to={searchPath(q, previous)} className={TEXT_LINK}>
           Previous page
         </Link>
       )}
@@ -91,7 +86,7 @@ function Pager({
         Page {page} of {pages}
       </span>
       {page < pages && (
-        <Link to={searchPath(q, page + 1)} className={PAGER_LINK}>
+        <Link to={searchPath(q, page + 1)} className={TEXT_LINK}>
           Next page
         </Link>
       )}
@@ -119,15 +114,12 @@ function Results({ q, body }: { readonly q: string; readonly body: CardSearchPag
         {summary}
       </p>
       {data.length > 0 && (
-        <ol
-          aria-label="Search results"
-          className="mt-2 divide-y divide-slate-200 dark:divide-slate-700"
-        >
+        <ol aria-label="Search results" className="mt-2 divide-y divide-line-subtle">
           {data.map((card) => (
             <li key={card.id}>
               <Link
                 to={cardPath(card.id)}
-                className={`flex items-center gap-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 ${FOCUS}`}
+                className={`flex items-center gap-4 py-3 hover:bg-surface-sunken ${FOCUS}`}
               >
                 <img
                   src={card.image_small}
@@ -135,7 +127,7 @@ function Results({ q, body }: { readonly q: string; readonly body: CardSearchPag
                   width={63}
                   height={88}
                   loading="lazy"
-                  className="h-[88px] w-[63px] shrink-0 rounded-[5px] border-[3px] border-[#f2c230] bg-slate-100 object-cover dark:bg-slate-800"
+                  className="h-[88px] w-[63px] shrink-0 rounded-sm border border-line bg-surface-sunken object-cover"
                 />
                 <span className="min-w-0">
                   <span className="block text-lg font-semibold">{card.name}</span>
@@ -199,7 +191,7 @@ export default function SearchPage({ query }: { readonly query: URLSearchParams 
 
   return (
     <main className="mx-auto max-w-3xl p-6">
-      <h1 className="text-3xl font-semibold">Search cards</h1>
+      <h1 className="text-2xl font-semibold">Search cards</h1>
       <SearchForm key={q} initial={q} />
       {body}
     </main>

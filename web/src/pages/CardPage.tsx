@@ -14,6 +14,7 @@ import {
 } from '../api/client';
 import Sparkline from '../chart/Sparkline';
 import { PRICE_FOOTNOTE, variantLabel } from '../format';
+import { MUTED, TEXT_LINK } from '../ui/classes';
 import Notice from '../ui/Notice';
 import PriceTag from '../ui/PriceTag';
 import Skeleton from '../ui/Skeleton';
@@ -23,11 +24,6 @@ import PriceHistory from './PriceHistory';
 const DEGRADED_LINE = 'Catalog data may be out of date: PokéSearch is unavailable';
 const CATALOG_MISSING_LINE = 'This card is no longer in the PokéSearch catalog';
 const CARD_NOT_FOUND = '/problems/card-not-found';
-const FOCUS =
-  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-700 dark:focus-visible:outline-sky-400';
-/** Muted text, readable in both themes. */
-const MUTED = 'text-slate-600 dark:text-slate-400';
-const FAINT = 'text-slate-500 dark:text-slate-400';
 
 /** An RFC 3339 timestamp: date, time, optional fraction, then Z or a +hh:mm / -hh:mm offset. */
 const RFC3339 =
@@ -165,7 +161,7 @@ function PricedVariants({
           </li>
         ))}
       </ul>
-      <p className={`mt-4 text-xs leading-snug ${FAINT}`}>{PRICE_FOOTNOTE}</p>
+      <p className={`mt-4 text-meta ${MUTED}`}>{PRICE_FOOTNOTE}</p>
     </>
   );
 }
@@ -181,10 +177,10 @@ function CardImage({ card }: { readonly card: Card }) {
         alt={`${card.name}, ${card.set.name} No. ${card.number}`}
         width={245}
         height={342}
-        className="aspect-[63/88] w-full rounded-[14px] border-[10px] border-[#f2c230] bg-slate-100 object-cover shadow-[0_22px_40px_-20px_rgba(15,23,42,0.6)] dark:bg-slate-800"
+        className="aspect-[63/88] w-full rounded-lg border border-line bg-surface-sunken object-cover shadow-panel"
       />
       {host !== null && (
-        <figcaption className={`mt-3 text-xs leading-snug ${FAINT}`}>
+        <figcaption className={`mt-3 text-meta ${MUTED}`}>
           {`Card image from ${host}, linked as the PokéSearch catalog lists it.`}
         </figcaption>
       )}
@@ -198,7 +194,7 @@ function Mapping({ variants }: { readonly variants: Card['variants'] }) {
     <ul className="mt-2 space-y-3">
       {variants.map((variant) => (
         <li key={variant.variant_key}>
-          <span className="block font-medium capitalize">{variantLabel(variant)}</span>
+          <span className="block font-semibold capitalize">{variantLabel(variant)}</span>
           {variant.sources.length === 0 ? (
             <span className={`block text-sm ${MUTED}`}>Not yet mapped</span>
           ) : (
@@ -229,7 +225,7 @@ function Loaded({ body }: { readonly body: CardDetail }) {
       <article className="grid gap-8 sm:grid-cols-[15rem_minmax(0,1fr)]">
         <CardImage card={card} />
         <div className="min-w-0">
-          <h1 className="text-3xl font-semibold">{card.name}</h1>
+          <h1 className="text-2xl font-semibold">{card.name}</h1>
           <p className={`mt-2 flex flex-wrap gap-x-4 ${MUTED}`}>
             <span>{card.set.name}</span>
             <span>No. {card.number}</span>
@@ -247,9 +243,7 @@ function Loaded({ body }: { readonly body: CardDetail }) {
             </h2>
             <Mapping variants={card.variants} />
           </section>
-          <p
-            className={`mt-8 border-t border-slate-200 pt-4 text-sm dark:border-slate-700 ${MUTED}`}
-          >
+          <p className={`mt-8 border-t border-line-subtle pt-4 text-sm ${MUTED}`}>
             {catalogLine(card.catalog)}
           </p>
         </div>
@@ -262,15 +256,12 @@ function Loaded({ body }: { readonly body: CardDetail }) {
 function NotFound({ failure }: { readonly failure: ApiFailure }) {
   return (
     <>
-      <h1 className="text-3xl font-semibold">Card not found</h1>
+      <h1 className="text-2xl font-semibold">Card not found</h1>
       {failure.problem?.catalog_missing === true && (
         <p className="mt-2 text-base">{CATALOG_MISSING_LINE}</p>
       )}
       <p className="mt-4 text-base">
-        <Link
-          to="/search"
-          className={`inline-flex min-h-11 items-center underline underline-offset-4 ${FOCUS}`}
-        >
+        <Link to="/search" className={TEXT_LINK}>
           Search cards
         </Link>
       </p>
@@ -281,7 +272,7 @@ function NotFound({ failure }: { readonly failure: ApiFailure }) {
 function Failed({ id, failure }: { readonly id: string; readonly failure: ApiFailure }) {
   return (
     <>
-      <h1 className="text-3xl font-semibold">{`Card ${id}`}</h1>
+      <h1 className="text-2xl font-semibold">{`Card ${id}`}</h1>
       <Notice tone="problem" role="alert" className="mt-6">
         <p className="font-semibold">Could not load this card: {failure.title}</p>
         {failure.requestId !== null && (
@@ -318,7 +309,7 @@ export default function CardPage({ id }: { readonly id: string }) {
   } else {
     body = (
       <>
-        <h1 className="text-3xl font-semibold">{`Card ${id}`}</h1>
+        <h1 className="text-2xl font-semibold">{`Card ${id}`}</h1>
         <p role="status" className="mt-6 text-sm text-ink-muted">
           {`Loading card ${id}…`}
         </p>

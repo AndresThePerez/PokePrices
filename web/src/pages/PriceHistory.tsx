@@ -23,11 +23,10 @@ import {
 } from '../chart/series';
 import { variantLabel } from '../format';
 import { unwrap } from '../query';
+import { Button } from '../ui/Button';
+import { MUTED, TEXT_LINK } from '../ui/classes';
 import Notice from '../ui/Notice';
 
-const FOCUS =
-  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-700 dark:focus-visible:outline-sky-400';
-const MUTED = 'text-slate-600 dark:text-slate-400';
 const ZERO_ELIGIBLE = 'No daily close is held for this card yet.';
 const CHART_FAILED = 'The chart could not be drawn. Show the data table to read every close.';
 const ATTRIBUTION = 'Chart by TradingView Lightweight Charts';
@@ -51,23 +50,13 @@ class ChartBoundary extends Component<{ readonly children: ReactNode }, { failed
 /** The link the chart library's licence asks for, under every drawn chart (D6). */
 function Attribution() {
   return (
-    <p className="mt-1 text-xs">
-      <a
-        href="https://www.tradingview.com/"
-        className={`inline-flex min-h-11 items-center underline underline-offset-4 ${MUTED} ${FOCUS}`}
-      >
+    <p className="mt-1 text-meta">
+      <a href="https://www.tradingview.com/" className={`${TEXT_LINK} ${MUTED}`}>
         {ATTRIBUTION}
       </a>
     </p>
   );
 }
-
-/** A pressable button: 44 px tall and wide, the pressed state filled in both themes. */
-const TOGGLE =
-  `inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border px-3 text-sm font-medium ` +
-  `border-slate-300 bg-white text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 ` +
-  `aria-pressed:border-slate-900 aria-pressed:bg-slate-900 aria-pressed:text-white ` +
-  `dark:aria-pressed:border-slate-100 dark:aria-pressed:bg-slate-100 dark:aria-pressed:text-slate-900 ${FOCUS}`;
 
 function Problem({ failure }: { readonly failure: ApiFailure }) {
   return (
@@ -106,11 +95,11 @@ function DataTable({
         {`Daily closes of ${label}, ${range}, from TCGCSV`}
       </caption>
       <thead>
-        <tr className="border-b border-slate-300 dark:border-slate-600">
+        <tr className="border-b border-line-subtle">
           <th scope="col" className="py-2 pr-4 font-semibold">
             Day
           </th>
-          <th scope="col" className="py-2 pr-4 font-semibold">
+          <th scope="col" className="py-2 pr-4 text-right font-semibold">
             Close
           </th>
           <th scope="col" className="py-2 font-semibold">
@@ -120,12 +109,9 @@ function DataTable({
       </thead>
       <tbody>
         {tableRows(points).map((row) => (
-          <tr
-            key={`${series.variant_key} ${row.day}`}
-            className="border-b border-slate-200 dark:border-slate-700"
-          >
+          <tr key={`${series.variant_key} ${row.day}`} className="border-b border-line-subtle">
             <td className="py-2 pr-4 whitespace-nowrap">{row.day}</td>
-            <td className="py-2 pr-4 whitespace-nowrap">{row.close}</td>
+            <td className="py-2 pr-4 text-right num whitespace-nowrap">{row.close}</td>
             <td className={`py-2 ${MUTED}`}>{row.note}</td>
           </tr>
         ))}
@@ -188,7 +174,7 @@ function SeriesView({
             onClick={() => {
               setTableOpen((open) => !open);
             }}
-            className={`mt-4 inline-flex min-h-11 items-center underline underline-offset-4 ${FOCUS}`}
+            className={`mt-4 ${TEXT_LINK}`}
           >
             {tableOpen ? 'Hide data table' : 'Show data table'}
           </button>
@@ -243,17 +229,17 @@ function Loaded({
       {eligible.length >= 2 && (
         <div role="group" aria-label="Variant" className="mt-3 flex flex-wrap gap-2">
           {eligible.map((one) => (
-            <button
+            <Button
               key={one.variant_key}
-              type="button"
-              aria-pressed={one.variant_key === selected.variant_key}
+              variant="segment"
+              pressed={one.variant_key === selected.variant_key}
               onClick={() => {
                 onChoose(one.variant_key);
               }}
-              className={`${TOGGLE} capitalize`}
+              className="capitalize"
             >
               {variantLabel(one)}
-            </button>
+            </Button>
           ))}
         </div>
       )}
@@ -281,17 +267,17 @@ export default function PriceHistory({ id }: { readonly id: string }) {
   const rangeGroup = (
     <div role="group" aria-label="Chart range" className="mt-3 flex flex-wrap gap-2">
       {RANGES.map((key) => (
-        <button
+        <Button
           key={key}
-          type="button"
-          aria-pressed={key === range}
+          variant="segment"
+          pressed={key === range}
           onClick={() => {
             setRange(key);
           }}
-          className={`${TOGGLE} tabular-nums`}
+          className="tabular-nums"
         >
           {key}
-        </button>
+        </Button>
       ))}
     </div>
   );

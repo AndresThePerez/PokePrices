@@ -16,15 +16,12 @@ import {
 import { PRICE_FOOTNOTE, grouped, variantLabel } from '../format';
 import { unwrap } from '../query';
 import { cardPath } from '../router';
+import { FOCUS, MUTED, TEXT_LINK } from '../ui/classes';
 import Notice from '../ui/Notice';
 import { AsOf, ChangeChip, PriceFigure } from '../ui/PriceTag';
 import Skeleton from '../ui/Skeleton';
 
 const DEGRADED_LINE = 'Catalog data may be out of date: PokéSearch is unavailable';
-const FOCUS =
-  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-700 dark:focus-visible:outline-sky-400';
-const MUTED = 'text-slate-600 dark:text-slate-400';
-const FAINT = 'text-slate-500 dark:text-slate-400';
 
 /** The number of rows each sub-list of the home strip asks for. */
 const STRIP_LIMIT = 5;
@@ -45,7 +42,7 @@ function detailLine(mover: Mover): string {
 function MoverRow({ mover }: { readonly mover: Mover }) {
   return (
     <li className="grid grid-cols-[2.75rem_minmax(0,1fr)] gap-x-2 py-3">
-      <span className={`pt-2.5 text-lg leading-6 font-semibold tabular-nums ${FAINT}`}>
+      <span className={`pt-2.5 text-lg leading-6 font-semibold tabular-nums ${MUTED}`}>
         {`#${String(mover.rank)}`}
       </span>
       <div className="min-w-0 wrap-anywhere">
@@ -88,7 +85,7 @@ export function MoversDegraded() {
 }
 
 export function MoversFootnote() {
-  return <p className={`mt-4 text-xs leading-snug ${FAINT}`}>{PRICE_FOOTNOTE}</p>;
+  return <p className={`mt-4 text-meta ${MUTED}`}>{PRICE_FOOTNOTE}</p>;
 }
 
 /** A failure with no answer to show (D10). */
@@ -141,7 +138,7 @@ export default function MoverList({
       ) : (
         <ol
           aria-label={name}
-          className="mt-3 divide-y divide-slate-200 border-y border-slate-200 dark:divide-slate-700 dark:border-slate-700"
+          className="mt-3 divide-y divide-line-subtle border-y border-line-subtle"
         >
           {body.data.map((mover) => (
             <MoverRow key={mover.variant_key} mover={mover} />
@@ -175,10 +172,7 @@ function StripLoaded({ up, down }: { readonly up: MoversPage; readonly down: Mov
       </div>
       {hasRows && <MoversFootnote />}
       <p className="mt-4">
-        <Link
-          to="/movers"
-          className={`inline-flex min-h-11 items-center underline underline-offset-4 ${FOCUS}`}
-        >
+        <Link to="/movers" className={TEXT_LINK}>
           See all movers
         </Link>
       </p>
@@ -213,7 +207,7 @@ export function BiggestMoves() {
 
   return (
     <section aria-labelledby={headingId} className="mt-10">
-      <h2 id={headingId} className="text-xl font-semibold">
+      <h2 id={headingId} className="text-lg font-semibold">
         Biggest moves vs previous close
       </h2>
       {body}

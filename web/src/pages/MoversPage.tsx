@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getMovers, type ApiFailure, type MoversDirection, type MoversPage } from '../api/client';
 import { unwrap } from '../query';
 import { navigate } from '../router';
+import { Button } from '../ui/Button';
 import MoverList, {
   MoversDegraded,
   MoversFootnote,
@@ -13,16 +14,6 @@ import MoverList, {
 } from './MoverList';
 
 const BOARD_LIMIT = 50;
-
-const FOCUS =
-  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-700 dark:focus-visible:outline-sky-400';
-
-/** A pressable button: 44 px tall and wide, the pressed state filled in both themes. */
-const TOGGLE =
-  `inline-flex min-h-11 min-w-11 items-center justify-center rounded-md border px-4 text-sm font-medium ` +
-  `border-slate-300 bg-white text-slate-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100 ` +
-  `aria-pressed:border-slate-900 aria-pressed:bg-slate-900 aria-pressed:text-white ` +
-  `dark:aria-pressed:border-slate-100 dark:aria-pressed:bg-slate-100 dark:aria-pressed:text-slate-900 ${FOCUS}`;
 
 const DIRECTIONS: readonly {
   readonly direction: MoversDirection;
@@ -68,20 +59,19 @@ export default function MoversPage({ direction }: { readonly direction: MoversDi
 
   return (
     <main className="mx-auto max-w-3xl p-6">
-      <h1 className="text-3xl font-semibold">Biggest moves</h1>
+      <h1 className="text-2xl font-semibold">Biggest moves</h1>
       <div role="group" aria-label="Direction" className="mt-4 flex flex-wrap gap-2">
         {DIRECTIONS.map((option) => (
-          <button
+          <Button
             key={option.direction}
-            type="button"
-            aria-pressed={option.direction === direction}
+            variant="segment"
+            pressed={option.direction === direction}
             onClick={() => {
               navigate(option.path);
             }}
-            className={TOGGLE}
           >
             {option.label}
-          </button>
+          </Button>
         ))}
       </div>
       {body}

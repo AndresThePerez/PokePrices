@@ -120,3 +120,18 @@
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
+
+/*
+ * The chart library's attribution logo (an a#tv-attr-logo it injects with its own 35 x 19 px
+ * rule) keeps its look and gains a 44 x 44 px hit area: the same 35 x 19 glyph, padded out to the
+ * minimum size, with the offset pulled in by the padding so the glyph stays where it was. Unlayered
+ * and one attribute stronger than the library's selector, so it wins wherever that style lands.
+ */
+[role='img'] a#tv-attr-logo {
+  box-sizing: border-box;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 12px 4px 13px 5px;
+  left: 5px;
+  bottom: -3px;
+}
