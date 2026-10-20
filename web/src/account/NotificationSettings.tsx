@@ -22,11 +22,11 @@ const DIGEST_HINT =
   `day's prices are in.`;
 const DISCORD_HINT = 'Add a Discord webhook below first.';
 
-const SECTION = 'mt-8 border-t border-slate-200 pt-6 dark:border-slate-700';
+const SECTION = 'mt-8 border-t border-line-subtle pt-6';
 
 /** A radio or checkbox row: the whole label is the 44 px target. */
 const CHOICE_ROW = 'flex min-h-11 cursor-pointer items-center gap-3';
-const CHOICE_INPUT = `min-h-11 w-5 shrink-0 accent-slate-900 dark:accent-slate-100 ${FOCUS}`;
+const CHOICE_INPUT = `min-h-11 w-5 shrink-0 accent-accent ${FOCUS}`;
 
 type Draft = Pick<Settings, 'channel' | 'digest'>;
 
@@ -98,7 +98,7 @@ function SettingsForm({
     <>
       <form noValidate onSubmit={submit} className="mt-4 space-y-4">
         <fieldset>
-          <legend className="font-medium">Send alerts and the digest by</legend>
+          <legend className="font-semibold">Send alerts and the digest by</legend>
           <div className="mt-1">
             <label htmlFor={`${id}-email`} className={CHOICE_ROW}>
               <input
@@ -140,10 +140,7 @@ function SettingsForm({
               </p>
             )}
             {channelErrorId !== undefined && (
-              <p
-                id={channelErrorId}
-                className="mt-1 text-sm font-medium text-red-700 dark:text-red-300"
-              >
+              <p id={channelErrorId} className="mt-1 text-sm font-semibold text-problem">
                 {channelError}
               </p>
             )}
@@ -209,7 +206,7 @@ export default function NotificationSettings({
   }
   return (
     <section aria-labelledby={headingId} className={SECTION}>
-      <h2 id={headingId} className="text-xl font-semibold">
+      <h2 id={headingId} className="text-lg font-semibold">
         Where alerts go
       </h2>
       {body}
@@ -222,7 +219,7 @@ export function PerCardAlerts() {
   const headingId = useId();
   return (
     <section aria-labelledby={headingId} className={SECTION}>
-      <h2 id={headingId} className="text-xl font-semibold">
+      <h2 id={headingId} className="text-lg font-semibold">
         Per-card alerts
       </h2>
       <p className="mt-2">Set a threshold on any card in your watchlist.</p>

@@ -76,7 +76,7 @@ function SignOut() {
   }
 
   return (
-    <div className="mt-8 border-t border-slate-200 pt-6 dark:border-slate-700">
+    <div className="mt-8 border-t border-line-subtle pt-6">
       <button
         type="button"
         disabled={pending}
@@ -95,11 +95,11 @@ function SignOut() {
 function SignedIn({ me, onDeleted }: { readonly me: Me; readonly onDeleted: () => void }) {
   return (
     <>
-      <p className="mt-6 text-lg font-medium break-all">{`Signed in as ${me.email}`}</p>
+      <p className="mt-6 text-lg font-semibold break-all">{`Signed in as ${me.email}`}</p>
       {me.read_only && <DemoNotice />}
       <Verification verified={me.email_verified} />
       <TwoFactorSection me={me} />
-      <p className="mt-8 border-t border-slate-200 pt-6 dark:border-slate-700">
+      <p className="mt-8 border-t border-line-subtle pt-6">
         <Link to="/alerts" className={TEXT_LINK}>
           Alerts and webhooks
         </Link>

@@ -30,7 +30,7 @@ export default function DemoButton() {
   }
 
   return (
-    <div className="mt-8 border-t border-slate-200 pt-6 dark:border-slate-700">
+    <div className="mt-8 border-t border-line-subtle pt-6">
       <button
         type="button"
         disabled={pending}

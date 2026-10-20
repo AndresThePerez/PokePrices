@@ -56,7 +56,7 @@ function TwoFactorChallenge({ next }: { readonly next: string }) {
 
   return (
     <section aria-labelledby={headingId} className="mt-6">
-      <h2 id={headingId} className="text-xl font-semibold">
+      <h2 id={headingId} className="text-lg font-semibold">
         Two-factor authentication
       </h2>
       {failure !== null && (

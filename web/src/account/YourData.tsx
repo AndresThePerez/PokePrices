@@ -6,6 +6,7 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { useId, useState, type SubmitEvent } from 'react';
 import { deleteAccount, type ApiFailure, type Me } from '../api/client';
+import { Button } from '../ui/Button';
 import { Field, ProblemBlock } from './Form';
 import { FOCUS, TEXT_LINK, firstErrors } from './fields';
 import { ME_KEY, endSession } from './session';
@@ -13,21 +14,16 @@ import { ME_KEY, endSession } from './session';
 const EXPORT_PATH = '/v1/me/export';
 const EXPORT_FILE = 'pokeprices-export.json';
 
-const SECTION = 'mt-8 border-t border-slate-200 pt-6 dark:border-slate-700';
-
-/** The one destructive button on the page: filled red in both themes. */
-const DANGER_BUTTON =
-  `min-h-11 min-w-11 rounded-md bg-red-700 px-4 py-2 font-semibold text-white ` +
-  `disabled:opacity-60 dark:bg-red-300 dark:text-red-950 ${FOCUS}`;
+const SECTION = 'mt-8 border-t border-line-subtle pt-6';
 
 /** The checkbox keeps a 44 px row; browsers draw the box itself square inside it. */
-const CHECKBOX = `min-h-11 w-5 shrink-0 accent-red-700 dark:accent-red-300 ${FOCUS}`;
+const CHECKBOX = `min-h-11 w-5 shrink-0 accent-problem ${FOCUS}`;
 
 function ExportSection() {
   const headingId = useId();
   return (
     <section aria-labelledby={headingId} className={SECTION}>
-      <h2 id={headingId} className="text-xl font-semibold">
+      <h2 id={headingId} className="text-lg font-semibold">
         Your data
       </h2>
       <p className="mt-2">
@@ -83,11 +79,7 @@ function DeleteForm({ onDeleted }: { readonly onDeleted: () => void }) {
         Deleting your account removes your email address, watchlist and portfolio from PokéPrices.
         It cannot be undone.
       </p>
-      <form
-        noValidate
-        onSubmit={submit}
-        className="mt-4 space-y-4 border-l-4 border-red-700 pl-4 dark:border-red-400"
-      >
+      <form noValidate onSubmit={submit} className="mt-4 space-y-4 border-l-4 border-problem pl-4">
         <div className="flex min-h-11 items-center gap-3">
           <input
             id={checkboxId}
@@ -112,9 +104,9 @@ function DeleteForm({ onDeleted }: { readonly onDeleted: () => void }) {
             error={errors.password}
           />
         )}
-        <button type="submit" disabled={!ready} className={DANGER_BUTTON}>
+        <Button variant="danger" type="submit" disabled={!ready}>
           Delete my account
-        </button>
+        </Button>
       </form>
       {failure !== null && (
         <ProblemBlock
@@ -131,7 +123,7 @@ function DeleteSection({ me, onDeleted }: { readonly me: Me; readonly onDeleted:
   const headingId = useId();
   return (
     <section aria-labelledby={headingId} className={SECTION}>
-      <h2 id={headingId} className="text-xl font-semibold">
+      <h2 id={headingId} className="text-lg font-semibold">
         Delete account
       </h2>
       {me.read_only ? (

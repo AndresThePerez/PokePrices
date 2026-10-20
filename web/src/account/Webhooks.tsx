@@ -4,7 +4,7 @@
 // gone from the DOM after "I have stored the secret" and when the page is left. Dates are the date
 // parts of the API's timestamps; nothing here reads the clock.
 import { useQueryClient } from '@tanstack/react-query';
-import { useId, useState, type ReactNode, type SubmitEvent } from 'react';
+import { useId, useState, type SubmitEvent } from 'react';
 import {
   createWebhook,
   deleteWebhook,
@@ -25,8 +25,9 @@ import {
 } from './alerts';
 import Notice from '../ui/Notice';
 import Panel from '../ui/Panel';
+import { Field, Input, Select } from '../ui/Field';
 import { ProblemBlock, StatusLine } from './Form';
-import { FOCUS, MUTED, PRIMARY_BUTTON, SECONDARY_BUTTON, firstErrors } from './fields';
+import { MUTED, PRIMARY_BUTTON, SECONDARY_BUTTON, firstErrors } from './fields';
 
 const INTRO =
   `PokéPrices sends a signed message to each signed webhook when a card on your watchlist or ` +
@@ -49,17 +50,17 @@ const TURNED_OFF =
  */
 const URL_PLACEHOLDER = `https:${'/'.repeat(2)}`;
 
-const SECTION = 'mt-8 border-t border-slate-200 pt-6 dark:border-slate-700';
+const KIND_OPTIONS = [
+  { value: 'standard', label: 'Signed webhook (Standard Webhooks)' },
+  { value: 'discord', label: 'Discord' },
+];
 
-const CONTROL =
-  `mt-1 block min-h-11 w-full rounded-md border px-3 py-2 text-base ` +
-  `border-slate-400 bg-white text-slate-900 dark:border-slate-500 dark:bg-slate-900 dark:text-slate-100 ` +
-  `aria-invalid:border-red-700 dark:aria-invalid:border-red-400 ${FOCUS}`;
+const SECTION = 'mt-8 border-t border-line-subtle pt-6';
 
 /** The one status line of a webhook (D10); a turned-off webhook says so whatever came before. */
 function statusLine(endpoint: WebhookEndpoint): { readonly text: string; readonly tone: string } {
   if (endpoint.disabled) {
-    return { text: TURNED_OFF, tone: 'font-medium text-amber-900 dark:text-amber-200' };
+    return { text: TURNED_OFF, tone: 'font-semibold text-warn' };
   }
   const last = endpoint.last_delivery;
   if (last === null) return { text: 'No message sent yet.', tone: MUTED };
@@ -67,12 +68,12 @@ function statusLine(endpoint: WebhookEndpoint): { readonly text: string; readonl
     case 'delivered':
       return {
         text: `Last message delivered (${datePart(last.at)}).`,
-        tone: 'text-emerald-800 dark:text-emerald-300',
+        tone: 'text-ink',
       };
     case 'failed':
       return {
         text: `Last message failed (${datePart(last.at)}).`,
-        tone: 'font-medium text-red-700 dark:text-red-300',
+        tone: 'font-semibold text-problem',
       };
     case 'pending':
       return { text: 'Last message waiting to be sent.', tone: MUTED };
@@ -164,41 +165,6 @@ function WebhookRow({
   );
 }
 
-/** A labelled control with its first 422 message under it (aria-invalid, aria-describedby). */
-function Labelled({
-  label,
-  error,
-  children,
-}: {
-  readonly label: string;
-  readonly error: string | undefined;
-  readonly children: (props: {
-    readonly id: string;
-    readonly 'aria-invalid': true | undefined;
-    readonly 'aria-describedby': string | undefined;
-  }) => ReactNode;
-}) {
-  const id = useId();
-  const errorId = `${id}-error`;
-  return (
-    <div>
-      <label htmlFor={id} className="text-sm font-medium">
-        {label}
-      </label>
-      {children({
-        id,
-        'aria-invalid': error === undefined ? undefined : true,
-        'aria-describedby': error === undefined ? undefined : errorId,
-      })}
-      {error !== undefined && (
-        <p id={errorId} className="mt-1 text-sm font-medium text-red-700 dark:text-red-300">
-          {error}
-        </p>
-      )}
-    </div>
-  );
-}
-
 /** Shown once after a signed webhook is added; "I have stored the secret" removes it. */
 function SecretBlock({
   secret,
@@ -278,25 +244,23 @@ function AddWebhook() {
         Add a webhook
       </h3>
       <form noValidate onSubmit={submit} className="mt-3 space-y-4">
-        <Labelled label="Type" error={errors.kind}>
+        <Field label="Type" error={errors.kind}>
           {(props) => (
-            <select
+            <Select
               {...props}
               name="kind"
               value={kind}
               onChange={(event) => {
                 setKind(event.target.value === 'discord' ? 'discord' : 'standard');
               }}
-              className={CONTROL}
-            >
-              <option value="standard">Signed webhook (Standard Webhooks)</option>
-              <option value="discord">Discord</option>
-            </select>
+              options={KIND_OPTIONS}
+              className="mt-1 w-full"
+            />
           )}
-        </Labelled>
-        <Labelled label="URL" error={errors.url}>
+        </Field>
+        <Field label="URL" error={errors.url}>
           {(props) => (
-            <input
+            <Input
               {...props}
               name="url"
               type="url"
@@ -307,13 +271,13 @@ function AddWebhook() {
               onChange={(event) => {
                 setUrl(event.target.value);
               }}
-              className={CONTROL}
+              className="mt-1 w-full"
             />
           )}
-        </Labelled>
-        <Labelled label="Description (optional)" error={errors.description}>
+        </Field>
+        <Field label="Description (optional)" error={errors.description}>
           {(props) => (
-            <input
+            <Input
               {...props}
               name="description"
               type="text"
@@ -322,10 +286,10 @@ function AddWebhook() {
               onChange={(event) => {
                 setDescription(event.target.value);
               }}
-              className={CONTROL}
+              className="mt-1 w-full"
             />
           )}
-        </Labelled>
+        </Field>
         <button type="submit" disabled={pending} className={PRIMARY_BUTTON}>
           Add webhook
         </button>
@@ -368,7 +332,7 @@ export default function Webhooks({
       ) : (
         <ul
           aria-label="Webhooks"
-          className="mt-4 divide-y divide-slate-200 border-y border-slate-200 dark:divide-slate-700 dark:border-slate-700"
+          className="mt-4 divide-y divide-line-subtle border-y border-line-subtle"
         >
           {list.data.map((endpoint) => (
             <WebhookRow key={endpoint.id} endpoint={endpoint} canWrite={canWrite} />
@@ -386,7 +350,7 @@ export default function Webhooks({
   }
   return (
     <section aria-labelledby={headingId} className={SECTION}>
-      <h2 id={headingId} className="text-xl font-semibold">
+      <h2 id={headingId} className="text-lg font-semibold">
         Webhooks
       </h2>
       <p className="mt-2">{INTRO}</p>

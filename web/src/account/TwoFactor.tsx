@@ -187,11 +187,8 @@ export default function TwoFactorSection({ me }: { readonly me: Me }) {
   );
 
   return (
-    <section
-      aria-labelledby={headingId}
-      className="mt-8 border-t border-slate-200 pt-6 dark:border-slate-700"
-    >
-      <h2 id={headingId} className="text-xl font-semibold">
+    <section aria-labelledby={headingId} className="mt-8 border-t border-line-subtle pt-6">
+      <h2 id={headingId} className="text-lg font-semibold">
         Two-factor authentication
       </h2>
       <p className="mt-2">
