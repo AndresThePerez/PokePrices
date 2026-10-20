@@ -102,7 +102,6 @@ services:
     environment: *api-env
     command: ["php", "artisan", "queue:work", "redis", "--queue=default", "--sleep=1", "--tries=3", "--max-time=3600", "--memory=256"]
     extra_hosts: ["host.docker.internal:host-gateway"]
-    restart: unless-stopped
     mem_limit: 384m
     depends_on:
       api:
@@ -125,7 +124,6 @@ services:
     environment: *api-env
     command: ["php", "artisan", "schedule:work"]
     extra_hosts: ["host.docker.internal:host-gateway"]
-    restart: unless-stopped
     mem_limit: 128m
     depends_on:
       api:
@@ -144,6 +142,8 @@ services:
     volumes:
       - ./:/workspace
     command: ["sleep", "infinity"]
+    # PID 1 sleep ignores SIGTERM; tini forwards it so stop doesn't wait out the 10 s kill.
+    init: true
     mem_limit: 1g
     healthcheck:
       test: ["CMD", "node", "-e", "require('fs').accessSync('/workspace/web')"]
@@ -186,6 +186,7 @@ services:
         source: ./.gates
         target: /repo/.gates
       - trivy-cache:/root/.cache/trivy
+    init: true
     mem_limit: 512m
     healthcheck:
       test: ["CMD-SHELL", "gitleaks version >/dev/null && trivy --version >/dev/null"]
