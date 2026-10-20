@@ -1,124 +1,128 @@
-// The PokéPrices header on every route: the main links and the two display settings (D8).
-import { useId, type ChangeEvent } from 'react';
+// The PokéPrices header on every route (D1): one 56 px bar with a skip link, the wordmark and the
+// main links, the current page marked by aria-current, semibold and a 2 px accent underline. Under
+// 640 px the links fold into a Menu sheet, hidden by CSS only. The display settings live in the
+// footer. The header reads no session and sends no request.
+import { useEffect, useId, useState } from 'react';
 import Link from './Link';
-import {
-  PALETTES,
-  THEMES,
-  setPalette,
-  setTheme,
-  usePreferences,
-  type Palette,
-  type ThemeChoice,
-} from './preferences';
+import { useRoute, type Route } from './router';
+import { Button } from './ui/Button';
+import { FOCUS } from './ui/classes';
 
-const FOCUS =
-  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-700 dark:focus-visible:outline-sky-400';
-const SELECT = `min-h-11 rounded-md border border-slate-300 bg-white px-2 text-sm text-slate-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 ${FOCUS}`;
+const LINKS = [
+  { to: '/search', label: 'Search' },
+  { to: '/movers', label: 'Movers' },
+  { to: '/watchlist', label: 'Watchlist' },
+  { to: '/portfolio', label: 'Portfolio' },
+  { to: '/account', label: 'Account' },
+] as const;
 
-const THEME_LABELS: Record<ThemeChoice, string> = {
-  system: 'System',
-  light: 'Light',
-  dark: 'Dark',
-};
-
-const PALETTE_LABELS: Record<Palette, string> = {
-  'green-red': 'Green and red',
-  'blue-orange': 'Blue and orange',
-};
-
-function chooseTheme(event: ChangeEvent<HTMLSelectElement>): void {
-  const value = event.target.value;
-  const theme = THEMES.find((option) => option === value);
-  if (theme !== undefined) setTheme(theme);
+/** The path of the header link that names the current page, or null when none does. */
+function currentPath(route: Route): string | null {
+  switch (route.name) {
+    case 'home':
+      return '/';
+    case 'search':
+      return '/search';
+    case 'movers':
+      return '/movers';
+    case 'watchlist':
+      return '/watchlist';
+    case 'portfolio':
+      return '/portfolio';
+    case 'account':
+    case 'alerts':
+      return '/account';
+    default:
+      return null;
+  }
 }
 
-function choosePalette(event: ChangeEvent<HTMLSelectElement>): void {
-  const value = event.target.value;
-  const palette = PALETTES.find((option) => option === value);
-  if (palette !== undefined) setPalette(palette);
-}
+const SKIP =
+  `absolute -top-24 left-4 z-20 inline-flex min-h-11 items-center rounded-md border border-line ` +
+  `bg-surface-raised px-4 text-sm font-semibold text-ink focus:top-1.5 ${FOCUS}`;
+
+const WORDMARK = `inline-flex min-h-11 items-center text-lg font-semibold text-ink underline-offset-8 ${FOCUS}`;
+
+const NAV_LINK = `flex min-h-11 items-center text-base text-ink underline-offset-8 max-sm:min-h-12 ${FOCUS}`;
+
+/** Marks the current page by weight and a 2 px accent underline, never by colour alone. */
+const CURRENT = 'font-semibold underline decoration-accent decoration-2';
+
+const LIST_OPEN =
+  'absolute inset-x-0 top-14 z-10 flex flex-col border border-line bg-surface-raised px-4 py-1 shadow-panel';
+
+const LIST_WIDE =
+  'sm:static sm:z-auto sm:ml-6 sm:flex sm:flex-1 sm:flex-row sm:items-center sm:gap-6 ' +
+  'sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none';
 
 export default function Header() {
-  const { theme, palette } = usePreferences();
-  const themeId = useId();
-  const paletteId = useId();
+  const { route } = useRoute();
+  const current = currentPath(route);
+  const [open, setOpen] = useState(false);
+  const menuId = useId();
+  const listId = useId();
+
+  useEffect(() => {
+    if (!open) return undefined;
+    function onKeyDown(event: KeyboardEvent): void {
+      if (event.key !== 'Escape') return;
+      setOpen(false);
+      document.getElementById(menuId)?.focus();
+    }
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [open, menuId]);
+
+  function close(): void {
+    setOpen(false);
+  }
+
   return (
-    <header className="border-b border-slate-200 dark:border-slate-700">
-      <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-between gap-x-6 px-6 py-1">
-        <nav aria-label="Main">
-          <ul className="flex flex-wrap items-center gap-x-5">
-            <li>
-              <Link
-                to="/"
-                className={`inline-flex min-h-11 items-center text-lg font-semibold ${FOCUS}`}
-              >
-                PokéPrices
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/search"
-                className={`inline-flex min-h-11 items-center underline-offset-4 hover:underline ${FOCUS}`}
-              >
-                Search
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/movers"
-                className={`inline-flex min-h-11 items-center underline-offset-4 hover:underline ${FOCUS}`}
-              >
-                Movers
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/watchlist"
-                className={`inline-flex min-h-11 items-center underline-offset-4 hover:underline ${FOCUS}`}
-              >
-                Watchlist
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/portfolio"
-                className={`inline-flex min-h-11 items-center underline-offset-4 hover:underline ${FOCUS}`}
-              >
-                Portfolio
-              </Link>
-            </li>
-            <li>
-              <Link
-                to="/account"
-                className={`inline-flex min-h-11 items-center underline-offset-4 hover:underline ${FOCUS}`}
-              >
-                Account
-              </Link>
-            </li>
+    <header className="border-b border-line-subtle bg-surface">
+      <div className="relative mx-auto flex h-14 max-w-3xl items-center px-4 sm:px-6">
+        <a href="#content" className={SKIP}>
+          Skip to content
+        </a>
+        <nav aria-label="Main" className="flex flex-1 items-center">
+          <Link
+            to="/"
+            onClick={close}
+            aria-current={current === '/' ? 'page' : undefined}
+            className={current === '/' ? `${WORDMARK} ${CURRENT}` : WORDMARK}
+          >
+            PokéPrices
+          </Link>
+          <Button
+            variant="quiet"
+            id={menuId}
+            aria-expanded={open}
+            aria-controls={listId}
+            onClick={() => {
+              setOpen(!open);
+            }}
+            className="ml-auto sm:hidden"
+          >
+            Menu
+          </Button>
+          <ul id={listId} className={`${open ? LIST_OPEN : 'hidden'} ${LIST_WIDE}`}>
+            {LINKS.map(({ to, label }) => (
+              <li key={to} className={to === '/account' ? 'sm:ml-auto' : undefined}>
+                <Link
+                  to={to}
+                  onClick={close}
+                  aria-current={current === to ? 'page' : undefined}
+                  className={
+                    current === to ? `${NAV_LINK} ${CURRENT}` : `${NAV_LINK} hover:underline`
+                  }
+                >
+                  {label}
+                </Link>
+              </li>
+            ))}
           </ul>
         </nav>
-        <div className="flex flex-wrap items-center gap-x-4 text-sm">
-          <span className="flex items-center gap-2">
-            <label htmlFor={themeId}>Theme</label>
-            <select id={themeId} value={theme} onChange={chooseTheme} className={SELECT}>
-              {THEMES.map((option) => (
-                <option key={option} value={option}>
-                  {THEME_LABELS[option]}
-                </option>
-              ))}
-            </select>
-          </span>
-          <span className="flex items-center gap-2">
-            <label htmlFor={paletteId}>Up/down colours</label>
-            <select id={paletteId} value={palette} onChange={choosePalette} className={SELECT}>
-              {PALETTES.map((option) => (
-                <option key={option} value={option}>
-                  {PALETTE_LABELS[option]}
-                </option>
-              ))}
-            </select>
-          </span>
-        </div>
       </div>
     </header>
   );

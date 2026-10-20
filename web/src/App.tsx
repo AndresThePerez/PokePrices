@@ -9,6 +9,7 @@ import SignInPage from './account/SignInPage';
 import SignUpPage from './account/SignUpPage';
 import VerifyEmailPage from './account/VerifyEmailPage';
 import WatchlistPage from './account/WatchlistPage';
+import Footer from './Footer';
 import Header from './Header';
 import Link from './Link';
 import CardPage from './pages/CardPage';
@@ -87,7 +88,10 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <Header />
-      <Routes />
+      <div id="content" tabIndex={-1}>
+        <Routes />
+      </div>
+      <Footer />
     </QueryClientProvider>
   );
 }

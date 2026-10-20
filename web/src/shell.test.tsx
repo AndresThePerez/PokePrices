@@ -16,18 +16,22 @@ describe('shell page honesty', () => {
     expect(text).toContain('as of');
   });
 
-  it('has exactly one h1 inside a main landmark and no template images or links', () => {
+  it('has exactly one h1 inside a main landmark and no template images, one Menu button and the header links', () => {
     stubFetch(answerMovers);
     const { container } = render(<App />);
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     expect(screen.getByRole('main')).toBeTruthy();
-    expect(container.querySelectorAll('img, svg, button')).toHaveLength(0);
+    expect(container.querySelectorAll('img, svg')).toHaveLength(0);
+    expect(Array.from(container.querySelectorAll('button')).map((b) => b.textContent)).toEqual([
+      'Menu',
+    ]);
     expect(
       Array.from(container.querySelectorAll('a')).map((a) => [
         a.textContent,
         a.getAttribute('href'),
       ]),
     ).toEqual([
+      ['Skip to content', '#content'],
       ['PokéPrices', '/'],
       ['Search', '/search'],
       ['Movers', '/movers'],
