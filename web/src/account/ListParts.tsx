@@ -7,6 +7,7 @@ import type { WatchlistItem } from '../api/client';
 import { PRICE_FOOTNOTE, changeLine, grouped } from '../format';
 import Link from '../Link';
 import { cardPath } from '../router';
+import { INPUT } from '../ui/classes';
 import DemoButton from './DemoButton';
 import { FOCUS, MUTED, SECONDARY_BUTTON, TEXT_LINK } from './fields';
 import { DEGRADED_LINE, DEMO_NOTICE, cardLabel, detailLine, type ListRow } from './lists';
@@ -117,10 +118,7 @@ export function PriceLines({
   );
 }
 
-const QUANTITY_INPUT =
-  `mt-1 block min-h-11 w-28 rounded-md border px-3 py-2 text-base tabular-nums ` +
-  `border-slate-400 bg-white text-slate-900 dark:border-slate-500 dark:bg-slate-900 dark:text-slate-100 ` +
-  `aria-invalid:border-red-700 dark:aria-invalid:border-red-400 ${FOCUS}`;
+const QUANTITY_INPUT = `mt-1 w-28 num ${INPUT}`;
 
 /**
  * The quantity form (D10): a labelled whole-number field (1 to 9999) and Save. The browser's own
