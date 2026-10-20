@@ -23,6 +23,7 @@ import {
 } from '../chart/series';
 import { variantLabel } from '../format';
 import { unwrap } from '../query';
+import Notice from '../ui/Notice';
 
 const FOCUS =
   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-sky-700 dark:focus-visible:outline-sky-400';
@@ -70,17 +71,14 @@ const TOGGLE =
 
 function Problem({ failure }: { readonly failure: ApiFailure }) {
   return (
-    <div
-      role="alert"
-      className="mt-4 border-l-4 border-red-700 bg-red-50 px-4 py-3 text-red-950 dark:border-red-400 dark:bg-red-950 dark:text-red-100"
-    >
+    <Notice tone="problem" role="alert" className="mt-4">
       <p className="font-semibold">Could not load the price history: {failure.title}</p>
       {failure.requestId !== null && (
         <p className="mt-1 text-sm">
           Request ID <code className="break-all">{failure.requestId}</code>
         </p>
       )}
-    </div>
+    </Notice>
   );
 }
 

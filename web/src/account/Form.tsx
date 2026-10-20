@@ -5,6 +5,7 @@ import type { HTMLAttributes, ReactNode } from 'react';
 import type { ApiFailure } from '../api/client';
 import Link from '../Link';
 import { Field as UiField, Input } from '../ui/Field';
+import Notice from '../ui/Notice';
 import { MUTED, TEXT_LINK } from './fields';
 
 export interface FieldProps {
@@ -54,9 +55,6 @@ export function Field({
   );
 }
 
-const ALERT =
-  'mt-6 border-l-4 border-red-700 bg-red-50 px-4 py-3 text-red-950 dark:border-red-400 dark:bg-red-950 dark:text-red-100';
-
 function isAlreadySignedIn(failure: ApiFailure): boolean {
   return failure.status === 409 && failure.type.endsWith('/already-signed-in');
 }
@@ -83,14 +81,14 @@ export function ProblemBlock({
 }) {
   if (isAlreadySignedIn(failure)) {
     return (
-      <div role="alert" className={ALERT}>
+      <Notice tone="problem" role="alert" className="mt-6">
         <p className="font-semibold">You are already signed in.</p>
         <p className="mt-1">
           <Link to="/account" className={TEXT_LINK}>
             Go to your account
           </Link>
         </p>
-      </div>
+      </Notice>
     );
   }
   const errors = failure.status === 422 ? (failure.problem?.errors ?? {}) : {};
@@ -99,7 +97,7 @@ export function ProblemBlock({
     .map(([field, messages]) => [field, messages[0]] as const)
     .filter((entry): entry is readonly [string, string] => entry[1] !== undefined);
   return (
-    <div role="alert" className={ALERT}>
+    <Notice tone="problem" role="alert" className="mt-6">
       <p className="font-semibold">{firstLine(context, failure)}</p>
       {unshown.length > 0 && (
         <ul className="mt-1 list-disc pl-5 text-sm">
@@ -113,19 +111,16 @@ export function ProblemBlock({
           Request ID <code className="break-all">{failure.requestId}</code>
         </p>
       )}
-    </div>
+    </Notice>
   );
 }
 
 /** A status line (P3 D10): announced politely, readable in both themes. */
 export function StatusLine({ children }: { readonly children: ReactNode }) {
   return (
-    <p
-      role="status"
-      className="mt-6 border-l-4 border-sky-700 bg-sky-50 px-4 py-3 text-sky-950 dark:border-sky-400 dark:bg-sky-950 dark:text-sky-100"
-    >
+    <Notice tone="info" role="status" as="p" className="mt-6">
       {children}
-    </p>
+    </Notice>
   );
 }
 

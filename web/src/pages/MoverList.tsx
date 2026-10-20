@@ -16,7 +16,9 @@ import {
 import { PRICE_FOOTNOTE, grouped, variantLabel } from '../format';
 import { unwrap } from '../query';
 import { cardPath } from '../router';
+import Notice from '../ui/Notice';
 import { AsOf, ChangeChip, PriceFigure } from '../ui/PriceTag';
+import Skeleton from '../ui/Skeleton';
 
 const DEGRADED_LINE = 'Catalog data may be out of date: PokéSearch is unavailable';
 const FOCUS =
@@ -79,9 +81,9 @@ export function MoversScope({ body }: { readonly body: MoversPage }) {
 /** The degraded catalog line (D10), shown when an answer's names come from a stale copy. */
 export function MoversDegraded() {
   return (
-    <p className="mt-4 border-l-4 border-amber-500 bg-amber-50 px-4 py-3 text-amber-950 dark:border-amber-400 dark:bg-amber-950 dark:text-amber-100">
+    <Notice tone="warn" as="p" className="mt-4">
       {DEGRADED_LINE}
-    </p>
+    </Notice>
   );
 }
 
@@ -92,25 +94,25 @@ export function MoversFootnote() {
 /** A failure with no answer to show (D10). */
 export function MoversProblem({ failure }: { readonly failure: ApiFailure }) {
   return (
-    <div
-      role="alert"
-      className="mt-4 border-l-4 border-red-700 bg-red-50 px-4 py-3 text-red-950 dark:border-red-400 dark:bg-red-950 dark:text-red-100"
-    >
+    <Notice tone="problem" role="alert" className="mt-4">
       <p className="font-semibold">Could not load the movers: {failure.title}</p>
       {failure.requestId !== null && (
         <p className="mt-1 text-sm">
           Request ID <code className="break-all">{failure.requestId}</code>
         </p>
       )}
-    </div>
+    </Notice>
   );
 }
 
 export function MoversLoading() {
   return (
-    <p role="status" className={`mt-4 text-sm ${MUTED}`}>
-      Loading movers…
-    </p>
+    <>
+      <p role="status" className="mt-4 text-sm text-ink-muted">
+        Loading movers…
+      </p>
+      <Skeleton className="mt-4" />
+    </>
   );
 }
 

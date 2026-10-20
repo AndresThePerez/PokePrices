@@ -23,6 +23,8 @@ import {
   datePart,
   useOnce,
 } from './alerts';
+import Notice from '../ui/Notice';
+import Panel from '../ui/Panel';
 import { ProblemBlock, StatusLine } from './Form';
 import { FOCUS, MUTED, PRIMARY_BUTTON, SECONDARY_BUTTON, firstErrors } from './fields';
 
@@ -207,16 +209,14 @@ function SecretBlock({
 }) {
   const headingId = useId();
   return (
-    <div
-      role="region"
-      aria-labelledby={headingId}
-      className="mt-6 rounded-md border-2 border-amber-500 bg-amber-50 p-4 text-amber-950 dark:border-amber-400 dark:bg-amber-950 dark:text-amber-100"
-    >
+    <Panel role="region" aria-labelledby={headingId} className="mt-6">
       <h3 id={headingId} className="text-lg font-semibold">
         Signing secret
       </h3>
-      <p className="mt-1">{SECRET_LINE}</p>
-      <code className="mt-3 block rounded-md border border-amber-300 bg-white px-3 py-3 font-mono text-base break-all select-all text-slate-900 dark:border-amber-700 dark:bg-slate-900 dark:text-slate-100">
+      <Notice tone="warn" as="p" className="mt-2">
+        {SECRET_LINE}
+      </Notice>
+      <code className="mt-3 block rounded-md border border-line bg-surface-sunken px-3 py-3 font-mono text-base break-all select-all text-ink">
         {secret}
       </code>
       <p className="mt-3">
@@ -224,7 +224,7 @@ function SecretBlock({
           I have stored the secret
         </button>
       </p>
-    </div>
+    </Panel>
   );
 }
 

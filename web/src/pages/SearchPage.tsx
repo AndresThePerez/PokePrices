@@ -3,6 +3,7 @@ import { useEffect, useState, type SubmitEvent } from 'react';
 import Link from '../Link';
 import { cardPath, navigate } from '../router';
 import { searchCards, type ApiFailure, type ApiResult, type CardSearchPage } from '../api/client';
+import Notice from '../ui/Notice';
 
 const DEGRADED_LINE = 'Catalog data may be out of date: PokéSearch is unavailable';
 const FOCUS =
@@ -57,17 +58,14 @@ function SearchForm({ initial }: { readonly initial: string }) {
 
 function Problem({ failure }: { readonly failure: ApiFailure }) {
   return (
-    <div
-      role="alert"
-      className="mt-6 border-l-4 border-red-700 bg-red-50 px-4 py-3 text-red-950 dark:border-red-400 dark:bg-red-950 dark:text-red-100"
-    >
+    <Notice tone="problem" role="alert" className="mt-6">
       <p className="font-semibold">Search failed: {failure.title}</p>
       {failure.requestId !== null && (
         <p className="mt-1 text-sm">
           Request ID <code className="break-all">{failure.requestId}</code>
         </p>
       )}
-    </div>
+    </Notice>
   );
 }
 
@@ -113,9 +111,9 @@ function Results({ q, body }: { readonly q: string; readonly body: CardSearchPag
   return (
     <>
       {meta.degraded && (
-        <p className="mt-6 border-l-4 border-amber-500 bg-amber-50 px-4 py-3 text-amber-950 dark:border-amber-400 dark:bg-amber-950 dark:text-amber-100">
+        <Notice tone="warn" as="p" className="mt-6">
           {DEGRADED_LINE}
-        </p>
+        </Notice>
       )}
       <p role="status" className={`mt-6 text-sm ${MUTED}`}>
         {summary}

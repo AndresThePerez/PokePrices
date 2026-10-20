@@ -8,7 +8,9 @@ import { PRICE_FOOTNOTE } from '../format';
 import Link from '../Link';
 import { cardPath } from '../router';
 import { INPUT } from '../ui/classes';
+import Notice from '../ui/Notice';
 import PriceTag from '../ui/PriceTag';
+import Skeleton from '../ui/Skeleton';
 import DemoButton from './DemoButton';
 import { FOCUS, MUTED, SECONDARY_BUTTON, TEXT_LINK } from './fields';
 import { DEGRADED_LINE, DEMO_NOTICE, cardLabel, detailLine, type ListRow } from './lists';
@@ -34,27 +36,30 @@ export function ListMain({
 /** The loading line of a list page (D10). */
 export function ListLoading({ children }: { readonly children: string }) {
   return (
-    <p role="status" className={`mt-6 text-sm ${MUTED}`}>
-      {children}
-    </p>
+    <>
+      <p role="status" className={`mt-6 text-sm ${MUTED}`}>
+        {children}
+      </p>
+      <Skeleton className="mt-4" />
+    </>
   );
 }
 
 /** The degraded catalog line (P3 D10): names may come from the last good copy. */
 export function DegradedLine() {
   return (
-    <p className="mt-6 border-l-4 border-amber-500 bg-amber-50 px-4 py-3 text-amber-950 dark:border-amber-400 dark:bg-amber-950 dark:text-amber-100">
+    <Notice tone="warn" as="p" className="mt-6">
       {DEGRADED_LINE}
-    </p>
+    </Notice>
   );
 }
 
 /** What the demo account is, on every page it can open (D10, phase honesty rule). */
 export function DemoNotice() {
   return (
-    <p className="mt-6 border-l-4 border-slate-400 bg-slate-50 px-4 py-3 text-slate-900 dark:border-slate-500 dark:bg-slate-800 dark:text-slate-100">
+    <Notice tone="info" as="p" className="mt-6">
       {DEMO_NOTICE}
-    </p>
+    </Notice>
   );
 }
 

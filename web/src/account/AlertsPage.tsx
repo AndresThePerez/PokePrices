@@ -6,6 +6,7 @@
 import { Fragment, type ReactNode } from 'react';
 import Link from '../Link';
 import { WEBHOOKS_LOADING, useNotifications, useWebhooks } from './alerts';
+import Notice from '../ui/Notice';
 import { ProblemBlock } from './Form';
 import { MUTED, TEXT_LINK } from './fields';
 import NotificationSettings, { PerCardAlerts } from './NotificationSettings';
@@ -16,9 +17,6 @@ const DEMO_LINE =
   'The read-only demo cannot set alerts or add webhooks: it has no email address or Discord of ' +
   'its own to send them to.';
 const UNVERIFIED_LINE = 'Verify your email address to set alerts or add webhooks.';
-
-const NOTICE =
-  'mt-6 border-l-4 border-slate-400 bg-slate-50 px-4 py-3 text-slate-900 dark:border-slate-500 dark:bg-slate-800 dark:text-slate-100';
 
 function AlertsMain({ children }: { readonly children: ReactNode }) {
   return (
@@ -55,14 +53,14 @@ function SignedOut() {
 
 function Unverified() {
   return (
-    <div className={NOTICE}>
+    <Notice tone="info" className="mt-6">
       <p>{UNVERIFIED_LINE}</p>
       <p>
         <Link to="/account" className={TEXT_LINK}>
           Go to your account
         </Link>
       </p>
-    </div>
+    </Notice>
   );
 }
 
@@ -91,7 +89,9 @@ export default function AlertsPage() {
     body = (
       <Fragment key={me.email}>
         {me.read_only ? (
-          <p className={NOTICE}>{DEMO_LINE}</p>
+          <Notice tone="info" as="p" className="mt-6">
+            {DEMO_LINE}
+          </Notice>
         ) : (
           !me.email_verified && <Unverified />
         )}

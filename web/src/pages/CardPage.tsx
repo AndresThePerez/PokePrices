@@ -14,7 +14,9 @@ import {
 } from '../api/client';
 import Sparkline from '../chart/Sparkline';
 import { PRICE_FOOTNOTE, variantLabel } from '../format';
+import Notice from '../ui/Notice';
 import PriceTag from '../ui/PriceTag';
+import Skeleton from '../ui/Skeleton';
 import { unwrap } from '../query';
 import PriceHistory from './PriceHistory';
 
@@ -220,9 +222,9 @@ function Loaded({ body }: { readonly body: CardDetail }) {
   return (
     <>
       {body.meta.degraded && (
-        <p className="mb-6 border-l-4 border-amber-500 bg-amber-50 px-4 py-3 text-amber-950 dark:border-amber-400 dark:bg-amber-950 dark:text-amber-100">
+        <Notice tone="warn" as="p" className="mb-6">
           {DEGRADED_LINE}
-        </p>
+        </Notice>
       )}
       <article className="grid gap-8 sm:grid-cols-[15rem_minmax(0,1fr)]">
         <CardImage card={card} />
@@ -280,17 +282,14 @@ function Failed({ id, failure }: { readonly id: string; readonly failure: ApiFai
   return (
     <>
       <h1 className="text-3xl font-semibold">{`Card ${id}`}</h1>
-      <div
-        role="alert"
-        className="mt-6 border-l-4 border-red-700 bg-red-50 px-4 py-3 text-red-950 dark:border-red-400 dark:bg-red-950 dark:text-red-100"
-      >
+      <Notice tone="problem" role="alert" className="mt-6">
         <p className="font-semibold">Could not load this card: {failure.title}</p>
         {failure.requestId !== null && (
           <p className="mt-1 text-sm">
             Request ID <code className="break-all">{failure.requestId}</code>
           </p>
         )}
-      </div>
+      </Notice>
     </>
   );
 }
@@ -320,9 +319,11 @@ export default function CardPage({ id }: { readonly id: string }) {
     body = (
       <>
         <h1 className="text-3xl font-semibold">{`Card ${id}`}</h1>
-        <p role="status" className={`mt-6 text-sm ${MUTED}`}>
+        <p role="status" className="mt-6 text-sm text-ink-muted">
           {`Loading card ${id}…`}
         </p>
+        <Skeleton className="mt-4" />
+        <Skeleton className="mt-2 w-2/3" />
       </>
     );
   }

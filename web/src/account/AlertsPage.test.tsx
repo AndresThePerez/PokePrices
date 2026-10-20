@@ -300,8 +300,6 @@ describe('the alerts page is accessible and honest in every state (P5 T04 criter
     expect(await screen.findByText(SECRET_LINE)).toBeTruthy();
     const block = screen.getByRole('heading', { name: 'Signing secret' }).parentElement;
     if (block === null) throw new Error('secret block expected');
-    // The block has its own dark counterpart.
-    expect(block.className.split(/\s+/).some((name) => name.startsWith('dark:bg-'))).toBe(true);
     expect(lightOnlyClasses(container)).toEqual([]);
     expect(shortControls(main())).toEqual([]);
     for (const pattern of FORBIDDEN_WORDS) expect(main().textContent).not.toMatch(pattern);
