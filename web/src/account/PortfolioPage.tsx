@@ -131,9 +131,9 @@ function Total({ meta }: { readonly meta: PortfolioBody['meta'] }) {
   const days = daysLine(meta);
   const unpriced = unpricedLine(meta.unpriced);
   return (
-    <div className="mt-6 border-l-4 border-slate-900 pl-4 dark:border-slate-100">
+    <div className="mt-6 border-l-4 border-line pl-4">
       <p className="num text-2xl font-semibold">{`Total value $${grouped(meta.total_value)}`}</p>
-      {days !== null && <p className={`mt-1 text-sm ${MUTED}`}>{days}</p>}
+      {days !== null && <p className={`mt-1 text-meta ${MUTED}`}>{days}</p>}
       {unpriced !== null && <p className="mt-1 text-sm">{unpriced}</p>}
     </div>
   );
@@ -150,7 +150,7 @@ function Loaded({ body, readOnly }: { readonly body: PortfolioBody; readonly rea
           <Total meta={body.meta} />
           <ul
             aria-label="Portfolio"
-            className="mt-6 divide-y divide-slate-200 border-y border-slate-200 dark:divide-slate-700 dark:border-slate-700"
+            className="mt-6 divide-y divide-line-subtle border-y border-line-subtle"
           >
             {body.data.map((holding) => (
               <HoldingRow key={holding.variant_key} holding={holding} readOnly={readOnly} />

@@ -17,9 +17,10 @@ import {
 import { variantLabel } from '../format';
 import Link from '../Link';
 import { unwrap } from '../query';
+import { SELECT } from '../ui/classes';
 import { MOVEMENT_ABS, useOnce } from './alerts';
 import { ProblemBlock } from './Form';
-import { FOCUS, MUTED, SECONDARY_BUTTON, TEXT_LINK, firstErrors } from './fields';
+import { MUTED, SECONDARY_BUTTON, TEXT_LINK, firstErrors } from './fields';
 import {
   DegradedLine,
   DemoNotice,
@@ -48,10 +49,7 @@ function thresholdsWith(stored: number | null): readonly number[] {
   return [...THRESHOLDS, stored].sort((a, b) => a - b);
 }
 
-const SELECT =
-  `mt-1 block min-h-11 rounded-md border px-3 py-2 text-base ` +
-  `border-slate-400 bg-white text-slate-900 dark:border-slate-500 dark:bg-slate-900 dark:text-slate-100 ` +
-  `aria-invalid:border-red-700 dark:aria-invalid:border-red-400 ${FOCUS}`;
+const ALERT_SELECT = `mt-1 ${SELECT}`;
 
 /** The row's alert: its line, the threshold select and Save alert (Off deletes, a number puts). */
 function AlertControl({ item }: { readonly item: WatchlistItem }) {
@@ -81,12 +79,12 @@ function AlertControl({ item }: { readonly item: WatchlistItem }) {
 
   return (
     <>
-      <p className="mt-2 text-sm font-medium">
+      <p className="mt-2 text-sm font-semibold">
         {item.alert_pct === null ? 'Alert: off' : `Alert: at ${String(item.alert_pct)}%`}
       </p>
       <div className="flex flex-wrap items-end gap-x-2 gap-y-1">
         <div>
-          <label htmlFor={id} className="text-sm font-medium">
+          <label htmlFor={id} className="text-sm font-semibold">
             Alert threshold
           </label>
           <select
@@ -99,7 +97,7 @@ function AlertControl({ item }: { readonly item: WatchlistItem }) {
             onChange={(event) => {
               setChoice(event.target.value);
             }}
-            className={SELECT}
+            className={ALERT_SELECT}
           >
             <option value="off">Off</option>
             {thresholdsWith(item.alert_pct).map((pct) => (
@@ -119,7 +117,7 @@ function AlertControl({ item }: { readonly item: WatchlistItem }) {
           Save alert
         </button>
         {fieldError !== undefined && (
-          <p id={errorId} className="basis-full text-sm font-medium text-red-700 dark:text-red-300">
+          <p id={errorId} className="basis-full text-sm font-semibold text-problem">
             {fieldError}
           </p>
         )}
@@ -208,7 +206,7 @@ function Loaded({ body, access }: { readonly body: WatchlistBody; readonly acces
         <>
           <ul
             aria-label="Watchlist"
-            className="mt-6 divide-y divide-slate-200 border-y border-slate-200 dark:divide-slate-700 dark:border-slate-700"
+            className="mt-6 divide-y divide-line-subtle border-y border-line-subtle"
           >
             {body.data.map((item) => (
               <WatchRow key={item.variant_key} item={item} access={access} />

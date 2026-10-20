@@ -143,7 +143,7 @@ export function AccountMain({
 }) {
   return (
     <main className="mx-auto max-w-3xl p-6">
-      <h1 className="text-3xl font-semibold">{title}</h1>
+      <h1 className="text-2xl font-semibold">{title}</h1>
       <div className="max-w-md">{children}</div>
     </main>
   );

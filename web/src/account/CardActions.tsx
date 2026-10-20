@@ -130,7 +130,7 @@ function HoldingForm({
     body = <ProblemBlock context="Could not load your portfolio" failure={portfolio.error} />;
   } else {
     body = (
-      <p role="status" className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+      <p role="status" className="mt-2 text-sm text-ink-muted">
         Loading your portfolio…
       </p>
     );

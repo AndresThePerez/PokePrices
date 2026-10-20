@@ -15,8 +15,6 @@ import DemoButton from './DemoButton';
 import { FOCUS, MUTED, SECONDARY_BUTTON, TEXT_LINK } from './fields';
 import { DEGRADED_LINE, DEMO_NOTICE, cardLabel, detailLine, type ListRow } from './lists';
 
-const FAINT = 'text-slate-500 dark:text-slate-400';
-
 /** A list page: one main landmark, one h1, the width of the movers board. */
 export function ListMain({
   title,
@@ -27,7 +25,7 @@ export function ListMain({
 }) {
   return (
     <main className="mx-auto max-w-3xl p-6">
-      <h1 className="text-3xl font-semibold">{title}</h1>
+      <h1 className="text-2xl font-semibold">{title}</h1>
       {children}
     </main>
   );
@@ -65,7 +63,7 @@ export function DemoNotice() {
 
 /** The footnote that closes every list of prices. */
 export function ListFootnote() {
-  return <p className={`mt-4 text-xs leading-snug ${FAINT}`}>{PRICE_FOOTNOTE}</p>;
+  return <p className={`mt-4 text-meta ${MUTED}`}>{PRICE_FOOTNOTE}</p>;
 }
 
 /** Signed out on /watchlist or /portfolio: sign in (and come back), sign up, or try the demo. */
@@ -142,7 +140,7 @@ export function QuantityForm({
   return (
     <form noValidate onSubmit={submit} className="flex flex-wrap items-end gap-x-2 gap-y-1">
       <div>
-        <label htmlFor={id} className="text-sm font-medium">
+        <label htmlFor={id} className="text-sm font-semibold">
           Quantity owned
         </label>
         <input
@@ -166,7 +164,7 @@ export function QuantityForm({
         Save
       </button>
       {error !== undefined && (
-        <p id={errorId} className="basis-full text-sm font-medium text-red-700 dark:text-red-300">
+        <p id={errorId} className="basis-full text-sm font-semibold text-problem">
           {error}
         </p>
       )}
