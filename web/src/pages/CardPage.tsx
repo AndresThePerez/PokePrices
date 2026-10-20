@@ -13,7 +13,8 @@ import {
   type PricePoint,
 } from '../api/client';
 import Sparkline from '../chart/Sparkline';
-import { PRICE_FOOTNOTE, changeLine, grouped, variantLabel } from '../format';
+import { PRICE_FOOTNOTE, variantLabel } from '../format';
+import PriceTag from '../ui/PriceTag';
 import { unwrap } from '../query';
 import PriceHistory from './PriceHistory';
 
@@ -112,21 +113,7 @@ function VariantPrice({
   readonly price: Price;
   readonly points: readonly PricePoint[];
 }) {
-  const change = changeLine(price);
-  return (
-    <>
-      <div className="mt-1 flex flex-wrap items-center gap-x-3">
-        <span className="block text-xl font-semibold tabular-nums">
-          {`Market price $${grouped(price.close)}`}
-        </span>
-        <Sparkline points={points} />
-      </div>
-      <span className={`block text-sm tabular-nums ${change.tone}`}>{change.text}</span>
-      <span className={`block text-sm ${MUTED}`}>
-        {`as of ${price.day} from TCGCSV (daily close)`}
-      </span>
-    </>
-  );
+  return <PriceTag price={price} size="variant" beside={<Sparkline points={points} />} />;
 }
 
 /**
@@ -161,9 +148,11 @@ function PricedVariants({
       <ul className="mt-2 space-y-4">
         {variants.map((variant) => (
           <li key={variant.variant_key}>
-            <span className="block font-medium capitalize">{variantLabel(variant)}</span>
+            <span className="block font-semibold capitalize">{variantLabel(variant)}</span>
             {variant.price === null ? (
-              <span className={`block text-sm ${MUTED}`}>No price in the collected snapshots</span>
+              <span className="block text-meta text-ink-muted">
+                No price in the collected snapshots
+              </span>
             ) : (
               <VariantPrice
                 price={variant.price}

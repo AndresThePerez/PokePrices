@@ -13,9 +13,10 @@ import {
   type MoversDirection,
   type MoversPage,
 } from '../api/client';
-import { PRICE_FOOTNOTE, changeLine, grouped, variantLabel } from '../format';
+import { PRICE_FOOTNOTE, grouped, variantLabel } from '../format';
 import { unwrap } from '../query';
 import { cardPath } from '../router';
+import { AsOf, ChangeChip, PriceFigure } from '../ui/PriceTag';
 
 const DEGRADED_LINE = 'Catalog data may be out of date: PokéSearch is unavailable';
 const FOCUS =
@@ -40,7 +41,6 @@ function detailLine(mover: Mover): string {
 }
 
 function MoverRow({ mover }: { readonly mover: Mover }) {
-  const change = changeLine(mover);
   return (
     <li className="grid grid-cols-[2.75rem_minmax(0,1fr)] gap-x-2 py-3">
       <span className={`pt-2.5 text-lg leading-6 font-semibold tabular-nums ${FAINT}`}>
@@ -54,10 +54,8 @@ function MoverRow({ mover }: { readonly mover: Mover }) {
           {mover.card === null ? `Card ${mover.card_id}` : mover.card.name}
         </Link>
         <span className={`block text-sm ${MUTED}`}>{detailLine(mover)}</span>
-        <span className="mt-1 block font-semibold tabular-nums">
-          {`Market price $${grouped(mover.close)}`}
-        </span>
-        <span className={`block text-sm tabular-nums ${change.tone}`}>{change.text}</span>
+        <PriceFigure close={mover.close} size="row" />
+        <ChangeChip price={mover} />
       </div>
     </li>
   );
@@ -66,7 +64,7 @@ function MoverRow({ mover }: { readonly mover: Mover }) {
 /** The one "as of" line of a list whose rows all share meta.day (D3, D11); none without a day. */
 export function MoversStamp({ day }: { readonly day: string | null }) {
   if (day === null) return null;
-  return <p className={`mt-2 text-sm ${MUTED}`}>{`as of ${day} from TCGCSV (daily close)`}</p>;
+  return <AsOf day={day} as="p" className="mt-2" />;
 }
 
 /** What the ranking counts (D11). */

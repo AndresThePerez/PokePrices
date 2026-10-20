@@ -73,7 +73,7 @@ function HoldingRow({
         <RowName row={holding} />
         <span className="mt-1 block text-sm">{`Quantity ${String(holding.quantity)}`}</span>
         <PriceLines price={holding.price} missing={NOT_COUNTED} />
-        {value !== null && <span className="mt-1 block font-semibold tabular-nums">{value}</span>}
+        {value !== null && <span className="mt-1 block num font-semibold">{value}</span>}
       </div>
       {!readOnly && (
         <div className="mt-3 flex flex-wrap items-end gap-x-2 gap-y-2 sm:mt-0 sm:flex-col sm:items-end">
@@ -132,7 +132,7 @@ function Total({ meta }: { readonly meta: PortfolioBody['meta'] }) {
   const unpriced = unpricedLine(meta.unpriced);
   return (
     <div className="mt-6 border-l-4 border-slate-900 pl-4 dark:border-slate-100">
-      <p className="text-2xl font-semibold tabular-nums">{`Total value $${grouped(meta.total_value)}`}</p>
+      <p className="num text-2xl font-semibold">{`Total value $${grouped(meta.total_value)}`}</p>
       {days !== null && <p className={`mt-1 text-sm ${MUTED}`}>{days}</p>}
       {unpriced !== null && <p className="mt-1 text-sm">{unpriced}</p>}
     </div>

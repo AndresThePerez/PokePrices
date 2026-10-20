@@ -4,10 +4,11 @@
 // API's decimal string printed through grouped(); nothing here reads the clock.
 import { useId, useState, type ReactNode, type SubmitEvent } from 'react';
 import type { WatchlistItem } from '../api/client';
-import { PRICE_FOOTNOTE, changeLine, grouped } from '../format';
+import { PRICE_FOOTNOTE } from '../format';
 import Link from '../Link';
 import { cardPath } from '../router';
 import { INPUT } from '../ui/classes';
+import PriceTag from '../ui/PriceTag';
 import DemoButton from './DemoButton';
 import { FOCUS, MUTED, SECONDARY_BUTTON, TEXT_LINK } from './fields';
 import { DEGRADED_LINE, DEMO_NOTICE, cardLabel, detailLine, type ListRow } from './lists';
@@ -103,19 +104,8 @@ export function PriceLines({
   readonly price: WatchlistItem['price'];
   readonly missing: string;
 }) {
-  if (price === null) return <span className={`mt-1 block text-sm ${MUTED}`}>{missing}</span>;
-  const change = changeLine(price);
-  return (
-    <>
-      <span className="mt-1 block font-semibold tabular-nums">
-        {`Market price $${grouped(price.close)}`}
-      </span>
-      <span className={`block text-sm tabular-nums ${change.tone}`}>{change.text}</span>
-      <span
-        className={`block text-sm ${MUTED}`}
-      >{`as of ${price.day} from TCGCSV (daily close)`}</span>
-    </>
-  );
+  if (price === null) return <span className={`mt-1 block text-meta ${MUTED}`}>{missing}</span>;
+  return <PriceTag price={price} size="row" />;
 }
 
 const QUANTITY_INPUT = `mt-1 w-28 num ${INPUT}`;
