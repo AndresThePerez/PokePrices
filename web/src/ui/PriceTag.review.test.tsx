@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { PriceLines } from '../account/ListParts';
 import Sparkline from '../chart/Sparkline';
 import { MoversStamp } from '../pages/MoverList';
-import { pointOf } from '../test/fixtures';
+import { pointOf, risingPrice } from '../test/fixtures';
 import PriceTag, { AsOf, ChangeChip, PriceFigure, type PriceTagFields } from './PriceTag';
 
 afterEach(() => {
@@ -21,6 +21,7 @@ const UP: PriceTagFields = {
   change: '22.07',
   change_pct: '0.99',
 };
+const UP_FULL = { ...risingPrice, ...UP };
 const UP_LINE = '▲ +$22.07 (+0.99%) vs previous close (2026-10-11)';
 const DOWN: PriceTagFields = { ...UP, change: '-22.07', change_pct: '-0.98' };
 const DOWN_LINE = '▼ -$22.07 (-0.98%) vs previous close (2026-10-11)';
@@ -144,7 +145,7 @@ describe('AsOf variants (review)', () => {
     for (const as of ['span', 'p'] as const) {
       for (const className of [undefined, '', 'mt-2', 'mt-2 text-down "quoted" > <b>']) {
         const { container, unmount } = render(
-          <AsOf day="2026-10-12" as={as} className={className} />,
+          <AsOf day="2026-10-12" as={as} {...(className === undefined ? {} : { className })} />,
         );
         expect(container.children).toHaveLength(1);
         expect(container.firstElementChild?.tagName).toBe(as.toUpperCase());
@@ -223,7 +224,7 @@ describe('PriceLines on watchlist and portfolio rows (review)', () => {
   });
 
   it('prints a price as the same three lines as PriceTag, with no extra text', () => {
-    const rows = render(<PriceLines price={UP} missing="unused" />);
+    const rows = render(<PriceLines price={UP_FULL} missing="unused" />);
     const tag = render(<PriceTag price={UP} size="row" />);
     expect(rows.container.innerHTML).toBe(tag.container.innerHTML);
     expect(rows.container.textContent).toBe(`${PRICE_LINE}${UP_LINE}${AS_OF}`);
