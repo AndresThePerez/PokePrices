@@ -48,6 +48,7 @@ interface Shape {
   readonly cx?: string | null;
   readonly cy?: string | null;
   readonly r?: string | null;
+  readonly fill?: string | null;
 }
 
 /** The drawn shapes of one sparkline, in document order, with their geometry attributes. */
@@ -59,6 +60,7 @@ function shapes(svg: Element): Shape[] {
           cx: child.getAttribute('cx'),
           cy: child.getAttribute('cy'),
           r: child.getAttribute('r'),
+          fill: child.getAttribute('fill'),
         }
       : {
           tag: child.tagName,
@@ -76,6 +78,21 @@ function dashed(points: string): Shape {
   return { tag: 'polyline', points, dash: '2 2' };
 }
 
+/** The dotted baseline that replaces the line of a flat series (F15). */
+function dotted(points: string): Shape {
+  return { tag: 'polyline', points, dash: '1 2' };
+}
+
+/** A one-point segment inside the series: an outlined circle. */
+function ring(cx: string, cy: string): Shape {
+  return { tag: 'circle', cx, cy, r: '2', fill: 'none' };
+}
+
+/** The end dot on the last real (not carried-forward) point (F15). */
+function dot(cx: string, cy: string): Shape {
+  return { tag: 'circle', cx, cy, r: '2', fill: 'currentColor' };
+}
+
 function svgOf(points: Parameters<typeof Sparkline>[0]['points']): Element {
   const { container } = render(<Sparkline points={points} />);
   const svg = container.querySelector('svg');
@@ -87,67 +104,99 @@ afterEach(() => {
   cleanup();
 });
 
-describe('Sparkline geometry (T07, D12)', () => {
-  it('draws the worked example: a solid piece, then a dashed piece into the filled point', () => {
+describe('Sparkline geometry (T07, D12; D2-T02 rules: 3+ points, end dot, dotted flat baseline)', () => {
+  it('draws the worked example: a solid piece, a dashed piece into the filled point, the end dot on the last real point', () => {
     const svg = svgOf([
       pointOf('2026-10-10', '1.00'),
       pointOf('2026-10-11', '3.00'),
       filledOf('2026-10-12', '2.00', '2026-10-11'),
     ]);
-    expect(shapes(svg)).toEqual([solid('2.0,26.0 48.0,2.0'), dashed('48.0,2.0 94.0,14.0')]);
+    expect(shapes(svg)).toEqual([
+      solid('2.0,26.0 48.0,2.0'),
+      dashed('48.0,2.0 94.0,14.0'),
+      dot('48.0', '2.0'),
+    ]);
   });
 
-  it('is a 96 x 28 hidden, unfocusable svg stroked in the chart-line colour', () => {
-    const svg = svgOf([pointOf('2026-10-11', '1.00'), pointOf('2026-10-12', '3.00')]);
+  it('is a 96 x 28 hidden, unfocusable svg stroked in the chart-line colour, the end dot filled with it', () => {
+    const svg = svgOf([
+      pointOf('2026-10-10', '1.00'),
+      pointOf('2026-10-11', '3.00'),
+      pointOf('2026-10-12', '2.00'),
+    ]);
     expect(svg.getAttribute('viewBox')).toBe('0 0 96 28');
     expect(svg.getAttribute('width')).toBe('96');
     expect(svg.getAttribute('height')).toBe('28');
     expect(svg.getAttribute('aria-hidden')).toBe('true');
     expect(svg.getAttribute('focusable')).toBe('false');
     expect(svg.getAttribute('class')?.split(/\s+/)).toContain('text-chart-line');
-    for (const child of Array.from(svg.children)) {
+    const children = Array.from(svg.children);
+    const end = children.at(-1);
+    expect(end?.tagName).toBe('circle');
+    expect(end?.getAttribute('fill')).toBe('currentColor');
+    expect(end?.getAttribute('stroke')).toBe('none');
+    expect(end?.getAttribute('r')).toBe('2');
+    const lines = children.slice(0, -1);
+    expect(lines).toHaveLength(1);
+    for (const child of lines) {
       expect(child.getAttribute('stroke')).toBe('currentColor');
       expect(child.getAttribute('fill')).toBe('none');
       expect(child.getAttribute('stroke-width')).toBe('1.5');
     }
   });
 
-  it('breaks the line at a mapping change: two segments of two real points, two polylines', () => {
+  it('breaks the line at a mapping change: two segments of two real points, two polylines, then the end dot', () => {
     const svg = svgOf([
       pointOf('2026-10-09', '1.00'),
       pointOf('2026-10-10', '2.00'),
       pointOf('2026-10-11', '3.00', { series_epoch: 2 }),
       pointOf('2026-10-12', '4.00', { series_epoch: 2 }),
     ]);
-    expect(shapes(svg)).toEqual([solid('2.0,26.0 32.7,18.0'), solid('63.3,10.0 94.0,2.0')]);
-  });
-
-  it('draws two one-point segments (an epoch change between two real points) as two circles', () => {
-    const svg = svgOf([
-      pointOf('2026-10-11', '1.00'),
-      pointOf('2026-10-12', '3.00', { series_epoch: 2 }),
-    ]);
     expect(shapes(svg)).toEqual([
-      { tag: 'circle', cx: '2.0', cy: '26.0', r: '2' },
-      { tag: 'circle', cx: '94.0', cy: '2.0', r: '2' },
+      solid('2.0,26.0 32.7,18.0'),
+      solid('63.3,10.0 94.0,2.0'),
+      dot('94.0', '2.0'),
     ]);
   });
 
-  it('draws a one-point series as one circle in the middle', () => {
-    const svg = svgOf([pointOf('2026-10-12', '70.81')]);
-    expect(shapes(svg)).toEqual([{ tag: 'circle', cx: '48.0', cy: '14.0', r: '2' }]);
+  it('draws one-point segments as rings, and the last one as the end dot alone', () => {
+    const svg = svgOf([
+      pointOf('2026-10-10', '1.00'),
+      pointOf('2026-10-11', '3.00', { series_epoch: 2 }),
+      pointOf('2026-10-12', '2.00', { series_epoch: 3 }),
+    ]);
+    expect(shapes(svg)).toEqual([ring('2.0', '26.0'), ring('48.0', '2.0'), dot('94.0', '14.0')]);
   });
 
-  it('draws a flat series at y 14.0', () => {
+  it('draws nothing for a series of one or two points', () => {
+    const one = render(<Sparkline points={[pointOf('2026-10-12', '70.81')]} />);
+    expect(one.container.innerHTML).toBe('');
+    one.unmount();
+    const two = render(
+      <Sparkline points={[pointOf('2026-10-11', '1.00'), pointOf('2026-10-12', '3.00')]} />,
+    );
+    expect(two.container.innerHTML).toBe('');
+  });
+
+  it('draws a flat series as a dotted baseline at y 14.0 instead of the flat line, with the end dot', () => {
     const svg = svgOf([
       pointOf('2026-10-10', '5.00'),
       pointOf('2026-10-11', '5.00'),
       pointOf('2026-10-12', '5.00'),
     ]);
-    expect(shapes(svg)).toEqual([solid('2.0,14.0 48.0,14.0 94.0,14.0')]);
+    expect(shapes(svg)).toEqual([dotted('2.0,14.0 94.0,14.0'), dot('94.0', '14.0')]);
   });
 
-  it('draws two consecutive filled points as two dashed pieces', () => {
+  it('puts the end dot of a flat series on its last real point, not on a carried-forward day', () => {
+    const svg = svgOf([
+      pointOf('2026-10-10', '5.00'),
+      pointOf('2026-10-11', '5.00'),
+      filledOf('2026-10-12', '5.00', '2026-10-11'),
+    ]);
+    expect(shapes(svg)).toEqual([dotted('2.0,14.0 94.0,14.0'), dot('48.0', '14.0')]);
+  });
+
+  it('draws two consecutive filled points as two dashed pieces, the end dot on the last real point', () => {
     const svg = svgOf([
       pointOf('2026-10-09', '1.00'),
       pointOf('2026-10-10', '2.00'),
@@ -158,10 +207,11 @@ describe('Sparkline geometry (T07, D12)', () => {
       solid('2.0,26.0 32.7,2.0'),
       dashed('32.7,2.0 63.3,2.0'),
       dashed('63.3,2.0 94.0,2.0'),
+      dot('32.7', '2.0'),
     ]);
   });
 
-  it('starts a new solid run after a dashed piece, left to right', () => {
+  it('starts a new solid run after a dashed piece, left to right, then the end dot', () => {
     const svg = svgOf([
       pointOf('2026-10-08', '1.00'),
       pointOf('2026-10-09', '3.00'),
@@ -173,7 +223,17 @@ describe('Sparkline geometry (T07, D12)', () => {
       solid('2.0,26.0 25.0,2.0'),
       dashed('25.0,2.0 48.0,2.0'),
       solid('48.0,2.0 71.0,14.0 94.0,26.0'),
+      dot('94.0', '26.0'),
     ]);
+  });
+
+  it('draws no end dot when every point is carried forward', () => {
+    const svg = svgOf([
+      filledOf('2026-10-10', '1.00', '2026-10-09'),
+      filledOf('2026-10-11', '3.00', '2026-10-09'),
+      filledOf('2026-10-12', '2.00', '2026-10-09'),
+    ]);
+    expect(shapes(svg).filter((shape) => shape.tag === 'circle')).toEqual([]);
   });
 
   it('draws nothing for a series with no point', () => {
@@ -228,6 +288,7 @@ describe('sparklines in the Prices list (T07)', () => {
       solid('2.0,25.8 32.7,26.0'),
       dashed('32.7,26.0 63.3,26.0'),
       solid('63.3,26.0 94.0,2.0'),
+      dot('94.0', '2.0'),
     ]);
     const price = within(holo ?? document.body).getByText('Market price $70.81');
     expect(price.compareDocumentPosition(svg ?? price) & Node.DOCUMENT_POSITION_FOLLOWING).toBe(

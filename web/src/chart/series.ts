@@ -1,7 +1,8 @@
 // The pure model of the PokéPrices price history (D4–D7): ranges, segments, the History begins
 // banner, the hidden summary and the data table rows. Every printed amount is the API's string
-// through grouped(); Number() is used only to choose the high and the low (D2). Day arithmetic
+// through grouped(); Number() is used only to choose the high and the low and for axis geometry (D2). Day arithmetic
 // happens only on API day strings, in UTC (D1): nothing here reads the clock.
+import type { AutoscaleInfo, PriceRange as AxisRange, Time } from 'lightweight-charts';
 import type { PricePoint, PriceRange, PriceSeries } from '../api/client';
 import { grouped } from '../format';
 
@@ -146,4 +147,71 @@ export function tableRows(points: readonly PricePoint[]): TableRow[] {
     }
     return { day: point.day, close: money(point), note };
   });
+}
+
+// The chart axes (F11). Axis values are geometry, so they are numbers here (D2); no printed
+// amount of the page comes from them. Ticks use a fixed English month table: no Intl locale, no
+// clock read. Only types come from lightweight-charts, so this module stays out of its chunk.
+
+/** One cent: the smallest padding, so a zero series never gets an empty range. */
+const MIN_PAD = 0.01;
+
+/** [min, max] padded on both ends by 1 % of the larger magnitude (never by less than a cent). */
+export function paddedRange(min: number, max: number): AxisRange {
+  const pad = Math.max(0.01 * Math.max(Math.abs(min), Math.abs(max)), MIN_PAD);
+  return { minValue: min - pad, maxValue: max + pad };
+}
+
+/** The series' autoscaleInfoProvider: the library's own range, padded by paddedRange(). */
+export function paddedAutoscale(base: () => AutoscaleInfo | null): AutoscaleInfo | null {
+  const info = base();
+  if (info === null || info.priceRange === null) return info;
+  return {
+    ...info,
+    priceRange: paddedRange(info.priceRange.minValue, info.priceRange.maxValue),
+  };
+}
+
+/** A y-axis label: "$" + 2 decimals with ',' between thousands; "-$" below zero. */
+export function axisPrice(value: number): string {
+  const cents = Math.round(value * 100);
+  const digits = (Math.abs(cents) / 100).toFixed(2);
+  return `${cents < 0 ? '-' : ''}$${grouped(digits)}`;
+}
+
+const MONTHS = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+] as const;
+
+// TickMarkType.Year / Month / DayOfMonth of lightweight-charts 5.2.1 (a runtime enum, not imported).
+const YEAR_TICK = 0;
+const MONTH_TICK = 1;
+const DAY_TICK = 2;
+
+/**
+ * The timeScale tickMarkFormatter: the library passes the API day string it was given. A day
+ * tick reads "Oct 9", a month tick "Oct", a year tick "2026"; anything else is left to the
+ * library (null).
+ */
+export function dayTick(time: Time, tickMarkType: number): string | null {
+  if (typeof time !== 'string') return null;
+  const match = DAY.exec(time);
+  if (match === null) return null;
+  const month = MONTHS[Number(match[2]) - 1];
+  if (month === undefined) return null;
+  if (tickMarkType === YEAR_TICK) return match[1] ?? null;
+  if (tickMarkType === MONTH_TICK) return month;
+  if (tickMarkType === DAY_TICK) return `${month} ${String(Number(match[3]))}`;
+  return null;
 }

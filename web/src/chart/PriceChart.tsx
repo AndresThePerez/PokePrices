@@ -15,6 +15,7 @@ import {
 } from 'lightweight-charts';
 import type { PricePoint, PriceRange } from '../api/client';
 import { usePreferences } from '../preferences';
+import { axisPrice, dayTick, paddedAutoscale } from './series';
 
 export interface PriceChartProps {
   /** The selected series' points in range, split by segments() (D6). */
@@ -58,7 +59,9 @@ function themed(colours: Colours) {
   };
 }
 
+/** The chart options; the theme's keys are kept, the time scale adds its month ticks (F11). */
 function chartOptions(colours: Colours): DeepPartial<ChartOptions> {
+  const theme = themed(colours);
   return {
     autoSize: true,
     layout: {
@@ -66,7 +69,8 @@ function chartOptions(colours: Colours): DeepPartial<ChartOptions> {
       textColor: colours.text,
       attributionLogo: true,
     },
-    ...themed(colours),
+    ...theme,
+    timeScale: { ...theme.timeScale, tickMarkFormatter: dayTick },
     localization: { dateFormat: 'yyyy-MM-dd' },
     handleScroll: false,
     handleScale: false,
@@ -80,7 +84,9 @@ function seriesOptions(colours: Colours): LineSeriesPartialOptions {
     pointMarkersVisible: true,
     priceLineVisible: false,
     lastValueVisible: false,
-    priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
+    // "$" labels with thousands separators, and a y range padded to at least ±1 % (F11).
+    priceFormat: { type: 'custom', formatter: axisPrice, minMove: 0.01 },
+    autoscaleInfoProvider: paddedAutoscale,
   };
 }
 
@@ -160,7 +166,7 @@ export default function PriceChart({ segments, label, range, describedBy }: Pric
       role="img"
       aria-label={`Daily close chart of ${label}, ${range}`}
       aria-describedby={describedBy}
-      className="h-[280px] w-full"
+      className="h-[240px] w-full sm:h-[320px]"
     />
   );
 }

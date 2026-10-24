@@ -14,7 +14,7 @@ import {
 } from '../test/fixtures';
 import { recorder, resetRecorder } from '../test/lightweightChartsFake';
 import PriceChart from './PriceChart';
-import { segments } from './series';
+import { axisPrice, dayTick, paddedAutoscale, segments } from './series';
 
 vi.mock('lightweight-charts', () => import('../test/lightweightChartsFake'));
 
@@ -81,7 +81,7 @@ function chartOptions(colours: typeof LIGHT) {
     },
     grid: { vertLines: { color: colours.grid }, horzLines: { color: colours.grid } },
     rightPriceScale: { borderColor: colours.grid },
-    timeScale: { borderColor: colours.grid },
+    timeScale: { borderColor: colours.grid, tickMarkFormatter: dayTick },
     localization: { dateFormat: 'yyyy-MM-dd' },
     handleScroll: false,
     handleScale: false,
@@ -95,7 +95,8 @@ function seriesOptions(colours: typeof LIGHT) {
     pointMarkersVisible: true,
     priceLineVisible: false,
     lastValueVisible: false,
-    priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
+    priceFormat: { type: 'custom', formatter: axisPrice, minMove: 0.01 },
+    autoscaleInfoProvider: paddedAutoscale,
   };
 }
 
@@ -163,6 +164,21 @@ describe('PriceChart (T06, D6)', () => {
     for (const series of chart.series) expect(series.options).toEqual(seriesOptions(LIGHT));
     expect(JSON.stringify(chart.options)).not.toContain('""');
     expect(JSON.stringify(chart.series.map((series) => series.options))).not.toContain('""');
+  });
+
+  it('wires the $ labels, the padded autoscale and the month ticks by reference (F11)', () => {
+    draw();
+    const chart = onlyChart();
+    const options = chart.options as { timeScale: { tickMarkFormatter: unknown } };
+    expect(options.timeScale.tickMarkFormatter).toBe(dayTick);
+    for (const series of chart.series) {
+      const one = series.options as {
+        priceFormat: { formatter: unknown };
+        autoscaleInfoProvider: unknown;
+      };
+      expect(one.priceFormat.formatter).toBe(axisPrice);
+      expect(one.autoscaleInfoProvider).toBe(paddedAutoscale);
+    }
   });
 
   it('treats a whitespace-only token as missing', () => {

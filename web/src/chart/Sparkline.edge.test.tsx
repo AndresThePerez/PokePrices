@@ -40,9 +40,13 @@ describe('Sparkline edge geometry (D12)', () => {
       pointOf('2026-10-11', '3.00'),
       pointOf('2026-10-12', '2.00'),
     ]);
-    expect(shapes.map((shape) => shape.tagName)).toEqual(['polyline']);
+    expect(shapes.map((shape) => shape.tagName)).toEqual(['polyline', 'circle']);
     expect(shapes[0]?.getAttribute('points')).toBe('2.0,26.0 48.0,2.0 94.0,14.0');
     expect(shapes[0]?.getAttribute('stroke-dasharray')).toBeNull();
+    expect([shapes[1]?.getAttribute('cx'), shapes[1]?.getAttribute('cy')]).toEqual([
+      '94.0',
+      '14.0',
+    ]);
   });
 
   it('places 31 points from x 2.0 to x 94.0 with every y inside the padded box', () => {
@@ -65,6 +69,8 @@ describe('Sparkline edge geometry (D12)', () => {
       expect(Number(y)).toBeGreaterThanOrEqual(2);
       expect(Number(y)).toBeLessThanOrEqual(26);
     }
+    expect(shapes.map((shape) => shape.tagName)).toEqual(['polyline', 'circle']);
+    expect([shapes[1]?.getAttribute('cx'), shapes[1]?.getAttribute('cy')]).toEqual(['94.0', '2.0']);
   });
 
   it('keeps one scale across a mapping change and a gap, with the dashed piece inside its own segment', () => {
@@ -79,6 +85,13 @@ describe('Sparkline edge geometry (D12)', () => {
     ).toEqual([
       ['2.0,26.0 32.7,25.8', null],
       ['63.3,2.0 94.0,2.0', '2 2'],
+      [null, null],
+    ]);
+    const end = shapes.at(-1);
+    expect([end?.tagName, end?.getAttribute('cx'), end?.getAttribute('cy')]).toEqual([
+      'circle',
+      '63.3',
+      '2.0',
     ]);
   });
 });

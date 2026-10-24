@@ -1,6 +1,8 @@
 // The card page's Price history section (D4, D5, D7, D9, D10) over
 // GET /v1/cards/{id}/prices?range=. Every day and amount it prints is the API's (R132); the
 // browser's clock is never read. The canvas chart (T06) is a lazy chunk inside an error boundary.
+// D2 T02: the section is a Panel; its header row holds the Variant and Chart range segments, then
+// the data table toggle, the stamp, the History begins note, the plot and the attribution link.
 import { Component, Suspense, lazy, useId, useMemo, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -26,6 +28,7 @@ import { unwrap } from '../query';
 import { Button } from '../ui/Button';
 import { MUTED, TEXT_LINK } from '../ui/classes';
 import Notice from '../ui/Notice';
+import Panel from '../ui/Panel';
 
 const ZERO_ELIGIBLE = 'No daily close is held for this card yet.';
 const CHART_FAILED = 'The chart could not be drawn. Show the data table to read every close.';
@@ -43,14 +46,14 @@ class ChartBoundary extends Component<{ readonly children: ReactNode }, { failed
   }
 
   override render(): ReactNode {
-    return this.state.failed ? <p className="mt-4">{CHART_FAILED}</p> : this.props.children;
+    return this.state.failed ? <p className="mt-3">{CHART_FAILED}</p> : this.props.children;
   }
 }
 
-/** The link the chart library's licence asks for, under every drawn chart (D6). */
+/** The link the chart library's licence asks for, 12 px under every drawn chart (D6, F16). */
 function Attribution() {
   return (
-    <p className="mt-1 text-meta">
+    <p className="mt-3 text-meta">
       <a href="https://www.tradingview.com/" className={`${TEXT_LINK} ${MUTED}`}>
         {ATTRIBUTION}
       </a>
@@ -60,7 +63,7 @@ function Attribution() {
 
 function Problem({ failure }: { readonly failure: ApiFailure }) {
   return (
-    <Notice tone="problem" role="alert" className="mt-4">
+    <Notice tone="problem" role="alert" className="mt-3">
       <p className="font-semibold">Could not load the price history: {failure.title}</p>
       {failure.requestId !== null && (
         <p className="mt-1 text-sm">
@@ -73,7 +76,7 @@ function Problem({ failure }: { readonly failure: ApiFailure }) {
 
 function Stamp({ to }: { readonly to: string | null }) {
   if (to === null) return null;
-  return <p className={`mt-3 text-sm ${MUTED}`}>{`as of ${to} from TCGCSV (daily close)`}</p>;
+  return <p className={`mt-2 text-meta ${MUTED}`}>{`as of ${to} from TCGCSV (daily close)`}</p>;
 }
 
 function DataTable({
@@ -120,7 +123,15 @@ function DataTable({
   );
 }
 
-/** The chosen series' window: banner, the chart area with its hidden summary, and the table. */
+/** The header row of the panel: the Variant group (when offered) and the Chart range group. */
+function Controls({ children }: { readonly children: ReactNode }) {
+  return <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2">{children}</div>;
+}
+
+/**
+ * The chosen series' window: the data table toggle, the stamp, the banner, the chart area with
+ * its hidden summary and attribution, and the table.
+ */
 function SeriesView({
   series,
   range,
@@ -142,46 +153,50 @@ function SeriesView({
     [series.points, from, to],
   );
   const parts = useMemo(() => segments(points), [points]);
+  const banner = series.history_begins !== null && showsBanner(series.history_begins, from) && (
+    <p role="note" className={`mt-2 text-sm ${MUTED}`}>
+      {bannerText(series.history_begins)}
+    </p>
+  );
+  if (points.length === 0) {
+    return (
+      <>
+        <Stamp to={to} />
+        {banner}
+        {from !== null && to !== null && (
+          <p className="mt-3">{`No daily close for this variant between ${from} and ${to}.`}</p>
+        )}
+      </>
+    );
+  }
   return (
     <>
-      {series.history_begins !== null && showsBanner(series.history_begins, from) && (
-        <p role="note" className={`mt-4 text-sm ${MUTED}`}>
-          {bannerText(series.history_begins)}
+      <button
+        type="button"
+        aria-expanded={tableOpen}
+        aria-controls={tableId}
+        onClick={() => {
+          setTableOpen((open) => !open);
+        }}
+        className={`mt-2 text-sm ${TEXT_LINK}`}
+      >
+        {tableOpen ? 'Hide data table' : 'Show data table'}
+      </button>
+      <Stamp to={to} />
+      {banner}
+      <div className="mt-3">
+        <p id={summaryId} className="sr-only">
+          {summaryText(label, range, points)}
         </p>
-      )}
-      {points.length === 0 ? (
-        from !== null &&
-        to !== null && (
-          <p className="mt-4">{`No daily close for this variant between ${from} and ${to}.`}</p>
-        )
-      ) : (
-        <>
-          <div className="mt-4">
-            <p id={summaryId} className="sr-only">
-              {summaryText(label, range, points)}
-            </p>
-            <ChartBoundary>
-              <Suspense fallback={null}>
-                <PriceChart segments={parts} label={label} range={range} describedBy={summaryId} />
-                <Attribution />
-              </Suspense>
-            </ChartBoundary>
-          </div>
-          <button
-            type="button"
-            aria-expanded={tableOpen}
-            aria-controls={tableId}
-            onClick={() => {
-              setTableOpen((open) => !open);
-            }}
-            className={`mt-4 ${TEXT_LINK}`}
-          >
-            {tableOpen ? 'Hide data table' : 'Show data table'}
-          </button>
-          {tableOpen && (
-            <DataTable id={tableId} label={label} range={range} series={series} points={points} />
-          )}
-        </>
+        <ChartBoundary>
+          <Suspense fallback={null}>
+            <PriceChart segments={parts} label={label} range={range} describedBy={summaryId} />
+            <Attribution />
+          </Suspense>
+        </ChartBoundary>
+      </div>
+      {tableOpen && (
+        <DataTable id={tableId} label={label} range={range} series={series} points={points} />
       )}
     </>
   );
@@ -228,33 +243,34 @@ function Loaded({
         : `No daily close for this variant between ${from} and ${to}.`;
     return (
       <>
-        {rangeGroup}
+        <Controls>{rangeGroup}</Controls>
         <Stamp to={to} />
-        <p className="mt-4">{line}</p>
+        <p className="mt-3">{line}</p>
       </>
     );
   }
   return (
     <>
-      {options.length >= 2 && (
-        <div role="group" aria-label="Variant" className="mt-3 flex flex-wrap gap-2">
-          {options.map((one) => (
-            <Button
-              key={one.variant_key}
-              variant="segment"
-              pressed={one.variant_key === selected.variant_key}
-              onClick={() => {
-                onChoose(one.variant_key);
-              }}
-              className="capitalize"
-            >
-              {variantLabel(one)}
-            </Button>
-          ))}
-        </div>
-      )}
-      {rangeGroup}
-      <Stamp to={to} />
+      <Controls>
+        {options.length >= 2 && (
+          <div role="group" aria-label="Variant" className="flex flex-wrap gap-2">
+            {options.map((one) => (
+              <Button
+                key={one.variant_key}
+                variant="segment"
+                pressed={one.variant_key === selected.variant_key}
+                onClick={() => {
+                  onChoose(one.variant_key);
+                }}
+                className="capitalize"
+              >
+                {variantLabel(one)}
+              </Button>
+            ))}
+          </div>
+        )}
+        {rangeGroup}
+      </Controls>
       <SeriesView
         key={`${selected.variant_key} ${range}`}
         series={selected}
@@ -289,7 +305,7 @@ export default function PriceHistory({
   });
 
   const rangeGroup = (
-    <div role="group" aria-label="Chart range" className="mt-3 flex flex-wrap gap-2">
+    <div role="group" aria-label="Chart range" className="flex flex-wrap gap-2">
       {RANGES.map((key) => (
         <Button
           key={key}
@@ -321,15 +337,15 @@ export default function PriceHistory({
   } else if (query.error !== null) {
     body = (
       <>
-        {rangeGroup}
+        <Controls>{rangeGroup}</Controls>
         <Problem failure={query.error} />
       </>
     );
   } else {
     body = (
       <>
-        {rangeGroup}
-        <p role="status" className={`mt-4 text-sm ${MUTED}`}>
+        <Controls>{rangeGroup}</Controls>
+        <p role="status" className={`mt-3 text-sm ${MUTED}`}>
           Loading price history…
         </p>
       </>
@@ -337,11 +353,11 @@ export default function PriceHistory({
   }
 
   return (
-    <section aria-labelledby="card-history" className="mt-10">
+    <Panel as="section" aria-labelledby="card-history" className="mt-6">
       <h2 id="card-history" className="text-lg font-semibold">
         Price history
       </h2>
       {body}
-    </section>
+    </Panel>
   );
 }
