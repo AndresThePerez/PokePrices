@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import App from './App';
 import { answerMovers, stubFetch } from './test/fixtures';
@@ -16,7 +16,7 @@ describe('shell page honesty', () => {
     expect(text).toContain('as of');
   });
 
-  it('has exactly one h1 inside a main landmark and no template images, one Menu button and the header links', () => {
+  it('has exactly one h1 inside a main landmark and no template images, the Menu, Search and demo buttons and the header links', () => {
     stubFetch(answerMovers);
     const { container } = render(<App />);
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
@@ -24,6 +24,8 @@ describe('shell page honesty', () => {
     expect(container.querySelectorAll('img, svg')).toHaveLength(0);
     expect(Array.from(container.querySelectorAll('button')).map((b) => b.textContent)).toEqual([
       'Menu',
+      'Search',
+      'Try the read-only demo',
     ]);
     expect(
       Array.from(container.querySelectorAll('a')).map((a) => [
@@ -44,8 +46,10 @@ describe('shell page honesty', () => {
   it('keeps the accent as the precomposed U+00E9, not e plus a combining mark', () => {
     stubFetch(answerMovers);
     render(<App />);
-    const heading = screen.getByRole('heading', { level: 1 }).textContent;
-    expect(heading).toBe('PokéPrices');
-    expect(heading).toHaveLength(10);
+    const wordmark = within(screen.getByRole('banner')).getByRole('link', {
+      name: 'PokéPrices',
+    }).textContent;
+    expect(wordmark).toBe('PokéPrices');
+    expect(wordmark).toHaveLength(10);
   });
 });

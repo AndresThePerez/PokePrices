@@ -149,7 +149,9 @@ describe('Header (T02 criterion 1; D1-T03)', () => {
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Search cards');
     expect(fireEvent.click(within(header()).getByRole('link', { name: 'PokéPrices' }))).toBe(false);
     expect(window.location.pathname).toBe('/');
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('PokéPrices');
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(
+      'Pokémon card prices at the daily close',
+    );
   });
 
   it('opens with a skip link to the content, which takes focus from a script', () => {

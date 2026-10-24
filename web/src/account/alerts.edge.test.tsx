@@ -189,7 +189,10 @@ describe('nothing of one account shows under the next one (P4 pattern, P5 data r
     });
     me = problemResponse(unauthenticatedProblem);
     fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
-    await screen.findByRole('heading', { level: 1, name: 'PokéPrices' });
+    await screen.findByRole('heading', {
+      level: 1,
+      name: 'Pokémon card prices at the daily close',
+    });
     expect(domHolds(FAKE_SIGNING_SECRET)).toBe(false);
     expect(domHolds('alpha.example.com')).toBe(false);
 
@@ -230,7 +233,10 @@ describe('nothing of one account shows under the next one (P4 pattern, P5 data r
     });
     me = problemResponse(unauthenticatedProblem);
     fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
-    await screen.findByRole('heading', { level: 1, name: 'PokéPrices' });
+    await screen.findByRole('heading', {
+      level: 1,
+      name: 'Pokémon card prices at the daily close',
+    });
     act(() => {
       navigate('/sign-in');
     });

@@ -98,7 +98,10 @@ function digest(): boolean {
 async function signOutThroughAccount(): Promise<void> {
   fireEvent.click(screen.getByRole('link', { name: 'Account' }));
   fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
-  await screen.findByRole('heading', { level: 1, name: 'PokéPrices' });
+  await screen.findByRole('heading', {
+    level: 1,
+    name: 'Pokémon card prices at the daily close',
+  });
 }
 
 /** Sign in as B through the sign-in page; `asB` switches the stubbed GET /v1/me to B. */

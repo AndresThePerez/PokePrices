@@ -148,7 +148,10 @@ describe('another tab signing out or in reaches this tab (F2)', () => {
     await screen.findByText(`Signed in as ${A_EMAIL}`);
     expect(window.localStorage.getItem(SESSION_SIGNAL_KEY)).toBeNull();
     fireEvent.click(screen.getByRole('button', { name: 'Sign out' }));
-    await screen.findByRole('heading', { level: 1, name: 'PokéPrices' });
+    await screen.findByRole('heading', {
+      level: 1,
+      name: 'Pokémon card prices at the daily close',
+    });
     const signal = window.localStorage.getItem(SESSION_SIGNAL_KEY);
     expect(signal).not.toBeNull();
     expect(signal).not.toContain(A_EMAIL);

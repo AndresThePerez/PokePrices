@@ -6,10 +6,30 @@ import { useState } from 'react';
 import { startDemo, type ApiFailure } from '../api/client';
 import { navigate } from '../router';
 import { ProblemBlock } from './Form';
-import { SECONDARY_BUTTON } from './fields';
+import { QUIET_BUTTON, SECONDARY_BUTTON } from './fields';
 import { ME_KEY, endSession } from './session';
 
-export default function DemoButton() {
+/**
+ * Where the button sits: `panel` (sign-in and the signed-out lists) is an outlined button under a
+ * hairline; `hero` (the home landing, under the search form) is a quiet button with no rule.
+ */
+export type DemoPlacement = 'panel' | 'hero';
+
+const WRAPPER: Readonly<Record<DemoPlacement, string>> = {
+  panel: 'mt-8 border-t border-line-subtle pt-6',
+  hero: 'mt-2',
+};
+
+const LOOK: Readonly<Record<DemoPlacement, string>> = {
+  panel: SECONDARY_BUTTON,
+  hero: `${QUIET_BUTTON} -ml-4`,
+};
+
+export default function DemoButton({
+  placement = 'panel',
+}: {
+  readonly placement?: DemoPlacement;
+}) {
   const queryClient = useQueryClient();
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState<ApiFailure | null>(null);
@@ -30,14 +50,14 @@ export default function DemoButton() {
   }
 
   return (
-    <div className="mt-8 border-t border-line-subtle pt-6">
+    <div className={WRAPPER[placement]}>
       <button
         type="button"
         disabled={pending}
         onClick={() => {
           if (!pending) void start();
         }}
-        className={SECONDARY_BUTTON}
+        className={LOOK[placement]}
       >
         Try the read-only demo
       </button>

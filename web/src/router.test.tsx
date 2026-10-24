@@ -199,7 +199,7 @@ describe('cardPath', () => {
 describe('App routes', () => {
   it('keeps the daily-close hero at /', () => {
     render(<App />);
-    expect(heading()).toBe('PokéPrices');
+    expect(heading()).toBe('Pokémon card prices at the daily close');
     expect(screen.getByRole('main').textContent).toContain('daily close');
   });
 
@@ -225,7 +225,7 @@ describe('App routes', () => {
     expect(link.getAttribute('href')).toBe('/');
     expect(fireEvent.click(link)).toBe(false);
     expect(window.location.pathname).toBe('/');
-    expect(heading()).toBe('PokéPrices');
+    expect(heading()).toBe('Pokémon card prices at the daily close');
   });
 
   it('leaves a modified click to the browser', () => {

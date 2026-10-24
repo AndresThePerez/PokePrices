@@ -39,20 +39,27 @@ function detailLine(mover: Mover): string {
   return `${mover.card.set_name} No. ${mover.card.number} · ${variant}`;
 }
 
+/**
+ * One mover row (D2), the same markup on the home strip and the board: rank in a 28 px mono muted
+ * column, the card link (16 px 600) with its set line (14 px muted) beneath, then the price and the
+ * chip right-aligned. A list at least 32 rem wide (the board) puts them in a right column of their
+ * own; a narrower one (a home sub-list, 390 px) puts them under the name. No thumbnail: the movers
+ * API carries no image URL.
+ */
 function MoverRow({ mover }: { readonly mover: Mover }) {
   return (
-    <li className="grid grid-cols-[2.75rem_minmax(0,1fr)] gap-x-2 py-3">
-      <span className={`pt-2.5 text-lg leading-6 font-semibold tabular-nums ${MUTED}`}>
-        {`#${String(mover.rank)}`}
-      </span>
+    <li className="grid min-h-16 grid-cols-[1.75rem_minmax(0,1fr)] gap-x-3 py-2 @lg:grid-cols-[1.75rem_minmax(0,1fr)_minmax(0,20rem)]">
+      <span className={`pt-3 num text-sm ${MUTED}`}>{`#${String(mover.rank)}`}</span>
       <div className="min-w-0 wrap-anywhere">
         <Link
           to={cardPath(mover.card_id)}
-          className={`inline-flex min-h-11 items-center font-semibold underline-offset-4 hover:underline ${FOCUS}`}
+          className={`inline-flex min-h-11 items-center text-base font-semibold underline-offset-4 hover:underline ${FOCUS}`}
         >
           {mover.card === null ? `Card ${mover.card_id}` : mover.card.name}
         </Link>
         <span className={`block text-sm ${MUTED}`}>{detailLine(mover)}</span>
+      </div>
+      <div className="col-start-2 min-w-0 text-right @lg:col-start-3 @lg:pt-1.5">
         <PriceFigure close={mover.close} size="row" />
         <ChangeChip price={mover} />
       </div>
@@ -61,9 +68,15 @@ function MoverRow({ mover }: { readonly mover: Mover }) {
 }
 
 /** The one "as of" line of a list whose rows all share meta.day (D3, D11); none without a day. */
-export function MoversStamp({ day }: { readonly day: string | null }) {
+export function MoversStamp({
+  day,
+  className = 'mt-2',
+}: {
+  readonly day: string | null;
+  readonly className?: string;
+}) {
   if (day === null) return null;
-  return <AsOf day={day} as="p" className="mt-2" />;
+  return <AsOf day={day} as="p" className={className} />;
 }
 
 /** What the ranking counts (D11). */
@@ -138,7 +151,7 @@ export default function MoverList({
       ) : (
         <ol
           aria-label={name}
-          className="mt-3 divide-y divide-line-subtle border-y border-line-subtle"
+          className="@container mt-3 divide-y divide-line-subtle border-y border-line-subtle"
         >
           {body.data.map((mover) => (
             <MoverRow key={mover.variant_key} mover={mover} />
@@ -206,7 +219,7 @@ export function BiggestMoves() {
   }
 
   return (
-    <section aria-labelledby={headingId} className="mt-10">
+    <section aria-labelledby={headingId} className="mt-12">
       <h2 id={headingId} className="text-lg font-semibold">
         Biggest moves vs previous close
       </h2>

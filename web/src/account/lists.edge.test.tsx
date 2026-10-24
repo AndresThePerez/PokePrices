@@ -63,7 +63,10 @@ describe('T07 edge: nothing of one account shows under the next one (D8, D9, pri
     fireEvent.click(screen.getByRole('link', { name: 'Account' }));
     me = problemResponse(unauthenticatedProblem);
     fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
-    await screen.findByRole('heading', { level: 1, name: 'PokéPrices' });
+    await screen.findByRole('heading', {
+      level: 1,
+      name: 'Pokémon card prices at the daily close',
+    });
 
     // ... and account B (an empty watchlist) signs in, in the same tab.
     fireEvent.click(screen.getByRole('link', { name: 'Account' }));

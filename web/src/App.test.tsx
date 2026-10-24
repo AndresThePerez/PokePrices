@@ -14,7 +14,9 @@ describe('App', () => {
   it('names the product with its accent', () => {
     stubFetch(answerMovers);
     render(<App />);
-    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('PokéPrices');
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe(
+      'Pokémon card prices at the daily close',
+    );
   });
 
   it('states the daily-close basis and never claims real-time prices', () => {
@@ -33,7 +35,9 @@ describe('App', () => {
     await act(async () => {
       await import('./main');
     });
-    expect(document.querySelector('#root h1')?.textContent).toBe('PokéPrices');
+    expect(document.querySelector('#root h1')?.textContent).toBe(
+      'Pokémon card prices at the daily close',
+    );
   });
 
   it('refuses to start without #root', async () => {

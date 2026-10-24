@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import AccountPage from './account/AccountPage';
 import AlertsPage from './account/AlertsPage';
+import DemoButton from './account/DemoButton';
 import ForgotPasswordPage from './account/ForgotPasswordPage';
 import PortfolioPage from './account/PortfolioPage';
 import ResetPasswordPage from './account/ResetPasswordPage';
@@ -15,10 +16,11 @@ import Link from './Link';
 import CardPage from './pages/CardPage';
 import { BiggestMoves } from './pages/MoverList';
 import MoversPage from './pages/MoversPage';
+import SearchForm from './pages/SearchForm';
 import SearchPage from './pages/SearchPage';
 import { createQueryClient } from './query';
 import { useRoute } from './router';
-import { TEXT_LINK } from './ui/classes';
+import { MUTED, TEXT_LINK } from './ui/classes';
 
 function Page({ title, children }: { readonly title: string; readonly children: ReactNode }) {
   return (
@@ -33,14 +35,21 @@ function Routes() {
   const { pathname, route } = useRoute();
   switch (route.name) {
     case 'home':
+      // The landing (D2): the job in the h1, the source sentence, then the one task (search) and
+      // the demo entry; the movers follow as supporting content.
       return (
-        <Page title="PokéPrices">
-          <p className="mt-2 text-base">
+        <main className="mx-auto max-w-3xl p-6">
+          <h1 className="text-2xl font-semibold sm:text-4xl">
+            Pokémon card prices at the daily close
+          </h1>
+          <p className={`mt-2 text-base ${MUTED}`}>
             Pokémon card prices at the daily close. Every price shows its source and the date it is
             as of.
           </p>
+          <SearchForm initial="" size="hero" />
+          <DemoButton placement="hero" />
           <BiggestMoves />
-        </Page>
+        </main>
       );
     case 'search':
       return <SearchPage query={route.query} />;

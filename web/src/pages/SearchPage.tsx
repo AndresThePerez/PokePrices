@@ -1,12 +1,11 @@
 // The PokéPrices search page: /search?q=&page= over GET /v1/cards. The URL is the only search state.
-import { useEffect, useState, type SubmitEvent } from 'react';
+import { useEffect, useState } from 'react';
 import Link from '../Link';
-import { cardPath, navigate } from '../router';
+import { cardPath } from '../router';
 import { searchCards, type ApiFailure, type ApiResult, type CardSearchPage } from '../api/client';
-import { Button } from '../ui/Button';
 import { FOCUS, MUTED, TEXT_LINK } from '../ui/classes';
-import { Input } from '../ui/Field';
 import Notice from '../ui/Notice';
+import SearchForm from './SearchForm';
 
 const DEGRADED_LINE = 'Catalog data may be out of date: PokéSearch is unavailable';
 
@@ -20,35 +19,6 @@ function searchPath(q: string, page: number): string {
   const params = new URLSearchParams({ q });
   if (page > 1) params.set('page', String(page));
   return `/search?${params.toString()}`;
-}
-
-function SearchForm({ initial }: { readonly initial: string }) {
-  const [text, setText] = useState(initial);
-  function submit(event: SubmitEvent<HTMLFormElement>): void {
-    event.preventDefault();
-    navigate(searchPath(text.trim(), 1));
-  }
-  return (
-    <form role="search" onSubmit={submit} className="mt-4 flex flex-wrap items-end gap-3">
-      <label className="flex min-w-0 grow flex-col gap-1 text-sm font-semibold">
-        Card name
-        <Input
-          type="search"
-          name="q"
-          value={text}
-          maxLength={200}
-          autoComplete="off"
-          onChange={(event) => {
-            setText(event.target.value);
-          }}
-          className="font-normal"
-        />
-      </label>
-      <Button variant="primary" type="submit">
-        Search
-      </Button>
-    </form>
-  );
 }
 
 function Problem({ failure }: { readonly failure: ApiFailure }) {

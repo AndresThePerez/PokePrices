@@ -57,7 +57,10 @@ const B_ME = { data: { ...signedInMe.data, email: 'second@example.com' } };
 async function signOut(): Promise<void> {
   fireEvent.click(screen.getByRole('link', { name: 'Account' }));
   fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
-  await screen.findByRole('heading', { level: 1, name: 'PokéPrices' });
+  await screen.findByRole('heading', {
+    level: 1,
+    name: 'Pokémon card prices at the daily close',
+  });
 }
 
 describe('review: one account settings never show under the next (D8, privacy)', () => {
