@@ -5,7 +5,7 @@ cd "$(dirname "$0")/../.." || exit 1
 . tests/p0/lib.sh
 J() { docker compose -f compose.dev.yml config --format json | jq -e "$1"; }
 NODE="docker compose -f compose.dev.yml exec -T -w /workspace/web node"
-check "node service capped at 1g" J '(.services.node.mem_limit|tonumber) == 1073741824'
+check "node service capped at 2g" J '(.services.node.mem_limit|tonumber) == 2147483648'
 check "node image digest-pinned" J '.services.node.image | test("@sha256:[0-9a-f]{64}$")'
 check "node publishes no port" J '(.services.node.ports // []) | length == 0'
 check "node service healthy" $DC up -d --wait node

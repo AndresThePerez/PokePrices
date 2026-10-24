@@ -12,7 +12,7 @@ case $table_file in ''|/*) ;; *) table_file=$(pwd)/$table_file ;; esac
 top=$(git rev-parse --show-toplevel 2>/dev/null) && cd "$top"
 details="$GATES_OUT/X1.details.jsonl"
 : > "$details"
-table='{"postgres":1073741824,"redis-queue":67108864,"redis-cache":134217728,"api":402653184,"worker":402653184,"scheduler":134217728,"web":67108864,"tools":536870912,"node":1073741824}'
+table='{"postgres":1073741824,"redis-queue":67108864,"redis-cache":134217728,"api":402653184,"worker":402653184,"scheduler":134217728,"web":67108864,"tools":536870912,"node":2147483648}'
 if [ -n "$table_file" ]; then
   table=$(jq -c . "$table_file") || table='{}'
 fi
