@@ -16,6 +16,11 @@ import DemoButton from './DemoButton';
 import { FOCUS, MUTED, SECONDARY_BUTTON, TEXT_LINK } from './fields';
 import { DEGRADED_LINE, cardLabel, detailLine, type ListRow } from './lists';
 
+function initialOf(name: string): string {
+  const code = name.trim().codePointAt(0);
+  return code === undefined ? '' : String.fromCodePoint(code).toUpperCase();
+}
+
 /** A list page: one main landmark, one h1, the width of the movers board. */
 export function ListMain({
   title,
@@ -84,7 +89,7 @@ export function SignedOutList({ list }: { readonly list: 'watchlist' | 'portfoli
 export function CardBack({ row }: { readonly row: ListRow }) {
   return (
     <div
-      data-initial={row.card === null ? '' : row.card.name.trim().charAt(0).toUpperCase()}
+      data-initial={row.card === null ? '' : initialOf(row.card.name)}
       className={`flex h-19.5 w-14 shrink-0 items-center justify-center rounded-md border border-line-subtle bg-surface-sunken text-lg font-semibold ${MUTED} before:content-[attr(data-initial)]`}
     />
   );

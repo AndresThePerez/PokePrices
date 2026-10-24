@@ -244,6 +244,11 @@ function PricesSection({ children }: { readonly children: ReactNode }) {
   );
 }
 
+function initialOf(name: string): string {
+  const code = name.trim().codePointAt(0);
+  return code === undefined ? '' : String.fromCodePoint(code).toUpperCase();
+}
+
 /** The card image in a 6 px mat, or the neutral card-back with the name's initial (CSS only). */
 function CardImage({ card }: { readonly card: Card }) {
   const src = card.images.large !== '' ? card.images.large : card.images.small;
@@ -251,7 +256,7 @@ function CardImage({ card }: { readonly card: Card }) {
   if (src === '') {
     return (
       <div
-        data-initial={card.name.trim().charAt(0).toUpperCase()}
+        data-initial={initialOf(card.name)}
         className={`${place} flex aspect-[63/88] w-full items-center justify-center rounded-lg border border-line bg-surface-sunken text-2xl font-semibold text-ink-muted before:content-[attr(data-initial)] sm:text-4xl`}
       />
     );
