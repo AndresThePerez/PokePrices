@@ -126,7 +126,7 @@ describe('the account page of the read-only demo (T07 criterion 4, D10)', () => 
     visit('/account');
     render(<App />);
     expect(await screen.findByText('Signed in as demo@example.com')).toBeTruthy();
-    expect(within(main()).getByText(DEMO_NOTICE)).toBeTruthy();
+    expect(within(screen.getByRole('banner')).getByText(DEMO_NOTICE)).toBeTruthy();
   });
 
   it('shows no demo notice for an ordinary account', async () => {

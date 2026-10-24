@@ -1,0 +1,75 @@
+// Sign out (D10), on the Account page and in the persistent demo strip (D2 RULING e). The strip is
+// the one place the read-only demo is named on a signed-in page: a neutral sunken strip under the
+// header bar with the demo sentence as one role-less paragraph and a quiet Sign out at the right
+// (omitted on /account, which has its own). It reads the session passively (useKnownSession), so it
+// adds no observer and no request, and it leaves once another tab's session signal arrives (A1-7).
+import { useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
+import { signOut, type ApiFailure } from '../api/client';
+import { navigate, useRoute } from '../router';
+import { ProblemBlock } from './Form';
+import { QUIET_BUTTON, SECONDARY_BUTTON } from './fields';
+import { DEMO_NOTICE } from './lists';
+import { ME_KEY, endSession, useKnownSession } from './session';
+
+/** Signs out (POST /logout), marks ['me'] signed out, signals the other tabs, then opens /. */
+export function SignOutButton({
+  quiet = false,
+  className,
+}: {
+  readonly quiet?: boolean;
+  readonly className?: string;
+}) {
+  const queryClient = useQueryClient();
+  const [pending, setPending] = useState(false);
+  const [failure, setFailure] = useState<ApiFailure | null>(null);
+
+  async function leave(): Promise<void> {
+    setPending(true);
+    setFailure(null);
+    const result = await signOut();
+    setPending(false);
+    if (!result.ok) {
+      setFailure(result);
+      return;
+    }
+    // Signed out at once (no stale "Signed in as" on the next visit), then confirmed by the API.
+    queryClient.setQueryData(ME_KEY, null);
+    endSession(queryClient);
+    void queryClient.invalidateQueries({ queryKey: ME_KEY });
+    navigate('/');
+  }
+
+  return (
+    <div className={className}>
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => {
+          if (!pending) void leave();
+        }}
+        className={quiet ? QUIET_BUTTON : SECONDARY_BUTTON}
+      >
+        Sign out
+      </button>
+      {failure !== null && <ProblemBlock context="Could not sign out" failure={failure} />}
+    </div>
+  );
+}
+
+/** The slim demo strip under the header bar, on every route while the known session is the demo. */
+export function DemoStrip() {
+  const session = useKnownSession();
+  const { route } = useRoute();
+  if (session === 'unknown' || session === null || !session.read_only) return null;
+  return (
+    <div className="border-t border-line-subtle bg-surface-sunken text-ink">
+      <div className="mx-auto flex min-h-10 max-w-3xl flex-wrap items-center justify-between gap-x-4 px-4 py-1 sm:flex-nowrap sm:px-6">
+        <p className="min-w-0 py-1.5 text-sm">{DEMO_NOTICE}</p>
+        {route.name !== 'account' && (
+          <SignOutButton quiet className="ml-auto flex shrink-0 flex-col items-end" />
+        )}
+      </div>
+    </div>
+  );
+}

@@ -23,12 +23,11 @@ import { ProblemBlock } from './Form';
 import { MUTED, SECONDARY_BUTTON, TEXT_LINK, firstErrors } from './fields';
 import {
   DegradedLine,
-  DemoNotice,
   ListFootnote,
+  ListItem,
   ListLoading,
   ListMain,
   PriceLines,
-  RowName,
   SignedOutList,
 } from './ListParts';
 import { NO_PRICE, WATCHLIST_KEY, cardLabel } from './lists';
@@ -51,12 +50,24 @@ function thresholdsWith(stored: number | null): readonly number[] {
 
 const ALERT_SELECT = `mt-1 ${SELECT}`;
 
+/** The select value of a stored threshold. */
+function choiceOf(stored: number | null): string {
+  return stored === null ? 'off' : String(stored);
+}
+
 /** The row's alert: its line, the threshold select and Save alert (Off deletes, a number puts). */
 function AlertControl({ item }: { readonly item: WatchlistItem }) {
   const queryClient = useQueryClient();
   const id = useId();
   const errorId = `${id}-error`;
-  const [choice, setChoice] = useState(item.alert_pct === null ? 'off' : String(item.alert_pct));
+  const [choice, setChoice] = useState(choiceOf(item.alert_pct));
+  // Keyed by the variant, so a refetch never remounts the row: a refetched threshold resyncs the
+  // select unless it holds an unsaved choice (a save leaves the saved value as the choice).
+  const [held, setHeld] = useState(item.alert_pct);
+  if (held !== item.alert_pct) {
+    setHeld(item.alert_pct);
+    if (choice === choiceOf(held)) setChoice(choiceOf(item.alert_pct));
+  }
   const [pending, run] = useOnce();
   const [failure, setFailure] = useState<ApiFailure | null>(null);
   const errors = firstErrors(failure);
@@ -166,14 +177,14 @@ function WatchRow({ item, access }: { readonly item: WatchlistItem; readonly acc
   }
 
   return (
-    <li className="grid gap-x-4 py-4 sm:grid-cols-[minmax(0,1fr)_auto]">
-      <div className="min-w-0 wrap-anywhere">
-        <RowName row={item} />
-        <PriceLines price={item.price} missing={NO_PRICE} />
-        {access === 'alerts' && <AlertControl key={String(item.alert_pct)} item={item} />}
-      </div>
+    <ListItem row={item} price={<PriceLines price={item.price} missing={NO_PRICE} />}>
       {access !== 'read-only' && (
-        <div className="mt-3 sm:mt-0">
+        <div className="mt-3 flex flex-wrap items-end gap-x-6 gap-y-3 sm:col-span-2">
+          {access === 'alerts' && (
+            <div className="min-w-0">
+              <AlertControl key={item.variant_key} item={item} />
+            </div>
+          )}
           <button
             type="button"
             disabled={pending}
@@ -192,7 +203,7 @@ function WatchRow({ item, access }: { readonly item: WatchlistItem; readonly acc
           <ProblemBlock context="Could not change your watchlist" failure={failure} />
         </div>
       )}
-    </li>
+    </ListItem>
   );
 }
 
@@ -254,10 +265,5 @@ export default function WatchlistPage() {
     body = <ListLoading>{LOADING}</ListLoading>;
   }
 
-  return (
-    <ListMain title="Watchlist">
-      {readOnly && <DemoNotice />}
-      {body}
-    </ListMain>
-  );
+  return <ListMain title="Watchlist">{body}</ListMain>;
 }

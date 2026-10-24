@@ -1,7 +1,8 @@
 // /portfolio (D9, D10): the signed-in account's holdings over GET /v1/portfolio. Each holding's
 // value and the total are the API's numeric strings, printed as they come: the browser never
 // multiplies or adds money. A holding without a price has no value and is named as not counted;
-// the total says which days it rests on.
+// the total says which days it rests on. The summary panel leads; each row shows its quantity as an
+// "×n" chip beside the visually hidden "Quantity n" line (RULING f).
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import {
@@ -15,17 +16,17 @@ import {
 } from '../api/client';
 import { grouped, variantLabel } from '../format';
 import { unwrap } from '../query';
+import Panel from '../ui/Panel';
 import { ProblemBlock } from './Form';
 import { MUTED, SECONDARY_BUTTON, firstErrors } from './fields';
 import {
   DegradedLine,
-  DemoNotice,
   ListFootnote,
+  ListItem,
   ListLoading,
   ListMain,
   PriceLines,
   QuantityForm,
-  RowName,
   SignedOutList,
 } from './ListParts';
 import { PORTFOLIO_KEY, cardLabel, quantityOf } from './lists';
@@ -67,19 +68,33 @@ function HoldingRow({
     await queryClient.invalidateQueries({ queryKey: PORTFOLIO_KEY });
   }
 
+  const quantity = String(holding.quantity);
   return (
-    <li className="grid gap-x-6 py-4 sm:grid-cols-[minmax(0,1fr)_auto]">
-      <div className="min-w-0 wrap-anywhere">
-        <RowName row={holding} />
-        <span className="mt-1 block text-sm">{`Quantity ${String(holding.quantity)}`}</span>
-        <PriceLines price={holding.price} missing={NOT_COUNTED} />
-        {value !== null && <span className="mt-1 block num font-semibold">{value}</span>}
-      </div>
+    <ListItem
+      row={holding}
+      details={
+        <span className="mt-2 block">
+          <span
+            aria-hidden="true"
+            className="inline-block rounded-sm border border-line px-1.5 num text-sm font-semibold"
+          >
+            {`×${quantity}`}
+          </span>
+          <span className="sr-only">{`Quantity ${quantity}`}</span>
+        </span>
+      }
+      price={
+        <>
+          <PriceLines price={holding.price} missing={NOT_COUNTED} />
+          {value !== null && <span className="mt-1 block num text-sm font-semibold">{value}</span>}
+        </>
+      }
+    >
       {!readOnly && (
-        <div className="mt-3 flex flex-wrap items-end gap-x-2 gap-y-2 sm:mt-0 sm:flex-col sm:items-end">
+        <div className="mt-3 flex flex-wrap items-end gap-x-6 gap-y-3 sm:col-span-2">
           <QuantityForm
-            key={String(holding.quantity)}
-            initial={String(holding.quantity)}
+            key={quantity}
+            initial={quantity}
             pending={pending}
             error={firstErrors(failure).quantity}
             onSave={(text) => {
@@ -104,7 +119,7 @@ function HoldingRow({
           <ProblemBlock context={CONTEXT} failure={failure} fields={['quantity']} />
         </div>
       )}
-    </li>
+    </ListItem>
   );
 }
 
@@ -123,19 +138,23 @@ function unpricedLine(count: number): string | null {
     : `${String(count)} holdings have no price in the collected snapshots and are not counted.`;
 }
 
-/** The total block: the API's total, the days it rests on and what it leaves out (D9). */
+/** The summary panel: the API's total, the days it rests on and what it leaves out (D9). */
 function Total({ meta }: { readonly meta: PortfolioBody['meta'] }) {
   if (meta.total_value === null) {
-    return <p className="mt-6">No holding has a price in the collected snapshots yet.</p>;
+    return (
+      <Panel className="mt-6">
+        <p className="text-base">No holding has a price in the collected snapshots yet.</p>
+      </Panel>
+    );
   }
   const days = daysLine(meta);
   const unpriced = unpricedLine(meta.unpriced);
   return (
-    <div className="mt-6 border-l-4 border-line pl-4">
-      <p className="num text-2xl font-semibold">{`Total value $${grouped(meta.total_value)}`}</p>
+    <Panel className="mt-6">
+      <p className="num text-2xl font-semibold wrap-anywhere sm:text-4xl">{`Total value $${grouped(meta.total_value)}`}</p>
       {days !== null && <p className={`mt-1 text-meta ${MUTED}`}>{days}</p>}
-      {unpriced !== null && <p className="mt-1 text-sm">{unpriced}</p>}
-    </div>
+      {unpriced !== null && <p className="mt-3 text-sm">{unpriced}</p>}
+    </Panel>
   );
 }
 
@@ -192,10 +211,5 @@ export default function PortfolioPage() {
     body = <ListLoading>{LOADING}</ListLoading>;
   }
 
-  return (
-    <ListMain title="Portfolio">
-      {readOnly && <DemoNotice />}
-      {body}
-    </ListMain>
-  );
+  return <ListMain title="Portfolio">{body}</ListMain>;
 }

@@ -1,17 +1,16 @@
-// /account (D10): who is signed in, the read-only demo notice (T07), whether the email address
-// is verified (with a resend button), the two-factor section (T04), Your data and Delete account
-// (T08) and Sign out, with a static link to /alerts after the two-factor section (P5 T04). Signed
-// out, it links to sign-in and sign-up. A fresh mount reads the session from GET /v1/me alone, so a
-// signed-in session survives a reload (D13).
-import { useQueryClient } from '@tanstack/react-query';
+// /account (D10): who is signed in (the read-only demo is named by the header's strip), whether
+// the email address is verified (with a resend button), the two-factor section (T04), Your data
+// and Delete account (T08) and Sign out (shared with the strip, SignOut.tsx), with a static link
+// to /alerts after the two-factor section (P5 T04). Signed out, it links to sign-in and sign-up.
+// A fresh mount reads the session from GET /v1/me alone, so a signed-in session survives a reload
+// (D13).
 import { useState } from 'react';
-import { resendVerification, signOut, type ApiFailure, type Me } from '../api/client';
+import { resendVerification, type ApiFailure, type Me } from '../api/client';
 import Link from '../Link';
-import { navigate } from '../router';
 import { AccountMain, LoadingAccount, ProblemBlock, StatusLine } from './Form';
-import { DemoNotice } from './ListParts';
 import { SECONDARY_BUTTON, TEXT_LINK } from './fields';
-import { ME_KEY, endSession, useArrivalStatus, useSession } from './session';
+import { useArrivalStatus, useSession } from './session';
+import { SignOutButton } from './SignOut';
 import TwoFactorSection from './TwoFactor';
 import YourData from './YourData';
 
@@ -54,49 +53,10 @@ function Verification({ verified }: { readonly verified: boolean }) {
   );
 }
 
-function SignOut() {
-  const queryClient = useQueryClient();
-  const [pending, setPending] = useState(false);
-  const [failure, setFailure] = useState<ApiFailure | null>(null);
-
-  async function leave(): Promise<void> {
-    setPending(true);
-    setFailure(null);
-    const result = await signOut();
-    setPending(false);
-    if (!result.ok) {
-      setFailure(result);
-      return;
-    }
-    // Signed out at once (no stale "Signed in as" on the next visit), then confirmed by the API.
-    queryClient.setQueryData(ME_KEY, null);
-    endSession(queryClient);
-    void queryClient.invalidateQueries({ queryKey: ME_KEY });
-    navigate('/');
-  }
-
-  return (
-    <div className="mt-8 border-t border-line-subtle pt-6">
-      <button
-        type="button"
-        disabled={pending}
-        onClick={() => {
-          if (!pending) void leave();
-        }}
-        className={SECONDARY_BUTTON}
-      >
-        Sign out
-      </button>
-      {failure !== null && <ProblemBlock context="Could not sign out" failure={failure} />}
-    </div>
-  );
-}
-
 function SignedIn({ me, onDeleted }: { readonly me: Me; readonly onDeleted: () => void }) {
   return (
     <>
       <p className="mt-6 text-lg font-semibold break-all">{`Signed in as ${me.email}`}</p>
-      {me.read_only && <DemoNotice />}
       <Verification verified={me.email_verified} />
       <TwoFactorSection me={me} />
       <p className="mt-8 border-t border-line-subtle pt-6">
@@ -105,7 +65,7 @@ function SignedIn({ me, onDeleted }: { readonly me: Me; readonly onDeleted: () =
         </Link>
       </p>
       <YourData me={me} onDeleted={onDeleted} />
-      <SignOut />
+      <SignOutButton className="mt-8 border-t border-line-subtle pt-6" />
     </>
   );
 }

@@ -2,8 +2,10 @@
 // main links, the current page marked by aria-current, semibold and a 2 px accent underline. Under
 // 640 px the links fold into a Menu sheet, hidden by CSS only. The display settings live in the
 // footer. The last link is Sign in once the ['me'] cache knows the visitor is signed out, else
-// Account; the header reads the session passively (useKnownSession) and sends no request.
+// Account; the header reads the session passively (useKnownSession) and sends no request. Under
+// the bar, inside the banner and outside nav, the demo strip names the read-only demo (RULING e).
 import { useEffect, useId, useState } from 'react';
+import { DemoStrip } from './account/SignOut';
 import { useKnownSession } from './account/session';
 import Link from './Link';
 import { useRoute, type Route } from './router';
@@ -138,6 +140,7 @@ export default function Header() {
           </ul>
         </nav>
       </div>
+      <DemoStrip />
     </header>
   );
 }
