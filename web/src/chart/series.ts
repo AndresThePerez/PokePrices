@@ -174,6 +174,7 @@ export function paddedAutoscale(base: () => AutoscaleInfo | null): AutoscaleInfo
 
 /** A y-axis label: "$" + 2 decimals with ',' between thousands; "-$" below zero. */
 export function axisPrice(value: number): string {
+  if (!Number.isFinite(value) || Math.abs(value) >= 1e15) return '';
   const cents = Math.round(value * 100);
   const digits = (Math.abs(cents) / 100).toFixed(2);
   return `${cents < 0 ? '-' : ''}$${grouped(digits)}`;
