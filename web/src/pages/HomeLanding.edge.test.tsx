@@ -1,7 +1,7 @@
 // D2-i1-T03 review (round 1a): edge cases of the home landing, the shared search form and the
 // movers board bar: request counts, hostile queries, Back/Forward, the bar's identity and focus.
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import App from '../App';
 import {
   FORBIDDEN_WORDS,
@@ -99,7 +99,7 @@ describe('home search form: requests and hostile text (D2-i1-T03 review)', () =>
       expect(new URL(cards[0]?.url ?? '', 'http://example.test').searchParams.get('q')).toBe(
         hostile,
       );
-      const field = screen.getByRole('searchbox', { name: 'Card name' }) as HTMLInputElement;
+      const field = screen.getByRole<HTMLInputElement>('searchbox', { name: 'Card name' });
       expect(field.value).toBe(hostile);
       expect(document.querySelector('main img[src="x"]')).toBeNull();
     },
@@ -126,7 +126,7 @@ describe('home search form: requests and hostile text (D2-i1-T03 review)', () =>
     render(<App />);
     await screen.findByRole('list', { name: 'Search results' });
     const field = (): HTMLInputElement =>
-      screen.getByRole('searchbox', { name: 'Card name' }) as HTMLInputElement;
+      screen.getByRole<HTMLInputElement>('searchbox', { name: 'Card name' });
     expect(field().value).toBe('alpha');
     fireEvent.change(field(), { target: { value: 'half typed' } });
     goTo('/search?q=beta');
@@ -144,12 +144,12 @@ describe('home search form: requests and hostile text (D2-i1-T03 review)', () =>
     visit('/');
     render(<App />);
     await screen.findByText('Market price $26.34');
-    const home = screen.getByRole('main').textContent ?? '';
+    const home = screen.getByRole('main').textContent;
     for (const word of FORBIDDEN_WORDS) expect(home).not.toMatch(word);
     expect(document.querySelectorAll('#root img, main img, main svg')).toHaveLength(0);
     goTo('/movers');
     await screen.findByText(STAMP_1012);
-    const board = screen.getByRole('main').textContent ?? '';
+    const board = screen.getByRole('main').textContent;
     for (const word of FORBIDDEN_WORDS) expect(board).not.toMatch(word);
   });
 });
@@ -298,5 +298,87 @@ describe('demo entry on the home page (D2-i1-T03 review)', () => {
       'GET /v1/me',
     ]);
     expect(keys.filter((key) => key === 'POST /v1/demo/session')).toHaveLength(1);
+  });
+});
+
+describe('landing and board under slow, failing and hash-bearing conditions (D2-i1-T03 review)', () => {
+  const STAMP_1011 = 'as of 2026-10-11 from TCGCSV (daily close)';
+
+  it('shows no Rises stamp, rows or footnote while the Falls answer is in flight, then only the Falls day', async () => {
+    let release: (answer: Response) => void = () => undefined;
+    const slowFalls = new Promise<Response>((done) => {
+      release = done;
+    });
+    vi.stubGlobal('fetch', (input: string | URL): Promise<Response> => {
+      const url = String(input);
+      return url.includes('direction=down')
+        ? slowFalls
+        : Promise.resolve(jsonResponse(moversBody('up', [risingMover])));
+    });
+    onTestFinished(() => {
+      vi.unstubAllGlobals();
+    });
+    visit('/movers');
+    render(<App />);
+    await screen.findByText('Market price $26.34');
+    expect(screen.getAllByText(STAMP_1012)).toHaveLength(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Falls' }));
+    await screen.findByRole('status');
+    expect(screen.queryByText(STAMP_1012)).toBeNull();
+    expect(screen.queryByText('Market price $26.34')).toBeNull();
+    expect(screen.queryByText(FOOTNOTE)).toBeNull();
+    expect(screen.queryByRole('link', { name: 'Back to top' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Falls' }).getAttribute('aria-pressed')).toBe('true');
+    act(() => {
+      release(jsonResponse(moversBody('down', [fallingMover], { day: '2026-10-11' })));
+    });
+    await screen.findByText('Market price $65.11');
+    expect(screen.getAllByText(/^as of .* from TCGCSV \(daily close\)$/)).toHaveLength(1);
+    expect(screen.getByText(STAMP_1011)).toBeTruthy();
+    expect(screen.queryByText(STAMP_1012)).toBeNull();
+  });
+
+  it('keeps the same board, direction and request list when the URL gains the #content fragment', async () => {
+    const calls = stubFetch((url) =>
+      url.includes('direction=down')
+        ? jsonResponse(moversBody('down', [fallingMover]))
+        : jsonResponse(moversBody('up', [risingMover])),
+    );
+    visit('/movers?direction=down');
+    render(<App />);
+    await screen.findByText('Market price $65.11');
+    const rows = screen.getByRole('list', { name: 'Falls' });
+    const before = calls.length;
+    goTo('/movers?direction=down#content');
+    await new Promise((done) => setTimeout(done, 20));
+    expect(screen.getByRole('list', { name: 'Falls' })).toBe(rows);
+    expect(screen.getByRole('button', { name: 'Falls' }).getAttribute('aria-pressed')).toBe('true');
+    expect(screen.getAllByText(STAMP_1012)).toHaveLength(1);
+    expect(calls).toHaveLength(before);
+    expect(calls.map((call) => call.url)).toEqual(['/v1/movers?direction=down&limit=50']);
+  });
+
+  it('keeps the search form and the demo button working when both home movers requests fail', async () => {
+    const calls = stubFetch((url) =>
+      isMoversUrl(url) ? problemResponse(upstreamUnavailableProblem) : jsonResponse(searchPage),
+    );
+    visit('/');
+    render(<App />);
+    const alert = await screen.findByRole('alert');
+    expect(screen.getAllByRole('alert')).toHaveLength(1);
+    const main = within(screen.getByRole('main'));
+    expect(main.getByRole('heading', { level: 1 }).textContent).toBe(
+      'Pokémon card prices at the daily close',
+    );
+    expect(main.getByRole('button', { name: 'Try the read-only demo' })).toBeTruthy();
+    expect(screen.queryByText(FOOTNOTE)).toBeNull();
+    expect(screen.queryByRole('link', { name: 'See all movers' })).toBeNull();
+    expect(follows(main.getByRole('search'), alert)).toBe(true);
+    const box = main.getByRole('searchbox', { name: 'Card name' });
+    fireEvent.change(box, { target: { value: ' unown ' } });
+    fireEvent.submit(box);
+    expect(window.location.pathname + window.location.search).toBe('/search?q=unown');
+    await screen.findByRole('list', { name: 'Search results' });
+    expect(calls.filter((call) => call.url.startsWith('/v1/cards'))).toHaveLength(1);
   });
 });
