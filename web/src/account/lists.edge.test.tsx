@@ -69,8 +69,7 @@ describe('T07 edge: nothing of one account shows under the next one (D8, D9, pri
     });
 
     // ... and account B (an empty watchlist) signs in, in the same tab.
-    fireEvent.click(screen.getByRole('link', { name: 'Account' }));
-    fireEvent.click(await screen.findByRole('link', { name: 'Sign in' }));
+    fireEvent.click(within(screen.getByRole('banner')).getByRole('link', { name: 'Sign in' }));
     fireEvent.change(await screen.findByLabelText('Email'), {
       target: { value: 'second@example.com' },
     });

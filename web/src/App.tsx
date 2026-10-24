@@ -19,8 +19,45 @@ import MoversPage from './pages/MoversPage';
 import SearchForm from './pages/SearchForm';
 import SearchPage from './pages/SearchPage';
 import { createQueryClient } from './query';
-import { useRoute } from './router';
+import { useRoute, type Route } from './router';
+import { pageTitle, useDocumentTitle, useRouteFocus, WORDMARK } from './title';
 import { MUTED, TEXT_LINK } from './ui/classes';
+
+const HOME_H1 = 'Pokémon card prices at the daily close';
+
+/** The tab title of each route: its h1 and the wordmark. The card page titles itself. */
+function routeTitle(route: Route): string | null {
+  switch (route.name) {
+    case 'home':
+      return `${WORDMARK} · ${HOME_H1}`;
+    case 'search':
+      return pageTitle('Search cards');
+    case 'card':
+      return null;
+    case 'movers':
+      return pageTitle('Biggest moves');
+    case 'sign-in':
+      return pageTitle('Sign in');
+    case 'sign-up':
+      return pageTitle('Create an account');
+    case 'forgot-password':
+      return pageTitle('Reset your password');
+    case 'reset-password':
+      return pageTitle('Choose a new password');
+    case 'account':
+      return pageTitle('Account');
+    case 'verify-email':
+      return pageTitle('Verify your email');
+    case 'watchlist':
+      return pageTitle('Watchlist');
+    case 'portfolio':
+      return pageTitle('Portfolio');
+    case 'alerts':
+      return pageTitle('Alerts and webhooks');
+    case 'not-found':
+      return pageTitle('Page not found');
+  }
+}
 
 function Page({ title, children }: { readonly title: string; readonly children: ReactNode }) {
   return (
@@ -33,15 +70,15 @@ function Page({ title, children }: { readonly title: string; readonly children: 
 
 function Routes() {
   const { pathname, route } = useRoute();
+  useDocumentTitle(routeTitle(route));
+  useRouteFocus(pathname);
   switch (route.name) {
     case 'home':
       // The landing (D2): the job in the h1, the source sentence, then the one task (search) and
       // the demo entry; the movers follow as supporting content.
       return (
         <main className="mx-auto max-w-3xl p-6">
-          <h1 className="text-2xl font-semibold sm:text-4xl">
-            Pokémon card prices at the daily close
-          </h1>
+          <h1 className="text-2xl font-semibold sm:text-4xl">{HOME_H1}</h1>
           <p className={`mt-2 text-base ${MUTED}`}>
             Pokémon card prices at the daily close. Every price shows its source and the date it is
             as of.

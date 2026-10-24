@@ -21,6 +21,7 @@ import Panel from '../ui/Panel';
 import PriceTag, { AsOf, ChangeChip, HeroPrice } from '../ui/PriceTag';
 import Skeleton from '../ui/Skeleton';
 import { unwrap } from '../query';
+import { pageTitle, useDocumentTitle } from '../title';
 import PriceHistory from './PriceHistory';
 
 const DEGRADED_LINE = 'Catalog data may be out of date: PokéSearch is unavailable';
@@ -406,6 +407,11 @@ export default function CardPage({ id }: { readonly id: string }) {
     queryKey: ['card', id],
     queryFn: ({ signal }) => unwrap(getCard(id, { signal })),
   });
+
+  let title = pageTitle(`Card ${id}`);
+  if (query.data !== undefined) title = pageTitle(query.data.data.name);
+  else if (query.error !== null && isCardNotFound(query.error)) title = pageTitle('Card not found');
+  useDocumentTitle(title);
 
   let body;
   if (query.data !== undefined) {

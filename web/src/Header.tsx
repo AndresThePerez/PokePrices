@@ -1,8 +1,10 @@
 // The PokéPrices header on every route (D1): one 56 px bar with a skip link, the wordmark and the
 // main links, the current page marked by aria-current, semibold and a 2 px accent underline. Under
 // 640 px the links fold into a Menu sheet, hidden by CSS only. The display settings live in the
-// footer. The header reads no session and sends no request.
+// footer. The last link is Sign in once the ['me'] cache knows the visitor is signed out, else
+// Account; the header reads the session passively (useKnownSession) and sends no request.
 import { useEffect, useId, useState } from 'react';
+import { useKnownSession } from './account/session';
 import Link from './Link';
 import { useRoute, type Route } from './router';
 import { Button } from './ui/Button';
@@ -13,8 +15,10 @@ const LINKS = [
   { to: '/movers', label: 'Movers' },
   { to: '/watchlist', label: 'Watchlist' },
   { to: '/portfolio', label: 'Portfolio' },
-  { to: '/account', label: 'Account' },
 ] as const;
+
+const ACCOUNT = { to: '/account', label: 'Account' } as const;
+const SIGN_IN = { to: '/sign-in', label: 'Sign in' } as const;
 
 /** The path of the header link that names the current page, or null when none does. */
 function currentPath(route: Route): string | null {
@@ -32,6 +36,8 @@ function currentPath(route: Route): string | null {
     case 'account':
     case 'alerts':
       return '/account';
+    case 'sign-in':
+      return '/sign-in';
     default:
       return null;
   }
@@ -56,9 +62,17 @@ const LIST_WIDE =
   'sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none';
 
 export default function Header() {
-  const { route } = useRoute();
+  const { pathname, route } = useRoute();
   const current = currentPath(route);
+  const session = useKnownSession();
+  const links = [...LINKS, session === null ? SIGN_IN : ACCOUNT];
   const [open, setOpen] = useState(false);
+  // Back/Forward changes the page without a click on a Menu link: the open sheet closes too.
+  const [shownPath, setShownPath] = useState(pathname);
+  if (shownPath !== pathname) {
+    setShownPath(pathname);
+    setOpen(false);
+  }
   const menuId = useId();
   const listId = useId();
 
@@ -107,8 +121,8 @@ export default function Header() {
             Menu
           </Button>
           <ul id={listId} className={`${open ? LIST_OPEN : 'hidden'} ${LIST_WIDE}`}>
-            {LINKS.map(({ to, label }) => (
-              <li key={to} className={to === '/account' ? 'sm:ml-auto' : undefined}>
+            {links.map(({ to, label }, index) => (
+              <li key={to} className={index === LINKS.length ? 'sm:ml-auto' : undefined}>
                 <Link
                   to={to}
                   onClick={close}

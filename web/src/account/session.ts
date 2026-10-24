@@ -1,10 +1,11 @@
 // The PokéPrices session (D11): the ['me'] query and the signed-in, signed-out, loading and
 // failed states every account page reads. A 401 from GET /v1/me is the signed-out state (null),
-// not a problem. The header never reads it, so public pages keep their exact request lists. Every
-// query key that holds one account's data lives under ['account', …] (accountKey), so a session
-// transition forgets all of it at once (endSession); ['me'] itself is outside it.
-import { useQuery, type QueryClient } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+// not a problem. The header reads it passively only (useKnownSession), so public pages keep their
+// exact request lists. Every query key that holds one account's data lives under ['account', …]
+// (accountKey), so a session transition forgets all of it at once (endSession); ['me'] itself is
+// outside it.
+import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { getMe, type ApiFailure, type Me, type RequestOptions } from '../api/client';
 
 export const ME_KEY = ['me'] as const;
@@ -145,4 +146,28 @@ export function useArrivalStatus(): string | null {
     }
   }, [status]);
   return status;
+}
+
+/** What the cache already knows about the session: 'unknown', null (signed out) or the account. */
+export type KnownSession = 'unknown' | Me | null;
+
+const UNKNOWN = 'unknown';
+
+/**
+ * The session as the ['me'] cache already holds it, read passively for the shell: no observer and
+ * no request, so public pages keep their exact request lists. 'unknown' until a page has asked,
+ * and again once a held account is marked stale (another tab's session signal): that account may
+ * be gone. A cached null (signed out, also after this tab's own sign-out) stays signed out. The
+ * snapshot is the raw cached value, so an unchanged cache never re-renders the reader.
+ */
+export function useKnownSession(): KnownSession {
+  const cache = useQueryClient().getQueryCache();
+  const subscribe = useCallback((onChange: () => void) => cache.subscribe(onChange), [cache]);
+  return useSyncExternalStore(subscribe, () => {
+    const query = cache.find<Me | null>({ queryKey: ME_KEY, exact: true });
+    const data = query?.state.data;
+    if (query === undefined || data === undefined) return UNKNOWN;
+    if (data !== null && query.state.isInvalidated) return UNKNOWN;
+    return data;
+  });
 }

@@ -106,8 +106,7 @@ async function signOutThroughAccount(): Promise<void> {
 
 /** Sign in as B through the sign-in page; `asB` switches the stubbed GET /v1/me to B. */
 async function signInAsB(asB: () => void): Promise<void> {
-  fireEvent.click(screen.getByRole('link', { name: 'Account' }));
-  fireEvent.click(await screen.findByRole('link', { name: 'Sign in' }));
+  fireEvent.click(within(screen.getByRole('banner')).getByRole('link', { name: 'Sign in' }));
   fireEvent.change(await screen.findByLabelText('Email'), { target: { value: B_EMAIL } });
   fireEvent.change(screen.getByLabelText('Password'), { target: { value: PASSWORD } });
   asB();
