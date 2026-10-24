@@ -19,7 +19,7 @@ const PRICE_SIZE: Readonly<Record<PriceTagSize, string>> = {
   row: 'text-base',
 };
 
-/** The headline price, 36/40 700: defined for D2's card hero, not used in D1 (RULING 5). */
+/** The headline price, 36/40 700: the card hero's figure (D2 RULING d). */
 export const HERO_PRICE = 'block num text-4xl font-bold';
 
 /** The chip tint of each tone: 12 % of the tone's own token; flat stays untinted. */
@@ -43,13 +43,25 @@ export function PriceFigure({
   );
 }
 
-/** The change line of changeLine() as one chip span: its tone class plus the tone's tint. */
+/**
+ * "$X" alone as one span, 36/40 700 mono tabular: the card hero's figure. Its label line
+ * ("Market price · <variant>") is the caller's, so "Market price $X" stays unique per variant.
+ */
+export function HeroPrice({ close }: { readonly close: string }) {
+  return <span className={HERO_PRICE}>{`$${grouped(close)}`}</span>;
+}
+
+/**
+ * The change line of changeLine() as one chip span: its tone class plus the tone's tint. A flat
+ * chip has no tint and no inset, so its text starts on the price figure's left edge.
+ */
 export function ChangeChip({ price }: { readonly price: ChangeFields }) {
   const change = changeLine(price);
-  const tint = TINT[change.tone] ?? '';
+  const tint = TINT[change.tone];
+  const box = tint === undefined ? 'px-0' : `px-1 ${tint}`;
   return (
     <span
-      className={`mt-1 inline-block rounded-sm px-1 py-0.5 num text-sm font-semibold ${change.tone} ${tint}`}
+      className={`mt-1 inline-block rounded-sm py-0.5 num text-sm font-semibold ${change.tone} ${box}`}
     >
       {change.text}
     </span>

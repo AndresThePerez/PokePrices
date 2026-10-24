@@ -214,7 +214,7 @@ describe('CardPage', () => {
         expect(dollarLines.length).toBeGreaterThan(0);
         for (const line of dollarLines) {
           expect(line).toMatch(
-            /^Market price \$\d|^[▲▼] [+-]\$\d.* vs previous close \(|^[A-Z][^:]*, (?:1W|1M|3M|YTD|1Y): /,
+            /^Market price \$\d|^\$\d[\d,]*\.\d{2}$|^[▲▼] [+-]\$\d.* vs previous close \(|^[A-Z][^:]*, (?:1W|1M|3M|YTD|1Y): /,
           );
         }
       }

@@ -125,6 +125,7 @@ describe('Card page prices', () => {
     for (const body of [cardBody, unmappedCardBody, cardWithPrices(null, null)]) {
       const section = await prices(body);
       expect(section.textContent).toBe('PricesNo prices yet');
+      expect(screen.queryByText(FOOTNOTE)).toBeNull();
       cleanup();
     }
   });
@@ -168,10 +169,13 @@ describe('Card page prices', () => {
     expect(section.textContent).not.toContain('01:30');
   });
 
-  it('shows the footnote once, after the variants, however many variants are priced', async () => {
+  it('shows the footnote once, as the first line of Sources, however many variants are priced', async () => {
     const section = await prices(cardWithPrices(risingPrice, null, unchangedPrice));
-    expect(within(section).getAllByText(FOOTNOTE)).toHaveLength(1);
-    expect(section.textContent.endsWith(FOOTNOTE)).toBe(true);
+    const sources = screen.getByRole('region', { name: 'Sources' });
+    expect(within(sources).getAllByText(FOOTNOTE)).toHaveLength(1);
+    expect(screen.getAllByText(FOOTNOTE)).toHaveLength(1);
+    expect(sources.textContent.startsWith(`Sources${FOOTNOTE}`)).toBe(true);
+    expect(within(section).queryByText(FOOTNOTE)).toBeNull();
     expect(within(section).getAllByText(/^Market price /)).toHaveLength(2);
     expect(within(section).getAllByText('No price in the collected snapshots')).toHaveLength(1);
   });

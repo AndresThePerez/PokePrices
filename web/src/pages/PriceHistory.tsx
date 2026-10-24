@@ -192,12 +192,14 @@ function Loaded({
   range,
   chosen,
   onChoose,
+  priced,
   rangeGroup,
 }: {
   readonly body: CardPrices;
   readonly range: PriceRange;
   readonly chosen: string | null;
   readonly onChoose: (variantKey: string) => void;
+  readonly priced: readonly string[];
   readonly rangeGroup: ReactNode;
 }) {
   // An answer of an unexpected shape shows as "nothing held" rather than taking the page down.
@@ -214,21 +216,29 @@ function Loaded({
   const meta = (record.meta ?? undefined) as Partial<CardPrices['meta']> | undefined;
   const from = meta?.from ?? null;
   const to = meta?.to ?? null;
-  const selected = eligible.find((one) => one.variant_key === chosen) ?? eligible[0];
+  // The segments are the eligible series of priced variants, in card order (A1-4). The chart only
+  // ever draws the chosen variant: when it has no eligible series here, the no-close line shows
+  // instead (RULING o), never another variant's series.
+  const options = priced.flatMap((key) => eligible.filter((one) => one.variant_key === key));
+  const selected = chosen === null ? options[0] : options.find((one) => one.variant_key === chosen);
   if (selected === undefined) {
+    const line =
+      eligible.length === 0 || from === null || to === null
+        ? ZERO_ELIGIBLE
+        : `No daily close for this variant between ${from} and ${to}.`;
     return (
       <>
         {rangeGroup}
         <Stamp to={to} />
-        <p className="mt-4">{ZERO_ELIGIBLE}</p>
+        <p className="mt-4">{line}</p>
       </>
     );
   }
   return (
     <>
-      {eligible.length >= 2 && (
+      {options.length >= 2 && (
         <div role="group" aria-label="Variant" className="mt-3 flex flex-wrap gap-2">
-          {eligible.map((one) => (
+          {options.map((one) => (
             <Button
               key={one.variant_key}
               variant="segment"
@@ -256,9 +266,23 @@ function Loaded({
   );
 }
 
-export default function PriceHistory({ id }: { readonly id: string }) {
+/**
+ * The history of the variant the card page chose (`chosen`, a priced variant key); `onChoose`
+ * reports a Variant segment press back to the page, which owns the choice and the hero with it.
+ * `priced` lists the priced variant keys in card order.
+ */
+export default function PriceHistory({
+  id,
+  chosen,
+  onChoose,
+  priced,
+}: {
+  readonly id: string;
+  readonly chosen: string | null;
+  readonly onChoose: (variantKey: string) => void;
+  readonly priced: readonly string[];
+}) {
   const [range, setRange] = useState<PriceRange>(DEFAULT_RANGE);
-  const [chosen, setChosen] = useState<string | null>(null);
   const query = useQuery<CardPrices, ApiFailure>({
     queryKey: ['card-prices', id, range],
     queryFn: ({ signal }) => unwrap(getCardPrices(id, range, { signal })),
@@ -289,7 +313,8 @@ export default function PriceHistory({ id }: { readonly id: string }) {
         body={query.data}
         range={range}
         chosen={chosen}
-        onChoose={setChosen}
+        onChoose={onChoose}
+        priced={priced}
         rangeGroup={rangeGroup}
       />
     );

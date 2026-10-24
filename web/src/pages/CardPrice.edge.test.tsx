@@ -40,6 +40,20 @@ function itemText(section: HTMLElement, index: number): string {
   return items(section)[index]?.textContent ?? '';
 }
 
+/** The text of one variant's list item, found by its label (unpriced rows are grouped last). */
+function labelledText(section: HTMLElement, label: string): string {
+  const item = within(section).getByText(label).closest('li');
+  if (item === null) throw new Error(`no list item for ${label}`);
+  return item.textContent;
+}
+
+/** The footnote sits once in the Sources region and never in Prices (D2 RULING n). */
+function expectFootnoteOnceInSources(section: HTMLElement): void {
+  const sources = screen.getByRole('region', { name: 'Sources' });
+  expect(sources.textContent.split(FOOTNOTE).length).toBe(2);
+  expect(within(section).queryByText(FOOTNOTE)).toBeNull();
+}
+
 function priceWith(fields: Partial<VariantPrice>): VariantPrice {
   return { ...risingPrice, ...fields };
 }
@@ -76,7 +90,7 @@ describe('Card page prices, edge cases', () => {
     ];
     expect(items(section).map((li) => li.textContent)).toEqual(expected);
     expect(section.textContent).not.toMatch(/[−–—]/);
-    expect(section.textContent.split(FOOTNOTE).length).toBe(2);
+    expectFootnoteOnceInSources(section);
     expect(section.textContent).not.toContain('No prices yet');
   });
 
@@ -139,7 +153,7 @@ describe('Card page prices, edge cases', () => {
     expect(rows[5]).toContain('Market price $1e6▲');
     expect(rows[6]).toContain('Market price $ 12.00▲');
     expect(rows[7]).toContain('Market price $1,234.50▲');
-    expect(section.textContent.split(FOOTNOTE).length).toBe(2);
+    expectFootnoteOnceInSources(section);
   });
 
   it('gives each variant only its own day and previous day, and the footnote once, around an unpriced variant', async () => {
@@ -161,10 +175,10 @@ describe('Card page prices, edge cases', () => {
         }),
       ),
     );
-    const first = itemText(section, 0);
-    const second = itemText(section, 1);
-    const third = itemText(section, 2);
-    const fourth = itemText(section, 3);
+    const first = labelledText(section, 'finish0, unlimited');
+    const second = labelledText(section, 'finish1, unlimited');
+    const third = labelledText(section, 'finish2, unlimited');
+    const fourth = labelledText(section, 'finish3, unlimited');
     expect(first).toContain('as of 2026-10-12 from');
     expect(first).toContain('(2026-10-11)');
     expect(first).not.toMatch(/2026-10-0[589]/);
@@ -174,7 +188,7 @@ describe('Card page prices, edge cases', () => {
     expect(third).not.toMatch(/2026-10-1[12]/);
     expect(fourth).toContain('as of 2026-10-09 from');
     expect(fourth).not.toMatch(/2026-10-(05|08|11|12)/);
-    expect(section.textContent.split(FOOTNOTE).length).toBe(2);
+    expectFootnoteOnceInSources(section);
   });
 
   it('keeps direction readable from text alone: no aria-hidden or presentation role, and colour classes only on up and down', async () => {

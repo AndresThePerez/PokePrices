@@ -202,7 +202,13 @@ describe('card page polling (D9, T03)', () => {
     await openCard();
     await advance(300_000);
     await advance(300_000);
-    expect(screen.getByText('as of 2026-10-13 from TCGCSV (daily close)')).toBeTruthy();
+    expect(within(prices()).getByText('as of 2026-10-13 from TCGCSV (daily close)')).toBeTruthy();
+    // The hero above the chart repeats the chosen variant's as-of line (D2 T01).
+    const hero = screen.getByText(/^Market price · /).parentElement;
+    expect(hero).not.toBeNull();
+    expect(
+      within(hero as HTMLElement).getByText('as of 2026-10-13 from TCGCSV (daily close)'),
+    ).toBeTruthy();
     const text = document.body.textContent;
     expect(screen.getByRole('banner').textContent).toContain('PokéPrices');
     for (const pattern of FORBIDDEN) expect(text).not.toMatch(pattern);

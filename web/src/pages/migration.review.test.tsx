@@ -145,7 +145,7 @@ describe('T07 migration invariants', () => {
     expect(list.querySelectorAll('img')).toHaveLength(searchPage.data.length);
   });
 
-  it('keeps the card image as the only img in its figure with alt, src, size and caption in order', async () => {
+  it('keeps the card image as the only img in its figure with alt, src and size, and its credit in Sources', async () => {
     stubFetch((url) => (isHistoryUrl(url) ? jsonResponse(twoSeries) : jsonResponse(cardBody)));
     visit('/card/ex10-%3F');
     render(<App />);
@@ -159,13 +159,11 @@ describe('T07 migration invariants', () => {
     expect(image.getAttribute('height')).toBe('342');
     const figure = image.parentElement as HTMLElement;
     expect(figure.tagName).toBe('FIGURE');
-    expect(Array.from(figure.children).map((child) => child.tagName)).toEqual([
-      'IMG',
-      'FIGCAPTION',
-    ]);
-    expect(figure.querySelector('figcaption')?.textContent).toBe(
+    expect(Array.from(figure.children).map((child) => child.tagName)).toEqual(['IMG']);
+    const credit = within(screen.getByRole('region', { name: 'Sources' })).getByText(
       'Card image from images.example.com, linked as the PokéSearch catalog lists it.',
     );
+    expect(credit.childNodes).toHaveLength(1);
   });
 
   it('keeps the not-found page: one h1, one home link with the exact text and a 44 px target', () => {

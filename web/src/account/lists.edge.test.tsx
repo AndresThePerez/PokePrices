@@ -24,7 +24,7 @@ import {
   watchItemOf,
   watchlistBody,
 } from '../test/fixtures';
-import { FOCUS, SECONDARY_BUTTON } from './fields';
+import { FOCUS, QUIET_BUTTON } from './fields';
 
 // jsdom has no canvas: the chart library is replaced by its recording fake (T06 helper).
 vi.mock('lightweight-charts', () => import('../test/lightweightChartsFake'));
@@ -119,7 +119,7 @@ describe('T07 edge: the card-page controls (R221, D10)', () => {
       expect(classes).toContain('min-h-11');
       expect(classes).toContain('min-w-11');
       for (const token of FOCUS.split(/\s+/)) expect(classes).toContain(token);
-      for (const token of SECONDARY_BUTTON.split(/\s+/)) expect(classes).toContain(token);
+      for (const token of QUIET_BUTTON.split(/\s+/)) expect(classes).toContain(token);
     }
     expect(watch.value).toBe('Add to watchlist');
     expect(hold.value).toBe('Add to portfolio');

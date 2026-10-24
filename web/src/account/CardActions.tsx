@@ -1,5 +1,5 @@
 // The card page's Add to watchlist and Add to portfolio controls (D10), on every variant row of the
-// Prices list. Nothing here fetches before a click: the public card page keeps its exact request
+// Prices list, as two quiet 44 px buttons under the row's lines (right-aligned from 640 px). Nothing here fetches before a click: the public card page keeps its exact request
 // list. Opening Add to portfolio reads PORTFOLIO_KEY once, to prefill the quantity already held.
 // The two controls are <input type="button">: their words are the input's value, not text in the
 // row, so a row's text stays the price lines it was (P3 exact-text tests).
@@ -16,7 +16,7 @@ import { variantLabel, type VariantNaming } from '../format';
 import Link from '../Link';
 import { unwrap } from '../query';
 import { ProblemBlock } from './Form';
-import { SECONDARY_BUTTON, TEXT_LINK, firstErrors } from './fields';
+import { QUIET_BUTTON, TEXT_LINK, firstErrors } from './fields';
 import { QuantityForm } from './ListParts';
 import { PORTFOLIO_KEY, WATCHLIST_KEY, isDemoReadOnly, quantityOf, signInPath } from './lists';
 
@@ -188,7 +188,7 @@ export default function CardActions({
 
   return (
     <div className="mt-3">
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 sm:justify-end">
         <input
           type="button"
           value="Add to watchlist"
@@ -197,7 +197,7 @@ export default function CardActions({
           onClick={() => {
             if (!pending) void watch();
           }}
-          className={SECONDARY_BUTTON}
+          className={QUIET_BUTTON}
         />
         <input
           type="button"
@@ -209,7 +209,7 @@ export default function CardActions({
             setOpen(!open);
             setOutcome(null);
           }}
-          className={SECONDARY_BUTTON}
+          className={QUIET_BUTTON}
         />
       </div>
       {open && (

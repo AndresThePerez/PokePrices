@@ -4,7 +4,14 @@ import type { ApiFailure } from '../api/client';
 
 // The class constants live with the primitives that apply them (ui/classes.ts); the account pages
 // and their tests keep importing them from here under the same names.
-export { FOCUS, MUTED, PRIMARY_BUTTON, SECONDARY_BUTTON, TEXT_LINK } from '../ui/classes';
+export {
+  FOCUS,
+  MUTED,
+  PRIMARY_BUTTON,
+  QUIET_BUTTON,
+  SECONDARY_BUTTON,
+  TEXT_LINK,
+} from '../ui/classes';
 
 /** Field errors of a 422 problem: the first message of each field (D10). */
 export function firstErrors(failure: ApiFailure | null): Readonly<Record<string, string>> {

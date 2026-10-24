@@ -1,6 +1,7 @@
 // The PokéPrices card page: /card/:id over GET /v1/cards/{id}. Every date and version it shows
 // comes from the API response (R132), never from the request or render time.
 import { useQuery } from '@tanstack/react-query';
+import { useState, type ReactNode } from 'react';
 import CardActions from '../account/CardActions';
 import Link from '../Link';
 import {
@@ -16,7 +17,8 @@ import Sparkline from '../chart/Sparkline';
 import { PRICE_FOOTNOTE, variantLabel } from '../format';
 import { MUTED, TEXT_LINK } from '../ui/classes';
 import Notice from '../ui/Notice';
-import PriceTag from '../ui/PriceTag';
+import Panel from '../ui/Panel';
+import PriceTag, { AsOf, ChangeChip, HeroPrice } from '../ui/PriceTag';
 import Skeleton from '../ui/Skeleton';
 import { unwrap } from '../query';
 import PriceHistory from './PriceHistory';
@@ -104,117 +106,227 @@ function pointsOf(history: CardPrices | undefined, variantKey: string): readonly
   return points;
 }
 
-function VariantPrice({
-  price,
+/** The variant keys the history answer holds an eligible series for (history_begins set). */
+function eligibleKeys(history: CardPrices | undefined): ReadonlySet<string> {
+  const raw: unknown = history;
+  const keys = new Set<string>();
+  if (typeof raw !== 'object' || raw === null) return keys;
+  const data: unknown = (raw as { data?: unknown }).data;
+  if (!Array.isArray(data)) return keys;
+  for (const one of data as unknown[]) {
+    if (typeof one !== 'object' || one === null) continue;
+    const series = one as { variant_key?: unknown; history_begins?: unknown; points?: unknown };
+    if (
+      typeof series.variant_key === 'string' &&
+      typeof series.history_begins === 'string' &&
+      Array.isArray(series.points)
+    ) {
+      keys.add(series.variant_key);
+    }
+  }
+  return keys;
+}
+
+type PricedVariant = Variant & { readonly price: Price };
+
+function isPriced(variant: Variant): variant is PricedVariant {
+  return variant.price !== null;
+}
+
+/**
+ * The headline: the chosen variant's figure, change chip and as-of line, led by its label line.
+ * It sits outside the Prices region and carries no role, so the region's lines stay unique.
+ */
+function Hero({ variant }: { readonly variant: PricedVariant }) {
+  return (
+    <div>
+      <p className="text-sm text-ink-muted">{`Market price · ${variantLabel(variant)}`}</p>
+      <div className="mt-1 flex flex-col items-start sm:flex-row sm:flex-wrap sm:items-baseline sm:gap-x-4">
+        <HeroPrice close={variant.price.close} />
+        <ChangeChip price={variant.price} />
+      </div>
+      <AsOf day={variant.price.day} as="p" className="mt-1" />
+    </div>
+  );
+}
+
+/** One variant of the Prices list: its lines, the 96 px sparkline column, the quiet actions. */
+function VariantRow({
+  id,
+  variant,
   points,
 }: {
-  readonly price: Price;
+  readonly id: string;
+  readonly variant: Variant;
   readonly points: readonly PricePoint[];
 }) {
-  return <PriceTag price={price} size="variant" beside={<Sparkline points={points} />} />;
+  return (
+    <li className="py-6 first:pt-0 last:pb-0">
+      {variant.price === null ? (
+        <span className="block text-base text-ink-muted">
+          <span className="font-semibold capitalize">{variantLabel(variant)}</span>
+          <span className="ml-3 text-meta">No price in the collected snapshots</span>
+        </span>
+      ) : (
+        <>
+          <span className="block text-base font-semibold capitalize">{variantLabel(variant)}</span>
+          <PriceTag
+            price={variant.price}
+            size="variant"
+            beside={
+              <div className="ml-auto flex w-24 shrink-0 justify-end self-end">
+                <Sparkline points={points} />
+              </div>
+            }
+          />
+        </>
+      )}
+      <CardActions cardId={id} variant={variant} />
+    </li>
+  );
 }
 
 /**
- * Each variant's newest daily close, or "No prices yet" while no variant of the card has one.
- * Every value is the API's: no date or money arithmetic happens here.
+ * The priced card: the hero, the Price history section and the Prices list, all driven by one
+ * variant choice (D2 T01). The page owns the chosen key; the default is the first priced variant
+ * with an eligible series, in card order, else the first priced variant (A1-4). The 1M history
+ * query is the chart's default one (same key), so the page still asks for it once; it feeds the
+ * sparklines and the default choice, and nothing is drawn while it loads or after it fails.
  */
-function Prices({ id, variants }: { readonly id: string; readonly variants: Card['variants'] }) {
-  if (!variants.some((variant) => variant.price !== null)) {
-    return <p className="mt-2">No prices yet</p>;
-  }
-  return <PricedVariants id={id} variants={variants} />;
-}
-
-/**
- * The priced list with a sparkline beside each priced variant (D12). The 1M history query is the
- * chart's default one (same key), so the page asks for it once; nothing is drawn while it loads
- * or after it fails.
- */
-function PricedVariants({
-  id,
-  variants,
-}: {
-  readonly id: string;
-  readonly variants: Card['variants'];
-}) {
+function PricedCard({ card }: { readonly card: Card }) {
   const history = useQuery<CardPrices, ApiFailure>({
-    queryKey: ['card-prices', id, '1M'],
-    queryFn: ({ signal }) => unwrap(getCardPrices(id, '1M', { signal })),
+    queryKey: ['card-prices', card.id, '1M'],
+    queryFn: ({ signal }) => unwrap(getCardPrices(card.id, '1M', { signal })),
   });
+  const [chosen, setChosen] = useState<string | null>(null);
+  const priced = card.variants.filter(isPriced);
+  const eligible = eligibleKeys(history.data);
+  const selected =
+    priced.find((variant) => variant.variant_key === chosen) ??
+    priced.find((variant) => eligible.has(variant.variant_key)) ??
+    priced[0];
+  // Priced rows first, then the unpriced ones, each group in card order (RULING m).
+  const rows = [...priced, ...card.variants.filter((variant) => variant.price === null)];
   return (
     <>
-      <ul className="mt-2 space-y-4">
-        {variants.map((variant) => (
-          <li key={variant.variant_key}>
-            <span className="block font-semibold capitalize">{variantLabel(variant)}</span>
-            {variant.price === null ? (
-              <span className="block text-meta text-ink-muted">
-                No price in the collected snapshots
-              </span>
-            ) : (
-              <VariantPrice
-                price={variant.price}
-                points={pointsOf(history.data, variant.variant_key)}
-              />
-            )}
-            <CardActions cardId={id} variant={variant} />
-          </li>
-        ))}
-      </ul>
-      <p className={`mt-4 text-meta ${MUTED}`}>{PRICE_FOOTNOTE}</p>
+      {selected !== undefined && <Hero variant={selected} />}
+      <PriceHistory
+        id={card.id}
+        chosen={selected?.variant_key ?? null}
+        onChoose={setChosen}
+        priced={priced.map((variant) => variant.variant_key)}
+      />
+      <PricesSection>
+        <ul className="mt-4 divide-y divide-line-subtle">
+          {rows.map((variant) => (
+            <VariantRow
+              key={variant.variant_key}
+              id={card.id}
+              variant={variant}
+              points={pointsOf(history.data, variant.variant_key)}
+            />
+          ))}
+        </ul>
+      </PricesSection>
     </>
   );
 }
 
+function PricesSection({ children }: { readonly children: ReactNode }) {
+  return (
+    <section aria-labelledby="card-prices" className="mt-10">
+      <h2 id="card-prices" className="text-lg font-semibold">
+        Prices
+      </h2>
+      {children}
+    </section>
+  );
+}
+
+/** The card image in a 6 px mat, or the neutral card-back with the name's initial (CSS only). */
 function CardImage({ card }: { readonly card: Card }) {
   const src = card.images.large !== '' ? card.images.large : card.images.small;
-  if (src === '') return null;
-  const host = imageHost(src);
+  const place = 'col-start-1 row-start-1 self-start sm:sticky sm:top-4';
+  if (src === '') {
+    return (
+      <div
+        data-initial={card.name.trim().charAt(0).toUpperCase()}
+        className={`${place} flex aspect-[63/88] w-full items-center justify-center rounded-lg border border-line bg-surface-sunken text-2xl font-semibold text-ink-muted before:content-[attr(data-initial)] sm:text-4xl`}
+      />
+    );
+  }
   return (
-    <figure className="mx-auto w-full max-w-60 sm:mx-0">
+    <figure
+      className={`${place} rounded-lg border border-line bg-surface-raised p-1 shadow-panel sm:p-2`}
+    >
       <img
         src={src}
         alt={`${card.name}, ${card.set.name} No. ${card.number}`}
         width={245}
         height={342}
-        className="aspect-[63/88] w-full rounded-lg border border-line bg-surface-sunken object-cover shadow-panel"
+        className="block aspect-[63/88] h-auto w-full rounded-md bg-surface-sunken object-cover"
       />
-      {host !== null && (
-        <figcaption className={`mt-3 text-meta ${MUTED}`}>
-          {`Card image from ${host}, linked as the PokéSearch catalog lists it.`}
-        </figcaption>
-      )}
     </figure>
   );
 }
 
-function Mapping({ variants }: { readonly variants: Card['variants'] }) {
-  if (variants.length === 0) return <p className="mt-2">Not yet mapped</p>;
+/**
+ * Provenance, tier 2 (F10): the once-a-day line when a price shows, each variant's product lines,
+ * the catalog line and the image credit, every string verbatim and in that order.
+ */
+function Sources({ card }: { readonly card: Card }) {
+  const credit = imageHost(card.images.large !== '' ? card.images.large : card.images.small);
   return (
-    <ul className="mt-2 space-y-3">
-      {variants.map((variant) => (
-        <li key={variant.variant_key}>
-          <span className="block font-semibold capitalize">{variantLabel(variant)}</span>
-          {variant.sources.length === 0 ? (
-            <span className={`block text-sm ${MUTED}`}>Not yet mapped</span>
-          ) : (
-            variant.sources.map((source) => (
-              <span
-                key={`${source.source} ${String(source.product_id)} ${source.subtype}`}
-                className={`block text-sm ${MUTED}`}
-              >
-                {sourceLine(source)}
-              </span>
-            ))
-          )}
-        </li>
-      ))}
-    </ul>
+    <Panel as="section" aria-labelledby="card-sources" className="mt-10 text-meta">
+      <h2 id="card-sources" className="text-sm font-semibold">
+        Sources
+      </h2>
+      {card.variants.some((variant) => variant.price !== null) && (
+        <p className="mt-2">{PRICE_FOOTNOTE}</p>
+      )}
+      {card.variants.length === 0 ? (
+        <p className={`mt-3 ${MUTED}`}>Not yet mapped</p>
+      ) : (
+        <dl className="mt-3 space-y-2">
+          {card.variants.map((variant) => (
+            <div
+              key={variant.variant_key}
+              className="sm:grid sm:grid-cols-[8rem_minmax(0,1fr)] sm:gap-x-4"
+            >
+              <dt className="font-semibold capitalize">{variantLabel(variant)}</dt>
+              {variant.sources.length === 0 ? (
+                <dd className={`sm:col-start-2 ${MUTED}`}>Not yet mapped</dd>
+              ) : (
+                variant.sources.map((source) => (
+                  <dd
+                    key={`${source.source} ${String(source.product_id)} ${source.subtype}`}
+                    className={`sm:col-start-2 ${MUTED}`}
+                  >
+                    {sourceLine(source)}
+                  </dd>
+                ))
+              )}
+            </div>
+          ))}
+        </dl>
+      )}
+      <p className={`mt-3 border-t border-line-subtle pt-3 ${MUTED}`}>
+        {catalogLine(card.catalog)}
+      </p>
+      {credit !== null && (
+        <p className={`mt-1 ${MUTED}`}>
+          {`Card image from ${credit}, linked as the PokéSearch catalog lists it.`}
+        </p>
+      )}
+    </Panel>
   );
 }
 
+const SET_PART = "before:mx-2 before:content-['·']";
+
 function Loaded({ body }: { readonly body: CardDetail }) {
   const card = body.data;
+  const anyPriced = card.variants.some((variant) => variant.price !== null);
   return (
     <>
       {body.meta.degraded && (
@@ -222,33 +334,31 @@ function Loaded({ body }: { readonly body: CardDetail }) {
           {DEGRADED_LINE}
         </Notice>
       )}
-      <article className="grid gap-8 sm:grid-cols-[15rem_minmax(0,1fr)]">
+      {/* 390: the image beside the name and set line, the rest full width below. 640 up: a
+          sticky 240 px image column and one right column (display: contents unwraps it). */}
+      <article className="grid grid-cols-[104px_minmax(0,1fr)] gap-x-3 gap-y-6 sm:grid-cols-[240px_minmax(0,1fr)] sm:gap-x-8">
         <CardImage card={card} />
-        <div className="min-w-0">
-          <h1 className="text-2xl font-semibold">{card.name}</h1>
-          <p className={`mt-2 flex flex-wrap gap-x-4 ${MUTED}`}>
-            <span>{card.set.name}</span>
-            <span>No. {card.number}</span>
-            {card.rarity !== null && <span>{card.rarity}</span>}
-          </p>
-          <section aria-labelledby="card-prices" className="mt-8">
-            <h2 id="card-prices" className="text-lg font-semibold">
-              Prices
-            </h2>
-            <Prices id={card.id} variants={card.variants} />
-          </section>
-          <section aria-labelledby="card-products" className="mt-8">
-            <h2 id="card-products" className="text-lg font-semibold">
-              TCGplayer products
-            </h2>
-            <Mapping variants={card.variants} />
-          </section>
-          <p className={`mt-8 border-t border-line-subtle pt-4 text-sm ${MUTED}`}>
-            {catalogLine(card.catalog)}
-          </p>
+        <div className="contents sm:col-start-2 sm:row-start-1 sm:block sm:min-w-0">
+          <div className="col-start-2 row-start-1 min-w-0 self-center sm:self-auto">
+            <h1 className="text-lg font-semibold sm:text-2xl">{card.name}</h1>
+            <p className={`mt-1 flex flex-wrap text-sm ${MUTED}`}>
+              <span>{card.set.name}</span>
+              <span className={SET_PART}>No. {card.number}</span>
+              {card.rarity !== null && <span className={SET_PART}>{card.rarity}</span>}
+            </p>
+          </div>
+          <div className="col-span-2 min-w-0 sm:mt-6">
+            {anyPriced ? (
+              <PricedCard card={card} />
+            ) : (
+              <PricesSection>
+                <p className="mt-2">No prices yet</p>
+              </PricesSection>
+            )}
+            <Sources card={card} />
+          </div>
         </div>
       </article>
-      {card.variants.some((variant) => variant.price !== null) && <PriceHistory id={card.id} />}
     </>
   );
 }
@@ -313,8 +423,8 @@ export default function CardPage({ id }: { readonly id: string }) {
         <p role="status" className="mt-6 text-sm text-ink-muted">
           {`Loading card ${id}…`}
         </p>
-        <Skeleton className="mt-4" />
-        <Skeleton className="mt-2 w-2/3" />
+        <Skeleton className="mt-6 w-48" />
+        <Skeleton className="mt-2 w-64" />
       </>
     );
   }
