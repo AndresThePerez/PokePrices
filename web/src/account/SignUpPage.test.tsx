@@ -51,10 +51,9 @@ function submit(): void {
   fireEvent.click(within(main()).getByRole('button', { name: 'Create account' }));
 }
 
+// Exactly the field's error node (D2-i2-T06: the invite code now has a hint too).
 function errorOf(input: HTMLElement): string | null {
-  const ids = (input.getAttribute('aria-describedby') ?? '').split(/\s+/);
-  const texts = ids.map((id) => document.getElementById(id)?.textContent ?? '');
-  return texts.find((text) => text !== '' && text !== 'At least 12 characters.') ?? null;
+  return document.getElementById(`${input.id}-error`)?.textContent ?? null;
 }
 
 describe('the sign-up page (T03 criterion 3, D10)', () => {
@@ -189,5 +188,116 @@ describe('the sign-up page (T03 criterion 3, D10)', () => {
       await screen.findByText(expected);
       check();
     }
+  });
+});
+
+describe('the sign-up panel (D2-i2-T06, D0-F09)', () => {
+  const LABELS = ['Invite code', 'Email', 'Password', 'Confirm password'] as const;
+  const DEMO_SENTENCE =
+    'Open the read-only demo account to see a watchlist and a portfolio without signing up.';
+
+  it('marks the four fields required outside their labels, with aria-required', () => {
+    stubAccountFetch({});
+    visit('/sign-up');
+    render(<App />);
+    for (const label of LABELS) {
+      const input = field(label);
+      expect(input.getAttribute('aria-required')).toBe('true');
+      const labelNode = within(main()).getByText(label);
+      expect(labelNode.tagName).toBe('LABEL');
+      expect(labelNode.textContent).toBe(label);
+      const mark = labelNode.nextElementSibling;
+      expect(mark?.tagName).toBe('SPAN');
+      expect(mark?.textContent).toBe('(required)');
+      expect(mark?.closest('label')).toBeNull();
+    }
+  });
+
+  it('wires the invite hint to its field and adds nothing else to the descriptions', () => {
+    stubAccountFetch({});
+    visit('/sign-up');
+    render(<App />);
+    const invite = field('Invite code');
+    const hint = within(main()).getByText('The code from your invitation.');
+    expect(invite.getAttribute('aria-describedby')).toBe(hint.id);
+    expect(field('Email').hasAttribute('aria-describedby')).toBe(false);
+    expect(field('Confirm password').hasAttribute('aria-describedby')).toBe(false);
+  });
+
+  it('shows and hides each password with its own named, pressed toggle', () => {
+    stubAccountFetch({});
+    visit('/sign-up');
+    render(<App />);
+    for (const [label, name] of [
+      ['Password', 'Show password'],
+      ['Confirm password', 'Show password confirmation'],
+    ] as const) {
+      const toggle = within(main()).getByRole('button', { name });
+      expect(toggle.getAttribute('type')).toBe('button');
+      expect(toggle.textContent).toBe('Show');
+      expect(toggle.getAttribute('aria-pressed')).toBe('false');
+      expect(field(label).getAttribute('type')).toBe('password');
+      fireEvent.click(toggle);
+      expect(field(label).getAttribute('type')).toBe('text');
+      expect(within(main()).getByRole('button', { name }).getAttribute('aria-pressed')).toBe(
+        'true',
+      );
+      fireEvent.click(toggle);
+      expect(field(label).getAttribute('type')).toBe('password');
+      expect(toggle.getAttribute('aria-pressed')).toBe('false');
+    }
+    // One toggle does not reveal the other field.
+    fireEvent.click(within(main()).getByRole('button', { name: 'Show password' }));
+    expect(field('Confirm password').getAttribute('type')).toBe('password');
+  });
+
+  it('hides both passwords again after every submit, whatever the answer', async () => {
+    stubAccountFetch({
+      'POST /register': [
+        problemResponse(accountValidationProblem('/register', { invite_code: [INVITE_ERROR] })),
+        problemResponse(tooManyRequestsProblem('/register')),
+      ],
+    });
+    visit('/sign-up');
+    render(<App />);
+    for (const expected of [/check the fields below/, /Too Many Requests/]) {
+      fillAll();
+      fireEvent.click(within(main()).getByRole('button', { name: 'Show password' }));
+      fireEvent.click(within(main()).getByRole('button', { name: 'Show password confirmation' }));
+      expect(field('Password').getAttribute('type')).toBe('text');
+      submit();
+      await screen.findByText(expected);
+      expect(main().textContent).not.toContain('Error:');
+      expect(field('Password').getAttribute('type')).toBe('password');
+      expect(field('Confirm password').getAttribute('type')).toBe('password');
+      for (const name of ['Show password', 'Show password confirmation']) {
+        expect(within(main()).getByRole('button', { name }).getAttribute('aria-pressed')).toBe(
+          'false',
+        );
+      }
+    }
+  });
+
+  it('offers the way back to sign in and the demo under the submit, with no request', () => {
+    const calls = stubAccountFetch({});
+    visit('/sign-up');
+    render(<App />);
+    const signIn = within(main()).getByRole('link', { name: 'Sign in' });
+    expect(signIn.textContent).toBe('Sign in');
+    expect(signIn.getAttribute('href')).toBe('/sign-in');
+    expect(signIn.closest('p')?.textContent).toBe('Already have an account? Sign in');
+    const submitButton = within(main()).getByRole('button', { name: 'Create account' });
+    expect(
+      submitButton.compareDocumentPosition(signIn) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    const heading = within(main()).getByRole('heading', { level: 2, name: 'Just looking?' });
+    const demo = within(main()).getByRole<HTMLButtonElement>('button', {
+      name: 'Try the read-only demo',
+    });
+    expect(demo.type).toBe('button');
+    expect(demo.closest('form')).toBeNull();
+    expect(signIn.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(within(main()).getByText(DEMO_SENTENCE)).toBeTruthy();
+    expect(calls).toHaveLength(0);
   });
 });

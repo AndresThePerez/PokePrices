@@ -7,7 +7,7 @@ import { useId, useState, type SubmitEvent } from 'react';
 import { signIn, twoFactorChallenge, type ApiFailure } from '../api/client';
 import Link from '../Link';
 import { navigate } from '../router';
-import DemoButton from './DemoButton';
+import { DemoPanel } from './DemoButton';
 import { AccountMain, Field, LoadingAccount, ProblemBlock, StatusLine } from './Form';
 import { PRIMARY_BUTTON, TEXT_LINK, firstErrors } from './fields';
 import { ME_KEY, endSession, useArrivalStatus, useSession } from './session';
@@ -100,9 +100,16 @@ function TwoFactorChallenge({ next }: { readonly next: string }) {
   );
 }
 
-function SignInForm({ next }: { readonly next: string }) {
+function SignInForm({
+  next,
+  challenge,
+  onChallenge,
+}: {
+  readonly next: string;
+  readonly challenge: boolean;
+  readonly onChallenge: () => void;
+}) {
   const queryClient = useQueryClient();
-  const [challenge, setChallenge] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [pending, setPending] = useState(false);
@@ -122,7 +129,7 @@ function SignInForm({ next }: { readonly next: string }) {
     }
     // two_factor true: the authenticator-app step follows; nothing is signed in yet.
     if (result.data.two_factor) {
-      setChallenge(true);
+      onChallenge();
       return;
     }
     endSession(queryClient);
@@ -161,11 +168,11 @@ function SignInForm({ next }: { readonly next: string }) {
           onChange={setPassword}
           error={errors.password}
         />
-        <button type="submit" disabled={pending} className={PRIMARY_BUTTON}>
+        <button type="submit" disabled={pending} className={`${PRIMARY_BUTTON} h-12 w-full`}>
           Sign in
         </button>
       </form>
-      <p className="mt-4 flex flex-wrap gap-x-6">
+      <p className="mt-4 flex flex-wrap gap-x-6 text-sm">
         <Link to="/password/forgot" className={TEXT_LINK}>
           Forgot your password?
         </Link>
@@ -173,7 +180,6 @@ function SignInForm({ next }: { readonly next: string }) {
           Create an account
         </Link>
       </p>
-      <DemoButton />
     </>
   );
 }
@@ -181,6 +187,10 @@ function SignInForm({ next }: { readonly next: string }) {
 export default function SignInPage({ next }: { readonly next: string }) {
   const session = useSession();
   const status = useArrivalStatus();
+  // The two-factor step lives here so the Just looking? panel can leave with the form.
+  const [challenge, setChallenge] = useState(false);
+  const showsForm = session.state !== 'loading' && session.state !== 'signed-in';
+  if (!showsForm && challenge) setChallenge(false); // the form left: forget its two-factor step
   let body;
   if (session.state === 'loading') {
     body = <LoadingAccount />;
@@ -196,10 +206,19 @@ export default function SignInPage({ next }: { readonly next: string }) {
       </>
     );
   } else {
-    body = <SignInForm next={next} />;
+    body = (
+      <SignInForm
+        next={next}
+        challenge={challenge}
+        onChallenge={() => {
+          setChallenge(true);
+        }}
+      />
+    );
   }
+  const form = showsForm && !challenge;
   return (
-    <AccountMain title="Sign in">
+    <AccountMain title="Sign in" width="auth" after={form ? <DemoPanel /> : undefined}>
       {status !== null && <StatusLine>{status}</StatusLine>}
       {body}
     </AccountMain>

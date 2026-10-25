@@ -6,7 +6,15 @@ import type { ApiFailure } from '../api/client';
 import Link from '../Link';
 import { Field as UiField, Input } from '../ui/Field';
 import Notice from '../ui/Notice';
-import { MUTED, TEXT_LINK } from './fields';
+import Panel from '../ui/Panel';
+import { MUTED, QUIET_BUTTON, TEXT_LINK } from './fields';
+
+/** A show/hide toggle for a password field: its constant accessible name and its state. */
+export interface Reveal {
+  readonly label: string;
+  readonly shown: boolean;
+  readonly onToggle: () => void;
+}
 
 export interface FieldProps {
   readonly label: string;
@@ -19,9 +27,15 @@ export interface FieldProps {
   readonly error?: string | undefined;
   readonly readOnly?: boolean | undefined;
   readonly inputMode?: HTMLAttributes<HTMLInputElement>['inputMode'] | undefined;
+  readonly required?: boolean | undefined;
+  readonly reveal?: Reveal | undefined;
 }
 
-/** One labelled input; the hint and the first 422 message sit under it and describe it. */
+/**
+ * One labelled input; the hint and the first 422 message sit under it and describe it. A reveal
+ * puts a 44 px quiet "Show" toggle on the input's row (aria-pressed is its state; the input shows
+ * its text while pressed).
+ */
 export function Field({
   label,
   name,
@@ -33,24 +47,43 @@ export function Field({
   error,
   readOnly,
   inputMode,
+  required,
+  reveal,
 }: FieldProps) {
   return (
-    <UiField label={label} hint={hint} error={error}>
-      {(control) => (
-        <Input
-          {...control}
-          name={name}
-          type={type}
-          autoComplete={autoComplete}
-          value={value}
-          readOnly={readOnly === true}
-          inputMode={inputMode}
-          onChange={(event) => {
-            onChange(event.target.value);
-          }}
-          className="mt-1 w-full"
-        />
-      )}
+    <UiField label={label} hint={hint} error={error} required={required}>
+      {(control) => {
+        const input = (
+          <Input
+            {...control}
+            name={name}
+            type={reveal?.shown === true ? 'text' : type}
+            autoComplete={autoComplete}
+            value={value}
+            readOnly={readOnly === true}
+            inputMode={inputMode}
+            onChange={(event) => {
+              onChange(event.target.value);
+            }}
+            className={reveal === undefined ? 'mt-1 w-full' : 'w-full min-w-0 flex-1'}
+          />
+        );
+        if (reveal === undefined) return input;
+        return (
+          <div className="mt-1 flex items-center gap-2">
+            {input}
+            <button
+              type="button"
+              aria-label={reveal.label}
+              aria-pressed={reveal.shown}
+              onClick={reveal.onToggle}
+              className={`${QUIET_BUTTON} shrink-0`}
+            >
+              Show
+            </button>
+          </div>
+        );
+      }}
     </UiField>
   );
 }
@@ -133,14 +166,35 @@ export function LoadingAccount() {
   );
 }
 
-/** A page of the account area: one main landmark, one h1, a readable column. */
+/** The centred 420 px panel of the sign-in and sign-up pages (the column width at 390). */
+const AUTH_PANEL = 'mx-auto w-full max-w-[420px] max-sm:px-4 sm:py-6';
+
+/**
+ * A page of the account area: one main landmark, one h1, a readable column. `auth` (sign-in,
+ * sign-up) puts the h1 and the children in one centred panel and `after` below it.
+ */
 export function AccountMain({
   title,
+  width = 'form',
+  after,
   children,
 }: {
   readonly title: string;
+  readonly width?: 'form' | 'auth';
+  readonly after?: ReactNode;
   readonly children: ReactNode;
 }) {
+  if (width === 'auth') {
+    return (
+      <main className="mx-auto max-w-3xl p-6">
+        <Panel className={AUTH_PANEL}>
+          <h1 className="text-2xl font-semibold">{title}</h1>
+          {children}
+        </Panel>
+        {after}
+      </main>
+    );
+  }
   return (
     <main className="mx-auto max-w-3xl p-6">
       <h1 className="text-2xl font-semibold">{title}</h1>

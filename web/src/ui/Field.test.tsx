@@ -64,6 +64,37 @@ describe('Field (D1 primitive)', () => {
   });
 });
 
+describe('Field required (D2-i2-T06)', () => {
+  it('puts the (required) mark beside the label, outside it, and sets aria-required only', () => {
+    render(
+      <Field label="Email" hint="Where the links go." required>
+        {(control) => <Input {...control} name="email" type="email" value="" onChange={noop} />}
+      </Field>,
+    );
+    const input = screen.getByLabelText('Email');
+    const label = screen.getByText('Email');
+    expect(label.tagName).toBe('LABEL');
+    expect(label.textContent).toBe('Email');
+    const mark = screen.getByText('(required)');
+    expect(mark.tagName).toBe('SPAN');
+    expect(mark.closest('label')).toBeNull();
+    expect(label.nextElementSibling).toBe(mark);
+    expect(input.getAttribute('aria-required')).toBe('true');
+    expect(input.hasAttribute('aria-invalid')).toBe(false);
+    expect(describedTexts(input)).toEqual(['Where the links go.']);
+  });
+
+  it('renders no mark and no aria-required without the prop', () => {
+    render(
+      <Field label="Email">
+        {(control) => <Input {...control} name="email" type="email" value="" onChange={noop} />}
+      </Field>,
+    );
+    expect(screen.queryByText('(required)')).toBeNull();
+    expect(screen.getByLabelText('Email').hasAttribute('aria-required')).toBe(false);
+  });
+});
+
 describe('Input (D1 primitive)', () => {
   it('forwards name, type, value, readOnly, disabled and onChange', () => {
     const onChange = vi.fn();

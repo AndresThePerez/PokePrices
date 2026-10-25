@@ -1,6 +1,8 @@
 // The Field primitive (D1): a visible label, the control, then the hint and the error, both tied
 // to the control with aria-describedby; an error also sets aria-invalid. Ids are the control's
-// useId plus -hint and -error, as the account forms built them.
+// useId plus -hint and -error, as the account forms built them. A required field shows a
+// "(required)" mark beside its label (outside it, so the label text stays exact) and sets
+// aria-required on the control; the mark adds nothing to the description.
 import { useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes } from 'react';
 import { ERROR, HINT, INPUT, LABEL, SELECT } from './classes';
 
@@ -9,16 +11,19 @@ export interface ControlProps {
   readonly id: string;
   readonly 'aria-invalid'?: true | undefined;
   readonly 'aria-describedby'?: string | undefined;
+  readonly 'aria-required'?: true | undefined;
 }
 
 export interface FieldProps {
   readonly label: string;
   readonly hint?: string | undefined;
   readonly error?: string | undefined;
+  /** Marks the field required: a 13 px muted "(required)" beside the label and aria-required. */
+  readonly required?: boolean | undefined;
   readonly children: (control: ControlProps) => ReactNode;
 }
 
-export function Field({ label, hint, error, children }: FieldProps) {
+export function Field({ label, hint, error, required, children }: FieldProps) {
   const id = useId();
   const hintId = `${id}-hint`;
   const errorId = `${id}-error`;
@@ -30,10 +35,12 @@ export function Field({ label, hint, error, children }: FieldProps) {
       <label htmlFor={id} className={LABEL}>
         {label}
       </label>
+      {required === true && <span className={`ml-2 ${HINT}`}>(required)</span>}
       {children({
         id,
         'aria-invalid': error === undefined ? undefined : true,
         'aria-describedby': described === '' ? undefined : described,
+        'aria-required': required === true ? true : undefined,
       })}
       {hint !== undefined && (
         <p id={hintId} className={`mt-1 ${HINT}`}>

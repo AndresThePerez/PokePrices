@@ -1,5 +1,5 @@
-import { cleanup, render, screen, within } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ApiFailure } from '../api/client';
 import {
   accountValidationProblem,
@@ -71,6 +71,52 @@ describe('Field (D10)', () => {
     const input = screen.getByLabelText('Email');
     expect(input.getAttribute('aria-invalid')).toBeNull();
     expect(input.getAttribute('aria-describedby')).toBeNull();
+  });
+});
+
+describe('Field reveal and required (D2-i2-T06)', () => {
+  it('renders the reveal toggle beside the input: named, pressed, flipping the type', () => {
+    const onToggle = vi.fn();
+    const { rerender } = render(
+      <Field
+        label="Password"
+        name="password"
+        type="password"
+        autoComplete="new-password"
+        value=""
+        onChange={noop}
+        required
+        reveal={{ label: 'Show password', shown: false, onToggle }}
+      />,
+    );
+    const input = screen.getByLabelText('Password');
+    expect(input.getAttribute('type')).toBe('password');
+    expect(input.getAttribute('aria-required')).toBe('true');
+    const toggle = screen.getByRole('button', { name: 'Show password' });
+    expect(toggle.getAttribute('type')).toBe('button');
+    expect(toggle.textContent).toBe('Show');
+    expect(toggle.getAttribute('aria-pressed')).toBe('false');
+    expect(toggle.closest('label')).toBeNull();
+    expect(shortControls(document.body)).toEqual([]);
+    fireEvent.click(toggle);
+    expect(onToggle).toHaveBeenCalledTimes(1);
+    rerender(
+      <Field
+        label="Password"
+        name="password"
+        type="password"
+        autoComplete="new-password"
+        value=""
+        onChange={noop}
+        required
+        reveal={{ label: 'Show password', shown: true, onToggle }}
+      />,
+    );
+    expect(screen.getByLabelText('Password').getAttribute('type')).toBe('text');
+    expect(screen.getByRole('button', { name: 'Show password' }).getAttribute('aria-pressed')).toBe(
+      'true',
+    );
+    expect(lightOnlyClasses(document.body)).toEqual([]);
   });
 });
 

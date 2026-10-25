@@ -436,3 +436,64 @@ describe('the two-factor challenge step (T04 criterion 1, D10)', () => {
     expect(domHolds(RECOVERY)).toBe(false);
   });
 });
+
+describe('the Just looking? panel on sign-in (D2-i2-T06, D0-F09)', () => {
+  const DEMO_SENTENCE =
+    'Open the read-only demo account to see a watchlist and a portfolio without signing up.';
+
+  function demoPanel(): HTMLElement | null {
+    return within(main()).queryByRole('heading', { level: 2, name: 'Just looking?' });
+  }
+
+  it('follows the form when signed out: its heading, the sentence and the demo button', async () => {
+    stubAccountFetch({ 'GET /v1/me': problemResponse(unauthenticatedProblem) });
+    visit('/sign-in');
+    render(<App />);
+    // Absent while the session loads.
+    expect(screen.getByRole('status').textContent).toBe('Loading your account…');
+    expect(demoPanel()).toBeNull();
+    await signedOutForm();
+    expect(demoPanel()).not.toBeNull();
+    const heading = within(main()).getByRole('heading', { level: 2, name: 'Just looking?' });
+    const submitButton = within(main()).getByRole('button', { name: 'Sign in' });
+    expect(
+      submitButton.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(within(main()).getByText(DEMO_SENTENCE)).toBeTruthy();
+    const demo = within(main()).getByRole('button', { name: 'Try the read-only demo' });
+    expect(heading.compareDocumentPosition(demo) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('is absent when signed in', async () => {
+    stubAccountFetch({ 'GET /v1/me': jsonResponse(signedInMe) });
+    visit('/sign-in');
+    render(<App />);
+    await screen.findByText('You are signed in as collector@example.com.');
+    expect(demoPanel()).toBeNull();
+    expect(within(main()).queryByText(DEMO_SENTENCE)).toBeNull();
+  });
+
+  it('is absent during the two-factor step', async () => {
+    stubAccountFetch({
+      'GET /v1/me': problemResponse(unauthenticatedProblem),
+      'POST /login': jsonResponse({ two_factor: true }),
+    });
+    visit('/sign-in');
+    render(<App />);
+    await signedOutForm();
+    fill('Email', 'collector@example.com');
+    fill('Password', TYPED);
+    submit();
+    await within(main()).findByRole('heading', { level: 2, name: 'Two-factor authentication' });
+    expect(demoPanel()).toBeNull();
+    expect(within(main()).queryByRole('button', { name: 'Try the read-only demo' })).toBeNull();
+  });
+
+  it('has no Show toggle', async () => {
+    stubAccountFetch({ 'GET /v1/me': problemResponse(unauthenticatedProblem) });
+    visit('/sign-in');
+    render(<App />);
+    await signedOutForm();
+    expect(within(main()).queryByRole('button', { name: /^Show/ })).toBeNull();
+  });
+});
