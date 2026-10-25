@@ -123,7 +123,10 @@ function DataTable({
   );
 }
 
-/** The header row of the panel: the Variant group (when offered) and the Chart range group. */
+/**
+ * The header row of the panel: the Variant group (when offered) and the Chart range group. Below
+ * 640 px the panel's 16 px side padding and the 6 px segment gap keep the five ranges on one row.
+ */
 function Controls({ children }: { readonly children: ReactNode }) {
   return <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2">{children}</div>;
 }
@@ -253,7 +256,7 @@ function Loaded({
     <>
       <Controls>
         {options.length >= 2 && (
-          <div role="group" aria-label="Variant" className="flex flex-wrap gap-2">
+          <div role="group" aria-label="Variant" className="flex flex-wrap gap-1.5 sm:gap-2">
             {options.map((one) => (
               <Button
                 key={one.variant_key}
@@ -305,7 +308,7 @@ export default function PriceHistory({
   });
 
   const rangeGroup = (
-    <div role="group" aria-label="Chart range" className="flex flex-wrap gap-2">
+    <div role="group" aria-label="Chart range" className="flex flex-wrap gap-1.5 sm:gap-2">
       {RANGES.map((key) => (
         <Button
           key={key}
@@ -353,7 +356,7 @@ export default function PriceHistory({
   }
 
   return (
-    <Panel as="section" aria-labelledby="card-history" className="mt-6">
+    <Panel as="section" aria-labelledby="card-history" className="mt-6 max-sm:px-4">
       <h2 id="card-history" className="text-lg font-semibold">
         Price history
       </h2>

@@ -196,6 +196,47 @@ describe('Sparkline geometry (T07, D12; D2-T02 rules: 3+ points, end dot, dotted
     expect(shapes(svg)).toEqual([dotted('2.0,14.0 94.0,14.0'), dot('48.0', '14.0')]);
   });
 
+  it('breaks the dotted baseline of a flat series at a missing day: one dotted piece per segment, nothing across the gap', () => {
+    const svg = svgOf([
+      pointOf('2026-10-08', '5.00'),
+      pointOf('2026-10-09', '5.00'),
+      pointOf('2026-10-11', '5.00'),
+      pointOf('2026-10-12', '5.00'),
+    ]);
+    expect(shapes(svg)).toEqual([
+      dotted('2.0,14.0 32.7,14.0'),
+      dotted('63.3,14.0 94.0,14.0'),
+      dot('94.0', '14.0'),
+    ]);
+  });
+
+  it('breaks the dotted baseline of a flat series at a series_epoch change, never bridging the two epochs', () => {
+    const svg = svgOf([
+      pointOf('2026-10-09', '5.00'),
+      pointOf('2026-10-10', '5.00'),
+      pointOf('2026-10-11', '5.00', { series_epoch: 2 }),
+      pointOf('2026-10-12', '5.00', { series_epoch: 2 }),
+    ]);
+    expect(shapes(svg)).toEqual([
+      dotted('2.0,14.0 32.7,14.0'),
+      dotted('63.3,14.0 94.0,14.0'),
+      dot('94.0', '14.0'),
+    ]);
+  });
+
+  it('draws a one-point piece of a flat series as a ring, like a moving series, not a baseline across the gap', () => {
+    const svg = svgOf([
+      pointOf('2026-10-08', '5.00'),
+      pointOf('2026-10-10', '5.00'),
+      pointOf('2026-10-11', '5.00'),
+    ]);
+    expect(shapes(svg)).toEqual([
+      ring('2.0', '14.0'),
+      dotted('48.0,14.0 94.0,14.0'),
+      dot('94.0', '14.0'),
+    ]);
+  });
+
   it('draws two consecutive filled points as two dashed pieces, the end dot on the last real point', () => {
     const svg = svgOf([
       pointOf('2026-10-09', '1.00'),

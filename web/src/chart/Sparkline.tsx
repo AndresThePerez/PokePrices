@@ -1,6 +1,7 @@
 // A variant's 1M sparkline (D12, F15): an inline 96 x 28 svg, no library, drawn from the same D6
 // segments as the chart. A piece into a filled point is dashed; a one-point segment is a ring; a
-// filled end dot marks the last real close; a flat series is a dotted baseline at mid height.
+// filled end dot marks the last real close; a flat series is a dotted baseline at mid height,
+// broken where the segments break.
 // Fewer than 3 points draw nothing (too little to be a trend).
 // Number() is used for geometry only (D2); the svg is hidden from assistive technology because
 // the price lines beside it already carry every fact.
@@ -40,15 +41,36 @@ export default function Sparkline({ points }: { readonly points: readonly PriceP
 
   const shapes: ReactElement[] = [];
   if (max === min) {
-    // A flat series: a dotted baseline instead of a line that reads as a strikethrough (F15).
-    shapes.push(
-      <polyline
-        key="flat"
-        points={`${at(0)} ${at(count - 1)}`}
-        strokeDasharray="1 2"
-        {...STROKE}
-      />,
-    );
+    // A flat series: a dotted baseline instead of a line that reads as a strikethrough (F15), one
+    // per segment, so it never bridges a missing day or a series_epoch change (D6).
+    let offset = 0;
+    for (const segment of segments(points)) {
+      const start = offset;
+      offset += segment.length;
+      const last = offset - 1;
+      if (segment.length === 1) {
+        if (start !== end) {
+          shapes.push(
+            <circle
+              key={`c${String(start)}`}
+              cx={coordinate(x(start))}
+              cy={coordinate(y(min))}
+              r="2"
+              {...STROKE}
+            />,
+          );
+        }
+        continue;
+      }
+      shapes.push(
+        <polyline
+          key={`f${String(start)}`}
+          points={`${at(start)} ${at(last)}`}
+          strokeDasharray="1 2"
+          {...STROKE}
+        />,
+      );
+    }
   } else {
     let offset = 0;
     for (const segment of segments(points)) {
