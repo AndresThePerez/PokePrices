@@ -84,6 +84,15 @@ describe('SearchPage review (D2-i2-T08)', () => {
     }
   });
 
+  it('draws a placeholder, not an img, for a whitespace-only image_small', async () => {
+    stubFetch(() => jsonResponse(bodyOf([{ ...unownQuestion, image_small: '   ' }])));
+    visit('/search?q=unown');
+    render(<App />);
+    const list = await screen.findByRole('list', { name: 'Search results' });
+    expect(list.querySelectorAll('img')).toHaveLength(0);
+    expect(list.querySelectorAll('[data-initial]')).toHaveLength(1);
+  });
+
   it('keeps Previous, the page line and Next in that order on a middle page, with q and page in the hrefs', async () => {
     stubFetch(() =>
       jsonResponse(bodyOf([unownQuestion], { total: 90, page: 3, pages: 5, page_size: 24 })),

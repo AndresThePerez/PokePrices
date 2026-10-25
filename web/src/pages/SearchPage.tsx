@@ -83,7 +83,7 @@ const THUMB = 'aspect-[63/88] w-12 shrink-0 rounded-sm border border-line-subtle
  * a card-back placeholder whose initial CSS draws from data-initial (no DOM text, no request).
  */
 function Thumbnail({ card }: { readonly card: SearchResult }) {
-  if (card.image_small === '') {
+  if (card.image_small.trim() === '') {
     return (
       <span
         data-initial={initialOf(card.name)}
