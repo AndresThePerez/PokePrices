@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+Disallow: /account
+Disallow: /alerts
+Disallow: /watchlist
+Disallow: /portfolio
+Disallow: /sign-in
+Disallow: /sign-up
+Disallow: /password/

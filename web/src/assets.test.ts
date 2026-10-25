@@ -16,6 +16,21 @@ const ICON_LINE = '<link rel="icon" type="image/svg+xml" href="/favicon.svg" />'
 const OG_TITLE = '<meta property="og:title" content="PokéPrices" />';
 const OG_DESCRIPTION =
   '<meta property="og:description" content="Pokémon card prices at the daily close, with the source and as-of date on every price." />';
+const DESCRIPTION =
+  '<meta name="description" content="Pokémon card prices at the daily close from TCGplayer via TCGCSV, with the source and as-of date on every price." />';
+
+const ROBOTS_TXT = [
+  'User-agent: *',
+  'Allow: /',
+  'Disallow: /account',
+  'Disallow: /alerts',
+  'Disallow: /watchlist',
+  'Disallow: /portfolio',
+  'Disallow: /sign-in',
+  'Disallow: /sign-up',
+  'Disallow: /password/',
+  '',
+].join('\n');
 
 describe('head metadata in index.html', () => {
   const headEnd = indexHtml.indexOf('</head>');
@@ -25,6 +40,7 @@ describe('head metadata in index.html', () => {
     ['the SVG favicon link', ICON_LINE],
     ['the og:title meta', OG_TITLE],
     ['the og:description meta', OG_DESCRIPTION],
+    ['the description meta', DESCRIPTION],
   ])('carries %s exactly once, after the pre-paint script and before </head>', (_name, line) => {
     expect(indexHtml.split(line)).toHaveLength(2);
     const at = indexHtml.indexOf(line);
@@ -51,6 +67,15 @@ describe('static artwork under public/', () => {
     const text = readFileSync(publicPath(name), 'utf8');
     expect(new TextEncoder().encode(text).length).toBeLessThanOrEqual(limit);
     expect(text).toContain('<svg');
+  });
+
+  it('robots.txt exists, is the exact crawler block (LF, trailing newline), small, plain text with no Sitemap', () => {
+    expect(existsSync(publicPath('robots.txt'))).toBe(true);
+    const text = readFileSync(publicPath('robots.txt'), 'utf8');
+    expect(text).toBe(ROBOTS_TXT);
+    expect(new TextEncoder().encode(text).length).toBeLessThanOrEqual(1024);
+    expect(text).not.toContain('Sitemap:');
+    expect(text).not.toContain('<');
   });
 
   it('favicon is a 32x32 plum square with a white P in a text element and no embedded font', () => {
