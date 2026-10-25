@@ -12,6 +12,7 @@ import {
   type ISeriesApi,
   type LineData,
   type LineSeriesPartialOptions,
+  type SizeChangeEventHandler,
 } from 'lightweight-charts';
 import type { PricePoint, PriceRange } from '../api/client';
 import { usePreferences } from '../preferences';
@@ -116,6 +117,7 @@ export default function PriceChart({ segments, label, range, describedBy }: Pric
     const colours = readColours();
     const chart = createChart(element, chartOptions(colours));
     let series: ISeriesApi<'Line'>[];
+    let stopListening: () => void;
     try {
       series = segments.map((segment) => {
         const line = chart.addSeries(LineSeries, seriesOptions(colours));
@@ -123,6 +125,17 @@ export default function PriceChart({ segments, label, range, describedBy }: Pric
         return line;
       });
       chart.timeScale().fitContent();
+      // autoSize applies the container's width after this first fit, which was computed for a
+      // width of 0, and a later shrink clamps the bar spacing that a regrow keeps: fit again on
+      // every size change with a real width, until the cleanup stops listening.
+      const scale = chart.timeScale();
+      const refit: SizeChangeEventHandler = (width) => {
+        if (width > 0) scale.fitContent();
+      };
+      scale.subscribeSizeChange(refit);
+      stopListening = () => {
+        scale.unsubscribeSizeChange(refit);
+      };
     } catch (error) {
       chart.remove();
       throw error;
@@ -130,6 +143,7 @@ export default function PriceChart({ segments, label, range, describedBy }: Pric
     drawn.current = { chart, series, colours };
     return () => {
       drawn.current = null;
+      stopListening();
       chart.remove();
     };
   }, [segments]);

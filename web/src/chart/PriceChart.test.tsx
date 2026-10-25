@@ -12,7 +12,7 @@ import {
   seriesOf,
   stubFetch,
 } from '../test/fixtures';
-import { recorder, resetRecorder } from '../test/lightweightChartsFake';
+import { recorder, resetRecorder, resize } from '../test/lightweightChartsFake';
 import PriceChart from './PriceChart';
 import { axisPrice, dayTick, paddedAutoscale, segments } from './series';
 
@@ -143,7 +143,32 @@ describe('PriceChart (T06, D6)', () => {
       'addSeries',
       'setData',
       'fitContent',
+      'subscribeSizeChange',
     ]);
+  });
+
+  it('fits again on every size change with a real width and keeps listening', () => {
+    draw();
+    const chart = onlyChart();
+    expect(chart.fitContent).toBe(1);
+    resize(chart, 0, 240);
+    expect(chart.fitContent).toBe(1);
+    resize(chart, 342, 240);
+    expect(chart.fitContent).toBe(2);
+    resize(chart, 600, 320);
+    expect(chart.fitContent).toBe(3);
+    expect(recorder.calls).not.toContain('unsubscribeSizeChange');
+    expect(chart.sizeHandlers).toHaveLength(1);
+  });
+
+  it('stops listening for size changes before it removes the chart on unmount', () => {
+    const { unmount } = draw();
+    const chart = onlyChart();
+    expect(chart.sizeHandlers).toHaveLength(1);
+    unmount();
+    expect(recorder.calls.slice(-2)).toEqual(['unsubscribeSizeChange', 'remove']);
+    expect(chart.sizeHandlers).toEqual([]);
+    expect(chart.fitContent).toBe(1);
   });
 
   it('gives only filled points a colour', () => {

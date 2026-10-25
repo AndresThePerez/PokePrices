@@ -125,7 +125,9 @@ function DataTable({
 
 /**
  * The header row of the panel: the Variant group (when offered) and the Chart range group. Below
- * 640 px the panel's 12 px side padding and the 6 px segment gap keep the five ranges on one row.
+ * 640 px the panel's 12 px side padding leaves 316 px at 390; each segment drops to 12 px side
+ * padding (1W and 1Y stop at the 44 px floor), so the five ranges take about 254-258 px plus four
+ * 6 px gaps, 278-282 px, and stay on one row down to a 360 px viewport (286 px usable).
  */
 function Controls({ children }: { readonly children: ReactNode }) {
   return <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2">{children}</div>;
@@ -265,7 +267,7 @@ function Loaded({
                 onClick={() => {
                   onChoose(one.variant_key);
                 }}
-                className="capitalize"
+                className="capitalize max-sm:px-3"
               >
                 {variantLabel(one)}
               </Button>
@@ -317,7 +319,7 @@ export default function PriceHistory({
           onClick={() => {
             setRange(key);
           }}
-          className="tabular-nums"
+          className="tabular-nums max-sm:px-3"
         >
           {key}
         </Button>

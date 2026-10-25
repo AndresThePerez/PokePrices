@@ -2,7 +2,8 @@
 // renders a priced card replaces the package with this module:
 //   vi.mock('lightweight-charts', () => import('../test/lightweightChartsFake'));
 // It records what the chart wrapper asks for (createChart, addSeries, setData, applyOptions,
-// fitContent, remove) so tests can read the exact options and data.
+// fitContent, subscribeSizeChange, unsubscribeSizeChange, remove) so tests can read the exact
+// options and data, and resize() plays the library's size-change events to the live handlers.
 
 export interface RecordedSeries {
   readonly definition: unknown;
@@ -20,6 +21,8 @@ export interface RecordedChart {
   readonly series: RecordedSeries[];
   fitContent: number;
   removed: boolean;
+  /** The size-change handlers still subscribed on the time scale, in subscription order. */
+  readonly sizeHandlers: ((width: number, height: number) => void)[];
 }
 
 interface Recorder {
@@ -52,6 +55,7 @@ export function createChart(container: HTMLElement, options?: unknown) {
     series: [],
     fitContent: 0,
     removed: false,
+    sizeHandlers: [],
   };
   recorder.charts.push(chart);
   recorder.calls.push('createChart');
@@ -81,6 +85,15 @@ export function createChart(container: HTMLElement, options?: unknown) {
           chart.fitContent += 1;
           recorder.calls.push('fitContent');
         },
+        subscribeSizeChange(handler: (width: number, height: number) => void) {
+          chart.sizeHandlers.push(handler);
+          recorder.calls.push('subscribeSizeChange');
+        },
+        unsubscribeSizeChange(handler: (width: number, height: number) => void) {
+          const index = chart.sizeHandlers.indexOf(handler);
+          if (index >= 0) chart.sizeHandlers.splice(index, 1);
+          recorder.calls.push('unsubscribeSizeChange');
+        },
       };
     },
     remove() {
@@ -88,4 +101,9 @@ export function createChart(container: HTMLElement, options?: unknown) {
       recorder.calls.push('remove');
     },
   };
+}
+
+/** Fires a time-scale size change on `chart`, as the library does when autoSize measures. */
+export function resize(chart: RecordedChart, width: number, height: number): void {
+  for (const handler of [...chart.sizeHandlers]) handler(width, height);
 }
