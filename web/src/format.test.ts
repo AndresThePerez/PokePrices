@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { changeLine, grouped, signed, variantLabel } from './format';
+import { changeLine, grouped, initialOf, signed, variantLabel } from './format';
 
 describe('grouped (D2)', () => {
   it.each([
@@ -108,5 +108,26 @@ describe('variantLabel', () => {
     expect(
       variantLabel({ variant_key: 'x-1:-:-:-', finish: '-', edition: '', treatment: '-' }),
     ).toBe('x-1:-:-:-');
+  });
+});
+
+describe('initialOf (D2-i2-T08)', () => {
+  it.each([
+    ['', ''],
+    ['   ', ''],
+    ['unown', 'U'],
+    ['  pikachu  ', 'P'],
+    ['ñandu', 'Ñ'],
+    ['Charizard', 'C'],
+    ['\u{1F600}smile', '\u{1F600}'],
+    ['\u{10428}x', '\u{10400}'],
+  ])('reads the initial of %j as %j', (name, expected) => {
+    expect(initialOf(name)).toBe(expected);
+  });
+
+  it('never splits an astral first character into a lone surrogate', () => {
+    const initial = initialOf('\u{1F600}');
+    expect(initial).toHaveLength(2);
+    expect(initial.codePointAt(0)).toBe(0x1f600);
   });
 });

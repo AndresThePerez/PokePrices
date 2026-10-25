@@ -183,6 +183,41 @@ describe('SearchPage edge cases', () => {
     expect(list.querySelector('img')?.getAttribute('src') ?? '').toBe('');
   });
 
+  it('draws a card-back placeholder for an empty image_small and one lazy async img otherwise', async () => {
+    const mixed = {
+      data: [{ ...unownQuestion, image_small: '' }, unownExclamation],
+      meta: { total: 2, page: 1, pages: 1, page_size: 24, degraded: false, cached: false },
+    } satisfies CardSearchPage;
+    const calls = stubFetch(() => jsonResponse(mixed));
+    visit('/search?q=unown');
+    render(<App />);
+    const list = await screen.findByRole('list', { name: 'Search results' });
+    expect(calls.map((call) => call.url)).toEqual(['/v1/cards?q=unown']);
+    const [bare, imaged] = within(list).getAllByRole('listitem');
+    if (bare === undefined || imaged === undefined) throw new Error('two rows expected');
+
+    expect(bare.querySelectorAll('img')).toHaveLength(0);
+    const placeholders = bare.querySelectorAll('[data-initial]');
+    expect(placeholders).toHaveLength(1);
+    const placeholder = placeholders[0];
+    expect(placeholder?.tagName).toBe('SPAN');
+    expect(placeholder?.getAttribute('data-initial')).toBe('U');
+    expect(placeholder?.hasAttribute('aria-hidden')).toBe(false);
+    expect(placeholder?.textContent).toBe('');
+    expect(within(bare).getByRole('link').textContent).toContain('Unown');
+
+    expect(imaged.querySelectorAll('[data-initial]')).toHaveLength(0);
+    const images = imaged.querySelectorAll('img');
+    expect(images).toHaveLength(1);
+    const image = images[0];
+    expect(image?.getAttribute('src')).toBe(unownExclamation.image_small);
+    expect(image?.getAttribute('alt')).toBe('');
+    expect(image?.getAttribute('loading')).toBe('lazy');
+    expect(image?.getAttribute('decoding')).toBe('async');
+    expect(image?.getAttribute('width')).toBe('63');
+    expect(image?.getAttribute('height')).toBe('88');
+  });
+
   it('shows the unreachable-API problem without a request id line and recovers on retry', async () => {
     const answers: (Response | Error)[] = [new TypeError('network down'), jsonResponse(searchPage)];
     const calls = stubFetch(() => answers[calls.length - 1] ?? new Error('unexpected call'));

@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 import Link from '../Link';
 import { cardPath } from '../router';
 import { searchCards, type ApiFailure, type ApiResult, type CardSearchPage } from '../api/client';
-import { FOCUS, MUTED, TEXT_LINK } from '../ui/classes';
+import { initialOf } from '../format';
+import { FOCUS, MUTED, SECONDARY_BUTTON } from '../ui/classes';
 import Notice from '../ui/Notice';
 import SearchForm from './SearchForm';
 
@@ -45,22 +46,61 @@ function Pager({
 }) {
   if (pages <= 1 && page <= 1) return null;
   const previous = Math.max(1, Math.min(page - 1, pages));
+  // Three slots: Previous left, the page line centred, Next right; a missing link leaves its slot
+  // empty so the centre never moves.
   return (
-    <nav aria-label="Result pages" className="mt-6 flex items-center gap-6 text-sm">
-      {page > 1 && (
-        <Link to={searchPath(q, previous)} className={TEXT_LINK}>
-          Previous page
-        </Link>
-      )}
-      <span>
+    <nav
+      aria-label="Result pages"
+      className="mt-6 grid grid-cols-[1fr_auto_1fr] items-center gap-2"
+    >
+      <div className="flex justify-start">
+        {page > 1 && (
+          <Link to={searchPath(q, previous)} className={`${SECONDARY_BUTTON} whitespace-nowrap`}>
+            Previous page
+          </Link>
+        )}
+      </div>
+      <span className="num text-sm whitespace-nowrap">
         Page {page} of {pages}
       </span>
-      {page < pages && (
-        <Link to={searchPath(q, page + 1)} className={TEXT_LINK}>
-          Next page
-        </Link>
-      )}
+      <div className="flex justify-end">
+        {page < pages && (
+          <Link to={searchPath(q, page + 1)} className={`${SECONDARY_BUTTON} whitespace-nowrap`}>
+            Next page
+          </Link>
+        )}
+      </div>
     </nav>
+  );
+}
+
+type SearchResult = CardSearchPage['data'][number];
+
+const THUMB = 'aspect-[63/88] w-12 shrink-0 rounded-sm border border-line-subtle bg-surface-sunken';
+
+/**
+ * A result's 48 px thumbnail from the search answer's own image_small, or, when the API sent none,
+ * a card-back placeholder whose initial CSS draws from data-initial (no DOM text, no request).
+ */
+function Thumbnail({ card }: { readonly card: SearchResult }) {
+  if (card.image_small === '') {
+    return (
+      <span
+        data-initial={initialOf(card.name)}
+        className={`${THUMB} flex items-center justify-center text-base font-semibold ${MUTED} before:content-[attr(data-initial)]`}
+      />
+    );
+  }
+  return (
+    <img
+      src={card.image_small}
+      alt=""
+      width={63}
+      height={88}
+      loading="lazy"
+      decoding="async"
+      className={`${THUMB} h-auto object-cover`}
+    />
   );
 }
 
@@ -76,35 +116,29 @@ function Results({ q, body }: { readonly q: string; readonly body: CardSearchPag
   return (
     <>
       {meta.degraded && (
-        <Notice tone="warn" as="p" className="mt-6">
+        <Notice tone="warn" as="p" className="mt-4">
           {DEGRADED_LINE}
         </Notice>
       )}
-      <p role="status" className={`mt-6 text-sm ${MUTED}`}>
+      <p role="status" className="mt-4 text-base font-semibold text-ink">
         {summary}
       </p>
       {data.length > 0 && (
-        <ol aria-label="Search results" className="mt-2 divide-y divide-line-subtle">
+        <ol aria-label="Search results" className="mt-4 divide-y divide-line-subtle">
           {data.map((card) => (
             <li key={card.id}>
               <Link
                 to={cardPath(card.id)}
-                className={`flex items-center gap-4 py-3 hover:bg-surface-sunken ${FOCUS}`}
+                className={`flex min-h-18 items-center gap-3 px-2 py-2 hover:bg-surface-sunken after:ml-auto after:shrink-0 after:pl-1 after:text-lg after:text-ink-muted after:[content:'›'_/_''] ${FOCUS}`}
               >
-                <img
-                  src={card.image_small}
-                  alt=""
-                  width={63}
-                  height={88}
-                  loading="lazy"
-                  className="h-[88px] w-[63px] shrink-0 rounded-sm border border-line bg-surface-sunken object-cover"
-                />
-                <span className="min-w-0">
-                  <span className="block text-lg font-semibold">{card.name}</span>
-                  <span className={`mt-1 flex flex-wrap gap-x-4 text-sm ${MUTED}`}>
-                    <span>{card.set_name}</span>
-                    <span>No. {card.number}</span>
-                    {card.rarity !== null && <span>{card.rarity}</span>}
+                <Thumbnail card={card} />
+                <span className="min-w-0 flex-1 wrap-anywhere">
+                  <span className="block text-base font-semibold">{card.name}</span>
+                  <span className={`block text-sm ${MUTED}`}>{card.set_name}</span>
+                  <span className={`block text-sm ${MUTED}`}>
+                    {card.rarity === null
+                      ? `No. ${card.number}`
+                      : `No. ${card.number} · ${card.rarity}`}
                   </span>
                 </span>
               </Link>

@@ -23,6 +23,15 @@ export interface ChangeFields {
 /** The footnote under every list of prices: where the market prices come from and how often. */
 export const PRICE_FOOTNOTE = 'TCGplayer market prices via TCGCSV, collected once a day.';
 
+/**
+ * The initial a card-back placeholder draws: the first code point of the trimmed name (an astral
+ * character is never split), upper-cased; '' for a blank name.
+ */
+export function initialOf(name: string): string {
+  const code = name.trim().codePointAt(0);
+  return code === undefined ? '' : String.fromCodePoint(code).toUpperCase();
+}
+
 /** finish, edition and treatment in words; '-' and '' mean "none" in the variant key. */
 export function variantLabel(variant: VariantNaming): string {
   const parts = [variant.finish, variant.edition, variant.treatment].filter(
