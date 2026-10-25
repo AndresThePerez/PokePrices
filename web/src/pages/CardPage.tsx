@@ -279,6 +279,8 @@ function CardImage({ card }: { readonly card: Card }) {
         alt={`${card.name}, ${card.set.name} No. ${card.number}`}
         width={245}
         height={342}
+        fetchPriority="high"
+        decoding="async"
         className="block aspect-[63/88] h-auto w-full rounded-md bg-surface-sunken object-cover"
       />
     </figure>
