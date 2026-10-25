@@ -194,7 +194,7 @@ function SeriesView({
           {summaryText(label, range, points)}
         </p>
         <ChartBoundary>
-          <Suspense fallback={null}>
+          <Suspense fallback={<div className="h-[296px] sm:h-[376px]" />}>
             <PriceChart segments={parts} label={label} range={range} describedBy={summaryId} />
             <Attribution />
           </Suspense>
@@ -347,10 +347,15 @@ export default function PriceHistory({
       </>
     );
   } else {
+    // The status line reserves what the loaded body adds below Controls (data table toggle 52,
+    // stamp 26, chart 12 + 240/320, attribution 56, less this line's 12 px margin), plus the
+    // Variant group's second Controls row (8 + 44) when two or more variants are priced.
+    const reserve =
+      priced.length >= 2 ? 'min-h-[426px] sm:min-h-[506px]' : 'min-h-[374px] sm:min-h-[454px]';
     body = (
       <>
         <Controls>{rangeGroup}</Controls>
-        <p role="status" className={`mt-3 text-sm ${MUTED}`}>
+        <p role="status" className={`mt-3 text-sm ${MUTED} ${reserve}`}>
           Loading price history…
         </p>
       </>

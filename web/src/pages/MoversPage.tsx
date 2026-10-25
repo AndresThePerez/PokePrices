@@ -70,8 +70,10 @@ export default function MoversPage({ direction }: { readonly direction: MoversDi
 
   // The children keep their positions in every state (a slot is null, never dropped), so the
   // sticky bar is never remounted and a pressed segment keeps focus through Rises to Falls.
+  // While loading, the page reserves one viewport so the footer starts below the fold (CLS).
+  const loading = answer === undefined && query.error === null;
   return (
-    <main className="mx-auto max-w-3xl p-6">
+    <main className={loading ? 'mx-auto min-h-svh max-w-3xl p-6' : 'mx-auto max-w-3xl p-6'}>
       <h1 className="text-2xl font-semibold">Biggest moves</h1>
       {answer?.meta.degraded === true ? <MoversDegraded /> : null}
       {answer === undefined ? null : <MoversScope body={answer} />}

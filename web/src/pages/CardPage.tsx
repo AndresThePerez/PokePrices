@@ -449,5 +449,12 @@ export default function CardPage({ id }: { readonly id: string }) {
     );
   }
 
-  return <main className="mx-auto max-w-3xl p-6">{body}</main>;
+  // While loading, the page reserves one viewport so the footer starts below the fold and the
+  // scrollbar is there from the first frame (CLS); every other state keeps its own height.
+  const loading = query.data === undefined && query.error === null;
+  return (
+    <main className={loading ? 'mx-auto min-h-svh max-w-3xl p-6' : 'mx-auto max-w-3xl p-6'}>
+      {body}
+    </main>
+  );
 }

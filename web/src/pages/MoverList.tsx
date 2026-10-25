@@ -211,16 +211,19 @@ export function BiggestMoves() {
   });
 
   let body;
+  let loading = false;
   if (up.data !== undefined && down.data !== undefined) {
     body = <StripLoaded up={up.data} down={down.data} />;
   } else {
     const failure =
       (up.data === undefined ? up.error : null) ?? (down.data === undefined ? down.error : null);
+    loading = failure === null;
     body = failure === null ? <MoversLoading /> : <MoversProblem failure={failure} />;
   }
 
+  // While loading, the strip reserves one viewport so the footer starts below the fold (CLS).
   return (
-    <section aria-labelledby={headingId} className="mt-12">
+    <section aria-labelledby={headingId} className={loading ? 'mt-12 min-h-svh' : 'mt-12'}>
       <h2 id={headingId} className="text-lg font-semibold">
         Biggest moves vs previous close
       </h2>
