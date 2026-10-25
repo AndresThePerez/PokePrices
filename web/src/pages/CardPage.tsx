@@ -151,6 +151,15 @@ function Hero({ variant }: { readonly variant: PricedVariant }) {
   );
 }
 
+/**
+ * The price figure of a priced row takes the room the 96 px sparkline column leaves and wraps
+ * inside it ("Market price" over "$X") when it is too long, so the sparkline never drops to a line
+ * of its own: it sits at the same y, on the first price line, in every row (F15). PriceTag's
+ * wrapper markup stays as it is (A1-3); only its figure span's flex sizing is set from here.
+ */
+const PRICE_WRAPS = '[&>div:first-of-type>span]:flex-1';
+const ROW = 'py-6 first:pt-0 last:pb-0';
+
 /** One variant of the Prices list: its lines, the 96 px sparkline column, the quiet actions. */
 function VariantRow({
   id,
@@ -162,11 +171,11 @@ function VariantRow({
   readonly points: readonly PricePoint[];
 }) {
   return (
-    <li className="py-6 first:pt-0 last:pb-0">
+    <li className={variant.price === null ? ROW : `${ROW} ${PRICE_WRAPS}`}>
       {variant.price === null ? (
-        <span className="block text-base text-ink-muted">
+        <span className="flex flex-wrap items-baseline gap-x-3 text-base text-ink-muted">
           <span className="font-semibold capitalize">{variantLabel(variant)}</span>
-          <span className="ml-3 text-meta">No price in the collected snapshots</span>
+          <span className="text-meta">No price in the collected snapshots</span>
         </span>
       ) : (
         <>
@@ -175,7 +184,7 @@ function VariantRow({
             price={variant.price}
             size="variant"
             beside={
-              <div className="ml-auto flex w-24 shrink-0 justify-end self-end">
+              <div className="flex w-24 shrink-0 justify-end self-start pt-2.5">
                 <Sparkline points={points} />
               </div>
             }
