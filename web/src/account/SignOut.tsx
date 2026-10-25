@@ -57,17 +57,24 @@ export function SignOutButton({
   );
 }
 
-/** The slim demo strip under the header bar, on every route while the known session is the demo. */
+/**
+ * The slim demo strip under the header bar, on every route while the known session is the demo.
+ * From 640 px it is one 40 px line on every route: the sentence at 13 px and a tighter Sign out
+ * whose 44 px target reaches 2 px past the strip's edges; at 390 it wraps to two lines.
+ */
 export function DemoStrip() {
   const session = useKnownSession();
   const { route } = useRoute();
   if (session === 'unknown' || session === null || !session.read_only) return null;
   return (
     <div className="border-t border-line-subtle bg-surface-sunken text-ink">
-      <div className="mx-auto flex min-h-10 max-w-3xl flex-wrap items-center justify-between gap-x-4 px-4 py-1 sm:flex-nowrap sm:px-6">
-        <p className="min-w-0 py-1.5 text-sm">{DEMO_NOTICE}</p>
+      <div className="mx-auto flex min-h-10 max-w-3xl flex-wrap items-center justify-between gap-x-3 px-4 py-1 sm:flex-nowrap sm:px-6 sm:py-0">
+        <p className="min-w-0 py-1.5 text-sm sm:text-meta">{DEMO_NOTICE}</p>
         {route.name !== 'account' && (
-          <SignOutButton quiet className="ml-auto flex shrink-0 flex-col items-end" />
+          <SignOutButton
+            quiet
+            className="ml-auto flex shrink-0 flex-col items-end sm:-my-0.5 sm:[&>button]:px-2"
+          />
         )}
       </div>
     </div>
