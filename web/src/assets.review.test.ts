@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import rawIndexHtml from '../index.html?raw';
+import { matchRoute } from './router';
 
 // tsconfig.app.json carries no Node types, hence the untyped specifier and the narrow cast.
 const NODE_FS = 'node:fs';
@@ -84,4 +85,62 @@ describe('static artwork is inert and reachable', () => {
       expect(svg.trimEnd().endsWith('</svg>')).toBe(true);
     },
   );
+});
+
+describe('the description meta and robots.txt hold up beyond their exact strings', () => {
+  const metaByName = headTags.filter((tag) => attributeValue(tag, 'name') === 'description');
+  const rules = (): string[] =>
+    readFileSync(publicPath('robots.txt'), 'utf8')
+      .split('\n')
+      .filter((line) => line !== '');
+  const disallowed = (path: string): boolean =>
+    rules()
+      .filter((line) => line.startsWith('Disallow: '))
+      .some((line) => path.startsWith(line.slice('Disallow: '.length)));
+
+  it('the name=description meta is a single short sentence with no live wording, distinct from og:description', () => {
+    expect(metaByName).toHaveLength(1);
+    const content = attributeValue(metaByName[0] ?? '', 'content');
+    expect(content).toBeDefined();
+    expect(content).toMatch(/^[^.]+\.$/);
+    expect(content).not.toMatch(FORBIDDEN_WORDS);
+    expect(content).not.toMatch(/[<>&"]/);
+    expect((content ?? '').length).toBeLessThanOrEqual(160);
+    const ogDescription = headTags.find(
+      (tag) => attributeValue(tag, 'property') === 'og:description',
+    );
+    expect(content).not.toBe(ogDescription && attributeValue(ogDescription, 'content'));
+    expect(content).toContain('TCGplayer via TCGCSV');
+  });
+
+  it('robots.txt disallows every signed-in or credential route the router knows', () => {
+    const privatePaths = [
+      '/sign-in',
+      '/sign-up',
+      '/password/forgot',
+      '/password/reset',
+      '/account',
+      '/account/verify-email',
+      '/watchlist',
+      '/portfolio',
+      '/alerts',
+    ];
+    for (const path of privatePaths) {
+      expect(matchRoute(path, '').name).not.toBe('not-found');
+      expect(disallowed(path), path).toBe(true);
+    }
+  });
+
+  it('robots.txt leaves the public pages crawlable and every rule is in a single group', () => {
+    for (const path of ['/', '/search', '/movers', '/card/base1-4']) {
+      expect(matchRoute(path, '').name).not.toBe('not-found');
+      expect(disallowed(path), path).toBe(false);
+    }
+    const lines = rules();
+    expect(lines.filter((line) => line.startsWith('User-agent:'))).toEqual(['User-agent: *']);
+    expect(lines[0]).toBe('User-agent: *');
+    expect(lines).toContain('Allow: /');
+    expect(lines.every((line) => /^(?:User-agent|Allow|Disallow): \S+$/.test(line))).toBe(true);
+    expect(readFileSync(publicPath('robots.txt'), 'utf8')).not.toMatch(/\r|^\uFEFF|\n\n/);
+  });
 });
