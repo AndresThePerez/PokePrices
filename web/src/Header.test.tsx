@@ -1,6 +1,7 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
+import { navigate } from './router';
 import {
   answerMovers,
   cardBody,
@@ -233,6 +234,33 @@ describe('Header (T02 criterion 1; D1-T03)', () => {
     expect(within(footer).getByText('Up/down colours').tagName).toBe('LABEL');
     // A settings strip only: the labels and the option texts are all the footer says.
     expect(footer.textContent).toBe(
+      'ThemeSystemLightDarkUp/down coloursGreen and redBlue and orange',
+    );
+  });
+
+  it('empties the footer on /account only (R297): on /nowhere it is the full settings strip again', async () => {
+    stubFetch(() => problemResponse(unauthenticatedProblem));
+    visit('/account');
+    render(<App />);
+    await screen.findByText('You are not signed in.');
+    expect(screen.getAllByRole('contentinfo')).toHaveLength(1);
+    expect(within(footer()).queryAllByRole('combobox')).toEqual([]);
+    expect(footer().textContent).toBe('');
+    act(() => {
+      navigate('/nowhere');
+    });
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Page not found');
+    expect(within(screen.getByRole('main')).queryAllByRole('combobox')).toEqual([]);
+    expect(options(within(footer()).getByRole('combobox', { name: 'Theme' }))).toEqual([
+      ['system', 'System'],
+      ['light', 'Light'],
+      ['dark', 'Dark'],
+    ]);
+    expect(options(within(footer()).getByRole('combobox', { name: 'Up/down colours' }))).toEqual([
+      ['green-red', 'Green and red'],
+      ['blue-orange', 'Blue and orange'],
+    ]);
+    expect(footer().textContent).toBe(
       'ThemeSystemLightDarkUp/down coloursGreen and redBlue and orange',
     );
   });

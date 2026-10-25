@@ -166,15 +166,20 @@ describe('T07 migration invariants', () => {
     expect(credit.childNodes).toHaveLength(1);
   });
 
-  it('keeps the not-found page: one h1, one home link with the exact text and a 44 px target', () => {
+  it('keeps the not-found page: one h1, the search form and three links with the exact text and a 44 px target', () => {
     visit('/no/such/page');
     render(<App />);
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Page not found');
-    const links = within(screen.getByRole('main')).getAllByRole('link');
-    expect(links).toHaveLength(1);
-    expect(links[0]?.textContent).toBe('Go to the home page');
-    expect(links[0]?.getAttribute('href')).toBe('/');
-    expect(classesOf(links[0] as Element)).toContain('min-h-11');
+    const main = screen.getByRole('main');
+    const links = within(main).getAllByRole('link');
+    expect(links.map((link) => [link.textContent, link.getAttribute('href')])).toEqual([
+      ['Search', '/search'],
+      ['Movers', '/movers'],
+      ['Go to the home page', '/'],
+    ]);
+    for (const link of links) expect(classesOf(link)).toContain('min-h-11');
+    const search = within(main).getByRole('search');
+    expect(within(search).getByRole('searchbox', { name: 'Card name' })).toBeTruthy();
   });
 
   it('right-aligns only the Close column of the data table, header and cells', async () => {

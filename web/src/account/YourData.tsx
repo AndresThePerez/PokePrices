@@ -3,10 +3,13 @@
 // it as first-party; never rel="noreferrer", review F-P4-09), so nothing here fetches it. Deleting
 // needs the checkbox first; only then does the password field appear, and the password is dropped
 // after every answer and whenever the checkbox is cleared. The demo sees why it cannot delete.
+// Both are panels of the Account page; Delete account stands apart as the danger zone (D2-i2-T07):
+// further down, its border in the problem tone.
 import { useQueryClient } from '@tanstack/react-query';
 import { useId, useState, type SubmitEvent } from 'react';
 import { deleteAccount, type ApiFailure, type Me } from '../api/client';
 import { Button } from '../ui/Button';
+import Panel from '../ui/Panel';
 import { Field, ProblemBlock } from './Form';
 import { FOCUS, TEXT_LINK, firstErrors } from './fields';
 import { ME_KEY, endSession } from './session';
@@ -14,7 +17,7 @@ import { ME_KEY, endSession } from './session';
 const EXPORT_PATH = '/v1/me/export';
 const EXPORT_FILE = 'pokeprices-export.json';
 
-const SECTION = 'mt-8 border-t border-line-subtle pt-6';
+const HEADING = 'text-lg font-semibold';
 
 /** The checkbox keeps a 44 px row; browsers draw the box itself square inside it. */
 const CHECKBOX = `min-h-11 w-5 shrink-0 accent-problem ${FOCUS}`;
@@ -22,8 +25,8 @@ const CHECKBOX = `min-h-11 w-5 shrink-0 accent-problem ${FOCUS}`;
 function ExportSection() {
   const headingId = useId();
   return (
-    <section aria-labelledby={headingId} className={SECTION}>
-      <h2 id={headingId} className="text-lg font-semibold">
+    <Panel as="section" aria-labelledby={headingId} className="mt-6">
+      <h2 id={headingId} className={HEADING}>
         Your data
       </h2>
       <p className="mt-2">
@@ -36,7 +39,7 @@ function ExportSection() {
           Download your data (JSON)
         </a>
       </p>
-    </section>
+    </Panel>
   );
 }
 
@@ -122,8 +125,8 @@ function DeleteForm({ onDeleted }: { readonly onDeleted: () => void }) {
 function DeleteSection({ me, onDeleted }: { readonly me: Me; readonly onDeleted: () => void }) {
   const headingId = useId();
   return (
-    <section aria-labelledby={headingId} className={SECTION}>
-      <h2 id={headingId} className="text-lg font-semibold">
+    <Panel as="section" aria-labelledby={headingId} className="mt-10 border-problem/40!">
+      <h2 id={headingId} className={HEADING}>
         Delete account
       </h2>
       {me.read_only ? (
@@ -131,7 +134,7 @@ function DeleteSection({ me, onDeleted }: { readonly me: Me; readonly onDeleted:
       ) : (
         <DeleteForm onDeleted={onDeleted} />
       )}
-    </section>
+    </Panel>
   );
 }
 

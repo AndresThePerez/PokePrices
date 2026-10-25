@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 import App from './App';
 import { cardPath, matchRoute, navigate } from './router';
@@ -226,6 +226,27 @@ describe('App routes', () => {
     expect(fireEvent.click(link)).toBe(false);
     expect(window.location.pathname).toBe('/');
     expect(heading()).toBe('Pokémon card prices at the daily close');
+  });
+
+  it('designs not-found (D2-i2-T07): the path alone in a code chip, the search form, three links and no request', () => {
+    const calls = stubFetch(() => new Error('no request expected'));
+    visit('/nope/deeper');
+    render(<App />);
+    const main = screen.getByRole('main');
+    expect(heading()).toBe('Page not found');
+    const code = main.querySelector('code');
+    expect(code?.textContent).toBe('/nope/deeper');
+    expect(code?.parentElement?.textContent).toBe('PokéPrices has no page at /nope/deeper.');
+    expect(within(main).getByRole('searchbox', { name: 'Card name' })).toBeTruthy();
+    expect(within(main).getByRole('button', { name: 'Search' })).toBeTruthy();
+    expect(
+      within(main)
+        .getAllByRole('link')
+        .map((link) => link.textContent),
+    ).toEqual(['Search', 'Movers', 'Go to the home page']);
+    expect(calls).toHaveLength(0);
+    expect(fireEvent.click(within(main).getByRole('link', { name: 'Movers' }))).toBe(false);
+    expect(window.location.pathname).toBe('/movers');
   });
 
   it('leaves a modified click to the browser', () => {

@@ -197,7 +197,10 @@ describe('the account page (T09)', () => {
     const outline = headings(main());
     expect(outline[0]).toMatch(/^H1 /);
     expect(outline.slice(1)).toEqual([
+      'H2 Profile',
       'H2 Two-factor authentication',
+      'H2 Notifications',
+      'H2 Display',
       'H2 Your data',
       'H2 Delete account',
     ]);

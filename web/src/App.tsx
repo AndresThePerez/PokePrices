@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import AccountPage from './account/AccountPage';
 import AlertsPage from './account/AlertsPage';
@@ -59,14 +59,8 @@ function routeTitle(route: Route): string | null {
   }
 }
 
-function Page({ title, children }: { readonly title: string; readonly children: ReactNode }) {
-  return (
-    <main className="mx-auto max-w-3xl p-6">
-      <h1 className="text-2xl font-semibold">{title}</h1>
-      {children}
-    </main>
-  );
-}
+/** The unknown path as a mono chip: only the pathname, breaking anywhere on a narrow screen. */
+const PATH_CHIP = 'rounded-sm bg-surface-sunken px-1.5 py-0.5 font-mono text-sm break-all';
 
 function Routes() {
   const { pathname, route } = useRoute();
@@ -113,15 +107,27 @@ function Routes() {
     case 'alerts':
       return <AlertsPage />;
     case 'not-found':
+      // Designed not-found (D2-i2-T07): the path in a chip, the search form as the primary
+      // action, then the three ways on. It sends no request.
       return (
-        <Page title="Page not found">
-          <p className="mt-2 text-base">PokéPrices has no page at {pathname}.</p>
-          <p className="mt-4 text-base">
+        <main className="mx-auto max-w-3xl px-6 pt-12 pb-6">
+          <h1 className="text-2xl font-semibold">Page not found</h1>
+          <p className="mt-2 text-base">
+            PokéPrices has no page at <code className={PATH_CHIP}>{pathname}</code>.
+          </p>
+          <SearchForm initial="" size="hero" />
+          <p className="mt-6 flex flex-wrap gap-x-6">
+            <Link to="/search" className={TEXT_LINK}>
+              Search
+            </Link>
+            <Link to="/movers" className={TEXT_LINK}>
+              Movers
+            </Link>
             <Link to="/" className={TEXT_LINK}>
               Go to the home page
             </Link>
           </p>
-        </Page>
+        </main>
       );
   }
 }

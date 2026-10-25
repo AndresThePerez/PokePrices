@@ -328,7 +328,10 @@ export default function Webhooks({
   if (list !== undefined) {
     body =
       list.data.length === 0 ? (
-        <p className="mt-4">No webhooks yet.</p>
+        // The empty state: a dashed 120 px box with the sentence centred; the form follows it.
+        <div className="mt-4 flex min-h-30 items-center justify-center rounded-lg border border-dashed border-line bg-surface p-4">
+          <p className={`text-center text-base ${MUTED}`}>No webhooks yet.</p>
+        </div>
       ) : (
         <ul
           aria-label="Webhooks"

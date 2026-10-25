@@ -171,7 +171,8 @@ const AUTH_PANEL = 'mx-auto w-full max-w-[420px] max-sm:px-4 sm:py-6';
 
 /**
  * A page of the account area: one main landmark, one h1, a readable column. `auth` (sign-in,
- * sign-up) puts the h1 and the children in one centred panel and `after` below it.
+ * sign-up) puts the h1 and the children in one centred panel and `after` below it; `wide` (the
+ * Account page's panels) is a 576 px column.
  */
 export function AccountMain({
   title,
@@ -180,7 +181,7 @@ export function AccountMain({
   children,
 }: {
   readonly title: string;
-  readonly width?: 'form' | 'auth';
+  readonly width?: 'form' | 'auth' | 'wide';
   readonly after?: ReactNode;
   readonly children: ReactNode;
 }) {
@@ -198,7 +199,7 @@ export function AccountMain({
   return (
     <main className="mx-auto max-w-3xl p-6">
       <h1 className="text-2xl font-semibold">{title}</h1>
-      <div className="max-w-md">{children}</div>
+      <div className={width === 'wide' ? 'max-w-xl' : 'max-w-md'}>{children}</div>
     </main>
   );
 }

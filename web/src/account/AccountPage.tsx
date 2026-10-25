@@ -1,18 +1,62 @@
-// /account (D10): who is signed in (the read-only demo is named by the header's strip), whether
-// the email address is verified (with a resend button), the two-factor section (T04), Your data
-// and Delete account (T08) and Sign out (shared with the strip, SignOut.tsx), with a static link
-// to /alerts after the two-factor section (P5 T04). Signed out, it links to sign-in and sign-up.
-// A fresh mount reads the session from GET /v1/me alone, so a signed-in session survives a reload
-// (D13).
-import { useState } from 'react';
+// /account (D10) as titled panels (D2-i2-T07): Profile (who is signed in, the verified chip with
+// the resend button, and Sign out at the top right; the read-only demo is named by the header's
+// strip), the two-factor section (T04), Notifications (a static row link to /alerts, P5 T04),
+// Display (the Theme and Up/down colours selects, which the footer omits here, R297), Your data,
+// then Delete account set apart (T08). Signed out, it links to sign-in and sign-up; signed out,
+// loading and failed keep the Display panel after their content. A fresh mount reads the session
+// from GET /v1/me alone, so a signed-in session survives a reload (D13).
+import { useId, useState, type ReactNode } from 'react';
 import { resendVerification, type ApiFailure, type Me } from '../api/client';
+import { DisplaySettings } from '../Footer';
 import Link from '../Link';
+import Panel from '../ui/Panel';
 import { AccountMain, LoadingAccount, ProblemBlock, StatusLine } from './Form';
-import { SECONDARY_BUTTON, TEXT_LINK } from './fields';
+import { FOCUS, MUTED, SECONDARY_BUTTON, TEXT_LINK } from './fields';
 import { useArrivalStatus, useSession } from './session';
 import { SignOutButton } from './SignOut';
 import TwoFactorSection from './TwoFactor';
 import YourData from './YourData';
+
+const HEADING = 'text-lg font-semibold';
+
+/** A 13 px chip with a 2 px radius; the verified one carries a CSS check, never DOM text. */
+const CHIP =
+  'mt-3 inline-flex items-center gap-1 rounded-sm border px-2 py-0.5 text-meta font-semibold';
+const VERIFIED_CHIP = `${CHIP} border-line text-ink before:[content:'✓'_/_'']`;
+const UNVERIFIED_CHIP = `${CHIP} border-warn bg-warn-tint text-ink`;
+
+/** The full-width row link to /alerts: 16 px 600, 44 px, a CSS chevron at the right. */
+const ROW_LINK =
+  `-mx-3 mt-2 flex min-h-11 items-center justify-between gap-3 rounded-md px-3 text-base ` +
+  `font-semibold text-ink hover:bg-surface-sunken after:text-lg after:[content:'›'_/_''] ${FOCUS}`;
+
+/** One titled panel of the page: a section named by its h2. */
+function AccountPanel({
+  title,
+  children,
+}: {
+  readonly title: string;
+  readonly children: ReactNode;
+}) {
+  const headingId = useId();
+  return (
+    <Panel as="section" aria-labelledby={headingId} className="mt-6">
+      <h2 id={headingId} className={HEADING}>
+        {title}
+      </h2>
+      {children}
+    </Panel>
+  );
+}
+
+/** Theme and Up/down colours, reachable on /account in every state (R297). */
+function Display() {
+  return (
+    <AccountPanel title="Display">
+      <DisplaySettings layout="panel" />
+    </AccountPanel>
+  );
+}
 
 function Verification({ verified }: { readonly verified: boolean }) {
   const [pending, setPending] = useState(false);
@@ -29,10 +73,10 @@ function Verification({ verified }: { readonly verified: boolean }) {
     else setFailure(result);
   }
 
-  if (verified) return <p className="mt-2">Email verified</p>;
+  if (verified) return <p className={VERIFIED_CHIP}>Email verified</p>;
   return (
     <>
-      <p className="mt-2">Email not verified</p>
+      <p className={UNVERIFIED_CHIP}>Email not verified</p>
       <p className="mt-3">
         <button
           type="button"
@@ -53,19 +97,40 @@ function Verification({ verified }: { readonly verified: boolean }) {
   );
 }
 
+function Profile({ me }: { readonly me: Me }) {
+  const headingId = useId();
+  return (
+    <Panel as="section" aria-labelledby={headingId} className="mt-6">
+      <SignOutButton
+        quiet
+        heading={
+          <h2 id={headingId} className={HEADING}>
+            Profile
+          </h2>
+        }
+      />
+      <p className="mt-2 text-base font-semibold break-all">{`Signed in as ${me.email}`}</p>
+      <Verification verified={me.email_verified} />
+    </Panel>
+  );
+}
+
 function SignedIn({ me, onDeleted }: { readonly me: Me; readonly onDeleted: () => void }) {
   return (
     <>
-      <p className="mt-6 text-lg font-semibold break-all">{`Signed in as ${me.email}`}</p>
-      <Verification verified={me.email_verified} />
-      <TwoFactorSection me={me} />
-      <p className="mt-8 border-t border-line-subtle pt-6">
-        <Link to="/alerts" className={TEXT_LINK}>
+      <Profile me={me} />
+      {/* The two-factor section keeps its own region and h2; the panel only frames it. */}
+      <Panel className="mt-6 [&>section]:mt-0 [&>section]:border-t-0 [&>section]:pt-0">
+        <TwoFactorSection me={me} />
+      </Panel>
+      <AccountPanel title="Notifications">
+        <Link to="/alerts" className={ROW_LINK}>
           Alerts and webhooks
         </Link>
-      </p>
+        <p className={`mt-1 text-sm ${MUTED}`}>Where alerts go, per-card alerts and webhooks.</p>
+      </AccountPanel>
+      <Display />
       <YourData me={me} onDeleted={onDeleted} />
-      <SignOutButton className="mt-8 border-t border-line-subtle pt-6" />
     </>
   );
 }
@@ -78,10 +143,20 @@ export default function AccountPage() {
   let body;
   switch (session.state) {
     case 'loading':
-      body = <LoadingAccount />;
+      body = (
+        <>
+          <LoadingAccount />
+          <Display />
+        </>
+      );
       break;
     case 'failed':
-      body = <ProblemBlock context="Could not load your account" failure={session.failure} />;
+      body = (
+        <>
+          <ProblemBlock context="Could not load your account" failure={session.failure} />
+          <Display />
+        </>
+      );
       break;
     case 'signed-out':
       body = (
@@ -95,6 +170,7 @@ export default function AccountPage() {
               Create an account
             </Link>
           </p>
+          <Display />
         </>
       );
       break;
@@ -113,7 +189,7 @@ export default function AccountPage() {
       break;
   }
   return (
-    <AccountMain title="Account">
+    <AccountMain title="Account" width="wide">
       {status !== null && <StatusLine>{status}</StatusLine>}
       {deleted && <StatusLine>Your account has been deleted.</StatusLine>}
       {body}

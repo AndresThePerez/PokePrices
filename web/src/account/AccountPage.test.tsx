@@ -6,6 +6,7 @@ import {
   FORBIDDEN_WORDS,
   answerMovers,
   clearXsrfCookie,
+  demoMe,
   jsonResponse,
   lightOnlyClasses,
   problemResponse,
@@ -224,5 +225,93 @@ describe('the header Account link (T03 criterion 5)', () => {
     expect(window.location.pathname).toBe('/account');
     expect(await screen.findByText('You are not signed in.')).toBeTruthy();
     expect(calls.map((call) => call.key)).toEqual(['GET /v1/me']);
+  });
+});
+
+describe('the Display panel on /account (D2-i2-T07, R297)', () => {
+  function options(select: HTMLElement): [string, string | null][] {
+    return Array.from(select.querySelectorAll('option')).map((option) => [
+      option.value,
+      option.textContent,
+    ]);
+  }
+
+  function resetPreferences(): void {
+    window.localStorage.clear();
+    document.documentElement.removeAttribute('data-theme');
+    document.documentElement.removeAttribute('data-palette');
+  }
+
+  // The footer landmark stays, empty; main holds the two settings once, labels and options exact.
+  function checkDisplay(): void {
+    const footer = screen.getByRole('contentinfo');
+    expect(within(footer).queryAllByRole('combobox')).toEqual([]);
+    expect(footer.textContent).toBe('');
+    const display = within(main()).getByRole('region', { name: 'Display' });
+    const theme = within(display).getByRole('combobox', { name: 'Theme' });
+    expect(options(theme)).toEqual([
+      ['system', 'System'],
+      ['light', 'Light'],
+      ['dark', 'Dark'],
+    ]);
+    const palette = within(display).getByRole('combobox', { name: 'Up/down colours' });
+    expect(options(palette)).toEqual([
+      ['green-red', 'Green and red'],
+      ['blue-orange', 'Blue and orange'],
+    ]);
+    expect(within(display).getByText('Theme').tagName).toBe('LABEL');
+    expect(within(display).getByText('Up/down colours').tagName).toBe('LABEL');
+    expect(screen.getAllByRole('combobox', { name: 'Theme' })).toHaveLength(1);
+    expect(screen.getAllByRole('combobox', { name: 'Up/down colours' })).toHaveLength(1);
+  }
+
+  it('holds Theme and Up/down colours in main, and none in the footer, in every session state', async () => {
+    const states = [
+      [problemResponse(unauthenticatedProblem), 'You are not signed in.'],
+      [jsonResponse(signedInMe), 'Email verified'],
+      [jsonResponse(unverifiedMe), 'Email not verified'],
+      [jsonResponse(demoMe), 'Signed in as demo@example.com'],
+      [problemResponse(serverErrorProblem('/v1/me')), /Could not load your account/],
+    ] as const;
+    for (const [answer, expected] of states) {
+      const calls = stubAccountFetch({ 'GET /v1/me': answer });
+      visit('/account');
+      render(<App />);
+      // Loading first: the settings are already there.
+      expect(screen.getByRole('status').textContent).toBe('Loading your account…');
+      checkDisplay();
+      await screen.findByText(expected);
+      checkDisplay();
+      expect(calls.map((call) => call.key)).toEqual(['GET /v1/me']);
+      cleanup();
+    }
+  });
+
+  it('applies and stores a choice made in the Display panel', async () => {
+    resetPreferences();
+    stubAccountFetch({ 'GET /v1/me': jsonResponse(signedInMe) });
+    visit('/account');
+    render(<App />);
+    await screen.findByText('Signed in as collector@example.com');
+    const display = within(main()).getByRole('region', { name: 'Display' });
+    const theme = within(display).getByRole<HTMLSelectElement>('combobox', { name: 'Theme' });
+    const palette = within(display).getByRole<HTMLSelectElement>('combobox', {
+      name: 'Up/down colours',
+    });
+    expect(theme.value).toBe('system');
+    expect(palette.value).toBe('green-red');
+    fireEvent.change(theme, { target: { value: 'dark' } });
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+    expect(window.localStorage.getItem('pokeprices:theme')).toBe('dark');
+    expect(theme.value).toBe('dark');
+    fireEvent.change(palette, { target: { value: 'blue-orange' } });
+    expect(document.documentElement.getAttribute('data-palette')).toBe('blue-orange');
+    expect(window.localStorage.getItem('pokeprices:palette')).toBe('blue-orange');
+    expect(palette.value).toBe('blue-orange');
+    fireEvent.change(theme, { target: { value: 'system' } });
+    expect(document.documentElement.getAttribute('data-theme')).toBe('light');
+    expect(window.localStorage.getItem('pokeprices:theme')).toBe('system');
+    cleanup();
+    resetPreferences();
   });
 });

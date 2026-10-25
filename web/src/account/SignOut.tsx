@@ -4,7 +4,7 @@
 // (omitted on /account, which has its own). It reads the session passively (useKnownSession), so it
 // adds no observer and no request, and it leaves once another tab's session signal arrives (A1-7).
 import { useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { signOut, type ApiFailure } from '../api/client';
 import { navigate, useRoute } from '../router';
 import { ProblemBlock } from './Form';
@@ -12,13 +12,19 @@ import { QUIET_BUTTON, SECONDARY_BUTTON } from './fields';
 import { DEMO_NOTICE } from './lists';
 import { ME_KEY, endSession, useKnownSession } from './session';
 
-/** Signs out (POST /logout), marks ['me'] signed out, signals the other tabs, then opens /. */
+/**
+ * Signs out (POST /logout), marks ['me'] signed out, signals the other tabs, then opens /. Given a
+ * `heading`, the button sits at the right of the heading's row and a failure's problem block
+ * follows the row as a sibling, so it spans the whole panel the row is in.
+ */
 export function SignOutButton({
   quiet = false,
   className,
+  heading,
 }: {
   readonly quiet?: boolean;
   readonly className?: string;
+  readonly heading?: ReactNode;
 }) {
   const queryClient = useQueryClient();
   const [pending, setPending] = useState(false);
@@ -40,19 +46,37 @@ export function SignOutButton({
     navigate('/');
   }
 
+  const look = quiet ? QUIET_BUTTON : SECONDARY_BUTTON;
+  const button = (
+    <button
+      type="button"
+      disabled={pending}
+      onClick={() => {
+        if (!pending) void leave();
+      }}
+      className={heading === undefined ? look : `${look} -mr-4 shrink-0`}
+    >
+      Sign out
+    </button>
+  );
+  const problem = failure !== null && (
+    <ProblemBlock context="Could not sign out" failure={failure} />
+  );
+  if (heading !== undefined) {
+    return (
+      <>
+        <div className={`flex items-center justify-between gap-3 ${className ?? ''}`.trim()}>
+          {heading}
+          {button}
+        </div>
+        {problem}
+      </>
+    );
+  }
   return (
     <div className={className}>
-      <button
-        type="button"
-        disabled={pending}
-        onClick={() => {
-          if (!pending) void leave();
-        }}
-        className={quiet ? QUIET_BUTTON : SECONDARY_BUTTON}
-      >
-        Sign out
-      </button>
-      {failure !== null && <ProblemBlock context="Could not sign out" failure={failure} />}
+      {button}
+      {problem}
     </div>
   );
 }
