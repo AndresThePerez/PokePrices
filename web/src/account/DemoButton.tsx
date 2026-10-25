@@ -6,12 +6,13 @@ import { useState } from 'react';
 import { startDemo, type ApiFailure } from '../api/client';
 import { navigate } from '../router';
 import { ProblemBlock } from './Form';
-import { QUIET_BUTTON, SECONDARY_BUTTON } from './fields';
+import { SECONDARY_BUTTON, TEXT_LINK } from './fields';
 import { ME_KEY, endSession } from './session';
 
 /**
  * Where the button sits: `panel` (sign-in and the signed-out lists) is an outlined button under a
- * hairline; `hero` (the home landing, under the search form) is a quiet button with no rule.
+ * hairline; `hero` (the home landing, under the search form) is an underlined 16 px accent link
+ * on the field's left edge, with a 44 px target and no rule.
  */
 export type DemoPlacement = 'panel' | 'hero';
 
@@ -22,7 +23,7 @@ const WRAPPER: Readonly<Record<DemoPlacement, string>> = {
 
 const LOOK: Readonly<Record<DemoPlacement, string>> = {
   panel: SECONDARY_BUTTON,
-  hero: `${QUIET_BUTTON} -ml-4`,
+  hero: `${TEXT_LINK} text-base font-semibold text-accent disabled:opacity-60`,
 };
 
 export default function DemoButton({

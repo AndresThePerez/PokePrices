@@ -41,8 +41,9 @@ function detailLine(mover: Mover): string {
 
 /**
  * One mover row (D2), the same markup on the home strip and the board: rank in a 28 px mono muted
- * column, the card link (16 px 600) with its set line (14 px muted) beneath, then the price and the
- * chip right-aligned. A list at least 32 rem wide (the board) puts them in a right column of their
+ * column, the card link (16 px 600; its 44 px target reaches up into the row's top padding so the
+ * set line sits right under the name) with its set line (14 px muted) beneath, then the price and
+ * the chip at the right edge, the chip's tint hugging its text and its text left-aligned. A list at least 32 rem wide (the board) puts them in a right column of their
  * own; a narrower one (a home sub-list, 390 px) puts them under the name. No thumbnail: the movers
  * API carries no image URL.
  */
@@ -53,13 +54,13 @@ function MoverRow({ mover }: { readonly mover: Mover }) {
       <div className="min-w-0 wrap-anywhere">
         <Link
           to={cardPath(mover.card_id)}
-          className={`inline-flex min-h-11 items-center text-base font-semibold underline-offset-4 hover:underline ${FOCUS}`}
+          className={`-mt-3 inline-flex min-h-11 items-end text-base font-semibold underline-offset-4 hover:underline ${FOCUS}`}
         >
           {mover.card === null ? `Card ${mover.card_id}` : mover.card.name}
         </Link>
         <span className={`block text-sm ${MUTED}`}>{detailLine(mover)}</span>
       </div>
-      <div className="col-start-2 min-w-0 text-right @lg:col-start-3 @lg:pt-1.5">
+      <div className="col-start-2 flex min-w-0 flex-col items-end @lg:col-start-3 @lg:pt-1.5">
         <PriceFigure close={mover.close} size="row" />
         <ChangeChip price={mover} />
       </div>
