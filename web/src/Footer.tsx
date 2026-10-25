@@ -103,6 +103,7 @@ export function DisplaySettings({ layout }: { readonly layout: keyof typeof LAYO
 }
 
 export default function Footer() {
+  usePreferences(); // keeps the snapshot subscribed while the Display panel is unmounted
   const { route } = useRoute();
   return (
     <footer className="mt-10 border-t border-line-subtle bg-surface">
