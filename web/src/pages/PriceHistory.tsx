@@ -125,7 +125,7 @@ function DataTable({
 
 /**
  * The header row of the panel: the Variant group (when offered) and the Chart range group. Below
- * 640 px the panel's 16 px side padding and the 6 px segment gap keep the five ranges on one row.
+ * 640 px the panel's 12 px side padding and the 6 px segment gap keep the five ranges on one row.
  */
 function Controls({ children }: { readonly children: ReactNode }) {
   return <div className="mt-4 flex flex-wrap gap-x-6 gap-y-2">{children}</div>;
@@ -356,7 +356,7 @@ export default function PriceHistory({
   }
 
   return (
-    <Panel as="section" aria-labelledby="card-history" className="mt-6 max-sm:px-4">
+    <Panel as="section" aria-labelledby="card-history" className="mt-6 max-sm:px-3">
       <h2 id="card-history" className="text-lg font-semibold">
         Price history
       </h2>
