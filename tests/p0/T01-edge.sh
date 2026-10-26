@@ -17,7 +17,7 @@ done
 for p in api/.env.example web/.env.example .env.example gates/manifest-P0.json gates/frozen.sha256 \
          scripts/gates/ag1.py docs/adr/drafts/x.md api/app/Models/User.php api/composer.lock \
          web/package-lock.json web/src/dist.ts web/src/dist/x.ts tests/p0/T01.sh compose.dev.yml \
-         Makefile .dockerignore .spectral.yaml .github/workflows/gates.yml openapi/api.json \
+         Makefile .dockerignore .spectral.yaml .github/workflows/tests.yml openapi/api.json \
          docs/CLAUDE.md api/storage/app/.gitignore; do
   check "not ignored: $p" sh -c '! git check-ignore -q --no-index "$1"' _ "$p"
 done

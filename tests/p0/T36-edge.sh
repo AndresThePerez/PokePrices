@@ -59,7 +59,7 @@ tamper() { # $1 path
   else printf 'ok - editing %s after the freeze is caught by sha256sum -c\n' "$1"; fi
 }
 deep=$(git ls-files 'gates/fixtures/**' | tail -1)
-for p in Makefile scripts/lib/freeze.py scripts/gates/ag1.py gates/jitter-P0.json gates/ratchet.json .github/workflows/gates.yml "$deep"; do tamper "$p"; done
+for p in Makefile scripts/lib/freeze.py scripts/gates/ag1.py gates/jitter-P0.json gates/ratchet.json .github/workflows/tests.yml "$deep"; do tamper "$p"; done
 
 fresh
 printf 'x\n' > "$C/scripts/gates/zz-new-gate.sh"; git -C "$C" add scripts/gates/zz-new-gate.sh

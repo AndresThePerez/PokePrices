@@ -363,8 +363,8 @@ This file renders exactly the fields of `manifest-P0.json`; the JSON is the mach
 - value_parser: `jq -e '.value' "$GATES_OUT/D4.json"`
 - op / threshold: `==` `0`
 - denominator_source: `jq -e '.denominator' "$GATES_OUT/D4.json"   # workflow run lines plus README commands`; denominator_min: 2
-- spec: README.md has exactly one '## Development' heading whose fenced block contains 'make gates'; every workflow job's steps are exactly one uses: actions/checkout@<sha> and one run: make gates. value = mismatches.
-- why: Research 11 D4 for a CI that is only make gates.
+- spec: Every workflow job's steps are exactly uses: actions/checkout@<40 hex> then run: make <target> with <target> a .PHONY target of the Makefile, and README.md's single '## Development' heading has a fenced block holding a bare 'make <target>' line for every target any workflow runs. value = mismatches.
+- why: Research 11 D4, generalised by R306: CI is checkout plus one make target the README documents.
 
 ### S10: Trivy CRITICAL count on the runtime images
 
@@ -500,7 +500,7 @@ This file renders exactly the fields of `manifest-P0.json`; the JSON is the mach
 
 ## Exit criteria (run by scripts/verdict, not by make gates)
 
-scripts/verdict (full mode) runs these checks itself, logs each to <scorecard dir>/exit/<id>.log ending EXIT n, and blocks with exit:<id>; make gates never runs them because a CI checkout has a different origin URL (R22).
+scripts/verdict (full mode) runs these checks itself, logs each to <scorecard dir>/exit/<id>.log ending EXIT n, and blocks with exit:<id>; make gates/make test never run them because a CI checkout has a different origin URL (R22, R306).
 
 - EC-X1 (remote origin is the GitHub URL): `test "$(git remote get-url origin)" = git@github.com:AndresThePerez/PokePrices.git`
 - EC-X2 (default branch main): `test "$(git symbolic-ref --short HEAD)" = main`

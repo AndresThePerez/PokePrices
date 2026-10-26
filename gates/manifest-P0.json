@@ -137,7 +137,7 @@
       "check": "scripts/verdict --gates-only --manifest gates/manifest-P0.json --scorecard .gates/latest/scorecard.json"
     }
   ],
-  "exit_criteria_runner": "scripts/verdict (full mode) runs these checks itself, logs each to <scorecard dir>/exit/<id>.log ending EXIT n, and blocks with exit:<id>; make gates never runs them because a CI checkout has a different origin URL (R22).",
+  "exit_criteria_runner": "scripts/verdict (full mode) runs these checks itself, logs each to <scorecard dir>/exit/<id>.log ending EXIT n, and blocks with exit:<id>; make gates/make test never run them because a CI checkout has a different origin URL (R22, R306).",
   "frozen_files": {
     "list": [
       "Makefile",
@@ -733,8 +733,8 @@
       "denominator_source": "jq -e '.denominator' \"$GATES_OUT/D4.json\"   # workflow run lines plus README commands",
       "denominator_min": 2,
       "timeout_s": 900,
-      "why": "Research 11 D4 for a CI that is only make gates.",
-      "spec": "README.md has exactly one '## Development' heading whose fenced block contains 'make gates'; every workflow job's steps are exactly one uses: actions/checkout@<sha> and one run: make gates. value = mismatches.",
+      "why": "Research 11 D4, generalised by R306: CI is checkout plus one make target the README documents.",
+      "spec": "Every workflow job's steps are exactly uses: actions/checkout@<40 hex> then run: make <target> with <target> a .PHONY target of the Makefile, and README.md's single '## Development' heading has a fenced block holding a bare 'make <target>' line for every target any workflow runs. value = mismatches.",
       "built_by": "P0-i1-T33"
     },
     {

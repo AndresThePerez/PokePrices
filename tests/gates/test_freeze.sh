@@ -6,7 +6,7 @@ cd "$(dirname "$0")/../.." || exit 1
 check "frozen.sha256 tracked" git ls-files --error-unmatch gates/frozen.sha256
 check "freeze list regenerates identically" sh -c 'python3 -I scripts/lib/freeze.py --manifest gates/manifest-P0.json | cmp -s - gates/frozen.sha256'
 check "every frozen hash verifies" sh -c '/usr/bin/grep -v "#" gates/frozen.sha256 | sha256sum -c --status'
-for p in Makefile scripts/scorecard scripts/verdict compose.dev.yml api/phpunit.xml api/phpstan.neon web/eslint.config.js web/vitest.config.ts web/tsconfig.app.json .spectral.yaml docker/nginx/pokeprices.conf gates/manifest-P0.json gates/ratchet.json gates/hygiene.patterns .github/workflows/gates.yml; do
+for p in Makefile scripts/scorecard scripts/verdict compose.dev.yml api/phpunit.xml api/phpstan.neon web/eslint.config.js web/vitest.config.ts web/tsconfig.app.json .spectral.yaml docker/nginx/pokeprices.conf gates/manifest-P0.json gates/ratchet.json gates/hygiene.patterns .github/workflows/tests.yml; do
   check "frozen: $p" /usr/bin/grep -q "  $p\$" gates/frozen.sha256
 done
 check "subtree entries present" sh -c '/usr/bin/grep -q "  web/package.json#.scripts$" gates/frozen.sha256 && /usr/bin/grep -q "  api/composer.json#.scripts$" gates/frozen.sha256'

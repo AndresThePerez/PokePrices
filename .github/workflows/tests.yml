@@ -1,0 +1,19 @@
+# PokéPrices CI: every non-draft pull request runs exactly `make test` (unit suites). `make gates` is the
+# local/loop command and is not CI (R306 replaces R22's "CI is exactly make gates").
+name: tests
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+permissions:
+  contents: read
+concurrency:
+  group: tests-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  tests:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+      - run: make test

@@ -1,7 +1,8 @@
 #!/bin/sh
-# D4: the README Development block and CI agree. Every job of every tracked workflow has exactly two
-# steps, `uses: actions/checkout@<40 hex>` then `run: make gates`; README.md has exactly one
-# '## Development' heading whose first fenced block holds a `make gates` line.
+# D4: the README Development block and CI agree (R306 generalises R22). Every job of every tracked
+# workflow has exactly two steps, `uses: actions/checkout@<40 hex>` then `run: make <target>`, where
+# <target> is a .PHONY target of the top-level Makefile; README.md has exactly one '## Development'
+# heading whose first fenced block holds a bare `make <target>` line for every target CI runs.
 # value = mismatches; denominator = workflow run lines plus README commands found.
 set -u
 : "${GATES_OUT:?GATES_OUT must be set}"
@@ -13,14 +14,16 @@ top=$(git rev-parse --show-toplevel 2>/dev/null) || {
   jq -nc --arg h "$(pwd)" '{rule: "repo", reason: "not_a_git_repo", hit: $h}' >> "$details"; top=$(pwd); }
 cd "$top" || exit 1
 git ls-files '.github/workflows/*.yml' '.github/workflows/*.yaml' > "$GATES_OUT/D4.workflows.txt"
-counts=$(python3 -I - "$details" "$GATES_OUT/D4.workflows.txt" README.md <<'PY'
+counts=$(python3 -I - "$details" "$GATES_OUT/D4.workflows.txt" README.md Makefile <<'PY'
 import json, re, sys
 
-details_path, list_path, readme_path = sys.argv[1:4]
+details_path, list_path, readme_path, makefile_path = sys.argv[1:5]
 out = []
 run_lines = 0
 readme_commands = 0
 CHECKOUT = re.compile(r"actions/checkout@[0-9a-f]{40}")
+MAKE_RUN = re.compile(r"make ([a-z][a-z0-9-]*)")
+ci_targets = []
 
 
 def miss(**kw):
@@ -32,6 +35,15 @@ try:
 except Exception as exc:  # no PyYAML means the CI side cannot be judged at all
     yaml = None
     miss(rule="workflow", reason="pyyaml_unavailable", error=str(exc))
+
+phony = set()
+try:
+    with open(makefile_path, encoding="utf-8") as fh:
+        for line in fh:
+            if line.startswith(".PHONY:"):
+                phony.update(line[len(".PHONY:"):].split())
+except OSError as exc:
+    miss(rule="makefile", reason="Makefile unreadable", error=str(exc))
 
 with open(list_path, encoding="utf-8") as fh:
     workflows = [line.rstrip("\n") for line in fh if line.strip()]
@@ -57,18 +69,30 @@ for path in workflows:
             miss(rule="job_steps", file=path, job=str(name), reason="no steps list")
             continue
         run_lines += sum(1 for s in steps if isinstance(s, dict) and "run" in s)
+        last = steps[-1] if steps else None
+        run = last.get("run") if isinstance(last, dict) else None
+        m = MAKE_RUN.fullmatch(run) if isinstance(run, str) else None
+        target = m.group(1) if m else None
         ok = (
             len(steps) == 2
             and isinstance(steps[0], dict)
             and set(steps[0]) <= {"uses", "with"}
             and isinstance(steps[0].get("uses"), str)
             and CHECKOUT.fullmatch(steps[0]["uses"]) is not None
-            and steps[1] == {"run": "make gates"}
+            and isinstance(steps[1], dict)
+            and set(steps[1]) == {"run"}
+            and target is not None
+            and target in phony
         )
+        if target is not None and target not in ci_targets:
+            ci_targets.append(target)
         if not ok:
-            miss(rule="job_steps", file=path, job=str(name),
-                 reason="steps must be exactly checkout@<40 hex> then run: make gates",
-                 steps=json.loads(json.dumps(steps, default=str)))
+            rec = dict(rule="job_steps", file=path, job=str(name),
+                       reason="steps must be exactly checkout@<40 hex> then run: make <phony target>",
+                       steps=json.loads(json.dumps(steps, default=str)))
+            if target is not None:
+                rec["target"] = target
+            miss(**rec)
 
 try:
     with open(readme_path, encoding="utf-8") as fh:
@@ -99,8 +123,10 @@ if lines is not None:
             commands = [l.split("#", 1)[0].strip() for l in block]
             commands = [c for c in commands if c]
             readme_commands = len(commands)
-            if "make gates" not in commands:
-                miss(rule="readme", reason="Development block has no 'make gates' line")
+            for target in ci_targets:
+                if "make " + target not in commands:
+                    miss(rule="readme", reason="Development block has no 'make <target>' line",
+                         target=target)
 
 with open(details_path, "a", encoding="utf-8") as fh:
     for d in out:
