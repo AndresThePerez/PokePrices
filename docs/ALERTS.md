@@ -197,14 +197,20 @@ sweep is queued or running at a time (`ShouldBeUnique`, 120 seconds). In order i
    endpoint timed out or refused the connection, the rest of the claimed rows of the sweep (or of that endpoint) are
    released unsent, with no attempt counted.
 
-Each send has a 2-second connect timeout and a 5-second total timeout. `attempts` counts sends that were actually made, and
-`claims` counts claims. The response body is read at most up to 64 KiB (65,536 bytes) and then closed. The HTTP client
+Each send has a 2-second connect timeout and a 5-second total timeout; an email send waits at most 5 seconds on the SMTP
+server (`config('mail.mailers.smtp.timeout')`). `attempts` counts sends that were actually made, and
+`claims` counts claims. The response body is read at most up to 64 KiB (65,536 bytes) and then closed. It is never
+decompressed: a `gzip` answer is read as the bytes that came over the network. The HTTP client
 buffers the response to a temporary stream until the 5-second limit, so the 64 KiB cap bounds what is read, not what the
 network may deliver within those 5 seconds. DNS resolution has no timeout of its own in PHP: a slow resolver can make one
-send overrun the 60-second budget by the resolver's own timeout (the budget is "60 seconds plus one send").
+send overrun the 60-second budget by the resolver's own timeout (the budget is "60 seconds plus one send"). The sweep job
+itself times out after 80 seconds, below the queue's 90-second `retry_after`, and is then failed rather than handed out
+again while it still runs.
 
 **No exception reaches a log.** A send never reports or rethrows an exception: an error is recorded as the attempt's
-`last_error` (`internal` for an unexpected one) and logged as a class name only. No log line carries a URL, `url_hint`,
+`last_error` (`internal` for an unexpected one) and logged as a class name only. When recording the outcome itself fails,
+the sweep goes on with the next row; that row keeps its 300-second lease and is sent again, with the same `webhook-id`,
+after it, and a `delivery_outcome_unrecorded` warning carries only the delivery id and the class name. No log line carries a URL, `url_hint`,
 secret, signature, body or email address, and a send never adds a row to `failed_jobs`.
 
 **What is kept.** Delivered and failed rows are kept for 30 days (`config('alerts.delivery.retention_days')`). The account

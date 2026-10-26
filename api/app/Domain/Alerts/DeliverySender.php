@@ -11,6 +11,7 @@ use GuzzleHttp\Exception\ConnectTimeoutException;
 use GuzzleHttp\Exception\NetworkTimeoutException;
 use GuzzleHttp\Exception\ResponseTimeoutException;
 use GuzzleHttp\Handler\CurlHandler;
+use Illuminate\Database\ConnectionInterface;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Mail\Message;
@@ -39,7 +40,12 @@ use UnexpectedValueException;
  * Containment (review A05, A08): everything after loading the row runs inside catch (Throwable). An exception is
  * recorded as last_error internal (retryable, so it still ends failed after the last attempt) and logged as its
  * class short name only: never rethrown, never reported, its message and trace never logged. No log line carries a
- * URL, url_hint, secret, signature, body or email address.
+ * URL, url_hint, secret, signature, body or email address. When the outcome write itself fails (review b, B9), the
+ * row keeps its lease and is claimed and sent again, with the same webhook-id, once the lease runs out; that is
+ * logged once as delivery_outcome_unrecorded with the delivery id and the exception's class short name only.
+ *
+ * Every statement runs on the connection send() is given (the sweep's, review b, b7); the default connection when
+ * none is given. A gzip answer is never decoded, so the 64 KiB read cap counts bytes as they came off the wire.
  */
 final class DeliverySender
 {
@@ -53,17 +59,19 @@ final class DeliverySender
     /**
      * @return array{outcome: 'delivered'|'retry'|'failed'|'skipped', error: string|null}
      */
-    public function send(int $deliveryId, CarbonImmutable $lease): array
+    public function send(int $deliveryId, CarbonImmutable $lease, ?ConnectionInterface $db = null): array
     {
+        $db ??= DB::connection();
         $leaseText = self::timestamp($lease);
-        $delivery = Delivery::query()
-            ->whereKey($deliveryId)
+        $row = $db->table('deliveries')
+            ->where('id', $deliveryId)
             ->where('status', 'pending')
             ->whereRaw('next_attempt_at = ?::timestamptz', [$leaseText])
             ->first();
-        if (! $delivery instanceof Delivery) {
+        if ($row === null) {
             return ['outcome' => 'skipped', 'error' => null];
         }
+        $delivery = (new Delivery)->newFromBuilder((array) $row);
 
         $started = hrtime(true);
         $status = null;
@@ -75,9 +83,9 @@ final class DeliverySender
         $mailed = false;
 
         try {
-            $endpoint = $delivery->endpoint_id === null ? null : WebhookEndpoint::query()->find($delivery->endpoint_id);
+            $endpoint = $delivery->endpoint_id === null ? null : self::endpoint($db, $delivery->endpoint_id);
             if ($delivery->channel === 'email') {
-                $address = $delivery->endpoint_id === null ? self::address($delivery->user_id) : null;
+                $address = $delivery->endpoint_id === null ? self::address($db, $delivery->user_id) : null;
                 if ($address === null) {
                     $attempted = false;
                     $error = 'no_channel';
@@ -109,25 +117,31 @@ final class DeliverySender
         };
         $next = $outcome === 'retry' ? self::timestamp($now->addSeconds($this->retry->delay($attempts, $retryAfter))) : $leaseText;
 
-        DB::transaction(function () use ($delivery, $leaseText, $attempted, $outcome, $next, $status, $error, $now, $disable): void {
-            DB::update(
-                'UPDATE deliveries SET attempts = attempts + ?, status = ?, next_attempt_at = ?::timestamptz, last_status = ?, last_error = ?, delivered_at = ?::timestamptz
-                 WHERE id = ? AND status = \'pending\' AND next_attempt_at = ?::timestamptz',
-                [
-                    $attempted ? 1 : 0,
-                    $outcome === 'retry' ? 'pending' : $outcome,
-                    $next,
-                    $status,
-                    $error,
-                    $outcome === 'delivered' ? self::timestamp($now) : null,
-                    $delivery->id,
-                    $leaseText,
-                ],
-            );
-            if ($disable && $delivery->endpoint_id !== null) {
-                DB::update('UPDATE webhook_endpoints SET disabled_at = ?::timestamptz WHERE id = ? AND disabled_at IS NULL', [self::timestamp($now), $delivery->endpoint_id]);
-            }
-        });
+        try {
+            $db->transaction(function () use ($db, $delivery, $leaseText, $attempted, $outcome, $next, $status, $error, $now, $disable): void {
+                $db->update(
+                    'UPDATE deliveries SET attempts = attempts + ?, status = ?, next_attempt_at = ?::timestamptz, last_status = ?, last_error = ?, delivered_at = ?::timestamptz
+                     WHERE id = ? AND status = \'pending\' AND next_attempt_at = ?::timestamptz',
+                    [
+                        $attempted ? 1 : 0,
+                        $outcome === 'retry' ? 'pending' : $outcome,
+                        $next,
+                        $status,
+                        $error,
+                        $outcome === 'delivered' ? self::timestamp($now) : null,
+                        $delivery->id,
+                        $leaseText,
+                    ],
+                );
+                if ($disable && $delivery->endpoint_id !== null) {
+                    $db->update('UPDATE webhook_endpoints SET disabled_at = ?::timestamptz WHERE id = ? AND disabled_at IS NULL', [self::timestamp($now), $delivery->endpoint_id]);
+                }
+            });
+        } catch (Throwable $e) {
+            Log::warning('delivery_outcome_unrecorded', ['delivery_id' => $delivery->id, 'exception' => class_basename($e)]);
+
+            return ['outcome' => 'skipped', 'error' => $error];
+        }
 
         $context = [
             'delivery_id' => $delivery->id,
@@ -196,6 +210,8 @@ final class DeliverySender
     {
         $options = [
             'stream' => true,
+            // Never inflated: a gzip answer is read, and capped, by the bytes that came off the wire.
+            'decode_content' => false,
             'allow_redirects' => false,
             'connect_timeout' => (int) config('alerts.webhooks.connect_timeout_seconds', 2),
             'timeout' => (int) config('alerts.webhooks.timeout_seconds', 5),
@@ -251,10 +267,18 @@ final class DeliverySender
         $body->close();
     }
 
-    /** The person's current address, read at send time; null when the person or the address is gone. */
-    private static function address(int $userId): ?string
+    /** The endpoint row on $db as a model (its url and secret decrypt on read); null when it is gone. */
+    private static function endpoint(ConnectionInterface $db, int $id): ?WebhookEndpoint
     {
-        $email = DB::table('users')->where('id', $userId)->value('email');
+        $row = $db->table('webhook_endpoints')->where('id', $id)->first();
+
+        return $row === null ? null : (new WebhookEndpoint)->newFromBuilder((array) $row);
+    }
+
+    /** The person's current address, read at send time; null when the person or the address is gone. */
+    private static function address(ConnectionInterface $db, int $userId): ?string
+    {
+        $email = $db->table('users')->where('id', $userId)->value('email');
 
         return is_string($email) && $email !== '' ? $email : null;
     }

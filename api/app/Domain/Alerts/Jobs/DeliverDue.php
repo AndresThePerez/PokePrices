@@ -11,6 +11,8 @@ use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\Attributes\FailOnTimeout;
+use Illuminate\Queue\Attributes\Timeout;
 use Illuminate\Support\Facades\DB;
 use stdClass;
 
@@ -29,8 +31,14 @@ use stdClass;
  *    attempt.
  *
  * ShouldBeUnique (120 s): at most one sweep is queued or running. The send path never throws (DeliverySender
- * contains every exception), so a sweep never ends in failed_jobs because of a receiver.
+ * contains every exception, the outcome write included), so a sweep never ends in failed_jobs because of a row.
+ * Every statement of a sweep, the sender's included, runs on the connection sweep() is given.
+ *
+ * Timeout 80 s with FailOnTimeout (review b, B2): above the 60 s send budget plus one bounded send, below the redis
+ * queue's retry_after (90 s), so a hung sweep is stopped and failed by its worker before the queue hands it out again.
  */
+#[Timeout(80)]
+#[FailOnTimeout]
 final class DeliverDue implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
@@ -76,7 +84,7 @@ final class DeliverDue implements ShouldBeUnique, ShouldQueue
 
                 continue;
             }
-            $result = $sender->send($id, $lease);
+            $result = $sender->send($id, $lease, $db);
             if ($result['outcome'] !== 'skipped') {
                 $counts[$result['outcome']]++;
             }
