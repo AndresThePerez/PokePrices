@@ -8,6 +8,8 @@ use App\Http\Problems\UpstreamContract;
 use App\Http\Problems\UpstreamUnavailable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\Attributes\Timeout;
+use Illuminate\Queue\Attributes\Tries;
 use Illuminate\Queue\Middleware\ThrottlesExceptionsWithRedis;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -26,7 +28,12 @@ use Illuminate\Support\Facades\DB;
  * handled by ThrottlesExceptionsWithRedis(5, 30) keyed by "pokesearch" on redis-queue under the circuit
  * breaker's prefix: the job is released, and after five failures within 30 s further runs are released
  * without calling PokéSearch until the 30 s are over.
+ *
+ * Timeout 80 s, below the redis queue's retry_after (90 s); three tries, as the worker's --tries gave it before (plan
+ * Q1-i1 T02, review b b4: attributes only).
  */
+#[Tries(3)]
+#[Timeout(80)]
 final class VerifyCatalog implements ShouldQueue
 {
     use Queueable;

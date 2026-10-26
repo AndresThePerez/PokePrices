@@ -10,6 +10,7 @@ use Illuminate\Bus\Batchable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Attributes\Backoff;
+use Illuminate\Queue\Attributes\Timeout;
 use Illuminate\Queue\Attributes\Tries;
 use Illuminate\Queue\Jobs\SyncJob;
 use Illuminate\Support\Facades\DB;
@@ -27,9 +28,13 @@ use Throwable;
  * - On the sync queue the batch runs its jobs inside the batch repository's transaction, so a thrown exception would
  *   roll the failed() writes back with it. There the job fails itself instead of throwing (a sync job fails once
  *   without retries either way), and the failure stays recorded.
+ *
+ * Timeout 80 s (plan Q1-i1 T02, review b B2): below the redis queue's retry_after (90 s), so a hung chunk is stopped by
+ * its worker before the queue hands it out again; a timeout is one of the three tries.
  */
 #[Tries(3)]
 #[Backoff([10, 60, 300])]
+#[Timeout(80)]
 final class IngestChunk implements ShouldQueue
 {
     use Batchable, Queueable;

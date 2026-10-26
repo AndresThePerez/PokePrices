@@ -10,9 +10,12 @@ use App\Domain\Pricing\IngestLock;
 use App\Domain\Pricing\PriceSnapshotReader;
 use App\Domain\Pricing\Replay;
 use Carbon\CarbonImmutable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\Attributes\Timeout;
+use Illuminate\Queue\Attributes\Tries;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -35,10 +38,18 @@ use Throwable;
  *
  * It never dispatches the same marker twice in one pass. The lock is only probed for the plan: it is released before
  * anything is dispatched, and each start takes it again for itself.
+ *
+ * ShouldBeUnique (plan Q1-i1 T02, review b b2): at most one scan is queued or running, so scans queued behind a busy
+ * worker never plan the same day twice; uniqueFor (50 min) stays below the hourly schedule. Timeout 80 s, below the
+ * redis queue's retry_after (90 s); three tries, as the worker's --tries gave it before.
  */
-final class IngestPending implements ShouldQueue
+#[Tries(3)]
+#[Timeout(80)]
+final class IngestPending implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
+
+    public int $uniqueFor = 3000;
 
     public const int STALLED_AFTER_MINUTES = 120;
 

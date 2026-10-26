@@ -93,11 +93,22 @@ final class DayIngest
     /**
      * Validates the day and opens its run (status `running`) with its chunks planned, or records why it did not.
      *
+     * One running run per (source, day) (plan Q1-i1 T02, review b B6): while the day has a `running` run, start()
+     * writes nothing (no run, no chunk, so no batch) and answers `locked` with that run's id, which every caller
+     * already treats as "another ingest holds this day"; the running run finishes, or the pending scan resumes it.
+     *
      * @param  'sync'|'queued'|'replay'  $mode
-     * @return array{status: 'running'|'refused'|'skipped_unchanged', run_id: int, marker: CarbonImmutable|null, error: string|null, chunks: list<int>}
+     * @return array{status: 'running'|'refused'|'skipped_unchanged'|'locked', run_id: int, marker: CarbonImmutable|null, error: string|null, chunks: list<int>}
      */
     public function start(string $day, string $mode, bool $force = false): array
     {
+        $source = (string) config('pricing.source');
+        $running = $this->db->table('ingest_runs')->where('source', $source)->where('day', $day)->where('status', 'running')->value('id');
+        if (is_numeric($running)) {
+            return ['status' => 'locked', 'run_id' => (int) $running, 'marker' => null,
+                'error' => "a running run of {$day} exists (run {$running})", 'chunks' => []];
+        }
+
         $startedAt = CarbonImmutable::now('UTC');
         $reader = PriceSnapshotReader::at($this->snapshotsRoot, $day);
         try {
@@ -110,7 +121,6 @@ final class DayIngest
         }
         $marker = $validated['marker'];
         $this->marker = $marker;
-        $source = (string) config('pricing.source');
 
         if (! $force && $this->db->table('ingest_runs')->where('source', $source)->where('status', 'ok')
             ->where('marker', $marker->format('Y-m-d H:i:sP'))->exists()) {

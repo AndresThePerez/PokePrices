@@ -11,9 +11,12 @@ use App\Domain\Alerts\NotificationText;
 use App\Domain\Alerts\PriceMovedPayload;
 use App\Domain\Catalog\CatalogRepository;
 use Carbon\CarbonImmutable;
+use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\Attributes\Timeout;
+use Illuminate\Queue\Attributes\Tries;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -38,10 +41,18 @@ use stdClass;
  * Writes deliveries and dispatch_days only. Logs alerts_dispatch (info, the summary the command prints) and an
  * alerts_dispatch_skipped warning for every skip: repair in progress, newest older than the last dispatched day,
  * days passed over, a future-dated run ignored, catalog degraded.
+ *
+ * ShouldBeUnique (plan Q1-i1 T02, review b b2): at most one dispatch is queued or running; uniqueFor (240 s) stays
+ * below the five-minute schedule. Timeout 80 s, below the redis queue's retry_after (90 s); three tries, as the
+ * worker's --tries gave it before.
  */
-final class DispatchEvents implements ShouldQueue
+#[Tries(3)]
+#[Timeout(80)]
+final class DispatchEvents implements ShouldBeUnique, ShouldQueue
 {
     use Queueable;
+
+    public int $uniqueFor = 240;
 
     /** Delivery rows per INSERT statement. */
     private const int INSERT_CHUNK = 500;

@@ -236,7 +236,8 @@ test('finalize does not proceed while another session holds the pricing:ingest l
     DB::purge('t08e_holder');
     (new FinalizeDay($start['run_id'], 'database'))->handle();
 
-    expect($blocked)->toContain('lock timeout')
+    // Q1-i1 T02 (B3): finalize no longer waits on the lock; it tries it, finds it held and writes nothing.
+    expect($blocked)->toBeNull()
         ->and($during)->toBe(['running', 0])
         ->and(DB::table('ingest_runs')->where('id', $start['run_id'])->value('status'))->toBe('ok');
 });

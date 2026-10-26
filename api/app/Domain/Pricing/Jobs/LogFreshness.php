@@ -7,6 +7,8 @@ namespace App\Domain\Pricing\Jobs;
 use App\Domain\Pricing\Freshness;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Queue\Attributes\Timeout;
+use Illuminate\Queue\Attributes\Tries;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -14,7 +16,12 @@ use Illuminate\Support\Facades\Log;
  * message price_freshness and context {source, feed, as_of, age_hours, slo_hours, within_slo} through the default
  * channel's JSON formatter: info within the SLO, warning when breached or when no prices were ingested. age_hours is
  * the same one-decimal value the API and the command print.
+ *
+ * Timeout 30 s, below the redis queue's retry_after (90 s); three tries, as the worker's --tries gave it before (plan
+ * Q1-i1 T02).
  */
+#[Tries(3)]
+#[Timeout(30)]
 final class LogFreshness implements ShouldQueue
 {
     use Queueable;
