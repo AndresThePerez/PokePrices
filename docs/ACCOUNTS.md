@@ -199,9 +199,10 @@ may read but not write.
 - **Never send the password in the query string.** The password is read from the request body only: a `password`,
   `password_confirmation` or `current_password` in the query string is ignored, so such a request fails validation.
   A URL ends up in logs and history, so nobody should send one anyway.
-- **Still read from the query string.** The guard covers those three keys only. Fortify's two-factor `code` and
-  `recovery_code` and the password-reset `token` are still read from the query string if a client sends them there;
-  the app never does. This is an open item in `docs/adr/drafts/0004-alert-delivery.md`.
+- **Account writes ignore the whole query string.** A write to `login`, `register`, `two-factor-challenge`,
+  `reset-password`, `forgot-password`, `user/confirm-password`, `user/confirmed-two-factor-authentication`,
+  `user/two-factor-recovery-codes` or `v1/me/deletion` reads nothing from the query string: an invite code, a two-factor
+  `code` or `recovery_code`, a reset `token` or `remember` sent only there counts for nothing.
 - **Password reset ends other sessions.** After a successful reset, no other browser stays signed in.
 - Display settings (theme and colours) stay in the browser's `localStorage`; accounts do not store them, so they are
   not in the export.

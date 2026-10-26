@@ -323,3 +323,13 @@ it('gives the demo its own tier, 30 a minute keyed by IP: two IPs each get their
         ->and($spent->json('type'))->toBe(ProblemDetails::BASE.'too-many-requests')
         ->and($fresh->getStatusCode())->toBe(200);
 });
+
+it('answers POST /v1/demo/session with Cache-Control no-store, like every other account answer (Q1-i1 T04, A10)', function (): void {
+    demoSeed();
+
+    $response = $this->withHeaders(Accounts::FIRST_PARTY)->postJson('/v1/demo/session');
+
+    expect($response->getStatusCode())->toBe(204)
+        ->and($response->headers->get('Cache-Control'))->toBe('no-store, private')
+        ->and($response->headers->has('ETag'))->toBeFalse();
+});

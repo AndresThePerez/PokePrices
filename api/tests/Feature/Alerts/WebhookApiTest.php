@@ -456,3 +456,44 @@ it('writes no URL, path, secret or Discord token to any log line of these flows'
         ->and($logs)->not->toContain('abcDEF_ghi-123')
         ->and($logs)->not->toContain('api/webhooks');
 });
+
+// Plan Q1-i1 T04 (review a1, sec B2): a description refuses C0/C1 control characters and the bidi controls, so a
+// stored description can neither break a line nor reorder the text around it; emoji and accented letters stay valid.
+const T4_DESCRIPTION = 'A description cannot hold control or text-direction characters.';
+
+it('refuses a description with a control or text-direction character with 422 errors.description', function (string $description): void {
+    $response = t3Store($this, Accounts::user(), ['kind' => 'standard', 'url' => T3_URL, 'description' => $description]);
+
+    $response->assertStatus(422);
+    expect($response->json('type'))->toBe(ProblemDetails::BASE.'validation-failed')
+        ->and(array_keys($response->json('errors')))->toBe(['description'])
+        ->and($response->json('errors.description'))->toBe([T4_DESCRIPTION])
+        ->and(DB::table('webhook_endpoints')->count())->toBe(0);
+})->with([
+    'probe A5: RLO and a newline' => ["ok\u{202E}evil\nline2"],
+    'a newline' => ["Home\nbot"],
+    'a carriage return' => ["Home\rbot"],
+    'a tab' => ["Home\tbot"],
+    'a NUL byte' => ["Home\x00bot"],
+    'DEL' => ["Home\x7Fbot"],
+    'C1 NEL U+0085' => ["Home\u{0085}bot"],
+    'C1 U+009F' => ["Home\u{009F}bot"],
+    'LRM U+200E' => ["Home\u{200E}bot"],
+    'RLM U+200F' => ["Home\u{200F}bot"],
+    'LRE U+202A' => ["Home\u{202A}bot"],
+    'PDF U+202C' => ["Home\u{202C}bot"],
+    'RLO U+202E' => ["Home\u{202E}bot"],
+    'LRI U+2066' => ["Home\u{2066}bot"],
+    'PDI U+2069' => ["Home\u{2069}bot"],
+]);
+
+it('accepts a description with accented letters and emoji', function (string $description): void {
+    $created = t3Store($this, Accounts::user(), ['kind' => 'standard', 'url' => T3_URL, 'description' => $description]);
+
+    $created->assertCreated();
+    expect($created->json('data.description'))->toBe($description);
+})->with([
+    'Pokémon alerts ✨' => ['Pokémon alerts ✨'],
+    'a ZWJ emoji sequence' => ["Family \u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}"],
+    'right-to-left letters without controls' => ['תראה מחיר'],
+]);

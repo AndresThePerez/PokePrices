@@ -100,7 +100,9 @@ their watchlist together with their portfolio.
 A signed webhook follows the Standard Webhooks signing scheme.
 
 - **Register.** `POST /v1/webhooks` with `{"kind": "standard", "url": "https://…", "description": "…"}` answers `201`
-  with the endpoint and its secret. `GET /v1/webhooks` lists endpoints (`id`, `kind`, `url_hint`, `description`,
+  with the endpoint and its secret. A `description` (1 to 100 characters) holding a control character or a
+  text-direction control (U+200E, U+200F, U+202A to U+202E, U+2066 to U+2069) is refused with `422`
+  `errors.description`; emoji and accented letters are fine. `GET /v1/webhooks` lists endpoints (`id`, `kind`, `url_hint`, `description`,
   `created_at`, `disabled`, and the status of the last delivery). `DELETE /v1/webhooks/{id}` answers `204`, also for an
   unknown id or another person's (existence is never revealed); all of the endpoint's deliveries, delivered and failed
   ones too, go with it (the foreign key cascades), so they also leave the export.

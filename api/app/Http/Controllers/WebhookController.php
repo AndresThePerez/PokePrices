@@ -60,8 +60,9 @@ final class WebhookController
         $validated = $request->validate([
             'kind' => ['bail', 'required', 'string', Rule::in(WebhookEndpoints::KINDS)],
             'url' => ['bail', 'required', 'string'],
-            'description' => ['bail', 'nullable', 'string', 'min:1', 'max:100'],
+            'description' => ['bail', 'nullable', 'string', 'min:1', 'max:100', 'not_regex:/[\p{Cc}\x{200E}\x{200F}\x{202A}-\x{202E}\x{2066}-\x{2069}]/u'],
         ], [
+            'description.not_regex' => 'A description cannot hold control or text-direction characters.',
             'kind.required' => WebhookEndpoints::KIND,
             'kind.string' => WebhookEndpoints::KIND,
             'kind.in' => WebhookEndpoints::KIND,

@@ -92,9 +92,9 @@ Route::middleware([
 });
 
 // One-click entry to the read-only demo (D6, D8): outside the account group (a visitor is not signed in yet), stateful
-// for first-party requests, and counted per IP before any session starts.
+// for first-party requests, counted per IP before any session starts, and never stored by a cache (Q1-i1 T04).
 Route::post('/demo/session', DemoSessionController::class)
-    ->middleware([ThrottleBeforeSession::class.':demo-session', EnsureFrontendRequestsAreStateful::class])
+    ->middleware([ThrottleBeforeSession::class.':demo-session', EnsureFrontendRequestsAreStateful::class, NoStore::class])
     ->name('demo.session');
 
 // Routes that call PokéSearch; the contract documents their 503 upstream-unavailable and 502 upstream-contract.

@@ -8,6 +8,10 @@ use Illuminate\Contracts\Http\Kernel;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Testing\TestResponse;
+use Laravel\Fortify\Actions\EnableTwoFactorAuthentication;
+use Laravel\Fortify\Fortify;
+use PragmaRX\Google2FA\Google2FA;
 use Tests\Support\AccountRows;
 use Tests\Support\Accounts;
 
@@ -86,3 +90,101 @@ it('ignores password_confirmation and current_password in the query too', functi
         ->and($request->input('current_password'))->toBeNull()
         ->and($request->all())->toBe(['keep' => '1']);
 });
+
+// Plan Q1-i1 T04 (review a1, sec A4): the credential-bearing endpoints read nothing from the query string on a write,
+// so an invite code, a remember flag or a two-factor code that travels only in the URL counts for nothing.
+
+/** The names of the remember-me cookies a response sets. @return list<string> */
+function qcRememberCookies(TestResponse $response): array
+{
+    $names = array_map(fn ($cookie): string => $cookie->getName(), $response->headers->getCookies());
+
+    return array_values(array_filter($names, fn (string $name): bool => str_starts_with($name, 'remember_')));
+}
+
+/** A user with confirmed two-factor authentication, set up by Fortify's own action. */
+function qcTwoFactorUser(): User
+{
+    $user = Accounts::user(['email' => 'andres@example.com']);
+    app(EnableTwoFactorAuthentication::class)($user);
+    $user->forceFill(['two_factor_confirmed_at' => now()])->save();
+
+    return $user->refresh();
+}
+
+function qcTwoFactorCode(User $user): string
+{
+    $engine = app(Google2FA::class);
+    $secret = (string) Fortify::currentEncrypter()->decrypt((string) $user->refresh()->two_factor_secret);
+
+    return (string) $engine->oathTotp($secret, $engine->getTimestamp());
+}
+
+it('answers POST /register with the invite code only in the query string 422 errors.invite_code and creates nobody', function (): void {
+    $response = $this->withHeaders(Accounts::FIRST_PARTY)->postJson('/register?invite_code='.rawurlencode(Accounts::INVITE), [
+        'email' => 'new@example.com', 'password' => Accounts::PASSWORD, 'password_confirmation' => Accounts::PASSWORD,
+    ]);
+
+    expect($response->getStatusCode())->toBe(422)
+        ->and(array_keys($response->json('errors')))->toBe(['invite_code'])
+        ->and(User::query()->where('email', 'new@example.com')->exists())->toBeFalse();
+});
+
+it('signs in for POST /login?remember=1 but mints no remember-me cookie', function (): void {
+    Accounts::user(['email' => 'collector@example.com']);
+
+    $response = $this->withHeaders(Accounts::FIRST_PARTY)
+        ->postJson('/login?remember=1', ['email' => 'collector@example.com', 'password' => Accounts::PASSWORD]);
+
+    expect($response->getStatusCode())->toBe(200)
+        ->and(auth('web')->check())->toBeTrue()
+        ->and(qcRememberCookies($response))->toBe([]);
+});
+
+it('still mints the remember-me cookie for remember in the JSON body', function (): void {
+    Accounts::user(['email' => 'collector@example.com']);
+
+    $response = $this->withHeaders(Accounts::FIRST_PARTY)
+        ->postJson('/login', ['email' => 'collector@example.com', 'password' => Accounts::PASSWORD, 'remember' => true]);
+
+    expect($response->getStatusCode())->toBe(200)
+        ->and(qcRememberCookies($response))->toHaveCount(1);
+});
+
+it('answers POST /two-factor-challenge?code=<right code> with an empty body 422 and signs nobody in', function (): void {
+    $user = qcTwoFactorUser();
+    Accounts::forgetGuards();
+    $this->withHeaders(Accounts::FIRST_PARTY)
+        ->postJson('/login', ['email' => 'andres@example.com', 'password' => Accounts::PASSWORD])
+        ->assertOk()->assertExactJson(['two_factor' => true]);
+    Accounts::forgetGuards();
+
+    $response = $this->withHeaders(Accounts::FIRST_PARTY)
+        ->postJson('/two-factor-challenge?code='.qcTwoFactorCode($user), []);
+
+    expect($response->getStatusCode())->toBe(422)
+        ->and(auth('web')->check())->toBeFalse();
+});
+
+it('empties the whole query string of a write to a credential-bearing path, and only there', function (string $method, string $uri, array $kept): void {
+    $request = Request::create($uri, $method);
+    $seen = (new IgnoreQueryCredentials)->handle($request, fn ($r) => response()->json($r->query->all()));
+
+    expect(json_decode((string) $seen->getContent(), true))->toBe($kept);
+})->with([
+    'POST login' => ['POST', '/login?remember=1&keep=1', []],
+    'POST register' => ['POST', '/register?invite_code=x', []],
+    'POST two-factor-challenge' => ['POST', '/two-factor-challenge?code=1&recovery_code=2', []],
+    'POST reset-password' => ['POST', '/reset-password?token=x&email=a', []],
+    'POST forgot-password' => ['POST', '/forgot-password?email=a', []],
+    'POST user/confirm-password' => ['POST', '/user/confirm-password?x=1', []],
+    'POST user/confirmed-two-factor-authentication' => ['POST', '/user/confirmed-two-factor-authentication?code=1', []],
+    'POST user/two-factor-recovery-codes' => ['POST', '/user/two-factor-recovery-codes?x=1', []],
+    'POST v1/me/deletion' => ['POST', '/v1/me/deletion?x=1', []],
+    'POST login/ with a trailing slash' => ['POST', '/login/?remember=1', []],
+    'POST an encoded login path' => ['POST', '/logi%6E?remember=1', []],
+    'GET user/two-factor-recovery-codes keeps its query' => ['GET', '/user/two-factor-recovery-codes?x=1', ['x' => '1']],
+    'POST v1/webhooks keeps its query' => ['POST', '/v1/webhooks?x=1', ['x' => '1']],
+    'POST logout keeps its query' => ['POST', '/logout?x=1', ['x' => '1']],
+    'GET signed email/verify keeps its query' => ['GET', '/email/verify/1/abc?expires=1&signature=s', ['expires' => '1', 'signature' => 's']],
+]);
