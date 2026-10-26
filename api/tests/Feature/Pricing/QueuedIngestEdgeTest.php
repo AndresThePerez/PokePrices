@@ -359,6 +359,31 @@ test('a queued run that failed on a chunk is recovered by the next scan as a fre
         ->and($digest)->toBe($syncDigest);
 });
 
+test('Q1-i1 T03: a map build that lands while a queued run is open fails the run through its chunk, and the next scan ingests the day on the new build', function (): void {
+    $root = t08eCopy('2026-10-11');
+    $start = (new StartDayIngest('2026-10-11', $root, false, 'database'))->begin();
+    DB::table('jobs')->delete();
+    $newer = (int) DB::table('map_builds')->insertGetId([
+        'snapshot_day' => '2026-10-11', 'dataset_ref' => '39a26a144c8b6ef6c2fb17b2c29d0bb7121e3a11', 'seed_ref' => null,
+        'started_at' => '2026-10-12 08:00:00+00', 'finished_at' => '2026-10-12 08:01:00+00',
+        'counts' => json_encode(['marker' => '2026-10-11T20:05:45+00:00'], JSON_THROW_ON_ERROR),
+    ]);
+    [$resumeCode] = t08eIngest(['--day' => '2026-10-11', '--resume' => true, '--queue-connection' => 'sync'], $root);
+    $failed = DB::table('ingest_runs')->where('id', $start['run_id'])->first(['status', 'error']);
+    $pointsOfFailedRun = DB::table('price_points')->where('ingest_run_id', $start['run_id'])->count();
+
+    $summary = (new IngestPending($root, 'sync'))->scan();
+    $fresh = DB::table('ingest_runs')->where('id', '>', $start['run_id'])->orderBy('id')->get(['mode', 'status', 'counts']);
+
+    expect($resumeCode)->toBe(1)
+        ->and($failed->status)->toBe('failed')
+        ->and((string) $failed->error)->toContain("the product map changed since ingest run {$start['run_id']} started")
+        ->and($pointsOfFailedRun)->toBe(0)
+        ->and($summary['dispatched'])->toBe(['2026-10-11'])
+        ->and($fresh->map(fn (object $r): array => [$r->mode, $r->status])->all())->toBe([['queued', 'ok']])
+        ->and(json_decode((string) $fresh[0]->counts, true, 512, JSON_THROW_ON_ERROR)['map_build_id'])->toBe($newer);
+});
+
 test('the :40 scan is registered for the scheduler, and the scan job serializes for the queue without a captured closure', function (): void {
     $code = Artisan::call('schedule:list');
     $output = Artisan::output();

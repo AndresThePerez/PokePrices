@@ -29,8 +29,9 @@ use Throwable;
  *   into the price_events outbox (DetectMovement, T13; never in a replay, R180a), sums the counts and marks the run `ok`.
  *
  * sync() holds the `pricing:ingest` lock (D12) and runs all three inside one transaction, so a failure anywhere
- * leaves no price row; the `failed` run is written after the rollback. The product map is read, never written, and
- * loaded once per run. Prices never leave Postgres for Elasticsearch.
+ * leaves no price row; the `failed` run is written after the rollback. The product map is read, never written: each
+ * chunk loads only its own products' rows, and only while the map build its run started on is current (plan Q1-i1 T03,
+ * review b B1). Prices never leave Postgres for Elasticsearch.
  *
  * Queued mode (T08) wires the same seams to jobs: StartDayIngest runs start() under the lock and dispatchChunks()
  * sends one IngestChunk per chunk as a batch whose `then` dispatches FinalizeDay; resume() re-opens a queued run and
@@ -43,9 +44,6 @@ final class DayIngest
 
     /** @var array<int, PriceSnapshotReader> run id => the reader of its day */
     private array $readers = [];
-
-    /** @var array<int, array<string, array{variant_key: string, series_epoch: int}>> run id => the map */
-    private array $maps = [];
 
     private ?CarbonImmutable $marker = null;
 
@@ -131,7 +129,6 @@ final class DayIngest
 
         $runId = $this->insertRun($day, $marker, $mode, 'running', $startedAt, null);
         $this->readers = [$runId => $reader];
-        $this->maps = [];
         PricePartitions::ensureFor($marker, $this->db);
 
         // D1, review F7: price_points always equals what the folder on disk holds for the day.
@@ -199,7 +196,7 @@ final class DayIngest
                 throw new RuntimeException("prices/{$chunk->group_id}.json.zst changed since ingest run {$runId} started");
             }
 
-            $normalized = PriceNormalizer::normalize($rows, $this->mapFor($runId));
+            $normalized = PriceNormalizer::normalize($rows, $this->mapFor($runId, $rows));
             $upserted = PricePointWriter::upsert($this->db, $normalized['points'], $marker, $runId);
             $counts = [
                 'mapped' => $normalized['mapped'],
@@ -404,24 +401,44 @@ final class DayIngest
     }
 
     /**
-     * The current product map, loaded once per run: "<productId>|<subTypeName>" => variant and epoch (D2).
+     * The map rows of the chunk's products only, in one query: "<productId>|<subTypeName>" => variant and epoch (D2).
+     * The run is pinned to the map build it started on (plan Q1-i1 T03): when a newer build has landed since, the chunk
+     * throws, writes nothing, and fails through the job's tries; the next scan opens a fresh run on the new map. A run
+     * that recorded no build skips the check.
      *
+     * @param  list<array{productId: int, subTypeName: string, market: string|null, low: string|null, mid: string|null, high: string|null, direct_low: string|null}>  $rows
      * @return array<string, array{variant_key: string, series_epoch: int}>
      */
-    private function mapFor(int $runId): array
+    private function mapFor(int $runId, array $rows): array
     {
-        if (! isset($this->maps[$runId])) {
-            $map = [];
-            foreach ($this->db->table('source_product_map')->where('source', (string) config('pricing.source'))
-                ->get(['source_product_id', 'source_subtype', 'variant_key', 'series_epoch']) as $row) {
-                $map[$row->source_product_id.'|'.$row->source_subtype] = [
-                    'variant_key' => (string) $row->variant_key,
-                    'series_epoch' => (int) $row->series_epoch,
-                ];
+        $run = $this->db->selectOne("SELECT counts->>'map_build_id' AS map_build_id FROM ingest_runs WHERE id = ?", [$runId], false);
+        $recorded = $run instanceof stdClass ? $run->map_build_id : null;
+        if (is_numeric($recorded)) {
+            $current = $this->db->table('map_builds')->max('id');
+            if (! is_numeric($current) || (int) $current !== (int) $recorded) {
+                $now = is_numeric($current) ? (string) (int) $current : 'none';
+                throw new RuntimeException("the product map changed since ingest run {$runId} started (map build {$recorded}, now {$now})");
             }
-            $this->maps = [$runId => $map];
         }
 
-        return $this->maps[$runId];
+        $products = array_values(array_unique(array_map(fn (array $row): int => $row['productId'], $rows)));
+        $products = array_values(array_filter($products, fn (int $id): bool => $id >= 1 && $id <= 2147483647));
+        if ($products === []) {
+            return [];
+        }
+        $map = [];
+        foreach ($this->db->select(
+            'SELECT source_product_id, source_subtype, variant_key, series_epoch FROM source_product_map'
+            .' WHERE source = ? AND source_product_id = ANY(?::integer[])',
+            [(string) config('pricing.source'), '{'.implode(',', $products).'}'],
+            false,
+        ) as $row) {
+            $map[$row->source_product_id.'|'.$row->source_subtype] = [
+                'variant_key' => (string) $row->variant_key,
+                'series_epoch' => (int) $row->series_epoch,
+            ];
+        }
+
+        return $map;
     }
 }
