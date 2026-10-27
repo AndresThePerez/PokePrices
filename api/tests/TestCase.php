@@ -6,6 +6,7 @@ namespace Tests;
 
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\AssertionFailedError;
 use RuntimeException;
@@ -23,6 +24,13 @@ abstract class TestCase extends BaseTestCase
                 sprintf('PokéPrices tests refuse to run against database %s; expected pokeprices_test*', $name),
             );
         }
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Http::preventStrayRequests();
     }
 
     /**

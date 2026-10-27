@@ -274,6 +274,7 @@ it('does not retry and does not leak the api key into the thrown exception messa
 });
 
 it('retries a real refused connection once: cURL error 7 from a live socket is recognised', function (): void {
+    Http::allowStrayRequests(); // a real refused connection to localhost:1 is the behaviour under test.
     config(['services.pokesearch.url' => 'http://localhost:1']);
     $failures = 0;
     Event::listen(ConnectionFailed::class, function () use (&$failures): void {
@@ -295,6 +296,7 @@ it('retries a real refused connection once: cURL error 7 from a live socket is r
 });
 
 it('does not retry a real DNS failure (cURL error 6)', function (): void {
+    Http::allowStrayRequests(); // a real DNS lookup failure is the behaviour under test.
     config(['services.pokesearch.url' => 'http://pokesearch-edge.invalid:8081']);
     $failures = 0;
     Event::listen(ConnectionFailed::class, function () use (&$failures): void {
