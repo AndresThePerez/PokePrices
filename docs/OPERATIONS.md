@@ -134,6 +134,13 @@ docker compose -f compose.dev.yml exec -T -w /workspace/api api php artisan poke
 A second writer is refused, not queued behind: `pricing ingest lock held` means a replay, a start or a
 finalize is running. Wait for it, or look at the lock case in the failure runbook.
 
+A day that already has a `running` run is not started again. While any `running` run of that day exists,
+`--sync`, `--queued` and `--force` all write nothing, print `a running run of <day> exists (run N)` and exit 1,
+whatever the marker. A run that is `running` for good (a worker that died) therefore blocks every start of
+that day until `--resume` or the :40 scan (after 2 hours) resumes it, or a replay supersedes it; `--resume`
+and the scan reach only a queued run of the folder's current marker, so after the marker changed only a replay
+clears it; see "A stalled or crashed run".
+
 ## Resume a failed run
 
 A queued run fails when one chunk runs out of its 3 tries (or finalize does). The other chunks stay `done`
@@ -168,6 +175,16 @@ clean run's: the digests are the same. It prints `resumed_chunks` when run witho
 in the folder has changed since the run started, there is nothing to resume (exit 1); ingest the day afresh
 with `--queued`. Only a queued run can be resumed: a failed `--sync` ingest is simply run again, and a
 newer `ok` or `superseded` run of the marker also leaves nothing to resume.
+
+Two limits on `--resume`:
+
+- It does not apply the running-run guard that `--sync`, `--queued` and `--force` starts obey. It reopens the
+  newest `running` queued run of the marker as well, so never `--resume` a day while a fresh `--queued` run of
+  that day is running: it would re-dispatch that live run's chunks that are not done.
+- It cannot rescue the chunks of a run from an older map build. After a map rebuild, each chunk of such a run
+  that still has to run fails (see "Map rebuild then replay"), so `--resume` of it fails again; only a run
+  whose chunks are all done (finalize failed) resumes. Otherwise ingest the day afresh with `--queued`, or
+  replay.
 
 ## Replay
 
@@ -274,6 +291,12 @@ What a rebuild changes:
 - **Digests.** `price_points`, `price_daily` and `price_latest` change wherever a label changed; the new
   digests are the new baseline at the new `map_build_id`. Compare passes within one replay, not across
   the rebuild.
+- **A run in flight when the map is rebuilt.** A run is pinned to the map build it started on. If a newer
+  build lands while it runs (a rebuild mid-day), each of its chunks that has not finished throws
+  `the product map changed since ingest run N started (map build A, now B)`, writes nothing and fails
+  through its 3 tries; the run then fails, and the next :40 scan opens a fresh run on the new map.
+  `--resume` of a run from the older build fails the same way on every chunk it re-dispatches, so ingest
+  the day afresh with `--queued`, or replay. A run that recorded no map build skips this check.
 - **Movers and measured volume.** `price_movers` and `movement_volume` are rebuilt by the replay. Nothing
   is ever compared across `series_epoch`: the first close of an epoch has no previous close, no mover
   entry and no movement event.
@@ -352,6 +375,12 @@ run goes `ok`.
 - **What to run.** Nothing: the :40 scan resumes a stalled run and re-dispatches only the chunks that are
   not done. By hand: `--resume`. If the worker container is down, bring it back first
   (`docker compose -f compose.dev.yml up -d --wait worker`) and restart it after job-class code changes.
+- **What it blocks meanwhile.** While the run is `running`, a `--sync`, `--queued` or `--force` start of that
+  day is refused with `a running run of <day> exists (run N)` (exit 1). Clearing it: `--resume`, the :40 scan
+  once the run is older than 2 hours (both only for a queued run of the folder's current marker), or a replay
+  (which marks every `running` run `superseded`; the only way when the marker has changed). Do not `--resume`
+  while a fresh `--queued` run of the day is running, and after a map rebuild ingest the day afresh with
+  `--queued` or replay instead of resuming a run from the older build (see "Map rebuild then replay").
 
 ### A crashed replay
 
@@ -400,6 +429,9 @@ run goes `ok`.
   a long time and belongs to no running command is a leak; end that one session with
   `select pg_terminate_backend(<pid>)` in `psql`, then check that no run is left `running` and let the
   scan or `--resume` finish the day. Do not end the session of a replay that is still working.
+- **A finalize waits its turn.** A queued `FinalizeDay` that finds the lock held releases itself for 60
+  seconds and tries again, for up to 6 hours after it was queued; only three real exceptions (a timeout is
+  one) fail it and its run.
 - **Test infrastructure note.** `t09WithLockHeld` in `api/tests/Feature/Pricing/IngestFailureTest.php` holds
   the lock on a second connection with a blocking call. If a real lock leak ever exists, that test hangs
   rather than fails. A Pest run of `tests/Feature/Pricing` that hangs points to a leaked lock, so look

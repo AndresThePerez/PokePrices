@@ -202,7 +202,9 @@ may read but not write.
 - **Account writes ignore the whole query string.** A write to `login`, `register`, `two-factor-challenge`,
   `reset-password`, `forgot-password`, `user/confirm-password`, `user/confirmed-two-factor-authentication`,
   `user/two-factor-recovery-codes` or `v1/me/deletion` reads nothing from the query string: an invite code, a two-factor
-  `code` or `recovery_code`, a reset `token` or `remember` sent only there counts for nothing.
+  `code` or `recovery_code`, a reset `token` or `remember` sent only there counts for nothing. A GET or HEAD
+  keeps its query string (only the three password keys above are dropped from it), because the signed
+  email-verification link needs its query to be checked.
 - **Password reset ends other sessions.** After a successful reset, no other browser stays signed in.
 - Display settings (theme and colours) stay in the browser's `localStorage`; accounts do not store them, so they are
   not in the export.
