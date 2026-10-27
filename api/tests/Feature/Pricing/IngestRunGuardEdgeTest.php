@@ -8,7 +8,6 @@ use App\Domain\Pricing\Jobs\FinalizeDay;
 use App\Domain\Pricing\Jobs\IngestPending;
 use App\Domain\Pricing\Jobs\StartDayIngest;
 use App\Domain\Pricing\Replay;
-use Illuminate\Contracts\Queue\Job as QueueJob;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -79,10 +78,8 @@ test('FinalizeDay does not finalize, throw or release when a replay supersedes t
             DB::table('ingest_runs')->where('id', $runId)->update(['status' => 'superseded']);
         }
     });
-    $job = Mockery::mock(QueueJob::class);
-    $job->shouldNotReceive('release');
     $finalize = new FinalizeDay($runId, 'database');
-    $finalize->setJob($job);
+    $finalize->withFakeQueueInteractions();
 
     $thrown = null;
     try {
@@ -91,6 +88,7 @@ test('FinalizeDay does not finalize, throw or release when a replay supersedes t
         $thrown = $e::class.': '.$e->getMessage();
     }
 
+    $finalize->assertNotReleased();
     expect($fired)->toBeTrue()
         ->and($thrown)->toBeNull()
         ->and(DB::table('ingest_runs')->where('id', $runId)->value('status'))->toBe('superseded')

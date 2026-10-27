@@ -63,7 +63,7 @@ check "files created in the bind mount by the dev container are owned by the hos
 # --- 3. runtime image: non-root, no dev dependencies, boots --------------------------------
 check "runtime image USER is www-data, not root" sh -c 'test "$(docker inspect --format "{{.Config.User}}" '"$TAG"')" = www-data'
 check "runtime RUN executes as a non-root uid" probe 'test "$(id -u)" != 0'
-check "runtime vendor has no dev dependencies (phpunit, mockery, pint, collision, pail, faker)" probe 'cd /workspace/api && for p in phpunit/phpunit mockery/mockery laravel/pint nunomaduro/collision laravel/pail fakerphp/faker; do test ! -e vendor/$p || { echo "dev dep present: $p"; exit 1; }; done'
+check "runtime vendor has no dev dependencies (phpunit, mockery, pint, collision, pail, faker, tinker)" probe 'cd /workspace/api && for p in phpunit/phpunit mockery/mockery laravel/pint nunomaduro/collision laravel/pail fakerphp/faker laravel/tinker; do test ! -e vendor/$p || { echo "dev dep present: $p"; exit 1; }; done'
 check "runtime vendor has the framework and an optimized classmap autoloader" probe 'cd /workspace/api && test -f vendor/laravel/framework/composer.json && test -s vendor/composer/autoload_classmap.php'
 check "runtime php-fpm configuration test passes as www-data" probe 'php-fpm -t'
 check "runtime has the required extensions" probe 'for e in pdo_pgsql redis pcov intl zip pcntl; do php -m | grep -qix $e || exit 1; done'
@@ -71,7 +71,7 @@ check "runtime image bakes in no .env or sqlite file" probe 'test -z "$(find /wo
 check "runtime laravel application boots (artisan --version) as www-data" probe 'cd /workspace/api && php artisan --version'
 check "runtime storage and bootstrap/cache are writable by www-data" probe 'cd /workspace/api && touch storage/framework/views/.w bootstrap/cache/.w && rm -f storage/framework/views/.w bootstrap/cache/.w'
 check "runtime storage/logs and storage/framework/{cache,sessions,views} exist and are writable by www-data" probe 'cd /workspace/api && for d in storage/logs storage/framework/cache storage/framework/sessions storage/framework/views; do test -d $d && test -w $d || { echo "missing or read-only: $d"; exit 1; }; done'
-LOGPROBE="cd /workspace/api && test -d storage/logs && php artisan tinker --execute='logger()->channel(\"single\")->info(\"t04-probe\");' && grep -q t04-probe storage/logs/laravel.log"
+LOGPROBE="cd /workspace/api && test -d storage/logs && php -r 'require \"vendor/autoload.php\"; \$app = require \"bootstrap/app.php\"; \$app->make(Illuminate\\Contracts\\Console\\Kernel::class)->bootstrap(); \$app->make(\"log\")->channel(\"single\")->info(\"t04-probe\");' && grep -q t04-probe storage/logs/laravel.log"
 check "runtime application writes a log line to storage/logs as www-data" probe "$LOGPROBE"
 # Host-written runtime state (logs, file cache, sessions, compiled views) must never reach the
 # runtime image. Plant a git-ignored marker in each host directory, build, look for it, remove it.

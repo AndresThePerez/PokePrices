@@ -23,7 +23,7 @@ check_out "T12 Prettier carries the plan's exact pin" 3.9.10 jq -r .devDependenc
 check_out "T21 Spectral CLI carries the plan's exact pin" 6.17.0 jq -r '.devDependencies["@stoplight/spectral-cli"]' $P
 check "T10 Vitest packages carry the plan's exact pins" jq -e '.devDependencies.vitest=="5.0.3" and .devDependencies["@vitest/coverage-v8"]=="5.0.3" and .devDependencies.jsdom=="30.1.2" and .devDependencies["@testing-library/react"]=="16.3.3"' $P
 check_out "react-dom equals react" 19.3.0 jq -r '.dependencies["react-dom"]' $P
-check "@types/node stays on the node 24 line" jq -e '.devDependencies["@types/node"] | test("^24\\.[0-9]+\\.[0-9]+$")' $P
+check "@types/node stays on the node 22 line" jq -e '.devDependencies["@types/node"] | test("^22\\.[0-9]+\\.[0-9]+$")' $P
 check "every pin is strictly MAJOR.MINOR.PATCH (no range, tag, prerelease or url)" jq -e '[(.dependencies // {})[], (.devDependencies // {})[]] | all(test("^[0-9]+\\.[0-9]+\\.[0-9]+$"))' $P
 # T23 (open question 7, HG-07) adds the one frozen override that lets openapi-typescript 7.13.0 (peer typescript ^5.x) use the pinned TypeScript 6.0.3; nothing else may appear in overrides.
 check "no peer, optional or resolutions blocks sneak in, and overrides is exactly the T23 openapi-typescript entry" jq -e '([has("peerDependencies"), has("optionalDependencies"), has("resolutions")] | any | not) and (.overrides == {"openapi-typescript": {"typescript": "$typescript"}})' $P
