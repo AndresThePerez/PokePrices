@@ -41,14 +41,16 @@ afterEach(() => {
 const FALLBACK = 'This page could not be shown.';
 
 /** One banner, one footer, one main that is not empty, and #content still the skip target. */
-async function expectShellWithAPage(): Promise<void> {
+async function expectShellWithAPage(): Promise<string> {
   await waitFor(() => {
     expect(screen.getAllByRole('main')).toHaveLength(1);
   });
   expect(screen.getAllByRole('banner')).toHaveLength(1);
   expect(screen.getAllByRole('contentinfo')).toHaveLength(1);
   expect(document.getElementById('content')?.getAttribute('tabindex')).toBe('-1');
-  expect(screen.getByRole('main').textContent.trim()).not.toBe('');
+  const text = screen.getByRole('main').textContent.trim();
+  expect(text).not.toBe('');
+  return text;
 }
 
 describe('a page that dereferences inside a well-formed envelope (the decoder checks only the top level)', () => {
@@ -57,7 +59,7 @@ describe('a page that dereferences inside a well-formed envelope (the decoder ch
     stubFetch(() => jsonResponse({ data: [null], meta: { degraded: false } }));
     visit('/movers');
     render(<App />);
-    await expectShellWithAPage();
+    expect(await expectShellWithAPage()).not.toBe('');
   });
 
   it('/watchlist with a row that is not an object keeps the shell and a non-empty main', async () => {
@@ -68,7 +70,7 @@ describe('a page that dereferences inside a well-formed envelope (the decoder ch
     });
     visit('/watchlist');
     render(<App />);
-    await expectShellWithAPage();
+    expect(await expectShellWithAPage()).not.toBe('');
   });
 
   it('/card/:id with an empty data object keeps the shell and a non-empty main', async () => {
@@ -80,7 +82,7 @@ describe('a page that dereferences inside a well-formed envelope (the decoder ch
     );
     visit('/card/ex10-%3F');
     render(<App />);
-    await expectShellWithAPage();
+    expect(await expectShellWithAPage()).not.toBe('');
   });
 });
 

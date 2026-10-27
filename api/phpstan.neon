@@ -1,5 +1,6 @@
 includes:
     - vendor/larastan/larastan/extension.neon
+    - phpstan.parallel.neon
 
 parameters:
     level: 8
@@ -12,5 +13,3 @@ parameters:
     tmpDir: storage/framework/cache/phpstan
     reportUnmatchedIgnoredErrors: true
     treatPhpDocTypesAsCertain: false
-    parallel:
-        maximumNumberOfProcesses: 4

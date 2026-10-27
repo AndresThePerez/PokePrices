@@ -21,9 +21,9 @@ use Throwable;
  */
 final class Readiness
 {
-    public const POKESEARCH_CACHE_KEY = 'pokeprices:ready:pokesearch';
+    public const string POKESEARCH_CACHE_KEY = 'pokeprices:ready:pokesearch';
 
-    public const POKESEARCH_CACHE_SECONDS = 5;
+    public const int POKESEARCH_CACHE_SECONDS = 5;
 
     private bool $useCache = true;
 
