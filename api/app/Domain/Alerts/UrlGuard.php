@@ -11,9 +11,11 @@ namespace App\Domain\Alerts;
  * no fragment; it is at most 2048 printable ASCII bytes; its host is a plain DNS name or a canonical IP literal
  * (decimal, octal, hex and short IPv4 forms are refused unseen, so curl can never read one as loopback); and the
  * literal, or EVERY address the host resolves to, lies outside every block in BLOCKS (IPv4 embedded in a mapped or
- * compatible IPv6 address is checked as IPv4 too). An allow-listed host:port (config alerts.webhooks.private_allow)
- * skips resolution and the block check. The sender pins the approved address (CURLOPT_RESOLVE) and never follows a
- * redirect, so the address checked is the address used.
+ * compatible IPv6 address is checked as IPv4 too). Any other IPv6 address must also be global unicast (2000::/3)
+ * outside the IETF protocol assignments (2001::/23), so every IPv6 range that embeds IPv4 in some other way is refused
+ * whole. An allow-listed host:port (config alerts.webhooks.private_allow) skips resolution and the block check. The
+ * sender pins the approved address (CURLOPT_RESOLVE) and never follows a redirect, so the address checked is the
+ * address used.
  */
 final class UrlGuard
 {
@@ -21,12 +23,19 @@ final class UrlGuard
      * Blocked ranges, written abbreviated (missing IPv4 octets are zero): this-network, private, CGNAT (Tailscale
      * included), loopback, link-local, IETF protocol assignments, benchmarking, multicast, reserved; the IPv6
      * unspecified, loopback, IPv4-mapped, NAT64, 6to4, unique-local (Tailscale's ULA included), link-local and
-     * multicast ranges. The RFC 5737 documentation ranges are deliberately not blocked.
+     * multicast ranges. The RFC 5737 documentation ranges are deliberately not blocked. IPv6 outside these blocks is
+     * further held to GLOBAL_UNICAST minus IETF_ASSIGNMENTS, which still lets 2001:db8::/32 and 3fff::/20 through.
      */
     public const array BLOCKS = [
         '0/8', '10/8', '100.64/10', '127/8', '169.254/16', '172.16/12', '192.0.0/24', '192.168/16', '198.18/15', '224/4', '240/4',
         '::/128', '::1/128', '::ffff:0:0/96', '64:ff9b::/96', '2002::/16', 'fc00::/7', 'fe80::/10', 'ff00::/8',
     ];
+
+    /** IPv6 global unicast: an IPv6 address that is not IPv4-mapped or compatible must lie inside it. */
+    public const string GLOBAL_UNICAST = '2000::/3';
+
+    /** IPv6 IETF protocol assignments (Teredo, benchmarking, ORCHID among them): refused even inside GLOBAL_UNICAST. */
+    public const string IETF_ASSIGNMENTS = '2001::/23';
 
     public const int MAX_BYTES = 2048;
 
@@ -113,8 +122,18 @@ final class UrlGuard
 
             return $v4 === false || self::blocked($v4);
         }
+        if (strlen($bytes) === 16) {
+            return ! self::inBlock($bytes, self::GLOBAL_UNICAST) || self::inBlock($bytes, self::IETF_ASSIGNMENTS);
+        }
 
         return false;
+    }
+
+    private static function inBlock(string $bytes, string $block): bool
+    {
+        [$network, $prefix] = explode('/', $block);
+
+        return self::inRange($bytes, (string) inet_pton($network), (int) $prefix);
     }
 
     /**

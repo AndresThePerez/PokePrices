@@ -81,3 +81,17 @@ it('refuses a description whose control character is a form-encoded value too', 
     expect($response->getStatusCode())->toBe(422)
         ->and(DB::table('webhook_endpoints')->count())->toBe(0);
 });
+
+// Plan Q1-i2 T03 (Q1-i1 T04 review Low): bytes that are not UTF-8 answer 422, not a database error.
+it('refuses a form-encoded description that is not UTF-8 with 422 and writes nothing', function (): void {
+    AccountRows::signIn($this, Accounts::user());
+
+    $response = $this->withHeaders(Accounts::FIRST_PARTY)->post('/v1/webhooks', [
+        'kind' => 'standard', 'url' => T4E_URL, 'description' => "bad\n\xC3\x28bytes",
+    ]);
+
+    expect($response->getStatusCode())->toBe(422)
+        ->and(array_keys($response->json('errors')))->toBe(['description'])
+        ->and($response->json('errors.description'))->toBe(['A description must be UTF-8 text.'])
+        ->and(DB::table('webhook_endpoints')->count())->toBe(0);
+});

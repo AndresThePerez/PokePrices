@@ -60,7 +60,11 @@ final class WebhookController
         $validated = $request->validate([
             'kind' => ['bail', 'required', 'string', Rule::in(WebhookEndpoints::KINDS)],
             'url' => ['bail', 'required', 'string'],
-            'description' => ['bail', 'nullable', 'string', 'min:1', 'max:100', 'not_regex:/[\p{Cc}\x{200E}\x{200F}\x{202A}-\x{202E}\x{2066}-\x{2069}]/u'],
+            'description' => ['bail', 'nullable', 'string', function (string $attribute, mixed $value, callable $fail): void {
+                if (! mb_check_encoding((string) $value, 'UTF-8')) {
+                    $fail('A description must be UTF-8 text.');
+                }
+            }, 'min:1', 'max:100', 'not_regex:/[\p{Cc}\x{200E}\x{200F}\x{202A}-\x{202E}\x{2066}-\x{2069}]/u'],
         ], [
             'description.not_regex' => 'A description cannot hold control or text-direction characters.',
             'kind.required' => WebhookEndpoints::KIND,

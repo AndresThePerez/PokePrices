@@ -310,3 +310,35 @@ function p5PublicResolver(): void
 {
     FakeHostResolver::install(['hooks.example.com' => ['203.0.113.10']]);
 }
+
+// Plan Q1-i2 T03 (sec C2): an IPv6 address that is not IPv4-mapped or compatible must be global unicast (2000::/3)
+// and outside the IETF protocol assignments (2001::/23). Review b's allowed addresses are refused; the IPv6
+// documentation ranges and a public address stay allowed.
+it('refuses the IPv6 addresses outside global unicast or inside the IETF protocol assignments, as a literal and as a resolved address', function (string $address): void {
+    FakeHostResolver::install(['hooks.example.com' => [$address]]);
+    $guard = app(UrlGuard::class);
+
+    expect($guard->check("https://[{$address}]/hook")->error)->toBe('blocked_address')
+        ->and($guard->check('https://hooks.example.com/hook')->error)->toBe('blocked_address');
+})->with([
+    'local-use NAT64' => ['64:ff9b:1::7f00:1'],
+    'SIIT translated' => ['::ffff:0:7f00:1'],
+    'Teredo' => ['2001::1'],
+    'discard-only' => ['100::1'],
+    'site-local' => ['fec0::1'],
+    'ORCHID' => ['2001:10::1'],
+    'benchmarking' => ['2001:2::1'],
+    'outside 2000::/3' => ['5f00::1'],
+]);
+
+it('allows the IPv6 documentation ranges and a public IPv6 address, as a literal and as a resolved address', function (string $address): void {
+    FakeHostResolver::install(['hooks.example.com' => [$address]]);
+    $guard = app(UrlGuard::class);
+    $literal = $guard->check("https://[{$address}]/hook");
+    $resolved = $guard->check('https://hooks.example.com/hook');
+
+    expect($literal->error)->toBeNull()
+        ->and($literal->address)->toBe($address)
+        ->and($resolved->error)->toBeNull()
+        ->and($resolved->address)->toBe($address);
+})->with(['2001:db8::1', '3fff::1', '2606:4700::1111']);

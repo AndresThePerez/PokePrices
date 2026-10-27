@@ -236,7 +236,9 @@ A webhook URL is checked when it is registered and again before every send, by `
 **Blocked blocks** (abbreviated: missing IPv4 octets are zero). IPv4: `0/8`, `10/8`, `100.64/10` (including Tailscale),
 `127/8`, `169.254/16`, `172.16/12`, `192.0.0/24`, `192.168/16`, `198.18/15`, `224/4`, `240/4`. IPv6: `::/128`, `::1/128`,
 `::ffff:0:0/96`, `64:ff9b::/96`, `2002::/16`, `fc00::/7` (including Tailscale's range), `fe80::/10`, `ff00::/8`. The
-documentation ranges of RFC 5737 (`192.0.2.0/24`, `198.51.100.0/24`, `203.0.113.0/24`) are not blocked.
+documentation ranges of RFC 5737 (`192.0.2.0/24`, `198.51.100.0/24`, `203.0.113.0/24`) are not blocked. Any other IPv6
+address must be global unicast (`2000::/3`) outside the IETF protocol assignments (`2001::/23`), which still allows the
+IPv6 documentation ranges `2001:db8::/32` and `3fff::/20`.
 
 - **Allow-list.** `WEBHOOK_PRIVATE_ALLOW` is a comma-separated list of exact `host:port` pairs. An allow-listed pair skips
   resolution and the block check and may use `http`. Nothing else may. When the variable is unset, the allow-list is
