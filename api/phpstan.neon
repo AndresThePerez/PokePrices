@@ -12,3 +12,5 @@ parameters:
     tmpDir: storage/framework/cache/phpstan
     reportUnmatchedIgnoredErrors: true
     treatPhpDocTypesAsCertain: false
+    parallel:
+        maximumNumberOfProcesses: 4

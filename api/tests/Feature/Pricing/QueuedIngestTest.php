@@ -333,6 +333,8 @@ test('a chunk made to throw every time makes exactly 3 attempts on a real worker
     t08Ingest(['--day' => '2026-10-10', '--sync' => true, '--snapshots' => $root]);
     $before = PriceDigest::compute(DB::connection())['tables'];
 
+    $now = CarbonImmutable::parse('2026-10-15 09:00:00', 'UTC');
+    CarbonImmutable::setTestNow($now);
     $start = t08StartOnDatabase('2026-10-11', $root);
     $broken = (int) DB::table('ingest_run_chunks')->where('ingest_run_id', $start['run_id'])->where('group_id', 23821)->value('id');
     t08ShrinkGroup($root, '2026-10-11', 23821);
@@ -343,8 +345,6 @@ test('a chunk made to throw every time makes exactly 3 attempts on a real worker
         $processed[] = $command instanceof IngestChunk ? 'chunk:'.$command->chunkId : class_basename($command);
     });
 
-    $now = CarbonImmutable::parse('2026-10-15 09:00:00', 'UTC');
-    CarbonImmutable::setTestNow($now);
     Artisan::call('queue:work', T08_WORK);
     // The job's own #[Backoff] (10 s) holds the retry back: the worker found the queue empty and stopped.
     $afterFirst = [DB::table('jobs')->count(), (int) DB::table('jobs')->value('attempts')];
@@ -594,9 +594,9 @@ test('a running run younger than 2 h is skipped, and one older than 2 h is resum
 });
 
 test('StartDayIngest on a worker releases itself while the lock is held', function (): void {
-    Queue::connection('database')->push(new StartDayIngest('2026-10-11', t08Fixture('snapshots'), false, 'database'));
     $now = CarbonImmutable::parse('2026-10-15 09:40:00', 'UTC');
     CarbonImmutable::setTestNow($now);
+    Queue::connection('database')->push(new StartDayIngest('2026-10-11', t08Fixture('snapshots'), false, 'database'));
 
     t08WithLockHeld(fn (): int => Artisan::call('queue:work', T08_WORK));
     $job = DB::table('jobs')->first();
