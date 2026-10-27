@@ -10,7 +10,7 @@ import {
   isOneTime,
   onSessionEnd,
 } from './account/session';
-import type { ApiResult } from './api/client';
+import { onUnauthenticatedWrite, type ApiResult } from './api/client';
 
 export const QUERY_DEFAULTS = {
   refetchInterval: 300_000,
@@ -32,28 +32,41 @@ function isUnauthenticated(error: unknown): boolean {
   return typeof error === 'object' && error !== null && 'status' in error && error.status === 401;
 }
 
-/** A client that, while mounted, hears another tab's session transition (SESSION_SIGNAL_KEY). */
+/**
+ * A client that, while mounted, hears another tab's session transition (SESSION_SIGNAL_KEY) and a
+ * 401 on any account write (the client's onUnauthenticatedWrite).
+ */
 class SessionQueryClient extends QueryClient {
   #mounts = 0;
   readonly #onStorage: (event: StorageEvent) => void;
+  readonly #onUnauthenticatedWrite: () => void;
+  #stopWrites: (() => void) | null = null;
 
-  constructor(config: QueryClientConfig, onSignal: () => void) {
+  constructor(config: QueryClientConfig, onSignal: () => void, onUnauthenticated: () => void) {
     super(config);
     this.#onStorage = (event) => {
       if (event.key === SESSION_SIGNAL_KEY) onSignal();
     };
+    this.#onUnauthenticatedWrite = onUnauthenticated;
   }
 
   override mount(): void {
     super.mount();
     this.#mounts += 1;
-    if (this.#mounts === 1) window.addEventListener('storage', this.#onStorage);
+    if (this.#mounts === 1) {
+      window.addEventListener('storage', this.#onStorage);
+      this.#stopWrites = onUnauthenticatedWrite(this.#onUnauthenticatedWrite);
+    }
   }
 
   override unmount(): void {
     super.unmount();
     this.#mounts -= 1;
-    if (this.#mounts === 0) window.removeEventListener('storage', this.#onStorage);
+    if (this.#mounts === 0) {
+      window.removeEventListener('storage', this.#onStorage);
+      this.#stopWrites?.();
+      this.#stopWrites = null;
+    }
   }
 }
 
@@ -62,10 +75,11 @@ class SessionQueryClient extends QueryClient {
  * showing under another: when ['me'] names a different account than the last one it named (A to B,
  * or A, signed out, then B), every ['account', …] query is forgotten (forgetAccount), and so is
  * everything cached before the first account this client learns of (a public page reads per-user
- * data without ['me']); a 401 on any of them asks GET /v1/me again. This tab's own sign-out or
- * sign-in (endSession) and another tab's (its signal) forget them too; the signal also drops an
- * ['me'] request still in flight (it carries the old session's cookie) and marks ['me'] stale; no
- * request goes out unless a page here shows ['me'].
+ * data without ['me']); a 401 on any of them, or on any account write while this client is
+ * mounted, asks GET /v1/me again. This tab's own sign-out or sign-in (endSession) and another
+ * tab's (its signal) forget them too; the signal also drops an ['me'] request still in flight (it
+ * carries the old session's cookie) and marks ['me'] stale; no request goes out unless a page here
+ * shows ['me'].
  */
 export function createQueryClient(): QueryClient {
   const queryCache = new QueryCache({
@@ -93,6 +107,10 @@ export function createQueryClient(): QueryClient {
       void client
         .cancelQueries({ queryKey: ME_KEY })
         .then(() => client.invalidateQueries({ queryKey: ME_KEY }));
+    },
+    // A 401 on a write: the same re-ask of GET /v1/me that a 401 query gets (onError above).
+    () => {
+      void client.invalidateQueries({ queryKey: ME_KEY });
     },
   );
   onSessionEnd(client, () => {

@@ -232,6 +232,35 @@ describe('removing from the watchlist (T07 criterion 2)', () => {
     expect(rows()).toHaveLength(3);
     expect(screen.getByText('Market price $968.91')).toBeTruthy();
   });
+
+  it('asks GET /v1/me once more when the removal answers 401, then shows the signed-out view', async () => {
+    let me: Response = jsonResponse(signedInMe);
+    const calls = openWatchlist({
+      'GET /v1/me': () => me,
+      'GET /v1/watchlist': jsonResponse(watchlistBody()),
+      [`DELETE ${CHARIZARD_KEY}`]: problemResponse({
+        ...unauthenticatedProblem,
+        instance: '/v1/watchlist',
+      }),
+    });
+    const remove = await screen.findByRole('button', {
+      name: 'Remove Charizard, holo, unlimited from your watchlist',
+    });
+    // The session expired between the read and the write.
+    me = problemResponse(unauthenticatedProblem);
+    fireEvent.click(remove);
+    expect(await screen.findByText('Sign in to keep a watchlist.')).toBeTruthy();
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(calls.map((call) => call.key)).toEqual([
+      'GET /v1/me',
+      'GET /v1/watchlist',
+      'GET /sanctum/csrf-cookie',
+      `DELETE ${CHARIZARD_KEY}`,
+      'GET /v1/me',
+    ]);
+    expect(within(main()).queryByRole('list', { name: 'Watchlist' })).toBeNull();
+    expect(screen.queryByText('Market price $968.91')).toBeNull();
+  });
 });
 
 describe('the watchlist of the read-only demo (T07 criterion 4)', () => {

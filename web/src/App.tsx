@@ -22,6 +22,7 @@ import { createQueryClient } from './query';
 import { useRoute, type Route } from './router';
 import { pageTitle, useDocumentTitle, useRouteFocus, WORDMARK } from './title';
 import { MUTED, TEXT_LINK } from './ui/classes';
+import RootBoundary from './ui/RootBoundary';
 
 const HOME_H1 = 'Pokémon card prices at the daily close';
 
@@ -139,7 +140,9 @@ export default function App() {
     <QueryClientProvider client={queryClient}>
       <Header />
       <div id="content" tabIndex={-1}>
-        <Routes />
+        <RootBoundary>
+          <Routes />
+        </RootBoundary>
       </div>
       <Footer />
     </QueryClientProvider>

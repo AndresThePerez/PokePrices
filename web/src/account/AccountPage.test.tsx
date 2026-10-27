@@ -137,6 +137,30 @@ describe('the account page (T03 criterion 3, D10)', () => {
     expect(window.location.pathname).toBe('/account');
   });
 
+  it('treats a 401 from /logout as already signed out: leaves for / with one GET /v1/me', async () => {
+    const calls = stubAccountFetch({
+      'GET /v1/me': [jsonResponse(signedInMe), problemResponse(unauthenticatedProblem)],
+      'POST /logout': problemResponse({ ...unauthenticatedProblem, instance: '/logout' }),
+    });
+    visit('/account');
+    render(<App />);
+    fireEvent.click(await screen.findByRole('button', { name: 'Sign out' }));
+    await waitFor(() => {
+      expect(window.location.pathname).toBe('/');
+    });
+    await new Promise((resolve) => setTimeout(resolve, 30));
+    expect(screen.queryByText(/Could not sign out/)).toBeNull();
+    // The home page's own movers reads are not routed here; every account request is listed.
+    expect(
+      calls.map((call) => call.key).filter((key) => !key.startsWith('GET /v1/movers?')),
+    ).toEqual(['GET /v1/me', 'GET /sanctum/csrf-cookie', 'POST /logout', 'GET /v1/me']);
+    act(() => {
+      navigate('/account');
+    });
+    expect(await screen.findByText('You are not signed in.')).toBeTruthy();
+    expect(screen.queryByText(/Signed in as/)).toBeNull();
+  });
+
   it('shows a failed first load as the problem block', async () => {
     stubAccountFetch({ 'GET /v1/me': problemResponse(serverErrorProblem('/v1/me')) });
     visit('/account');

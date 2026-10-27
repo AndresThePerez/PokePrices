@@ -108,6 +108,50 @@ async function request<T>(path: string, options: RequestOptions): Promise<ApiRes
   };
 }
 
+/** A 200 whose JSON is not the shape Fortify or the /v1 contract documents. */
+const UNEXPECTED_ANSWER: ApiFailure = {
+  ok: false,
+  status: 200,
+  type: 'about:blank',
+  title: 'The PokéPrices API sent an unexpected answer (HTTP 200)',
+  requestId: null,
+  problem: null,
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** The top level a page dereferences: `data` as a list or an object, and `meta` when it has one. */
+interface Envelope {
+  readonly data: 'list' | 'object';
+  readonly meta: boolean;
+}
+
+function hasEnvelope(body: unknown, envelope: Envelope): boolean {
+  if (!isRecord(body)) return false;
+  const data = envelope.data === 'list' ? Array.isArray(body.data) : isRecord(body.data);
+  return data && (!envelope.meta || isRecord(body.meta));
+}
+
+/**
+ * The envelope decoder: a success whose top level is not the documented envelope is the
+ * unexpected-answer failure, so the page shows its problem block instead of throwing in render.
+ * Failures pass through unchanged; the fields inside data are still trusted to the contract.
+ */
+async function decoded<T>(
+  pending: Promise<ApiResult<unknown>>,
+  envelope: Envelope,
+): Promise<ApiResult<T>> {
+  const result = await pending;
+  if (!result.ok) return result;
+  return hasEnvelope(result.data, envelope)
+    ? { ok: true, data: result.data as T }
+    : { ...UNEXPECTED_ANSWER };
+}
+
+const LIST_ENVELOPE: Envelope = { data: 'list', meta: true };
+
 /** GET /v1/cards?q=&page=&page_size= (the PokéSearch search, proxied by the API). */
 export function searchCards(
   query: CardSearchQuery,
@@ -148,7 +192,7 @@ const INVALID_ID: ApiFailure = {
 export function getCard(id: string, options: RequestOptions = {}): Promise<ApiResult<CardDetail>> {
   const segment = cardSegment(id);
   if (segment === null) return Promise.resolve({ ...INVALID_ID });
-  return request<CardDetail>(`/cards/${segment}`, options);
+  return decoded<CardDetail>(request(`/cards/${segment}`, options), { data: 'object', meta: true });
 }
 
 /** GET /v1/cards/{id}/prices?range=; the same one-segment id and collapsing guard as getCard. */
@@ -170,7 +214,7 @@ export function getMovers(
   options: RequestOptions = {},
 ): Promise<ApiResult<MoversPage>> {
   const params = new URLSearchParams({ direction, limit: String(limit) });
-  return request<MoversPage>(`/movers?${params.toString()}`, options);
+  return decoded<MoversPage>(request(`/movers?${params.toString()}`, options), LIST_ENVELOPE);
 }
 
 // ---- Accounts (P4 D11) --------------------------------------------------------------------------
@@ -392,9 +436,24 @@ async function settle<T>(
   };
 }
 
+const unauthenticatedWriteListeners = new Set<() => void>();
+
+/**
+ * Hears every non-GET account request that answers 401 (the session ended under a write), after
+ * its answer is read. The query client registers one while it is mounted and asks GET /v1/me again,
+ * as it does for a 401 query. Returns the function that stops listening.
+ */
+export function onUnauthenticatedWrite(listener: () => void): () => void {
+  unauthenticatedWriteListeners.add(listener);
+  return () => {
+    unauthenticatedWriteListeners.delete(listener);
+  };
+}
+
 /**
  * The account request (D11). A write first fetches the CSRF cookie when it is missing; a 419
- * answer fetches a fresh cookie and retries once, and a second 419 is the failure.
+ * answer fetches a fresh cookie and retries once, and a second 419 is the failure. A write that
+ * answers 401 tells the onUnauthenticatedWrite listeners.
  */
 async function accountRequest<T>(path: string, init: AccountInit): Promise<ApiResult<T>> {
   if (!isAccountPath(path)) return { ...INVALID_PATH };
@@ -406,23 +465,17 @@ async function accountRequest<T>(path: string, init: AccountInit): Promise<ApiRe
     response = await send(path, init);
   }
   if (response === null) return { ...UNREACHABLE };
-  return settle<T>(response, init.signal);
+  const result = await settle<T>(response, init.signal);
+  if (write && response.status === 401) {
+    for (const listener of [...unauthenticatedWriteListeners]) listener();
+  }
+  return result;
 }
 
 /** GET /v1/me: who is signed in. Signed out, the answer is a 401 failure. */
 export function getMe(options: RequestOptions = {}): Promise<ApiResult<MeBody>> {
   return accountRequest<MeBody>('/v1/me', { method: 'GET', signal: options.signal });
 }
-
-/** A 200 whose JSON is not the shape Fortify documents. */
-const UNEXPECTED_ANSWER: ApiFailure = {
-  ok: false,
-  status: 200,
-  type: 'about:blank',
-  title: 'The PokéPrices API sent an unexpected answer (HTTP 200)',
-  requestId: null,
-  problem: null,
-};
 
 /** The value of `key` when data is an object holding it, else undefined. */
 function field(data: unknown, key: string): unknown {
@@ -580,7 +633,10 @@ function variantPath(list: 'watchlist' | 'portfolio', variantKey: string): strin
 
 /** GET /v1/watchlist: the signed-in account's variants with their prices (401 signed out). */
 export function getWatchlist(options: RequestOptions = {}): Promise<ApiResult<WatchlistBody>> {
-  return accountRequest<WatchlistBody>('/v1/watchlist', { method: 'GET', signal: options.signal });
+  return decoded<WatchlistBody>(
+    accountRequest('/v1/watchlist', { method: 'GET', signal: options.signal }),
+    LIST_ENVELOPE,
+  );
 }
 
 /** PUT /v1/watchlist/{variantKey}: 200 whether it was added or already there. */
@@ -599,7 +655,10 @@ export function deleteWatchlistItem(variantKey: string): Promise<ApiResult<undef
 
 /** GET /v1/portfolio: the holdings, their values and the total, all computed by the API. */
 export function getPortfolio(options: RequestOptions = {}): Promise<ApiResult<PortfolioBody>> {
-  return accountRequest<PortfolioBody>('/v1/portfolio', { method: 'GET', signal: options.signal });
+  return decoded<PortfolioBody>(
+    accountRequest('/v1/portfolio', { method: 'GET', signal: options.signal }),
+    LIST_ENVELOPE,
+  );
 }
 
 /**
@@ -668,7 +727,10 @@ function webhookPath(id: number): string | null {
 
 /** GET /v1/webhooks: the signed-in account's webhooks, never a URL or a secret (401 signed out). */
 export function getWebhooks(options: RequestOptions = {}): Promise<ApiResult<WebhooksBody>> {
-  return accountRequest<WebhooksBody>('/v1/webhooks', { method: 'GET', signal: options.signal });
+  return decoded<WebhooksBody>(
+    accountRequest('/v1/webhooks', { method: 'GET', signal: options.signal }),
+    LIST_ENVELOPE,
+  );
 }
 
 /** POST /v1/webhooks { kind, url, description? }: 201 with the secret of a signed webhook, once. */
@@ -703,10 +765,10 @@ export type AlertEntry = operations['putAlert']['responses'][200]['content']['ap
 export function getNotifications(
   options: RequestOptions = {},
 ): Promise<ApiResult<NotificationsBody>> {
-  return accountRequest<NotificationsBody>('/v1/me/notifications', {
-    method: 'GET',
-    signal: options.signal,
-  });
+  return decoded<NotificationsBody>(
+    accountRequest('/v1/me/notifications', { method: 'GET', signal: options.signal }),
+    { data: 'object', meta: false },
+  );
 }
 
 /** PUT /v1/me/notifications { channel, digest }: 200 with the saved settings. */

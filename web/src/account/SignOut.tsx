@@ -13,9 +13,9 @@ import { DEMO_NOTICE } from './lists';
 import { ME_KEY, endSession, useKnownSession } from './session';
 
 /**
- * Signs out (POST /logout), marks ['me'] signed out, signals the other tabs, then opens /. Given a
- * `heading`, the button sits at the right of the heading's row and a failure's problem block
- * follows the row as a sibling, so it spans the whole panel the row is in.
+ * Signs out (POST /logout; a 401 is already signed out), marks ['me'] signed out, signals the other
+ * tabs, then opens /. Given a `heading`, the button sits at the right of the heading's row and a
+ * failure's problem block follows the row as a sibling, so it spans the whole panel the row is in.
  */
 export function SignOutButton({
   quiet = false,
@@ -35,14 +35,17 @@ export function SignOutButton({
     setFailure(null);
     const result = await signOut();
     setPending(false);
-    if (!result.ok) {
+    // A 401 means the session had already ended: that is signed out too, not a failure.
+    if (!result.ok && result.status !== 401) {
       setFailure(result);
       return;
     }
-    // Signed out at once (no stale "Signed in as" on the next visit), then confirmed by the API.
+    // Signed out at once (no stale "Signed in as" on the next visit), then confirmed by the API. A
+    // 401 already asked GET /v1/me again (the query client hears every 401 write), so only a
+    // successful sign-out asks here: either way, one request.
     queryClient.setQueryData(ME_KEY, null);
     endSession(queryClient);
-    void queryClient.invalidateQueries({ queryKey: ME_KEY });
+    if (result.ok) void queryClient.invalidateQueries({ queryKey: ME_KEY });
     navigate('/');
   }
 

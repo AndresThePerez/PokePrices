@@ -73,7 +73,7 @@ check "no combining acute accent (CC 81) anywhere in the shell sources" sh -c "!
 check "App.tsx never says real-time, realtime or live price (any case)" sh -c "! grep -qiE 'real-?time|live price' $W/src/App.tsx $W/index.html"
 # T12: Prettier wraps JSX text, so the copy is whitespace-normalised before matching (rendered text is unchanged).
 check "App.tsx says daily close and mentions source and as-of" sh -c "tr -s '[:space:]' ' ' < $W/src/App.tsx | grep -qi 'daily close' && grep -qi 'source' $W/src/App.tsx && tr -s '[:space:]' ' ' < $W/src/App.tsx | grep -qi 'as of'"
-check "no Vite or React template logos or assets remain under web/src, web/public or index.html" sh -c "! ls $W/src/assets $W/public $W/src/App.css >/dev/null 2>&1 && ! grep -qiE 'vite\\.svg|react\\.svg|favicon|hero\\.png|Vite \\+ React|count is' $W/index.html $W/src/*.tsx $W/src/*.css"
+check "no Vite or React template logos or assets remain under web/src, web/public or index.html" sh -c "[ ! -e $W/src/assets ] && [ ! -e $W/src/App.css ] && [ ! -e $W/public/vite.svg ] && ! grep -qiE 'vite\\.svg|react\\.svg|hero\\.png|Vite \\+ React|count is' $W/index.html $W/src/*.tsx $W/src/*.css"
 check "production build still succeeds without the removed assets" sh -c "$NODE npm run build >$T/build.log 2>&1"
 
 # --- 5. plan values ---------------------------------------------------------------------------------

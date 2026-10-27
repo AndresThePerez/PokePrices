@@ -3,7 +3,16 @@
 // GET /v1/me again. Public keys are never touched.
 import { describe, expect, it } from 'vitest';
 import { endSession } from './account/session';
+import { deleteWatchlistItem } from './api/client';
 import { createQueryClient } from './query';
+import {
+  clearXsrfCookie,
+  problemResponse,
+  serverErrorProblem,
+  setXsrfCookie,
+  stubAccountFetch,
+  unauthenticatedProblem,
+} from './test/fixtures';
 
 const A = { email: 'collector@example.com', email_verified: true, two_factor: false };
 const B = { ...A, email: 'second@example.com' };
@@ -138,6 +147,44 @@ describe('createQueryClient: a 401 on a per-user query', () => {
       })
       .catch(() => undefined);
     expect(client.getQueryState(['me'])?.isInvalidated).toBe(false);
+  });
+});
+
+describe('createQueryClient: a 401 on an account write (c2)', () => {
+  it('invalidates ["me"] while the client is mounted, and no longer once it is unmounted', async () => {
+    setXsrfCookie();
+    stubAccountFetch({
+      'DELETE /v1/watchlist/base1-4%3Aholo%3A1st%3A-': problemResponse({
+        ...unauthenticatedProblem,
+        instance: '/v1/watchlist',
+      }),
+    });
+    const client = createQueryClient();
+    client.mount();
+    client.setQueryData(['me'], A);
+    await deleteWatchlistItem('base1-4:holo:1st:-');
+    expect(client.getQueryState(['me'])?.isInvalidated).toBe(true);
+    client.unmount();
+    client.setQueryData(['me'], A);
+    await deleteWatchlistItem('base1-4:holo:1st:-');
+    expect(client.getQueryState(['me'])?.isInvalidated).toBe(false);
+    clearXsrfCookie();
+  });
+
+  it('leaves ["me"] alone for a write that fails any other way', async () => {
+    setXsrfCookie();
+    stubAccountFetch({
+      'DELETE /v1/watchlist/base1-4%3Aholo%3A1st%3A-': problemResponse(
+        serverErrorProblem('/v1/watchlist'),
+      ),
+    });
+    const client = createQueryClient();
+    client.mount();
+    client.setQueryData(['me'], A);
+    await deleteWatchlistItem('base1-4:holo:1st:-');
+    expect(client.getQueryState(['me'])?.isInvalidated).toBe(false);
+    client.unmount();
+    clearXsrfCookie();
   });
 });
 
