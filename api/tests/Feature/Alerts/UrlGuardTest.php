@@ -342,3 +342,78 @@ it('allows the IPv6 documentation ranges and a public IPv6 address, as a literal
         ->and($resolved->error)->toBeNull()
         ->and($resolved->address)->toBe($address);
 })->with(['2001:db8::1', '3fff::1', '2606:4700::1111']);
+
+// Reviewer edge cases for plan Q1-i2 T03: the prefix arithmetic at its edges, textual forms, embedded IPv4, and a mixed answer.
+it('draws the global-unicast and IETF-assignment lines exactly at their prefix edges', function (string $address, bool $allowed): void {
+    FakeHostResolver::install(['hooks.example.com' => [$address]]);
+    $guard = app(UrlGuard::class);
+    $expected = $allowed ? null : 'blocked_address';
+
+    expect($guard->check("https://[{$address}]/hook")->error)->toBe($expected, "literal {$address}")
+        ->and($guard->check('https://hooks.example.com/hook')->error)->toBe($expected, "resolved {$address}")
+        ->and(UrlGuard::blocked($address))->toBe(! $allowed);
+})->with([
+    'first of 2000::/3' => ['2000::', true],
+    'last of 2000::/3' => ['3fff:ffff:ffff:ffff:ffff:ffff:ffff:ffff', true],
+    'first past 2000::/3' => ['4000::', false],
+    'last before 2000::/3' => ['1fff:ffff:ffff:ffff:ffff:ffff:ffff:ffff', false],
+    'first of 2001::/23' => ['2001::', false],
+    'last of 2001::/23' => ['2001:1ff:ffff:ffff:ffff:ffff:ffff:ffff', false],
+    'first past 2001::/23' => ['2001:200::', true],
+    'just before 2001::/23' => ['2000:ffff:ffff:ffff:ffff:ffff:ffff:ffff', true],
+    'first of 3fff::/20' => ['3fff::', true],
+    'last of 3fff::/20' => ['3fff:fff:ffff:ffff:ffff:ffff:ffff:ffff', true],
+    'first of 2001:db8::/32' => ['2001:db8::', true],
+    'last of 2001:db8::/32' => ['2001:db8:ffff:ffff:ffff:ffff:ffff:ffff', true],
+]);
+
+it('reads uppercase, zero-padded and expanded IPv6 text the same as its short form, and refuses any zone id', function (string $host, bool $allowed): void {
+    FakeHostResolver::install([]);
+    $result = app(UrlGuard::class)->check("https://{$host}/hook");
+
+    expect($result->error === null)->toBe($allowed, $host);
+})->with([
+    'uppercase documentation' => ['[2001:DB8::1]', true],
+    'zero-padded documentation' => ['[2001:0db8:0000:0000:0000:0000:0000:0001]', true],
+    'zero-padded ORCHID' => ['[2001:0010:0000:0000:0000:0000:0000:0001]', false],
+    'uppercase Teredo' => ['[2001:0:4136:E378:8000:63BF:3FFF:FDD2]', false],
+    'uppercase link-local' => ['[FE80::1]', false],
+    'uppercase site-local' => ['[FEC0::1]', false],
+    'zone on link-local' => ['[fe80::1%eth0]', false],
+    'encoded zone on link-local' => ['[fe80::1%25eth0]', false],
+    'zone on a global address' => ['[2606:4700::1111%25eth0]', false],
+    'zone on a documentation address' => ['[2001:db8::1%eth0]', false],
+    'unbracketed global address' => ['2606:4700::1111', false],
+]);
+
+it('refuses every IPv6 spelling that carries a private IPv4 target, as a literal and as a resolved address', function (string $address): void {
+    FakeHostResolver::install(['hooks.example.com' => [$address]]);
+    $guard = app(UrlGuard::class);
+
+    expect($guard->check("https://[{$address}]/hook")->error)->toBe('blocked_address', "literal {$address}")
+        ->and($guard->check('https://hooks.example.com/hook')->error)->toBe('blocked_address', "resolved {$address}");
+})->with([
+    'compatible loopback' => ['::127.0.0.1'],
+    'compatible benchmarking' => ['::198.18.0.1'],
+    'compatible metadata' => ['::169.254.169.254'],
+    'compatible CGNAT in hex' => ['::6440:1'],
+    'mapped benchmarking' => ['::ffff:198.18.0.1'],
+    'mapped loopback in uppercase hex' => ['::FFFF:7F00:1'],
+    'translated benchmarking' => ['::ffff:0:198.18.0.1'],
+    'NAT64 benchmarking' => ['64:ff9b::198.18.0.1'],
+    'local-use NAT64 loopback' => ['64:ff9b:1::127.0.0.1'],
+    '6to4 loopback' => ['2002:7f00:1::'],
+    'Teredo-wrapped loopback' => ['2001:0:7f00:1::'],
+    'zero-padded mapped metadata' => ['0:0:0:0:0:ffff:a9fe:a9fe'],
+]);
+
+it('refuses a host when any one of its IPv6 answers is outside global unicast, wherever it sits in the list', function (array $answers): void {
+    FakeHostResolver::install(['hooks.example.com' => $answers]);
+
+    expect(app(UrlGuard::class)->check('https://hooks.example.com/hook')->error)->toBe('blocked_address');
+})->with([
+    'bad IPv6 last' => [['2606:4700::1111', '2001:db8::1', 'fec0::1']],
+    'bad IPv6 first' => [['2001::1', '2606:4700::1111']],
+    'bad IPv6 between IPv4' => [['203.0.113.10', '5f00::1', '198.51.100.7']],
+    'unparseable text' => [['2606:4700::1111', 'fe80::1%eth0']],
+]);

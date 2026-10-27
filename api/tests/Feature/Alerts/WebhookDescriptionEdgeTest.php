@@ -95,3 +95,74 @@ it('refuses a form-encoded description that is not UTF-8 with 422 and writes not
         ->and($response->json('errors.description'))->toBe(['A description must be UTF-8 text.'])
         ->and(DB::table('webhook_endpoints')->count())->toBe(0);
 });
+
+// Reviewer edge cases for plan Q1-i2 T03: every kind of broken UTF-8 answers 422 before any other description rule.
+const T3E_UTF8 = 'A description must be UTF-8 text.';
+
+it('refuses every shape of broken UTF-8 with only the UTF-8 message, ahead of the length and control rules', function (string $bytes): void {
+    AccountRows::signIn($this, Accounts::user());
+
+    $response = $this->withHeaders(Accounts::FIRST_PARTY)->post('/v1/webhooks', [
+        'kind' => 'standard', 'url' => T4E_URL, 'description' => $bytes,
+    ]);
+
+    expect($response->getStatusCode())->toBe(422)
+        ->and(array_keys($response->json('errors')))->toBe(['description'])
+        ->and($response->json('errors.description'))->toBe([T3E_UTF8])
+        ->and(DB::table('webhook_endpoints')->count())->toBe(0);
+})->with([
+    'overlong NUL' => ["a\xC0\x80b"],
+    'surrogate half' => ["a\xED\xA0\x80b"],
+    'past U+10FFFF' => ["a\xF4\x90\x80\x80"],
+    'truncated three-byte' => ["ab\xE2\x82"],
+    'lone continuation' => ["\x80"],
+    'bare 0xFF' => ["\xFF"],
+    'too long and broken' => [str_repeat('a', 150)."\xC3\x28"],
+    'broken with a bidi override' => ["a\u{202E}\xC3\x28"],
+]);
+
+it('answers a raw JSON body that is not UTF-8 with 422 and writes nothing', function (): void {
+    AccountRows::signIn($this, Accounts::user());
+
+    $response = $this->withHeaders(Accounts::FIRST_PARTY)->call('POST', '/v1/webhooks', [], [], [], [
+        'CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => 'application/json',
+    ], '{"kind":"standard","url":"'.T4E_URL."\",\"description\":\"bad\xC3\x28bytes\"}");
+
+    expect($response->getStatusCode())->toBe(422)
+        ->and(DB::table('webhook_endpoints')->count())->toBe(0);
+});
+
+it('answers an escaped lone surrogate in a JSON description with 422 and writes nothing', function (): void {
+    AccountRows::signIn($this, Accounts::user());
+
+    $response = $this->withHeaders(Accounts::FIRST_PARTY)->call('POST', '/v1/webhooks', [], [], [], [
+        'CONTENT_TYPE' => 'application/json', 'HTTP_ACCEPT' => 'application/json',
+    ], '{"kind":"standard","url":"'.T4E_URL.'","description":"a\\ud800b"}');
+
+    expect($response->getStatusCode())->toBe(422)
+        ->and(DB::table('webhook_endpoints')->count())->toBe(0);
+});
+
+it('stores valid multibyte descriptions byte for byte and leaves a NUL byte to the control-character rule', function (): void {
+    foreach (['é', '日本語のメモ', "e\u{301}", '👍🏽 ok'] as $text) {
+        $response = t4eStore($this, ['description' => $text]);
+        $response->assertCreated();
+        expect($response->json('data.description'))->toBe($text);
+    }
+
+    $nul = t4eStore($this, ['description' => "a\0b"]);
+    expect($nul->getStatusCode())->toBe(422)
+        ->and($nul->json('errors.description'))->toBe([T4E_MESSAGE]);
+});
+
+it('answers broken UTF-8 in the kind or url field with 422 on that field, never a 500', function (string $field): void {
+    AccountRows::signIn($this, Accounts::user());
+    $body = ['kind' => 'standard', 'url' => T4E_URL];
+    $body[$field] .= "\xC3\x28";
+
+    $response = $this->withHeaders(Accounts::FIRST_PARTY)->post('/v1/webhooks', $body);
+
+    expect($response->getStatusCode())->toBe(422)
+        ->and(array_keys($response->json('errors')))->toBe([$field])
+        ->and(DB::table('webhook_endpoints')->count())->toBe(0);
+})->with(['kind', 'url']);
