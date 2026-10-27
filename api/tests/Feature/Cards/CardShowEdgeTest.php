@@ -6,6 +6,7 @@ use Illuminate\Cache\RateLimiter;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter as RateLimiterFacade;
@@ -329,4 +330,158 @@ it('restamps a row flagged before any seed was recorded', function (): void {
     expect($response->json('catalog_missing'))->toBeTrue()
         ->and(count($writes))->toBe(1)
         ->and(DB::table('card_variants')->where('card_id', 'base1-4')->value('catalog_seed_ref'))->toBe(T43E_SEED_REF);
+});
+
+/** Counts UPDATE statements on card_variants; read the count from the returned ArrayObject. */
+function t43eReviewUpdates(): ArrayObject
+{
+    $writes = new ArrayObject;
+    DB::listen(function (QueryExecuted $query) use ($writes): void {
+        if (str_starts_with(strtolower(ltrim($query->sql)), 'update "card_variants"')) {
+            $writes->append($query->sql);
+        }
+    });
+
+    return $writes;
+}
+
+it('keeps a body outside the contract out of the card key and the last-good key, so an outage after it answers 503', function (array $card): void {
+    t43eVariant('base1-4', 'holo', 'ok');
+    t43eFake('base1-4', t43eAnswer($card));
+
+    $broken = $this->getJson('/v1/cards/base1-4');
+    $cached = [
+        Cache::store('redis')->get('catalog:v1:card:'.T43E_SEED_REF.':base1-4'),
+        Cache::store('redis')->get('catalog:v1:lastgood:card:base1-4'),
+    ];
+    Http::swap(new Factory);
+    Http::preventStrayRequests();
+    Http::fake(['*' => Http::response(['error' => 'down'], 503)]);
+    $outage = $this->getJson('/v1/cards/base1-4');
+
+    expect($broken->getStatusCode())->toBe(502)
+        ->and($cached)->toBe([null, null])
+        ->and($outage->getStatusCode())->toBe(503);
+})->with([
+    'a null name' => [fn () => t43eCard(overrides: ['name' => null])],
+    'the id in another case' => [fn () => t43eCard('BASE1-4')],
+    'the id with a trailing newline' => [fn () => t43eCard("base1-4\n")],
+    'the id with a trailing space' => [fn () => t43eCard('base1-4 ')],
+    'set_total as a numeric string' => [fn () => t43eCard(overrides: ['set_total' => '102'])],
+    'hp as a fraction' => [fn () => t43eCard(overrides: ['hp' => 120.5])],
+    'types as an object' => [fn () => t43eCard(overrides: ['types' => ['a' => 'Fire']])],
+]);
+
+it('serves the earlier copy while a stale card refreshes against a body outside the contract, and never turns it into a 502', function (): void {
+    t43eVariant('base1-4', 'holo', 'ok');
+    t43eFake('base1-4', t43eAnswer(t43eCard()));
+    $this->getJson('/v1/cards/base1-4')->assertOk();
+
+    $this->travel(3601)->seconds(); // past the soft window [3600, 86400], inside the hard one
+    Http::swap(new Factory);
+    Http::preventStrayRequests();
+    Http::fake([
+        T43E_BASE.'/api/meta' => Http::response(['version' => 'test', 'commit' => '0000000', 'built' => '', 'docs' => 1, 'seed' => ['ref' => T43E_SEED_REF, 'seeded_at' => '2026-10-11T20:05:45Z'], 'request_id' => 'meta']),
+        T43E_BASE.'/api/v1/cards/base1-4' => Http::response(t43eAnswer(t43eCard(overrides: ['name' => null]))),
+    ]);
+    $stale = $this->getJson('/v1/cards/base1-4');
+    $after = $this->getJson('/v1/cards/base1-4');
+
+    expect($stale->getStatusCode())->toBe(200)
+        ->and($stale->json('data.name'))->toBe('Charizard')
+        ->and($after->getStatusCode())->toBe(200)
+        ->and($after->json('data.name'))->toBe('Charizard')
+        ->and(Http::recorded(fn ($request): bool => parse_url($request->url(), PHP_URL_PATH) === '/api/v1/cards/base1-4')->count())->toBeGreaterThanOrEqual(1);
+});
+
+it('still accepts every optional field absent, empty lists, a zero set_total and a seed with a null part, and reads the cached copy back without a second call', function (array $overrides, array $seed): void {
+    t43eVariant('base1-4', 'holo', 'ok');
+    $card = array_merge(array_diff_key(t43eCard(), ['hp' => 1, 'rarity' => 1, 'artist' => 1, 'subtypes' => 1, 'types' => 1]), $overrides);
+    t43eFake('base1-4', ['data' => $card, 'seed' => $seed]);
+
+    $one = $this->getJson('/v1/cards/base1-4');
+    $two = $this->getJson('/v1/cards/base1-4');
+
+    expect($one->getStatusCode())->toBe(200)
+        ->and($two->getStatusCode())->toBe(200)
+        ->and($two->json('data.id'))->toBe('base1-4');
+    Http::assertSentCount(1);
+})->with([
+    'no optional field at all' => [[], ['ref' => null, 'seeded_at' => null]],
+    'a zero set_total and empty lists' => [['set_total' => 0, 'subtypes' => [], 'types' => []], ['ref' => null, 'seeded_at' => null]],
+    'a seed ref with a null seeded_at' => [[], ['ref' => T43E_SEED_REF, 'seeded_at' => null]],
+    'a null seed ref with a seeded_at' => [[], ['ref' => null, 'seeded_at' => '2026-10-11T20:05:45Z']],
+    'an unknown field' => [['evolves_to' => ['Charizard'], 'hp' => 0], ['ref' => null, 'seeded_at' => null]],
+]);
+
+it('answers 502, never 500, for a cached card copy with the wrong id, a list for data or no seed', function (array $answer): void {
+    Cache::store('redis')->flexible('catalog:v1:card:'.T43E_SEED_REF.':base1-4', [3600, 86400], fn (): array => ['data' => $answer, 'fetched_at' => Carbon::now()->getTimestamp()]);
+
+    $response = $this->getJson('/v1/cards/base1-4');
+
+    expect($response->getStatusCode())->toBe(502)
+        ->and($response->json('type'))->toEndWith('upstream-contract');
+})->with([
+    'another card id' => [fn () => t43eAnswer(t43eCard('base1-5'))],
+    'the id in another case' => [fn () => t43eAnswer(t43eCard('Base1-4'))],
+    'a list for data' => [['data' => [1, 2], 'seed' => ['ref' => null, 'seeded_at' => null]]],
+    'no seed' => [['data' => t43eCard()]],
+    'an empty answer' => [[]],
+]);
+
+it('writes nothing on a repeated miss of an index with no seed ref, where the rows were flagged under that null', function (): void {
+    CatalogCache::flush($this->catalogPrefix);
+    $this->catalogPrefix = CatalogCache::isolate();
+    CatalogCache::primeSeedRef(T43E_BASE, null);
+    t43eVariant('base1-4', 'holo', 'unverified');
+    t43eFake('base1-4', ['error' => ['code' => 'not_found']], 404);
+    $writes = t43eReviewUpdates();
+
+    $one = $this->getJson('/v1/cards/base1-4');
+    $this->travel(5)->seconds();
+    $two = $this->getJson('/v1/cards/base1-4');
+
+    expect($one->json('catalog_missing'))->toBeTrue()
+        ->and($two->json('catalog_missing'))->toBeTrue()
+        ->and(count($writes))->toBe(1)
+        ->and(DB::table('card_variants')->where('card_id', 'base1-4')->value('catalog_status'))->toBe('catalog_missing')
+        ->and(DB::table('card_variants')->where('card_id', 'base1-4')->value('catalog_seed_ref'))->toBeNull();
+});
+
+it('flags only the missing card: another card keeps its status, seed ref and check time, and an unverified row under the same seed is flagged', function (): void {
+    t43eVariant('base1-4', 'holo', 'unverified');
+    t43eVariant('base1-5', 'holo', 'ok');
+    t43eVariant('base1-45', 'holo', 'catalog_missing');
+    DB::table('card_variants')->where('card_id', 'base1-4')->update(['catalog_seed_ref' => T43E_SEED_REF]);
+    DB::table('card_variants')->where('card_id', '<>', 'base1-4')->update(['catalog_seed_ref' => 'other', 'catalog_checked_at' => '2026-01-02 03:04:05+00']);
+    t43eFake('base1-4', ['error' => ['code' => 'not_found']], 404);
+    $writes = t43eReviewUpdates();
+
+    $response = $this->getJson('/v1/cards/base1-4');
+
+    $rows = DB::table('card_variants')->orderBy('card_id')->get()->keyBy('card_id');
+    expect($response->getStatusCode())->toBe(404)
+        ->and($response->json('catalog_missing'))->toBeTrue()
+        ->and(count($writes))->toBe(1)
+        ->and($rows['base1-4']->catalog_status)->toBe('catalog_missing')
+        ->and([$rows['base1-5']->catalog_status, $rows['base1-5']->catalog_seed_ref])->toBe(['ok', 'other'])
+        ->and([$rows['base1-45']->catalog_status, $rows['base1-45']->catalog_seed_ref])->toBe(['catalog_missing', 'other'])
+        ->and(Carbon::parse((string) $rows['base1-5']->catalog_checked_at)->equalTo(Carbon::parse('2026-01-02 03:04:05+00')))->toBeTrue();
+});
+
+it('answers 404 with catalog_missing false and writes and creates no row for a card PokéPrices holds no rows for, on every repeat', function (): void {
+    t43eVariant('base1-5', 'holo', 'ok');
+    t43eFake('base1-4', ['error' => ['code' => 'not_found']], 404);
+    $writes = t43eReviewUpdates();
+
+    $one = $this->getJson('/v1/cards/base1-4');
+    $two = $this->getJson('/v1/cards/base1-4');
+
+    expect($one->getStatusCode())->toBe(404)
+        ->and($one->json('catalog_missing'))->toBeFalse()
+        ->and($two->getStatusCode())->toBe(404)
+        ->and($two->json('catalog_missing'))->toBeFalse()
+        ->and(count($writes))->toBe(0)
+        ->and(DB::table('card_variants')->count())->toBe(1)
+        ->and(DB::table('card_variants')->value('catalog_status'))->toBe('ok');
 });
