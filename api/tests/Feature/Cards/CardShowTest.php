@@ -10,6 +10,7 @@ use Illuminate\Database\LazyLoadingViolationException;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\RateLimiter as RateLimiterFacade;
@@ -559,3 +560,70 @@ it('reads a card with 4 queries whether it has 1 or 24 variant rows', function (
 
     expect($counts)->toBe(['base1-4' => 4, 'base1-5' => 4]);
 })->group('P8');
+
+/** How many GET /api/v1/cards/{id} requests the fake recorded for one card. */
+function t43CardCalls(string $id): int
+{
+    return Http::recorded(fn ($request): bool => parse_url($request->url(), PHP_URL_PATH) === '/api/v1/cards/'.rawurlencode($id))->count();
+}
+
+it('never caches a card answer outside the contract: a 502 then a good answer is 200 after two upstream calls', function (): void {
+    t43Variants('base1-4', 1, t43Build());
+    Http::fake([T43_BASE.'/api/v1/cards/base1-4' => Http::sequence()
+        ->push(t43Answer(t43Card(overrides: ['name' => null])))
+        ->push(t43Answer(t43Card()))]);
+
+    $first = $this->getJson('/v1/cards/base1-4');
+    $second = $this->getJson('/v1/cards/base1-4');
+
+    expect($first->getStatusCode())->toBe(502)
+        ->and($first->json('type'))->toBe(T43_PROBLEM_BASE.'upstream-contract')
+        ->and($second->getStatusCode())->toBe(200)
+        ->and($second->json('data.name'))->toBe('Charizard')
+        ->and($second->json('meta'))->toBe(['degraded' => false])
+        ->and(t43CardCalls('base1-4'))->toBe(2);
+});
+
+it('keeps the earlier good last-good copy when a later answer is outside the contract', function (): void {
+    t43Variants('base1-4', 1, t43Build());
+    $this->freezeSecond();
+    $fetchedAt = Carbon::now()->utc()->format('Y-m-d\TH:i:s\Z');
+    t43FakeCard('base1-4', t43Answer(t43Card()));
+    $this->getJson('/v1/cards/base1-4')->assertOk();
+
+    $this->travel(86401)->seconds(); // past both flexible windows of the card key [3600, 86400]
+    Http::swap(new Factory);
+    Http::preventStrayRequests();
+    Http::fake([
+        T43_BASE.'/api/meta' => Http::response(['version' => 'test', 'commit' => '0000000', 'built' => '', 'docs' => 1, 'seed' => ['ref' => T43_SEED_REF, 'seeded_at' => '2026-10-11T20:05:45Z'], 'request_id' => 'meta']),
+        T43_BASE.'/api/v1/cards/base1-4' => Http::response(t43Answer(t43Card(overrides: ['name' => null]))),
+    ]);
+    $broken = $this->getJson('/v1/cards/base1-4');
+    t43UpstreamDown();
+    $degraded = $this->getJson('/v1/cards/base1-4');
+
+    expect($broken->getStatusCode())->toBe(502)
+        ->and($degraded->getStatusCode())->toBe(200)
+        ->and($degraded->json('meta'))->toBe(['degraded' => true, 'stale_since' => $fetchedAt])
+        ->and($degraded->json('data.name'))->toBe('Charizard');
+});
+
+it('answers 502, never 500, for a card copy cached outside the contract before the client checked it', function (string $key): void {
+    // The copy as the code before this check stored it: flexible on the card key, a plain put on the last-good key.
+    $envelope = ['data' => t43Answer(t43Card(overrides: ['name' => null])), 'fetched_at' => Carbon::now()->getTimestamp()];
+    if (str_contains($key, 'lastgood')) {
+        Cache::store('redis')->put($key, $envelope, 3600);
+        t43UpstreamDown();
+    } else {
+        Cache::store('redis')->flexible(str_replace('{ref}', T43_SEED_REF, $key), [3600, 86400], fn (): array => $envelope);
+    }
+
+    $response = $this->getJson('/v1/cards/base1-4');
+
+    expect($response->getStatusCode())->toBe(502)
+        ->and($response->json('type'))->toBe(T43_PROBLEM_BASE.'upstream-contract')
+        ->and($response->headers->has('ETag'))->toBeFalse();
+})->with([
+    'the card key' => ['catalog:v1:card:{ref}:base1-4'],
+    'the last-good key' => ['catalog:v1:lastgood:card:base1-4'],
+]);

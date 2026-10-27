@@ -24,7 +24,12 @@ uses(TestCase::class);
 
 const T34E_BASE = 'http://192.0.2.10:8081';
 
-const T34E_CARD = ['data' => ['id' => 'base1-4'], 'seed' => ['ref' => null, 'seeded_at' => null]];
+/** A PokéSearch card answer inside the contract: every required field, no optional one, an unseeded index. */
+const T34E_CARD = ['data' => [
+    'id' => 'base1-4', 'name' => 'Charizard', 'supertype' => 'Pokémon', 'number' => '4', 'set_id' => 'base1',
+    'set_name' => 'Base', 'set_series' => 'Base', 'set_total' => 102, 'release_date' => '1999-01-09',
+    'image_small' => 'https://images.example.com/base1/4.png', 'image_large' => 'https://images.example.com/base1/4_hires.png',
+], 'seed' => ['ref' => null, 'seeded_at' => null]];
 
 beforeEach(function (): void {
     config(['services.pokesearch.url' => T34E_BASE, 'services.pokesearch.api_key' => null]);

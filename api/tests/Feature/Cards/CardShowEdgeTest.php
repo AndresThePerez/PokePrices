@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Cache\RateLimiter;
+use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -260,4 +261,72 @@ it('does not give a problem answer a public Cache-Control or an ETag', function 
         ->and($response->headers->has('ETag'))->toBeFalse()
         ->and((string) $response->headers->get('Cache-Control'))->not->toContain('public')
         ->and((string) $response->headers->get('Cache-Control'))->not->toContain('stale-while-revalidate');
+});
+
+/** Starts counting UPDATE statements on card_variants; read the count from the returned ArrayObject. */
+function t43eCountVariantUpdates(): ArrayObject
+{
+    $writes = new ArrayObject;
+    DB::listen(function (QueryExecuted $query) use ($writes): void {
+        if (str_starts_with(strtolower(ltrim($query->sql)), 'update "card_variants"')) {
+            $writes->append($query->sql);
+        }
+    });
+
+    return $writes;
+}
+
+it('flags a missing card once: a repeated miss under the same seed writes no row', function (): void {
+    t43eVariant('base1-4', 'holo', 'ok');
+    t43eVariant('base1-4', 'normal', 'ok');
+    t43eFake('base1-4', ['error' => ['code' => 'not_found']], 404);
+    $writes = t43eCountVariantUpdates();
+    $this->freezeSecond();
+
+    $one = $this->getJson('/v1/cards/base1-4');
+    $stamp = DB::table('card_variants')->where('card_id', 'base1-4')->pluck('catalog_checked_at')->unique()->all();
+    $this->travel(5)->seconds();
+    $two = $this->getJson('/v1/cards/base1-4');
+
+    expect($one->json('catalog_missing'))->toBeTrue()
+        ->and($two->json('catalog_missing'))->toBeTrue()
+        ->and(count($writes))->toBe(1)
+        ->and(DB::table('card_variants')->where('card_id', 'base1-4')->pluck('catalog_checked_at')->unique()->all())->toBe($stamp)
+        ->and(DB::table('card_variants')->where('card_id', 'base1-4')->pluck('catalog_seed_ref')->unique()->all())->toBe([T43E_SEED_REF]);
+});
+
+it('restamps a flagged row once when the seed changed, and flags only the rows not yet flagged under this seed', function (): void {
+    t43eVariant('base1-4', 'holo', 'catalog_missing');
+    t43eVariant('base1-4', 'normal', 'catalog_missing');
+    t43eVariant('base1-4', 'reverse', 'ok');
+    DB::table('card_variants')->where('variant_key', 'base1-4:holo:-:-')->update(['catalog_seed_ref' => 'old', 'catalog_checked_at' => '2026-01-02 03:04:05+00']);
+    DB::table('card_variants')->where('variant_key', 'base1-4:normal:-:-')->update(['catalog_seed_ref' => T43E_SEED_REF, 'catalog_checked_at' => '2026-01-02 03:04:05+00']);
+    t43eFake('base1-4', ['error' => ['code' => 'not_found']], 404);
+    $writes = t43eCountVariantUpdates();
+    $this->freezeSecond();
+
+    $one = $this->getJson('/v1/cards/base1-4');
+    $two = $this->getJson('/v1/cards/base1-4');
+
+    $rows = DB::table('card_variants')->where('card_id', 'base1-4')->orderBy('variant_key')->get()->keyBy('variant_key');
+    expect($one->json('catalog_missing'))->toBeTrue()
+        ->and($two->json('catalog_missing'))->toBeTrue()
+        ->and(count($writes))->toBe(1)
+        ->and($rows->pluck('catalog_status')->unique()->all())->toBe(['catalog_missing'])
+        ->and($rows->pluck('catalog_seed_ref')->unique()->all())->toBe([T43E_SEED_REF])
+        ->and(Carbon::parse((string) $rows['base1-4:holo:-:-']->catalog_checked_at)->equalTo(Carbon::now()))->toBeTrue()
+        ->and(Carbon::parse((string) $rows['base1-4:reverse:-:-']->catalog_checked_at)->equalTo(Carbon::now()))->toBeTrue()
+        ->and(Carbon::parse((string) $rows['base1-4:normal:-:-']->catalog_checked_at)->equalTo(Carbon::parse('2026-01-02 03:04:05+00')))->toBeTrue();
+});
+
+it('restamps a row flagged before any seed was recorded', function (): void {
+    t43eVariant('base1-4', 'holo', 'catalog_missing');
+    t43eFake('base1-4', ['error' => ['code' => 'not_found']], 404);
+    $writes = t43eCountVariantUpdates();
+
+    $response = $this->getJson('/v1/cards/base1-4');
+
+    expect($response->json('catalog_missing'))->toBeTrue()
+        ->and(count($writes))->toBe(1)
+        ->and(DB::table('card_variants')->where('card_id', 'base1-4')->value('catalog_seed_ref'))->toBe(T43E_SEED_REF);
 });

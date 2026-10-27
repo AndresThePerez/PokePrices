@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources;
 
 use App\Domain\Catalog\CatalogResult;
+use App\Domain\Catalog\PokeSearchClient;
 use App\Domain\Mapping\Models\CardVariant;
 use App\Http\Problems\UpstreamContract;
 use Illuminate\Database\Eloquent\Collection;
@@ -23,17 +24,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
  */
 final class CardResource extends JsonResource
 {
-    /** PokéSearch card fields every answer carries as strings (docs/api/schema/card.json in PokéSearch). */
-    private const array REQUIRED_STRINGS = ['id', 'name', 'supertype', 'number', 'set_id', 'set_name', 'set_series', 'release_date', 'image_small', 'image_large'];
-
-    /** PokéSearch card fields that are strings when present. */
-    private const array OPTIONAL_STRINGS = ['rarity', 'artist'];
-
-    /** PokéSearch card fields that are lists of strings when present. */
-    private const array OPTIONAL_LISTS = ['subtypes', 'types'];
-
     /**
-     * @param  array<string, mixed>  $card  a PokéSearch card checked by fromAnswer()
+     * @param  array<string, mixed>  $card  a PokéSearch card checked by PokeSearchClient::assertCard()
      * @param  Collection<int, CardVariant>  $variants  the card's variant rows, sources and their builds loaded
      * @param  string|null  $staleSince  when a degraded answer's last-good copy was fetched; null for a fresh answer
      */
@@ -50,6 +42,9 @@ final class CardResource extends JsonResource
     /**
      * The resource for a catalog read of PokéSearch GET /api/v1/cards/{id} ({data: card, seed: {ref, seeded_at}}).
      *
+     * PokeSearchClient::card() has already checked a fresh answer; the same check runs once more here so a copy
+     * cached before that check existed still answers 502, never 500.
+     *
      * @param  Collection<int, CardVariant>  $variants
      *
      * @throws UpstreamContract when the answer is not a card with the requested id and a seed
@@ -57,48 +52,9 @@ final class CardResource extends JsonResource
     public static function fromResult(CatalogResult $result, string $id, Collection $variants): self
     {
         $answer = $result->data;
-        $card = $answer['data'] ?? null;
-        if (! is_array($card) || array_is_list($card)) {
-            throw new UpstreamContract('PokéSearch card answer has no card object.');
-        }
-        foreach (self::REQUIRED_STRINGS as $field) {
-            if (! is_string($card[$field] ?? null)) {
-                throw new UpstreamContract("PokéSearch card has no string {$field}.");
-            }
-        }
-        if ($card['id'] !== $id) {
-            throw new UpstreamContract('PokéSearch answered with another card.');
-        }
-        if (! is_int($card['set_total'] ?? null)) {
-            throw new UpstreamContract('PokéSearch card has no integer set_total.');
-        }
-        if (array_key_exists('hp', $card) && ! is_int($card['hp'])) {
-            throw new UpstreamContract('PokéSearch card has an hp that is not an integer.');
-        }
-        foreach (self::OPTIONAL_STRINGS as $field) {
-            if (array_key_exists($field, $card) && ! is_string($card[$field])) {
-                throw new UpstreamContract("PokéSearch card has a {$field} that is not a string.");
-            }
-        }
-        foreach (self::OPTIONAL_LISTS as $field) {
-            $list = $card[$field] ?? [];
-            if (! is_array($list) || ! array_is_list($list) || array_filter($list, fn (mixed $v): bool => ! is_string($v)) !== []) {
-                throw new UpstreamContract("PokéSearch card has a {$field} that is not a list of strings.");
-            }
-        }
+        PokeSearchClient::assertCard($answer, $id);
 
-        $seed = $answer['seed'] ?? null;
-        if (! is_array($seed) || ! array_key_exists('ref', $seed) || ! array_key_exists('seeded_at', $seed)) {
-            throw new UpstreamContract('PokéSearch card answer has no seed.');
-        }
-        $ref = $seed['ref'];
-        $seededAt = $seed['seeded_at'];
-        if (($ref !== null && ! is_string($ref)) || ($seededAt !== null && ! is_string($seededAt))) {
-            throw new UpstreamContract('PokéSearch card answer has a seed that is not strings or null.');
-        }
-
-        /** @var array<string, mixed> $card */
-        return new self($card, $ref, $seededAt, $variants, $result->degraded ? (string) $result->staleSince : null);
+        return new self($answer['data'], $answer['seed']['ref'], $answer['seed']['seeded_at'], $variants, $result->degraded ? (string) $result->staleSince : null);
     }
 
     /**

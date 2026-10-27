@@ -19,7 +19,18 @@ uses(TestCase::class);
 
 const T34_BASE = 'http://192.0.2.10:8081';
 
-const T34_CARD = ['data' => ['id' => 'base1-4', 'name' => 'Charizard'], 'seed' => ['ref' => null, 'seeded_at' => null]];
+/** A PokéSearch card answer inside the contract: every required field, no optional one, an unseeded index. */
+const T34_CARD = ['data' => [
+    'id' => 'base1-4', 'name' => 'Charizard', 'supertype' => 'Pokémon', 'number' => '4', 'set_id' => 'base1',
+    'set_name' => 'Base', 'set_series' => 'Base', 'set_total' => 102, 'release_date' => '1999-01-09',
+    'image_small' => 'https://images.example.com/base1/4.png', 'image_large' => 'https://images.example.com/base1/4_hires.png',
+], 'seed' => ['ref' => null, 'seeded_at' => null]];
+
+/** T34_CARD for another id, with the card fields in $overrides replaced. */
+function t34Answer(string $id = 'base1-4', array $overrides = []): array
+{
+    return ['data' => array_merge(T34_CARD['data'], ['id' => $id], $overrides), 'seed' => T34_CARD['seed']];
+}
 
 beforeEach(function (): void {
     config(['services.pokesearch.url' => T34_BASE, 'services.pokesearch.api_key' => null]);
@@ -189,7 +200,7 @@ it('rejects a 200 whose body is not a json object as an upstream contract break'
 });
 
 it('percent-encodes reserved characters in the card id path segment', function (string $id, string $path): void {
-    Http::fake(['*' => Http::response(T34_CARD)]);
+    Http::fake(['*' => Http::response(t34Answer($id))]);
 
     (new PokeSearchClient)->card($id);
 
@@ -248,4 +259,33 @@ it('accepts exactly the ids the PokéSearch pattern accepts', function (string $
     'trailing newline' => ["base1-4\n", false],
     'percent' => ['a%3F', false],
     'non-ascii' => ['pokémon', false],
+]);
+
+it('returns a card answer inside the contract unchanged, extra fields and a full seed included', function (): void {
+    $answer = t34Answer(overrides: ['hp' => 120, 'rarity' => 'Rare Holo', 'artist' => 'Mitsuhiro Arita', 'subtypes' => ['Stage 2'], 'types' => [], 'attacks' => [['name' => 'Fire Spin']]])
+        + ['request_id' => 'upstream-1'];
+    $answer['seed'] = ['ref' => str_repeat('a', 40), 'seeded_at' => '2026-10-11T20:05:45Z'];
+    Http::fake(['*' => Http::response($answer)]);
+
+    expect((new PokeSearchClient)->card('base1-4'))->toBe($answer);
+});
+
+it('refuses a card answer outside the contract before returning it, with the exact reason', function (mixed $body, string $message): void {
+    Http::fake(['*' => Http::response($body)]);
+
+    expect(fn () => (new PokeSearchClient)->card('base1-4'))->toThrow(UpstreamContract::class, $message);
+    Http::assertSentCount(1);
+})->with([
+    'no data' => [['seed' => T34_CARD['seed']], 'PokéSearch card answer has no card object.'],
+    'data a list' => [['data' => [1, 2], 'seed' => T34_CARD['seed']], 'PokéSearch card answer has no card object.'],
+    'a null name' => [t34Answer(overrides: ['name' => null]), 'PokéSearch card has no string name.'],
+    'no image_large' => [['data' => array_diff_key(T34_CARD['data'], ['image_large' => true]), 'seed' => T34_CARD['seed']], 'PokéSearch card has no string image_large.'],
+    'another card' => [t34Answer('base1-5'), 'PokéSearch answered with another card.'],
+    'a string set_total' => [t34Answer(overrides: ['set_total' => '102']), 'PokéSearch card has no integer set_total.'],
+    'a null hp' => [t34Answer(overrides: ['hp' => null]), 'PokéSearch card has an hp that is not an integer.'],
+    'a numeric artist' => [t34Answer(overrides: ['artist' => 3]), 'PokéSearch card has a artist that is not a string.'],
+    'a types list holding a number' => [t34Answer(overrides: ['types' => ['Fire', 1]]), 'PokéSearch card has a types that is not a list of strings.'],
+    'no seed' => [['data' => T34_CARD['data']], 'PokéSearch card answer has no seed.'],
+    'a seed without seeded_at' => [['data' => T34_CARD['data'], 'seed' => ['ref' => null]], 'PokéSearch card answer has no seed.'],
+    'a numeric seed ref' => [['data' => T34_CARD['data'], 'seed' => ['ref' => 7, 'seeded_at' => null]], 'PokéSearch card answer has a seed that is not strings or null.'],
 ]);

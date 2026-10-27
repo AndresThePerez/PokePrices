@@ -52,7 +52,7 @@ beforeEach(function (): void {
             $during();
         }
         if ($this->status === 200) {
-            return Http::response(['data' => ['id' => 'base1-4'], 'seed' => ['ref' => null, 'seeded_at' => null]]);
+            return Http::response(['data' => ['id' => 'base1-4', 'name' => 'Charizard', 'supertype' => 'Pokémon', 'number' => '4', 'set_id' => 'base1', 'set_name' => 'Base', 'set_series' => 'Base', 'set_total' => 102, 'release_date' => '1999-01-09', 'image_small' => 'https://images.example.com/base1/4.png', 'image_large' => 'https://images.example.com/base1/4_hires.png'], 'seed' => ['ref' => null, 'seeded_at' => null]]);
         }
 
         return Http::response(['error' => 'down'], $this->status);

@@ -18,7 +18,7 @@ use Tests\Support\CatalogCache;
 // never retries it, so one failed call is exactly one request.
 
 const T35_BASE = 'http://192.0.2.10:8081';
-const T35_CARD = ['data' => ['id' => 'base1-4', 'name' => 'Charizard'], 'seed' => ['ref' => null, 'seeded_at' => null]];
+const T35_CARD = ['data' => ['id' => 'base1-4', 'name' => 'Charizard', 'supertype' => 'Pokémon', 'number' => '4', 'set_id' => 'base1', 'set_name' => 'Base', 'set_series' => 'Base', 'set_total' => 102, 'release_date' => '1999-01-09', 'image_small' => 'https://images.example.com/base1/4.png', 'image_large' => 'https://images.example.com/base1/4_hires.png'], 'seed' => ['ref' => null, 'seeded_at' => null]];
 const T35_META = ['version' => 'test', 'commit' => '0000000', 'built' => '', 'docs' => 1, 'seed' => null, 'request_id' => 'upstream-meta'];
 
 /**

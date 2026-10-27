@@ -34,7 +34,10 @@ function t42eMeta(?string $ref): array
 function t42eCard(string $name = 'Pikachu'): array
 {
     return [
-        'data' => ['id' => 'sv1-1', 'name' => $name, 'supertype' => 'Pokémon', 'number' => '1'],
+        'data' => ['id' => 'sv1-1', 'name' => $name, 'supertype' => 'Pokémon', 'number' => '1',
+            'set_id' => 'sv1', 'set_name' => 'Scarlet & Violet', 'set_series' => 'Scarlet & Violet', 'set_total' => 198,
+            'release_date' => '2023-03-31', 'image_small' => 'https://images.example.com/sv1/1.png', 'image_large' => 'https://images.example.com/sv1/1_hires.png',
+        ],
         'seed' => ['ref' => T42E_REF_A, 'seeded_at' => '2026-10-11T20:05:45Z'],
     ];
 }

@@ -77,7 +77,7 @@ beforeEach(function (): void {
             return Http::response(['version' => 'test', 'commit' => '0000000', 'built' => '', 'docs' => 3, 'seed' => $seed, 'request_id' => 'upstream-meta']);
         }
         if ($path === '/api/v1/cards/aa-1') {
-            return Http::response(['data' => ['id' => 'aa-1', 'name' => 'Card page name', 'supertype' => 'Pokémon', 'number' => '1'], 'seed' => $seed]);
+            return Http::response(['data' => ['id' => 'aa-1', 'name' => 'Card page name', 'supertype' => 'Pokémon', 'number' => '1', 'set_id' => 'aa', 'set_name' => 'Set aa', 'set_series' => 'Series aa', 'set_total' => 10, 'release_date' => '2026-01-01', 'image_small' => 'https://images.example.com/aa/1.png', 'image_large' => 'https://images.example.com/aa/1_hires.png'], 'seed' => $seed]);
         }
         if ($path !== '/api/v1/cards') {
             return Http::response(['error' => 'unrouted'], 599);

@@ -55,17 +55,31 @@ final class CardController
 
     /**
      * Flags every variant row of a card PokéSearch does not have as catalog_missing (review-1 rec 11): the rows
-     * stay, with their mappings, until the catalog check (T45) sees the card again. Returns whether any row exists.
+     * stay, with their mappings, until the catalog check (T45) sees the card again. Only rows whose flag or seed
+     * ref would change are written, so a repeated miss under the same seed sends no UPDATE and a new seed
+     * restamps once. Returns whether any row of the card exists.
      */
     private function flagMissing(string $id): bool
     {
-        /** @var Builder<CardVariant> $rows */
-        $rows = CardVariant::query()->where('card_id', $id);
+        $seedRef = $this->catalog->seedRef()->ref;
 
-        return $rows->update([
+        /** @var Builder<CardVariant> $changing */
+        $changing = CardVariant::query()
+            ->where('card_id', $id)
+            ->where(fn (Builder $rows): Builder => $rows
+                ->where('catalog_status', '<>', 'catalog_missing')
+                ->orWhereRaw('catalog_seed_ref IS DISTINCT FROM ?', [$seedRef]));
+
+        if (! $changing->clone()->exists()) {
+            return CardVariant::query()->where('card_id', $id)->exists();
+        }
+
+        $changing->update([
             'catalog_status' => 'catalog_missing',
-            'catalog_seed_ref' => $this->catalog->seedRef()->ref,
+            'catalog_seed_ref' => $seedRef,
             'catalog_checked_at' => Carbon::now(),
-        ]) > 0;
+        ]);
+
+        return true;
     }
 }
