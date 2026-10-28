@@ -3,9 +3,9 @@
 declare(strict_types=1);
 
 use App\Domain\Alerts\Models\WebhookEndpoint;
+use App\Domain\Alerts\Problems\WebhookDisabled;
+use App\Domain\Alerts\Problems\WebhookNotFound;
 use App\Domain\Alerts\WebhookEndpoints;
-use App\Http\Problems\WebhookDisabled;
-use App\Http\Problems\WebhookNotFound;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Notification;

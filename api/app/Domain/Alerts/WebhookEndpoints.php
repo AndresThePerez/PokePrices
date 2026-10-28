@@ -6,8 +6,8 @@ namespace App\Domain\Alerts;
 
 use App\Domain\Accounts\AccountLock;
 use App\Domain\Alerts\Models\WebhookEndpoint;
-use App\Http\Problems\WebhookDisabled;
-use App\Http\Problems\WebhookNotFound;
+use App\Domain\Alerts\Problems\WebhookDisabled;
+use App\Domain\Alerts\Problems\WebhookNotFound;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Facades\Crypt;

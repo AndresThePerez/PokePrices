@@ -5,7 +5,7 @@ declare(strict_types=1);
 use App\Domain\Catalog\CatalogRepository;
 use App\Domain\Catalog\CircuitBreaker;
 use App\Domain\Catalog\PokeSearchClient;
-use App\Http\Problems\UpstreamUnavailable;
+use App\Domain\Catalog\Problems\UpstreamUnavailable;
 use Illuminate\Http\Client\Request as ClientRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\ParallelTesting;

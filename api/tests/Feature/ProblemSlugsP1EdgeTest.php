@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-use App\Http\Problems\CardNotFound;
+use App\Domain\Catalog\Problems\CardNotFound;
+use App\Domain\Catalog\Problems\UpstreamContract;
+use App\Domain\Catalog\Problems\UpstreamUnavailable;
 use App\Http\Problems\ProblemDetails;
-use App\Http\Problems\UpstreamContract;
-use App\Http\Problems\UpstreamUnavailable;
 use App\OpenApi\ProblemSchema;
 use cebe\openapi\spec\Schema;
 use Illuminate\Auth\AuthenticationException;

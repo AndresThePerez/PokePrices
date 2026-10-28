@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use App\Domain\Catalog\PokeSearchClient;
-use App\Http\Problems\UpstreamUnavailable;
+use App\Domain\Catalog\Problems\UpstreamUnavailable;
 use Illuminate\Support\Facades\Http;
 
 // A real socket to a blackhole (RFC 5737 TEST-NET-1, discard port): connectTimeout(1) must end the call,

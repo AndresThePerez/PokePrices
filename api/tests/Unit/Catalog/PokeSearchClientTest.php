@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 use App\Domain\Catalog\CardId;
 use App\Domain\Catalog\PokeSearchClient;
-use App\Http\Problems\UpstreamContract;
-use App\Http\Problems\UpstreamUnavailable;
+use App\Domain\Catalog\Problems\UpstreamContract;
+use App\Domain\Catalog\Problems\UpstreamUnavailable;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Context;

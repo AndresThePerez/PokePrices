@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Catalog;
 
-use App\Http\Problems\UpstreamContract;
+use App\Domain\Catalog\Problems\UpstreamContract;
 
 /**
  * Which pokemon-tcg-data snapshot the PokéSearch index holds (plan T42): the seed object of GET /api/meta.

@@ -3,8 +3,8 @@
 declare(strict_types=1);
 
 use App\Domain\Catalog\CatalogRepository;
-use App\Http\Problems\UpstreamContract;
-use App\Http\Problems\UpstreamUnavailable;
+use App\Domain\Catalog\Problems\UpstreamContract;
+use App\Domain\Catalog\Problems\UpstreamUnavailable;
 use Illuminate\Cache\RateLimiter;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Request as ClientRequest;

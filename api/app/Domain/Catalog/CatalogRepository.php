@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace App\Domain\Catalog;
 
-use App\Http\Problems\CardNotFound;
-use App\Http\Problems\UpstreamContract;
-use App\Http\Problems\UpstreamUnavailable;
+use App\Domain\Catalog\Problems\CardNotFound;
+use App\Domain\Catalog\Problems\UpstreamContract;
+use App\Domain\Catalog\Problems\UpstreamUnavailable;
 use Closure;
 use Illuminate\Cache\Repository;
 use Illuminate\Contracts\Cache\LockProvider;

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Catalog;
 
-use App\Http\Problems\UpstreamUnavailable;
+use App\Domain\Catalog\Problems\UpstreamUnavailable;
 use Closure;
 use Illuminate\Cache\RedisStore;
 use Illuminate\Cache\Repository;

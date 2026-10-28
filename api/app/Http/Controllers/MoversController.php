@@ -9,14 +9,16 @@ use App\Domain\Pricing\Movers;
 use App\Domain\Pricing\PricingConfig;
 use App\Http\Resources\MoverResource;
 use Dedoc\Scramble\Attributes\Group;
+use Illuminate\Database\ConnectionInterface;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 #[Group('Prices', 'Daily TCGplayer market prices via TCGCSV and their freshness.')]
 final class MoversController
 {
+    public function __construct(private readonly ConnectionInterface $db) {}
+
     /**
      * Read the biggest movers of the newest collected day.
      *
@@ -36,7 +38,7 @@ final class MoversController
         $source = PricingConfig::source();
 
         // Query 1 of 2: the newest movers day and the snapshot marker stored with its rows (review F9, R181(5), Q1-i3 T04).
-        ['day' => $day, 'as_of' => $asOf] = Movers::newest(DB::connection(), $source);
+        ['day' => $day, 'as_of' => $asOf] = Movers::newest($this->db, $source);
 
         // Query 2 of 2: that day's ranked rows with each variant's finish, edition and treatment.
         $movers = $day === null ? collect() : Movers::page($source, $day, $direction, $limit);

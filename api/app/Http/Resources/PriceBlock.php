@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources;
 
 use App\Domain\Pricing\Models\PriceLatest;
+use App\Domain\Pricing\PriceColumns;
 use App\Domain\Pricing\PricingConfig;
 
 /**
@@ -16,9 +17,6 @@ use App\Domain\Pricing\PricingConfig;
  */
 final class PriceBlock
 {
-    /** The price_latest columns a joined read selects as price_<column> to build the block with fromRow(). */
-    public const array COLUMNS = ['variant_key', 'source', 'series_epoch', 'close', 'day', 'as_of', 'previous_close', 'previous_day', 'change', 'change_pct'];
-
     /**
      * @return array{source: string, feed: string, basis: string, currency: string, cadence: string, close: string, day: string, as_of: string, previous_close: string|null, previous_day: string|null, change: string|null, change_pct: string|null, series_epoch: int}|null
      */
@@ -43,9 +41,9 @@ final class PriceBlock
     }
 
     /**
-     * The block of a row that LEFT JOINed price_latest with every COLUMNS entry selected as price_<column>: the row's
-     * price_latest values become a PriceLatest exactly as an eager load would hydrate it, so the block is the card
-     * page's, key for key. Null when the join found no close (price_variant_key is null).
+     * The block of a row that LEFT JOINed price_latest with every PriceColumns::LATEST entry selected as
+     * price_<column>: the row's price_latest values become a PriceLatest exactly as an eager load would hydrate it, so
+     * the block is the card page's, key for key. Null when the join found no close (price_variant_key is null).
      *
      * @param  array<string, mixed>  $row
      * @return array{source: string, feed: string, basis: string, currency: string, cadence: string, close: string, day: string, as_of: string, previous_close: string|null, previous_day: string|null, change: string|null, change_pct: string|null, series_epoch: int}|null
@@ -56,7 +54,7 @@ final class PriceBlock
             return null;
         }
         $attributes = [];
-        foreach (self::COLUMNS as $column) {
+        foreach (PriceColumns::LATEST as $column) {
             $attributes[$column] = $row['price_'.$column] ?? null;
         }
 

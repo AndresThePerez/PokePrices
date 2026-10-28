@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Domain\Catalog\CardId;
+use App\Domain\Catalog\Problems\CardNotFound;
 use App\Domain\Pricing\PriceHistory;
-use App\Http\Problems\CardNotFound;
 use App\Http\Resources\CardPricesResource;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\Request;

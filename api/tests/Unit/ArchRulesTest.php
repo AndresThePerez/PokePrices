@@ -108,3 +108,13 @@ arch('alert code is strict-typed, final classes in App\Domain\Alerts')
     ->toUseStrictTypes()
     ->toBeFinal()
     ->ignoring(['App\Domain\Alerts\HostResolver', 'App\Domain\Alerts\GuardError']);
+
+// Q1-i4 T04 (findings A3, a10): the layer line. Domain code throws its own problem types and reads its own column
+// lists, so it never imports App\Http; controllers take the database connection by injection, never the DB facade.
+arch('domain code never reaches into the HTTP layer')
+    ->expect('App\Domain')
+    ->not->toUse('App\Http');
+
+arch('controllers use no DB facade')
+    ->expect('App\Http')
+    ->not->toUse('Illuminate\Support\Facades\DB');

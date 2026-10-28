@@ -2,10 +2,11 @@
 
 declare(strict_types=1);
 
-use App\Http\Problems\CardNotFound;
+use App\Domain\Catalog\Problems\CardNotFound;
+use App\Domain\Catalog\Problems\UpstreamContract;
+use App\Domain\Catalog\Problems\UpstreamUnavailable;
+use App\Domain\ProblemType;
 use App\Http\Problems\ProblemDetails;
-use App\Http\Problems\UpstreamContract;
-use App\Http\Problems\UpstreamUnavailable;
 use App\OpenApi\ProblemSchema;
 use cebe\openapi\spec\Schema;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
@@ -159,4 +160,41 @@ it('checks every P1 body against the Problem schema, which rejects a body with a
         ])
         ->and(t33SchemaMismatch($bodies[3] + ['unexpected' => 'x']))->not->toBeNull()
         ->and(t33SchemaMismatch(['catalog_missing' => 'yes'] + $bodies[3]))->not->toBeNull();
+});
+
+it('renders any ProblemType with its own slug, title and extra members instead of http-<n> (Q1-i4 T04, A9)', function (): void {
+    $problem = new class extends HttpException implements ProblemType
+    {
+        public function __construct()
+        {
+            parent::__construct(409, 'sentinel-probe-message');
+        }
+
+        public function slug(): string
+        {
+            return 'probe-conflict';
+        }
+
+        public function title(): string
+        {
+            return 'Probe Conflict';
+        }
+
+        public function extra(): array
+        {
+            return ['probe_flag' => true];
+        }
+    };
+    $response = ProblemDetails::fromThrowable($problem, Request::create('/v1/__t04_probe'));
+
+    expect($response->getStatusCode())->toBe(409)
+        ->and($response->headers->get('Content-Type'))->toBe('application/problem+json')
+        ->and($response->getData(true))->toBe([
+            'type' => ProblemDetails::BASE.'probe-conflict',
+            'title' => 'Probe Conflict',
+            'status' => 409,
+            'instance' => '/v1/__t04_probe',
+            'request_id' => '',
+            'probe_flag' => true,
+        ]);
 });

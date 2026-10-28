@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Accounts;
 
-use App\Http\Resources\PriceBlock;
+use App\Domain\Pricing\PriceColumns;
 
 /**
  * The shared shape of a watchlist or portfolio read (plan P4-i1 D6): each row's variant fields from card_variants
@@ -15,11 +15,11 @@ final class VariantRows
 {
     /**
      * The select list and joins for the list table aliased $alias (w or h): variant fields, then every price_latest
-     * column as price_<column> for PriceBlock::fromRow().
+     * column (PriceColumns::LATEST) as price_<column> for the HTTP layer's PriceBlock::fromRow().
      */
     public static function selectAndJoin(string $alias): string
     {
-        $price = implode(', ', array_map(fn (string $c): string => "p.{$c} AS price_{$c}", PriceBlock::COLUMNS));
+        $price = implode(', ', array_map(fn (string $c): string => "p.{$c} AS price_{$c}", PriceColumns::LATEST));
 
         return <<<SQL
             {$alias}.variant_key,

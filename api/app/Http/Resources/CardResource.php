@@ -6,8 +6,8 @@ namespace App\Http\Resources;
 
 use App\Domain\Catalog\CatalogResult;
 use App\Domain\Catalog\PokeSearchClient;
+use App\Domain\Catalog\Problems\UpstreamContract;
 use App\Domain\Mapping\Models\CardVariant;
-use App\Http\Problems\UpstreamContract;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;

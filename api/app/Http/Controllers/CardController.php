@@ -6,8 +6,8 @@ namespace App\Http\Controllers;
 
 use App\Domain\Catalog\CardId;
 use App\Domain\Catalog\CatalogRepository;
+use App\Domain\Catalog\Problems\CardNotFound;
 use App\Domain\Mapping\Models\CardVariant;
-use App\Http\Problems\CardNotFound;
 use App\Http\Resources\CardResource;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Database\Eloquent\Builder;

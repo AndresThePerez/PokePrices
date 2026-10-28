@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Domain\Catalog;
 
-use App\Http\Problems\UpstreamContract;
-use App\Http\Problems\UpstreamUnavailable;
+use App\Domain\Catalog\Problems\UpstreamContract;
+use App\Domain\Catalog\Problems\UpstreamUnavailable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Attributes\Timeout;
