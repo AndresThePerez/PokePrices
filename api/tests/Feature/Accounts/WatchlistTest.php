@@ -301,17 +301,17 @@ it('holds the per-user lock across the count, so a second writer cannot slip in 
         }
         $outcome = 'counting';
         try {
-            $outcome = 'rival finished: '.var_export((new Watchlist($rival))->add($user->id, 'aa1-2:holo:-:-'), true);
+            (new Watchlist($rival))->add($user->id, 'aa1-2:holo:-:-');
+            $outcome = 'rival finished';
         } catch (QueryException $e) {
             $outcome = (string) $e->getCode();
         }
     });
 
-    $error = (new Watchlist(DB::connection()))->add($user->id, 'aa1-1:holo:-:-');
+    (new Watchlist(DB::connection()))->add($user->id, 'aa1-1:holo:-:-');
     DB::purge('pgsql_rival');
 
     // 55P03 lock_not_available: the rival waited on the per-user lock the first writer held while it counted.
     expect($outcome)->toBe('55P03')
-        ->and($error)->toBeNull()
         ->and(count(AccountRows::watched($user)))->toBe(100);
 });

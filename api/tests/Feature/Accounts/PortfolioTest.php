@@ -284,16 +284,16 @@ it('holds the per-user lock across the count, so a second writer cannot slip in 
         }
         $outcome = 'counting';
         try {
-            $outcome = 'rival finished: '.var_export((new Portfolio($rival))->set($user->id, 'aa1-2:holo:-:-', 1), true);
+            (new Portfolio($rival))->set($user->id, 'aa1-2:holo:-:-', 1);
+            $outcome = 'rival finished';
         } catch (QueryException $e) {
             $outcome = (string) $e->getCode();
         }
     });
 
-    $error = (new Portfolio(DB::connection()))->set($user->id, 'aa1-1:holo:-:-', 1);
+    (new Portfolio(DB::connection()))->set($user->id, 'aa1-1:holo:-:-', 1);
     DB::purge('pgsql_rival');
 
     expect($outcome)->toBe('55P03')
-        ->and($error)->toBeNull()
         ->and(count(AccountRows::held($user)))->toBe(100);
 });

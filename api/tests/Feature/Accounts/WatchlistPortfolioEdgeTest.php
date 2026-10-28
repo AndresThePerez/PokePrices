@@ -161,11 +161,10 @@ it('serialises two writers of one user but never two different users (the lock i
         }
     });
 
-    $error = (new Portfolio(DB::connection()))->set($a->id, 'aa1-1:holo:-:-', 1);
+    (new Portfolio(DB::connection()))->set($a->id, 'aa1-1:holo:-:-', 1);
     DB::purge('pgsql_rival');
 
-    expect($error)->toBeNull()
-        ->and($seen['other user'] ?? null)->toBe('acquired')
+    expect($seen['other user'] ?? null)->toBe('acquired')
         ->and($seen['same user'] ?? null)->toBe('55P03');
 });
 
