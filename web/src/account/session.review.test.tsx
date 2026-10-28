@@ -22,7 +22,7 @@ import {
   watchlistBody,
   type AccountCall,
 } from '../test/fixtures';
-import { SESSION_SIGNAL_KEY } from './session';
+import { SESSION_SIGNAL_KEY, fetchMe } from './session';
 
 vi.mock('lightweight-charts', () => import('../test/lightweightChartsFake'));
 
@@ -289,5 +289,33 @@ describe('a forget reaches every mounted reader', () => {
     });
     expect(screen.queryByDisplayValue('7')).toBeNull();
     expect(count(calls, 'GET /v1/portfolio')).toBe(2);
+  });
+});
+
+describe('fetchMe on a 200 (Q1-i5-T04)', () => {
+  const UNEXPECTED = {
+    ok: false,
+    status: 200,
+    title: 'The PokéPrices API sent an unexpected answer (HTTP 200)',
+    requestId: null,
+  };
+
+  it('returns the decoded account as the answer sent it', async () => {
+    stubAccountFetch({ 'GET /v1/me': jsonResponse(B_ME) });
+    expect(await fetchMe()).toEqual(B_ME.data);
+  });
+
+  it('throws the decoder failure for a 200 without a usable email, never a partial account', async () => {
+    const bodies: unknown[] = [
+      { data: { ...signedInMe.data, email: 7 } },
+      { data: { email_verified: true, two_factor: false, read_only: false } },
+      { data: null },
+      { me: signedInMe.data },
+      null,
+    ];
+    for (const body of bodies) {
+      stubAccountFetch({ 'GET /v1/me': jsonResponse(body) });
+      await expect(fetchMe()).rejects.toMatchObject(UNEXPECTED);
+    }
   });
 });

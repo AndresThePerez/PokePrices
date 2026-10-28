@@ -96,21 +96,8 @@ export type Session =
 /** GET /v1/me as query data: the account, or null when signed out; any other failure throws. */
 export async function fetchMe(options: RequestOptions = {}): Promise<Me | null> {
   const result = await getMe(options);
-  if (result.ok) {
-    const body: unknown = result.data;
-    const me = typeof body === 'object' && body !== null && 'data' in body ? body.data : undefined;
-    if (typeof me === 'object' && me !== null && 'email' in me) return me as Me;
-    const failure: ApiFailure = {
-      ok: false,
-      status: 200,
-      type: 'about:blank',
-      title: 'The PokéPrices API sent an unexpected answer (HTTP 200)',
-      requestId: null,
-      problem: null,
-    };
-    const thrown: unknown = failure;
-    throw thrown;
-  }
+  // getMe's decoder (isMeBody) already guarantees data.email: a 200 without it is its failure.
+  if (result.ok) return result.data.data;
   if (result.status === 401) return null;
   const failure: unknown = result;
   throw failure;

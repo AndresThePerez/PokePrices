@@ -25,6 +25,7 @@ import {
 } from '../chart/series';
 import { variantLabel } from '../format';
 import { unwrap } from '../query';
+import { cardPricesKey } from '../queryKeys';
 import { Button } from '../ui/Button';
 import { MUTED, TEXT_LINK } from '../ui/classes';
 import Notice from '../ui/Notice';
@@ -305,7 +306,7 @@ export default function PriceHistory({
 }) {
   const [range, setRange] = useState<PriceRange>(DEFAULT_RANGE);
   const query = useQuery<CardPrices, ApiFailure>({
-    queryKey: ['card-prices', id, range],
+    queryKey: cardPricesKey(id, range),
     queryFn: ({ signal }) => unwrap(getCardPrices(id, range, { signal })),
   });
 

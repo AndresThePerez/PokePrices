@@ -13,6 +13,7 @@ import {
   type CardPrices,
   type PricePoint,
 } from '../api/client';
+import { DEFAULT_RANGE } from '../chart/series';
 import Sparkline from '../chart/Sparkline';
 import { PRICE_FOOTNOTE, variantLabel } from '../format';
 import { MUTED, TEXT_LINK } from '../ui/classes';
@@ -21,6 +22,7 @@ import Panel from '../ui/Panel';
 import PriceTag, { AsOf, ChangeChip, HeroPrice } from '../ui/PriceTag';
 import Skeleton from '../ui/Skeleton';
 import { unwrap } from '../query';
+import { cardKey, cardPricesKey } from '../queryKeys';
 import { pageTitle, useDocumentTitle } from '../title';
 import PriceHistory from './PriceHistory';
 
@@ -205,8 +207,8 @@ function VariantRow({
  */
 function PricedCard({ card }: { readonly card: Card }) {
   const history = useQuery<CardPrices, ApiFailure>({
-    queryKey: ['card-prices', card.id, '1M'],
-    queryFn: ({ signal }) => unwrap(getCardPrices(card.id, '1M', { signal })),
+    queryKey: cardPricesKey(card.id, DEFAULT_RANGE),
+    queryFn: ({ signal }) => unwrap(getCardPrices(card.id, DEFAULT_RANGE, { signal })),
   });
   const [chosen, setChosen] = useState<string | null>(null);
   const priced = card.variants.filter(isPriced);
@@ -420,7 +422,7 @@ export default function CardPage({ id }: { readonly id: string }) {
   // Polled every five minutes while the tab is visible (D9). A failed poll keeps the last good
   // answer on screen: the failure only shows when there is no card to show.
   const query = useQuery<CardDetail, ApiFailure>({
-    queryKey: ['card', id],
+    queryKey: cardKey(id),
     queryFn: ({ signal }) => unwrap(getCard(id, { signal })),
   });
 

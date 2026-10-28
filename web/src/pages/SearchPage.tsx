@@ -1,9 +1,11 @@
 // The PokéPrices search page: /search?q=&page= over GET /v1/cards. The URL is the only search state.
-import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import Link from '../Link';
 import { cardPath } from '../router';
-import { searchCards, type ApiFailure, type ApiResult, type CardSearchPage } from '../api/client';
+import { searchCards, type ApiFailure, type CardSearchPage } from '../api/client';
 import { initialOf } from '../format';
+import { unwrap } from '../query';
+import { searchKey } from '../queryKeys';
 import { FOCUS, MUTED, SECONDARY_BUTTON } from '../ui/classes';
 import Notice from '../ui/Notice';
 import SearchForm from './SearchForm';
@@ -151,46 +153,30 @@ function Results({ q, body }: { readonly q: string; readonly body: CardSearchPag
   );
 }
 
-interface Settled {
-  readonly key: string;
-  readonly result: ApiResult<CardSearchPage>;
-}
-
 export default function SearchPage({ query }: { readonly query: URLSearchParams }) {
   const q = (query.get('q') ?? '').trim();
   const page = readPage(query.get('page'));
-  const key = `${String(page)} ${q}`;
-  const [settled, setSettled] = useState<Settled | null>(null);
-
-  useEffect(() => {
-    if (q === '') return;
-    const controller = new AbortController();
-    searchCards(page > 1 ? { q, page } : { q }, { signal: controller.signal }).then(
-      (result) => {
-        setSettled({ key, result });
-      },
-      () => {
-        // Aborted: a newer search (or leaving the page) superseded this one.
-      },
-    );
-    return () => {
-      controller.abort();
-    };
-  }, [q, page, key]);
+  // One cache entry per query and page (D9 polling, five minutes while visible): a revisited search
+  // answers from the cache, and a failed poll keeps the last good answer on screen.
+  const search = useQuery<CardSearchPage, ApiFailure>({
+    queryKey: searchKey(q, page),
+    queryFn: ({ signal }) => unwrap(searchCards(page > 1 ? { q, page } : { q }, { signal })),
+    enabled: q !== '',
+  });
 
   let body;
   if (q === '') {
     body = <p className={`mt-6 ${MUTED}`}>Type a card name, then press Search.</p>;
-  } else if (settled?.key !== key) {
+  } else if (search.data !== undefined) {
+    body = <Results q={q} body={search.data} />;
+  } else if (search.error !== null) {
+    body = <Problem failure={search.error} />;
+  } else {
     body = (
       <p role="status" className={`mt-6 text-sm ${MUTED}`}>
         Searching for “{q}”…
       </p>
     );
-  } else if (!settled.result.ok) {
-    body = <Problem failure={settled.result} />;
-  } else {
-    body = <Results q={q} body={settled.result.data} />;
   }
 
   return (

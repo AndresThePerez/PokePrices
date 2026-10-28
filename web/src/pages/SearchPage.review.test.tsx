@@ -1,7 +1,8 @@
-import { cleanup, render, screen, within } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { act, cleanup, render, screen, within } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../App';
 import type { CardSearchPage } from '../api/client';
+import { navigate } from '../router';
 import {
   degradedSearchPage,
   jsonResponse,
@@ -148,5 +149,123 @@ describe('SearchPage review (D2-i2-T08)', () => {
     render(<App />);
     await screen.findByRole('list', { name: 'Search results' });
     expect(calls.map((call) => call.url)).toEqual(['/v1/cards?q=a']);
+  });
+});
+
+/** Answers /v1/cards?q=a with Unown and anything else with Sprigatito; reads the URLs asked so far. */
+function byQuery(): () => string[] {
+  const calls = stubFetch((url) =>
+    jsonResponse(bodyOf([url.includes('q=a') ? unownQuestion : sprigatitoPromo])),
+  );
+  return () => calls.map((call) => call.url);
+}
+
+describe('SearchPage in the query cache (Q1-i5-T04)', () => {
+  it('answers a revisited search from the cache: a, b, then a again sends two requests', async () => {
+    const urls = byQuery();
+    visit('/search?q=a');
+    render(<App />);
+    await screen.findByText('1 card matches “a”');
+    act(() => {
+      navigate('/search?q=b');
+    });
+    await screen.findByText('1 card matches “b”');
+    act(() => {
+      navigate('/search?q=a');
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(urls()).toEqual(['/v1/cards?q=a', '/v1/cards?q=b']);
+    expect(screen.getByRole('status').textContent).toBe('1 card matches “a”');
+    expect(screen.getAllByRole('status')).toHaveLength(1);
+  });
+
+  it('keeps each page of one query under its own entry: page 2, page 1, page 2 sends two requests', async () => {
+    const calls = stubFetch(() =>
+      jsonResponse(bodyOf([unownQuestion], { total: 30, page: 1, pages: 2, page_size: 24 })),
+    );
+    visit('/search?q=unown&page=2');
+    render(<App />);
+    await screen.findByRole('list', { name: 'Search results' });
+    act(() => {
+      navigate('/search?q=unown');
+    });
+    await screen.findByRole('list', { name: 'Search results' });
+    act(() => {
+      navigate('/search?q=unown&page=2');
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(calls.map((call) => call.url)).toEqual([
+      '/v1/cards?q=unown&page=2',
+      '/v1/cards?q=unown',
+    ]);
+    expect(screen.getByRole('list', { name: 'Search results' })).toBeTruthy();
+  });
+});
+
+describe('SearchPage polling (Q1-i5-T04, HG-40 #11)', () => {
+  let visibility: DocumentVisibilityState = 'visible';
+
+  /** Lets answers and renders settle with real zero-delay timeouts (see CardPage.polling.test). */
+  async function settle(): Promise<void> {
+    for (let round = 0; round < 3; round += 1) {
+      await act(async () => {
+        await new Promise((resolve) => {
+          setTimeout(resolve, 0);
+        });
+      });
+    }
+  }
+
+  async function advance(ms: number): Promise<void> {
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(ms);
+    });
+    await settle();
+  }
+
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['setInterval', 'clearInterval', 'Date'] });
+    vi.setSystemTime(new Date('2031-02-03T04:05:06Z'));
+    visibility = 'visible';
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => visibility,
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    Reflect.deleteProperty(document, 'visibilityState');
+  });
+
+  it('asks for a shown search again after 300,000 ms while visible, and not before', async () => {
+    const urls = byQuery();
+    visit('/search?q=a');
+    render(<App />);
+    await settle();
+    expect(screen.getByRole('status').textContent).toBe('1 card matches “a”');
+    expect(urls()).toEqual(['/v1/cards?q=a']);
+    await advance(299_999);
+    expect(urls()).toEqual(['/v1/cards?q=a']);
+    await advance(1);
+    expect(urls()).toEqual(['/v1/cards?q=a', '/v1/cards?q=a']);
+    expect(screen.getByRole('status').textContent).toBe('1 card matches “a”');
+  });
+
+  it('asks nothing while the tab is hidden', async () => {
+    const urls = byQuery();
+    visit('/search?q=a');
+    render(<App />);
+    await settle();
+    visibility = 'hidden';
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange', { bubbles: true }));
+    });
+    await advance(600_000);
+    expect(urls()).toEqual(['/v1/cards?q=a']);
   });
 });

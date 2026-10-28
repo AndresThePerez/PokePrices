@@ -15,6 +15,7 @@ import {
 } from '../api/client';
 import { PRICE_FOOTNOTE, grouped, variantLabel } from '../format';
 import { unwrap } from '../query';
+import { moversKey } from '../queryKeys';
 import { cardPath } from '../router';
 import { FOCUS, MUTED, TEXT_LINK } from '../ui/classes';
 import Notice from '../ui/Notice';
@@ -202,11 +203,11 @@ function StripLoaded({ up, down }: { readonly up: MoversPage; readonly down: Mov
 export function BiggestMoves() {
   const headingId = useId();
   const up = useQuery<MoversPage, ApiFailure>({
-    queryKey: ['movers', 'up', STRIP_LIMIT],
+    queryKey: moversKey('up', STRIP_LIMIT),
     queryFn: ({ signal }) => unwrap(getMovers('up', STRIP_LIMIT, { signal })),
   });
   const down = useQuery<MoversPage, ApiFailure>({
-    queryKey: ['movers', 'down', STRIP_LIMIT],
+    queryKey: moversKey('down', STRIP_LIMIT),
     queryFn: ({ signal }) => unwrap(getMovers('down', STRIP_LIMIT, { signal })),
   });
 
