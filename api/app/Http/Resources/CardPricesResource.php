@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Resources;
 
+use App\Domain\Pricing\PricingConfig;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
@@ -66,11 +67,8 @@ final class CardPricesResource extends JsonResource
     {
         return [
             'meta' => [
-                'source' => (string) config('pricing.source'),
-                'feed' => (string) config('pricing.feed'),
-                'basis' => 'market',
-                'currency' => 'USD',
-                'cadence' => 'daily',
+                ...PricingConfig::provenance(),
+                'cadence' => PricingConfig::CADENCE,
                 'range' => $this->range,
                 'from' => $this->from,
                 'to' => $this->to,

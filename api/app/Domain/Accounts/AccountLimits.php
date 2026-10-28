@@ -12,6 +12,9 @@ final class AccountLimits
 {
     public const string UNKNOWN_VARIANT = 'PokéPrices has no variant with this key.';
 
+    /** portfolio_holdings' CHECK (quantity BETWEEN 1 AND 9999). */
+    private const int QUANTITY_CEILING = 9999;
+
     public static function watchlist(): int
     {
         return self::read('watchlist', 100);
@@ -22,9 +25,10 @@ final class AccountLimits
         return self::read('portfolio', 100);
     }
 
+    /** The most a holding may hold: the database checks 1 to 9999, so a knob above it is clamped to 9999 (Q1-i4 T03). */
     public static function quantityMax(): int
     {
-        return self::read('quantity_max', 9999);
+        return min(self::read('quantity_max', self::QUANTITY_CEILING), self::QUANTITY_CEILING);
     }
 
     public static function watchlistFull(): string

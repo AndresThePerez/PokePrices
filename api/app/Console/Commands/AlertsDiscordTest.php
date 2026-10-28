@@ -10,6 +10,7 @@ use App\Domain\Alerts\DiscordMessage;
 use App\Domain\Alerts\PriceMovedPayload;
 use App\Domain\Alerts\WebhookEndpoints;
 use App\Domain\Catalog\CatalogRepository;
+use App\Domain\Pricing\PricingConfig;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -65,7 +66,7 @@ final class AlertsDiscordTest extends Command
     /** The message text: the test line, then the deliverable day's three largest moves, or why there is none. */
     private static function text(CatalogRepository $catalog, CarbonImmutable $now): string
     {
-        $source = (string) config('pricing.source');
+        $source = PricingConfig::source();
         $db = DB::connection();
         $terms = DeliverableDay::terms($db, $source, $now);
         $day = $terms['newest'];

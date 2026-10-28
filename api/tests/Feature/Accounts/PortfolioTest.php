@@ -297,3 +297,33 @@ it('holds the per-user lock across the count, so a second writer cannot slip in 
     expect($outcome)->toBe('55P03')
         ->and(count(AccountRows::held($user)))->toBe(100);
 });
+
+it('caps the quantity at accounts.limits.quantity_max: 10 is set, 11 answers 422 errors.quantity (Q1-i4 T03)', function (): void {
+    config(['accounts.limits.quantity_max' => 10]);
+    $user = Accounts::user();
+    AccountRows::variant('ex5-17:reverse:-:-');
+
+    $ten = pfPut($this, $user, 'ex5-17:reverse:-:-', ['quantity' => 10]);
+    $eleven = pfPut($this, $user, 'ex5-17:reverse:-:-', ['quantity' => 11]);
+
+    expect($ten->getStatusCode())->toBe(200)
+        ->and($eleven->getStatusCode())->toBe(422)
+        ->and($eleven->json('type'))->toBe(ProblemDetails::BASE.'validation-failed')
+        ->and(array_keys($eleven->json('errors')))->toBe(['quantity'])
+        ->and(AccountRows::held($user))->toBe(['ex5-17:reverse:-:-' => 10]);
+});
+
+it('never lets a quantity_max above the database\'s 9999 reach Postgres: 9999 is set, 10000 answers 422, not 500 (Q1-i4 T03)', function (): void {
+    config(['accounts.limits.quantity_max' => 20000]);
+    $user = Accounts::user();
+    AccountRows::variant('ex5-17:reverse:-:-');
+
+    $max = pfPut($this, $user, 'ex5-17:reverse:-:-', ['quantity' => 9999]);
+    $over = pfPut($this, $user, 'ex5-17:reverse:-:-', ['quantity' => 10000]);
+
+    expect($max->getStatusCode())->toBe(200)
+        ->and($over->getStatusCode())->toBe(422)
+        ->and($over->json('type'))->toBe(ProblemDetails::BASE.'validation-failed')
+        ->and(array_keys($over->json('errors')))->toBe(['quantity'])
+        ->and(AccountRows::held($user))->toBe(['ex5-17:reverse:-:-' => 9999]);
+});

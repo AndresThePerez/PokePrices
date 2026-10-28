@@ -16,7 +16,7 @@ use stdClass;
  * For day D, the variants with a real (never filled) close on D and a D4 previous close (the most recent real close
  * on an earlier day in the same series_epoch, at most config('pricing.fill_cap_days') days back) of at least
  * config('pricing.movers.min_previous_close') are ranked: `up` when change > 0, `down` when change < 0, by
- * abs(change_pct) desc, abs(change) desc, variant_key asc (byte order), top config('pricing.movers.limit') per
+ * abs(change_pct) desc, abs(change) desc, variant_key asc (byte order), top PricingConfig::moversLimit() per
  * direction. There is no $1 floor (R177(10)); that belongs to the movement rule. The window is the previous close.
  *
  * rebuild() runs inside the ingest finalize transaction, after the rollup and price_latest, for every day of the D3
@@ -37,7 +37,7 @@ final class Movers
      */
     public static function rebuild(ConnectionInterface $db, string $from, string $to): void
     {
-        $source = (string) config('pricing.source');
+        $source = PricingConfig::source();
 
         $db->delete('DELETE FROM price_movers WHERE source = ? AND day BETWEEN ?::date AND ?::date', [$source, $from, $to]);
         $db->insert(<<<'SQL'
@@ -90,7 +90,7 @@ final class Movers
             $source, $from, $to,
             (int) config('pricing.fill_cap_days'),
             (string) config('pricing.movers.min_previous_close'),
-            (int) config('pricing.movers.limit'),
+            PricingConfig::moversLimit(),
         ]);
     }
 

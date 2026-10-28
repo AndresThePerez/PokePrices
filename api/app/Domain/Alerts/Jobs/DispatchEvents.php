@@ -12,6 +12,7 @@ use App\Domain\Alerts\NotificationText;
 use App\Domain\Alerts\PriceMovedPayload;
 use App\Domain\Catalog\CatalogRepository;
 use App\Domain\Pricing\MovementRule;
+use App\Domain\Pricing\PricingConfig;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -86,7 +87,7 @@ final class DispatchEvents implements ShouldBeUnique, ShouldQueue
      */
     public static function run(ConnectionInterface $db, CatalogRepository $catalog, CarbonImmutable $now): array
     {
-        $source = (string) config('pricing.source');
+        $source = PricingConfig::source();
         $terms = DeliverableDay::terms($db, $source, $now);
         $newest = $terms['newest'];
 

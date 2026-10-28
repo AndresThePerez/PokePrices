@@ -64,7 +64,7 @@ final class PriceDigest
 
         $build = $db->selectOne('SELECT max(id) AS id FROM map_builds', [], false);
         $epochs = [];
-        foreach ($db->select('SELECT series_epoch, count(*) AS n FROM source_product_map WHERE source = ? GROUP BY series_epoch ORDER BY series_epoch', [(string) config('pricing.source')], false) as $epoch) {
+        foreach ($db->select('SELECT series_epoch, count(*) AS n FROM source_product_map WHERE source = ? GROUP BY series_epoch ORDER BY series_epoch', [PricingConfig::source()], false) as $epoch) {
             if ($epoch instanceof stdClass) {
                 $epochs[(int) $epoch->series_epoch] = (int) $epoch->n;
             }

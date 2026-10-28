@@ -37,7 +37,7 @@ final class LatestPrices
      */
     public static function rebuild(ConnectionInterface $db, ?string $from = null, ?string $to = null): void
     {
-        $source = (string) config('pricing.source');
+        $source = PricingConfig::source();
         $cap = (int) config('pricing.fill_cap_days');
         $whole = $from === null || $to === null;
 

@@ -6,6 +6,7 @@ namespace App\Domain\Pricing\Jobs;
 
 use App\Domain\Pricing\DayIngest;
 use App\Domain\Pricing\IngestLock;
+use App\Domain\Pricing\PricingConfig;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -22,7 +23,7 @@ use Throwable;
  * dispatches the chunks as one batch. When another session holds the lock, the job releases itself for 60 s; when
  * the day already has a running run, start() writes nothing and the job is done (that run finishes or is resumed).
  *
- * Every job of the queued path goes on $queueConnection (`redis` in production), queue config('pricing.queue'); the
+ * Every job of the queued path goes on $queueConnection (`redis` in production), queue PricingConfig::queue(); the
  * connection travels to the chunks and to finalize, so tests can run the same jobs on `database` or `sync`.
  *
  * Runtime policy (plan Q1-i1 T02, review b B2, B3): timeout 80 s, below the redis queue's retry_after (90 s). A release
@@ -46,7 +47,7 @@ final class StartDayIngest implements ShouldQueue
         public readonly string $queueConnection = self::CONNECTION,
         public readonly ?string $database = null,
     ) {
-        $this->onConnection($queueConnection)->onQueue((string) config('pricing.queue'));
+        $this->onConnection($queueConnection)->onQueue(PricingConfig::queue());
     }
 
     public function handle(): void

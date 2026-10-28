@@ -100,7 +100,7 @@ final class DayIngest
      */
     public function start(string $day, string $mode, bool $force = false): array
     {
-        $source = (string) config('pricing.source');
+        $source = PricingConfig::source();
         $running = $this->db->table('ingest_runs')->where('source', $source)->where('day', $day)->where('status', 'running')->value('id');
         if (is_numeric($running)) {
             return ['status' => 'locked', 'run_id' => (int) $running, 'marker' => null,
@@ -235,7 +235,7 @@ final class DayIngest
                 throw new RuntimeException("ingest run {$runId} has {$open} chunks not done; finalize refused");
             }
 
-            $source = (string) config('pricing.source');
+            $source = PricingConfig::source();
             $previous = $this->db->selectOne("SELECT max(day)::text AS day FROM ingest_runs WHERE source = ? AND status = 'ok'", [$source], false);
             $previousDay = $previous instanceof stdClass && is_string($previous->day) ? $previous->day : null;
             $window = DailyRollup::rollup($this->db, (string) $run->day, $previousDay);
@@ -277,7 +277,7 @@ final class DayIngest
     }
 
     /**
-     * Queued mode (T08): dispatches the run's chunks as one batch on $queueConnection, queue config('pricing.queue').
+     * Queued mode (T08): dispatches the run's chunks as one batch on $queueConnection, queue PricingConfig::queue().
      * The batch's `then` dispatches FinalizeDay and its `catch` marks the run failed; both are invokable serializable
      * classes (review F4) and the batch does not allow failures, so finalize never runs on a partial day. A run without
      * a chunk to run goes straight to FinalizeDay.
@@ -295,9 +295,9 @@ final class DayIngest
         Bus::batch(array_map(fn (int $chunkId): IngestChunk => new IngestChunk($runId, $chunkId, $this->snapshotsRoot, $database), $chunkIds))
             ->then(new FinalizeDayCallback($runId, $queueConnection, $database))
             ->catch(new MarkRunFailed($runId, $database))
-            ->name('ingest:'.config('pricing.source').':'.$runId)
+            ->name('ingest:'.PricingConfig::source().':'.$runId)
             ->onConnection($queueConnection)
-            ->onQueue((string) config('pricing.queue'))
+            ->onQueue(PricingConfig::queue())
             ->dispatch();
     }
 
@@ -327,7 +327,7 @@ final class DayIngest
                 $run = $this->db->selectOne(
                     'SELECT id, mode, status FROM ingest_runs WHERE source = ? AND day = ?::date AND marker = ?::timestamptz'
                     ." AND status IN ('ok', 'running', 'failed', 'superseded') ORDER BY id DESC LIMIT 1 FOR UPDATE",
-                    [(string) config('pricing.source'), $day, $marker->format('Y-m-d H:i:sP')],
+                    [PricingConfig::source(), $day, $marker->format('Y-m-d H:i:sP')],
                     false,
                 );
                 if (! $run instanceof stdClass || $run->mode !== 'queued' || ! in_array($run->status, ['running', 'failed'], true)) {
@@ -370,8 +370,8 @@ final class DayIngest
         $finished = $status === 'running' ? null : CarbonImmutable::now('UTC')->format('Y-m-d H:i:sP');
 
         return (int) $this->db->table('ingest_runs')->insertGetId([
-            'source' => (string) config('pricing.source'),
-            'feed' => (string) config('pricing.feed'),
+            'source' => PricingConfig::source(),
+            'feed' => PricingConfig::feed(),
             'day' => $day,
             'marker' => $marker?->format('Y-m-d H:i:sP'),
             'mode' => $mode,
@@ -430,7 +430,7 @@ final class DayIngest
         foreach ($this->db->select(
             'SELECT source_product_id, source_subtype, variant_key, series_epoch FROM source_product_map'
             .' WHERE source = ? AND source_product_id = ANY(?::integer[])',
-            [(string) config('pricing.source'), '{'.implode(',', $products).'}'],
+            [PricingConfig::source(), '{'.implode(',', $products).'}'],
             false,
         ) as $row) {
             $map[$row->source_product_id.'|'.$row->source_subtype] = [

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Alerts;
 
+use App\Domain\Pricing\PricingConfig;
 use stdClass;
 
 /**
@@ -52,11 +53,8 @@ final class PriceMovedPayload
                 'previous_as_of' => (string) $event->previous_as_of,
                 'series_epoch' => (int) $event->series_epoch,
                 'rule' => (string) $event->rule,
-                'source' => (string) $event->source,
-                'feed' => (string) config('pricing.feed'),
-                'basis' => 'market',
-                'currency' => 'USD',
-                'cadence' => 'daily',
+                ...PricingConfig::provenance((string) $event->source),
+                'cadence' => PricingConfig::CADENCE,
             ],
         ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
     }

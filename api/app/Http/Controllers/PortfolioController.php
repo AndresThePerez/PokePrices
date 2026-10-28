@@ -9,6 +9,7 @@ use App\Domain\Accounts\CardNames;
 use App\Domain\Accounts\Portfolio;
 use App\Domain\Accounts\VariantKey;
 use App\Domain\Catalog\CatalogRepository;
+use App\Domain\Pricing\PricingConfig;
 use App\Http\Resources\HoldingEntryResource;
 use App\Http\Resources\HoldingResource;
 use App\Models\User;
@@ -48,10 +49,7 @@ final class PortfolioController
             'first_day' => $holdings['first_day'],
             /** @var string|null */
             'last_day' => $holdings['last_day'],
-            'source' => (string) config('pricing.source'),
-            'feed' => (string) config('pricing.feed'),
-            'basis' => 'market',
-            'currency' => 'USD',
+            ...PricingConfig::provenance(),
             'degraded' => $names['degraded'] === true,
         ]]);
     }
@@ -72,7 +70,7 @@ final class PortfolioController
             throw ValidationException::withMessages(['variant_key' => [AccountLimits::UNKNOWN_VARIANT]]);
         }
         $validated = $request->validate([
-            'quantity' => ['required', 'integer:strict', 'min:1', 'max:9999'],
+            'quantity' => ['required', 'integer:strict', 'min:1', 'max:'.AccountLimits::quantityMax()],
         ]);
         $quantity = (int) $validated['quantity'];
         $this->portfolio->set(self::userId($request), $variantKey, $quantity);

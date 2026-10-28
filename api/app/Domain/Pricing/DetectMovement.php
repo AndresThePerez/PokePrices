@@ -84,7 +84,7 @@ final class DetectMovement
      */
     public static function detect(ConnectionInterface $db, int $runId, string $day, array $window, bool $newest): array
     {
-        $source = (string) config('pricing.source');
+        $source = PricingConfig::source();
         $cap = (int) config('pricing.fill_cap_days');
         $rule = MovementRule::rule();
         $pct = MovementRule::pct();

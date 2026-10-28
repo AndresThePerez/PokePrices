@@ -491,3 +491,16 @@ it('routes the movers outside the PokéSearch group and documents no upstream er
         ->and([$parameters['limit']['schema']['minimum'], $parameters['limit']['schema']['maximum']])->toBe([1, 50])
         ->and(strtolower((string) $operation['description']))->not->toMatch('/real-time|realtime|\blive\b|24h|as of today|\b1d\b/');
 });
+
+it('caps limit at pricing.movers.limit: with 10, limit=10 answers 200 and limit=11 answers 422 errors.limit (Q1-i4 T03)', function (): void {
+    config(['pricing.movers.limit' => 10]);
+
+    $ten = $this->getJson('/v1/movers?limit=10');
+    $eleven = $this->getJson('/v1/movers?limit=11');
+
+    expect($ten->getStatusCode())->toBe(200)
+        ->and($ten->json('meta.limit'))->toBe(10)
+        ->and($eleven->getStatusCode())->toBe(422)
+        ->and($eleven->json('type'))->toBe(ProblemDetails::BASE.'validation-failed')
+        ->and(array_keys($eleven->json('errors')))->toBe(['limit']);
+});

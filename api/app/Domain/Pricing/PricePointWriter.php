@@ -34,7 +34,7 @@ final class PricePointWriter
             return 0;
         }
 
-        $source = (string) config('pricing.source');
+        $source = PricingConfig::source();
         $at = $observedAt->utc()->format('Y-m-d H:i:sP');
         $day = $observedAt->utc()->format('Y-m-d');
         $tuple = '('.implode(', ', array_fill(0, count(self::COLUMNS), '?')).')';

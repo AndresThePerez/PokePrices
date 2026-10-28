@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Domain\Pricing\PricingConfig;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Attributes\Timeout;
@@ -22,7 +23,7 @@ final class ProbeJob implements ShouldQueue
 
     public function __construct(public readonly string $token)
     {
-        $this->onConnection('redis')->onQueue('default');
+        $this->onConnection('redis')->onQueue(PricingConfig::queue());
     }
 
     public function handle(): void

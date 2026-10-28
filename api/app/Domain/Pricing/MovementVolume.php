@@ -55,7 +55,7 @@ final class MovementVolume
      */
     public static function rebuild(ConnectionInterface $db, string $from, string $to): int
     {
-        $source = (string) config('pricing.source');
+        $source = PricingConfig::source();
         $values = [];
         $bindings = [$source, $from, $to, (int) config('pricing.fill_cap_days')];
         foreach (self::rules() as $rule => [$pct, $abs]) {
@@ -114,13 +114,13 @@ final class MovementVolume
     {
         $range = $db->selectOne(
             'SELECT min(day)::text AS from_day, max(day)::text AS to_day FROM price_daily WHERE source = ? AND NOT is_filled',
-            [(string) config('pricing.source')],
+            [PricingConfig::source()],
             false,
         );
         if (! $range instanceof stdClass || ! is_string($range->from_day) || ! is_string($range->to_day)) {
             return null;
         }
-        $db->delete('DELETE FROM movement_volume WHERE source = ?', [(string) config('pricing.source')]);
+        $db->delete('DELETE FROM movement_volume WHERE source = ?', [PricingConfig::source()]);
 
         return ['from' => $range->from_day, 'to' => $range->to_day, 'rows' => self::rebuild($db, $range->from_day, $range->to_day)];
     }
@@ -136,7 +136,7 @@ final class MovementVolume
         foreach ($db->select(
             'SELECT day::text AS day, rule, compared, up, down, epoch_breaks, filled_skipped, extreme, sub_2_previous
              FROM movement_volume WHERE source = ? ORDER BY day, rule',
-            [(string) config('pricing.source')],
+            [PricingConfig::source()],
             false,
         ) as $r) {
             if (! $r instanceof stdClass || ! array_key_exists((string) $r->rule, $out)) {

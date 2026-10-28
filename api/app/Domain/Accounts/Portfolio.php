@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Accounts;
 
+use App\Domain\Pricing\PricingConfig;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Validation\ValidationException;
 
@@ -35,7 +36,7 @@ final class Portfolio
             ." to_char(max(p.day) OVER (), 'YYYY-MM-DD') AS last_day"
             .' FROM portfolio_holdings h '.VariantRows::joins('h')
             .' WHERE h.user_id = ? '.VariantRows::orderBy('h');
-        $rows = VariantRows::arrays($this->db->select($sql, [(string) config('pricing.source'), $userId], false));
+        $rows = VariantRows::arrays($this->db->select($sql, [PricingConfig::source(), $userId], false));
         $first = $rows[0] ?? [];
 
         return [

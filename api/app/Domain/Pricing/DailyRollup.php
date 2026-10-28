@@ -47,7 +47,7 @@ final class DailyRollup
         $from = $p === null ? $d : $d->min($p->addDay());
         $to = $d->addDays($cap)->min($newest);
 
-        $source = (string) config('pricing.source');
+        $source = PricingConfig::source();
         $days = [$from->format('Y-m-d'), $to->format('Y-m-d')];
 
         $db->statement(<<<'SQL'

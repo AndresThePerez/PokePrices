@@ -7,6 +7,7 @@ namespace App\Console\Commands;
 use App\Domain\Pricing\IngestLock;
 use App\Domain\Pricing\MovementRule;
 use App\Domain\Pricing\MovementVolume;
+use App\Domain\Pricing\PricingConfig;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -112,7 +113,7 @@ final class PricesMovementVolume extends Command
      */
     private function markdown(ConnectionInterface $db, array $rows, array $summary): string
     {
-        $source = (string) config('pricing.source');
+        $source = PricingConfig::source();
         $draft = MovementRule::rule();
         $days = array_column($rows[$draft], 'day');
         $build = $db->table('map_builds')->max('id');
@@ -135,7 +136,7 @@ final class PricesMovementVolume extends Command
             '',
             '- Days measured: '.implode(', ', $days).' ('.count($days).' days, '.count($transitions).' with a previous close)',
             '- Map build: '.(is_numeric($build) ? (int) $build : 'none').'; '.($epochs === [] ? 'no map rows' : implode(', ', $epochs)),
-            "- Source: {$source}, feed ".config('pricing.feed').', daily closes',
+            "- Source: {$source}, feed ".PricingConfig::feed().', daily closes',
             '',
             '## Summary',
             '',

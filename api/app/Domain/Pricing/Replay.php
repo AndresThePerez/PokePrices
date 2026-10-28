@@ -153,7 +153,7 @@ final class Replay
         $this->db->transaction(function (): void {
             $this->db->update(
                 "UPDATE ingest_runs SET status = 'superseded' WHERE source = ? AND status IN ('ok', 'running')",
-                [(string) config('pricing.source')],
+                [PricingConfig::source()],
             );
             $this->db->statement('TRUNCATE '.implode(', ', self::WIPED_TABLES));
         });

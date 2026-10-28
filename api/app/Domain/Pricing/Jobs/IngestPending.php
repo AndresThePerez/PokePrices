@@ -8,6 +8,7 @@ use App\Domain\Pricing\DayIngest;
 use App\Domain\Pricing\DayRefused;
 use App\Domain\Pricing\IngestLock;
 use App\Domain\Pricing\PriceSnapshotReader;
+use App\Domain\Pricing\PricingConfig;
 use App\Domain\Pricing\Replay;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
@@ -122,7 +123,7 @@ final class IngestPending implements ShouldBeUnique, ShouldQueue
      */
     private function plan(ConnectionInterface $db, string $root): array
     {
-        $source = (string) config('pricing.source');
+        $source = PricingConfig::source();
         $now = CarbonImmutable::now('UTC');
         [$start, $resume, $seen] = [[], [], []];
 

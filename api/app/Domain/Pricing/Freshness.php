@@ -33,7 +33,7 @@ final class Freshness
      */
     public static function measure(): array
     {
-        $source = (string) config('pricing.source');
+        $source = PricingConfig::source();
         $slo = (int) config('pricing.freshness.slo_hours');
         $now = CarbonImmutable::now()->utc();
 
@@ -65,7 +65,7 @@ final class Freshness
 
         return [
             'source' => $source,
-            'feed' => (string) config('pricing.feed'),
+            'feed' => PricingConfig::feed(),
             'as_of' => $asOf?->format('Y-m-d\TH:i:s\Z'),
             'day' => $newestOk?->day->format('Y-m-d'),
             'age_hours' => $ageHours,

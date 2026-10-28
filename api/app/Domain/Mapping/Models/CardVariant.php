@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Mapping\Models;
 
 use App\Domain\Pricing\Models\PriceLatest;
+use App\Domain\Pricing\PricingConfig;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Attributes\Table;
 use Illuminate\Database\Eloquent\Attributes\Unguarded;
@@ -49,7 +50,7 @@ final class CardVariant extends Model
      */
     public function latestPrice(): HasOne
     {
-        return $this->hasOne(PriceLatest::class, 'variant_key', 'variant_key')->where('source', (string) config('pricing.source'));
+        return $this->hasOne(PriceLatest::class, 'variant_key', 'variant_key')->where('source', PricingConfig::source());
     }
 
     /** @return array<string, string> */

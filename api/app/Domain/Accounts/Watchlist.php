@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Accounts;
 
+use App\Domain\Pricing\PricingConfig;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Validation\ValidationException;
 
@@ -28,7 +29,7 @@ final class Watchlist
         $sql = 'SELECT '.VariantRows::selectAndJoin('w').', w.alert_pct FROM watchlist_items w '.VariantRows::joins('w')
             .' WHERE w.user_id = ? '.VariantRows::orderBy('w');
 
-        return VariantRows::arrays($this->db->select($sql, [(string) config('pricing.source'), $userId], false));
+        return VariantRows::arrays($this->db->select($sql, [PricingConfig::source(), $userId], false));
     }
 
     /**

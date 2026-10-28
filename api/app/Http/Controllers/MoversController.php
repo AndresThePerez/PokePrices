@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\Catalog\CatalogRepository;
 use App\Domain\Pricing\Movers;
+use App\Domain\Pricing\PricingConfig;
 use App\Http\Resources\MoverResource;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\Request;
@@ -25,14 +26,14 @@ final class MoversController
      */
     public function __invoke(Request $request, CatalogRepository $catalog): AnonymousResourceCollection
     {
-        // limit stops at 50, the rows price_movers keeps per day and direction (config('pricing.movers.limit'), D9).
+        // limit stops at the rows price_movers keeps per day and direction (PricingConfig::moversLimit(), D9).
         $validated = $request->validate([
             'direction' => ['sometimes', 'required', 'string', Rule::in(['up', 'down'])],
-            'limit' => ['sometimes', 'required', 'integer', 'min:1', 'max:50'],
+            'limit' => ['sometimes', 'required', 'integer', 'min:1', 'max:'.PricingConfig::moversLimit()],
         ]);
         $direction = isset($validated['direction']) ? (string) $validated['direction'] : 'up';
-        $limit = isset($validated['limit']) ? (int) $validated['limit'] : 20;
-        $source = (string) config('pricing.source');
+        $limit = isset($validated['limit']) ? (int) $validated['limit'] : PricingConfig::MOVERS_DEFAULT_LIMIT;
+        $source = PricingConfig::source();
 
         // Query 1 of 2: the newest movers day and the snapshot marker stored with its rows (review F9, R181(5), Q1-i3 T04).
         ['day' => $day, 'as_of' => $asOf] = Movers::newest(DB::connection(), $source);
@@ -53,10 +54,7 @@ final class MoversController
         return MoverResource::collection($movers)->additional(['meta' => [
             'day' => $day,
             'as_of' => $asOf,
-            'source' => $source,
-            'feed' => (string) config('pricing.feed'),
-            'basis' => 'market',
-            'currency' => 'USD',
+            ...PricingConfig::provenance($source),
             'window' => 'previous_close',
             'min_previous_close' => (string) config('pricing.movers.min_previous_close'),
             'direction' => $direction,

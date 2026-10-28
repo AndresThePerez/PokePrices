@@ -6,6 +6,7 @@ namespace App\Domain\Pricing\Jobs;
 
 use App\Domain\Pricing\DayIngest;
 use App\Domain\Pricing\IngestLock;
+use App\Domain\Pricing\PricingConfig;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -46,7 +47,7 @@ final class FinalizeDay implements ShouldQueue
         public readonly string $queueConnection = StartDayIngest::CONNECTION,
         public readonly ?string $database = null,
     ) {
-        $this->onConnection($queueConnection)->onQueue((string) config('pricing.queue'));
+        $this->onConnection($queueConnection)->onQueue(PricingConfig::queue());
     }
 
     public function handle(): void

@@ -7,6 +7,7 @@ namespace App\Console\Commands;
 use App\Domain\Alerts\DeliverableDay;
 use App\Domain\Alerts\Jobs\DispatchEvents;
 use App\Domain\Catalog\CatalogRepository;
+use App\Domain\Pricing\PricingConfig;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -46,7 +47,7 @@ final class AlertsDispatch extends Command
         }
 
         $db = DB::connection();
-        $source = (string) config('pricing.source');
+        $source = PricingConfig::source();
         $newest = DeliverableDay::terms($db, $source, CarbonImmutable::now())['newest'];
         if ($newest === null) {
             $this->error('There is no finalized day to reset to; nothing was deleted.');

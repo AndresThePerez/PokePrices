@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Resources;
 
 use App\Domain\Pricing\Models\PriceLatest;
+use App\Domain\Pricing\PricingConfig;
 
 /**
  * The price block of a variant (P2-i1 T05, D4, D5), shared by the card page (CardResource) and the watchlist and
@@ -28,11 +29,8 @@ final class PriceBlock
         }
 
         return [
-            'source' => $latest->source,
-            'feed' => (string) config('pricing.feed'),
-            'basis' => 'market',
-            'currency' => 'USD',
-            'cadence' => 'daily',
+            ...PricingConfig::provenance($latest->source),
+            'cadence' => PricingConfig::CADENCE,
             'close' => $latest->close,
             'day' => $latest->day->format('Y-m-d'),
             'as_of' => $latest->as_of->utc()->format('Y-m-d\TH:i:s\Z'),

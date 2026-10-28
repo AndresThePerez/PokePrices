@@ -39,7 +39,7 @@ final class PriceHistory
      */
     public static function forCard(string $cardId, string $range): array
     {
-        $source = (string) config('pricing.source');
+        $source = PricingConfig::source();
 
         $newest = DB::selectOne(<<<'SQL'
             SELECT to_char(day, 'YYYY-MM-DD') AS day,
