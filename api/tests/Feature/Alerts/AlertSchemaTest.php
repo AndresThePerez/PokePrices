@@ -16,6 +16,8 @@ use Tests\Support\AlertRows;
 
 const P5_SCHEMA_MIGRATION = 'migrations/2026_10_16_000001_create_alert_delivery_tables.php';
 
+const P5_LOOKUP_INDEXES_MIGRATION = 'migrations/2026_10_28_000001_add_lookup_indexes.php';
+
 beforeEach(function (): void {
     Http::preventStrayRequests();
 });
@@ -91,6 +93,7 @@ it('creates webhook_endpoints exactly as D1', function (): void {
         ])
         ->and(p5Indexes('webhook_endpoints'))->toBe([
             'webhook_endpoints_one_discord_unique' => "CREATE UNIQUE INDEX webhook_endpoints_one_discord_unique ON webhook_endpoints USING btree (user_id) WHERE (kind = 'discord'::text)",
+            'webhook_endpoints_user_id_index' => 'CREATE INDEX webhook_endpoints_user_id_index ON webhook_endpoints USING btree (user_id)',
         ]);
 });
 
@@ -129,7 +132,10 @@ it('creates deliveries exactly as D1', function (): void {
             'deliveries_alert_unique' => "CREATE UNIQUE INDEX deliveries_alert_unique ON deliveries USING btree (user_id, event_id) WHERE (kind = 'alert.triggered'::text)",
             'deliveries_digest_unique' => "CREATE UNIQUE INDEX deliveries_digest_unique ON deliveries USING btree (user_id, day) WHERE (kind = 'digest'::text)",
             'deliveries_due_index' => "CREATE INDEX deliveries_due_index ON deliveries USING btree (next_attempt_at) WHERE (status = 'pending'::text)",
+            'deliveries_endpoint_id_index' => 'CREATE INDEX deliveries_endpoint_id_index ON deliveries USING btree (endpoint_id)',
             'deliveries_moved_unique' => "CREATE UNIQUE INDEX deliveries_moved_unique ON deliveries USING btree (event_id, endpoint_id) WHERE (kind = 'price.moved'::text)",
+            'deliveries_status_created_at_index' => 'CREATE INDEX deliveries_status_created_at_index ON deliveries USING btree (status, created_at)',
+            'deliveries_user_id_index' => 'CREATE INDEX deliveries_user_id_index ON deliveries USING btree (user_id)',
         ]);
 });
 
@@ -224,12 +230,17 @@ it('references no price_events, card_variants or price table: the only foreign k
 });
 
 it('rolls the migration back and forth on the test database', function (): void {
+    // The lookup indexes (a later migration) sit on these tables, so they roll back first and re-apply last, in the
+    // order migrate:rollback and migrate use (Q1-i3 T03).
     $migration = require database_path(P5_SCHEMA_MIGRATION);
+    $indexes = require database_path(P5_LOOKUP_INDEXES_MIGRATION);
     $before = [p5Constraints('webhook_endpoints'), p5Constraints('deliveries'), p5Constraints('dispatch_days'), p5Indexes('deliveries')];
 
+    $indexes->down();
     $migration->down();
     $down = DB::selectOne("SELECT to_regclass('webhook_endpoints')::text AS w, to_regclass('deliveries')::text AS d, to_regclass('dispatch_days')::text AS x");
     $migration->up();
+    $indexes->up();
 
     expect([$down->w, $down->d, $down->x])->toBe([null, null, null])
         ->and([p5Constraints('webhook_endpoints'), p5Constraints('deliveries'), p5Constraints('dispatch_days'), p5Indexes('deliveries')])->toBe($before);
