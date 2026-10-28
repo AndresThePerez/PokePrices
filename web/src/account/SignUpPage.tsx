@@ -1,62 +1,56 @@
 // /sign-up (D10, D3): invite code, email and password over POST /register. On 201 the account is
 // signed in; the page refetches ['me'] and opens /account with its status line.
-import { useQueryClient } from '@tanstack/react-query';
 import { useState, type SubmitEvent } from 'react';
-import { signUp, type ApiFailure } from '../api/client';
+import { signUp } from '../api/client';
 import Link from '../Link';
-import { navigate } from '../router';
 import Notice from '../ui/Notice';
 import { DemoPanel } from './DemoButton';
 import { AccountMain, Field, ProblemBlock } from './Form';
 import { PRIMARY_BUTTON, TEXT_LINK, firstErrors } from './fields';
-import { ME_KEY, endSession } from './session';
+import { useAccountWrite, useSessionTransition } from './mutations';
 
 const FIELDS = ['invite_code', 'email', 'password', 'password_confirmation'] as const;
 const CREATED = 'Account created. Check your email for the verification link.';
 
 export default function SignUpPage() {
-  const queryClient = useQueryClient();
+  const transition = useSessionTransition({ clearsMe: false });
   const [inviteCode, setInviteCode] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
-  const [pending, setPending] = useState(false);
-  const [failure, setFailure] = useState<ApiFailure | null>(null);
+  const write = useAccountWrite<undefined>({
+    onSuccess: () => transition('/account', { status: CREATED }),
+  });
+  const pending = write.isPending;
+  const failure = write.error;
   const errors = firstErrors(failure);
 
-  async function send(): Promise<void> {
-    setPending(true);
-    setFailure(null);
+  function submit(event: SubmitEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    if (pending) return;
     // Both passwords are hidden again on every submit, whatever the answer.
     setShowPassword(false);
     setShowConfirmation(false);
-    const result = await signUp({
+    const form = {
       invite_code: inviteCode,
       email,
       password,
       password_confirmation: confirmation,
+    };
+    write.run(async () => {
+      const result = await signUp(form);
+      // Secrets never stay on screen after a submit: the passwords and the invite code are cleared.
+      setPassword('');
+      setConfirmation('');
+      setInviteCode('');
+      if (!result.ok) {
+        setShowPassword(false);
+        setShowConfirmation(false);
+      }
+      return result;
     });
-    // Secrets never stay on screen after a submit: the passwords and the invite code are cleared.
-    setPassword('');
-    setConfirmation('');
-    setInviteCode('');
-    setPending(false);
-    if (!result.ok) {
-      setShowPassword(false);
-      setShowConfirmation(false);
-      setFailure(result);
-      return;
-    }
-    endSession(queryClient);
-    await queryClient.invalidateQueries({ queryKey: ME_KEY, refetchType: 'all' });
-    navigate('/account', CREATED);
-  }
-
-  function submit(event: SubmitEvent<HTMLFormElement>): void {
-    event.preventDefault();
-    if (!pending) void send();
   }
 
   return (

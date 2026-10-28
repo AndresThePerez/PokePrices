@@ -165,21 +165,33 @@ const QUANTITY_INPUT = `mt-1 w-28 num ${INPUT}`;
 /**
  * The quantity form (D10): a labelled whole-number field (1 to 9999) and Save. The browser's own
  * limits are hints only: the form never blocks a submit, so the API's 422 is what the field shows.
+ * The field shows the typed draft (null until something is typed) over the quantity the API
+ * holds (`initial`): a refetch moves an untouched field and never a typed one. A successful save
+ * drops the draft (`saves`, the owner's count of them, went up; or the owner closes the form), and
+ * so does another account, which unmounts the form (the forgotten list shows its loading line).
  */
 export function QuantityForm({
   initial,
+  saves = 0,
   pending,
   error,
   onSave,
 }: {
   readonly initial: string;
+  readonly saves?: number;
   readonly pending: boolean;
   readonly error: string | undefined;
   readonly onSave: (text: string) => void;
 }) {
   const id = useId();
   const errorId = `${id}-error`;
-  const [text, setText] = useState(initial);
+  const [draft, setDraft] = useState<string | null>(null);
+  const [savesSeen, setSavesSeen] = useState(saves);
+  if (savesSeen !== saves) {
+    setSavesSeen(saves);
+    setDraft(null);
+  }
+  const text = draft ?? initial;
 
   function submit(event: SubmitEvent<HTMLFormElement>): void {
     event.preventDefault();
@@ -204,7 +216,7 @@ export function QuantityForm({
           aria-invalid={error === undefined ? undefined : true}
           aria-describedby={error === undefined ? undefined : errorId}
           onChange={(event) => {
-            setText(event.target.value);
+            setDraft(event.target.value);
           }}
           className={QUANTITY_INPUT}
         />

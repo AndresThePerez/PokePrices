@@ -10,6 +10,7 @@ import {
   deleteWebhook,
   testWebhook,
   type ApiFailure,
+  type ApiResult,
   type WebhookEndpoint,
   type WebhookForm,
   type WebhooksBody,
@@ -21,13 +22,13 @@ import {
   WEBHOOKS_KEY,
   WEBHOOKS_LOADING,
   datePart,
-  useOnce,
 } from './alerts';
 import Notice from '../ui/Notice';
 import Panel from '../ui/Panel';
 import { Field, Input, Select } from '../ui/Field';
 import { ProblemBlock, StatusLine } from './Form';
 import { MUTED, PRIMARY_BUTTON, SECONDARY_BUTTON, firstErrors } from './fields';
+import { useAccountWrite } from './mutations';
 
 const INTRO =
   `PokéPrices sends a signed message to each signed webhook when a card on your watchlist or ` +
@@ -88,39 +89,42 @@ function WebhookRow({
   readonly canWrite: boolean;
 }) {
   const queryClient = useQueryClient();
-  const [testing, runTest] = useOnce();
-  const [deleting, runDelete] = useOnce();
   const [queued, setQueued] = useState(false);
+  // The row shows one failure: the last one, of whichever of its writes started last.
   const [failure, setFailure] = useState<{
     readonly context: string;
     readonly failure: ApiFailure;
   } | null>(null);
+  const test = useAccountWrite({
+    onMutate: () => {
+      setQueued(false);
+      setFailure(null);
+    },
+    onSuccess: () => {
+      setQueued(true);
+    },
+    onError: (result) => {
+      setFailure({ context: 'Could not send the test message', failure: result });
+    },
+  });
+  const remove = useAccountWrite({
+    onMutate: () => {
+      setFailure(null);
+    },
+    // Deleting the Discord webhook changes whether Discord can be chosen (and may reset the channel).
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: WEBHOOKS_KEY }),
+        endpoint.kind === 'discord'
+          ? queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_KEY })
+          : undefined,
+      ]),
+    onError: (result) => {
+      setFailure({ context: 'Could not delete the webhook', failure: result });
+    },
+  });
   const status = statusLine(endpoint);
   const hint = endpoint.url_hint;
-
-  async function sendTest(): Promise<void> {
-    setQueued(false);
-    setFailure(null);
-    const result = await testWebhook(endpoint.id);
-    if (result.ok) setQueued(true);
-    else setFailure({ context: 'Could not send the test message', failure: result });
-  }
-
-  async function remove(): Promise<void> {
-    setFailure(null);
-    const result = await deleteWebhook(endpoint.id);
-    if (!result.ok) {
-      setFailure({ context: 'Could not delete the webhook', failure: result });
-      return;
-    }
-    // Deleting the Discord webhook changes whether Discord can be chosen (and may reset the channel).
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: WEBHOOKS_KEY }),
-      endpoint.kind === 'discord'
-        ? queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_KEY })
-        : undefined,
-    ]);
-  }
 
   return (
     <li className="py-4">
@@ -136,10 +140,10 @@ function WebhookRow({
           {!endpoint.disabled && (
             <button
               type="button"
-              disabled={testing}
+              disabled={test.isPending}
               aria-label={`Send a test message to ${hint}`}
               onClick={() => {
-                runTest(sendTest);
+                test.run(() => testWebhook(endpoint.id));
               }}
               className={SECONDARY_BUTTON}
             >
@@ -148,10 +152,10 @@ function WebhookRow({
           )}
           <button
             type="button"
-            disabled={deleting}
+            disabled={remove.isPending}
             aria-label={`Delete the webhook ${hint}`}
             onClick={() => {
-              runDelete(remove);
+              remove.run(() => deleteWebhook(endpoint.id));
             }}
             className={SECONDARY_BUTTON}
           >
@@ -202,40 +206,43 @@ function AddWebhook() {
   const [kind, setKind] = useState<WebhookForm['kind']>('standard');
   const [url, setUrl] = useState('');
   const [description, setDescription] = useState('');
-  const [pending, run] = useOnce();
-  const [failure, setFailure] = useState<ApiFailure | null>(null);
   const [secret, setSecret] = useState<string | null>(null);
   const [discordAdded, setDiscordAdded] = useState(false);
+  // The write's data is the new webhook's kind only: the secret goes to this component's state.
+  const write = useAccountWrite<WebhookForm['kind']>({
+    onMutate: () => {
+      setDiscordAdded(false);
+    },
+    // A new Discord webhook makes Discord a channel that can be chosen.
+    onSuccess: (created) =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: WEBHOOKS_KEY }),
+        created === 'discord'
+          ? queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_KEY })
+          : undefined,
+      ]),
+  });
+  const pending = write.isPending;
+  const failure = write.error;
   const errors = firstErrors(failure);
 
-  async function add(form: WebhookForm): Promise<void> {
-    setFailure(null);
-    setDiscordAdded(false);
+  async function add(form: WebhookForm): Promise<ApiResult<WebhookForm['kind']>> {
     const result = await createWebhook(form);
     // The URL may carry a token (Discord): it is never kept after an answer.
     setUrl('');
-    if (!result.ok) {
-      setFailure(result);
-      return;
-    }
+    if (!result.ok) return result;
     setDescription('');
     const created = result.data.data;
     if (created.secret === null) setDiscordAdded(true);
     else setSecret(created.secret);
-    // A new Discord webhook makes Discord a channel that can be chosen.
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: WEBHOOKS_KEY }),
-      created.kind === 'discord'
-        ? queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_KEY })
-        : undefined,
-    ]);
+    return { ok: true, data: created.kind };
   }
 
   function submit(event: SubmitEvent<HTMLFormElement>): void {
     event.preventDefault();
     const form: WebhookForm =
       description.trim() === '' ? { kind, url } : { kind, url, description };
-    run(() => add(form));
+    write.run(() => add(form));
   }
 
   return (

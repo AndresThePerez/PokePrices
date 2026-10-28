@@ -18,7 +18,7 @@ import { variantLabel } from '../format';
 import Link from '../Link';
 import { unwrap } from '../query';
 import { SELECT } from '../ui/classes';
-import { MOVEMENT_ABS, useOnce } from './alerts';
+import { MOVEMENT_ABS } from './alerts';
 import { ProblemBlock } from './Form';
 import { MUTED, SECONDARY_BUTTON, TEXT_LINK, firstErrors } from './fields';
 import {
@@ -31,6 +31,7 @@ import {
   SignedOutList,
 } from './ListParts';
 import { NO_PRICE, WATCHLIST_KEY, cardLabel } from './lists';
+import { useAccountWrite } from './mutations';
 import { useSession } from './session';
 
 const EMPTY = 'Your watchlist is empty. Open a card from Search and choose Add to watchlist.';
@@ -68,24 +69,21 @@ function AlertControl({ item }: { readonly item: WatchlistItem }) {
     setHeld(item.alert_pct);
     if (choice === choiceOf(held)) setChoice(choiceOf(item.alert_pct));
   }
-  const [pending, run] = useOnce();
-  const [failure, setFailure] = useState<ApiFailure | null>(null);
+  // A failure leaves the last good list on screen and shows beside the row.
+  const write = useAccountWrite({
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: WATCHLIST_KEY }),
+  });
+  const pending = write.isPending;
+  const failure = write.error;
   const errors = firstErrors(failure);
   const fieldError = errors.pct ?? errors.variant_key;
   const name = `${cardLabel(item)}, ${variantLabel(item)}`;
 
-  async function save(value: string): Promise<void> {
-    setFailure(null);
-    const result =
-      value === 'off'
-        ? await deleteAlert(item.variant_key)
-        : await putAlert(item.variant_key, Number(value));
-    if (!result.ok) {
-      // The last good list stays on screen; the failure shows beside the row.
-      setFailure(result);
-      return;
-    }
-    await queryClient.invalidateQueries({ queryKey: WATCHLIST_KEY });
+  function save(value: string): void {
+    const variantKey = item.variant_key;
+    write.run(() =>
+      value === 'off' ? deleteAlert(variantKey) : putAlert(variantKey, Number(value)),
+    );
   }
 
   return (
@@ -121,7 +119,7 @@ function AlertControl({ item }: { readonly item: WatchlistItem }) {
           disabled={pending}
           aria-label={`Save the alert for ${name}`}
           onClick={() => {
-            run(() => save(choice));
+            save(choice);
           }}
           className={SECONDARY_BUTTON}
         >
@@ -160,21 +158,12 @@ function AlertExplainer() {
 
 function WatchRow({ item, access }: { readonly item: WatchlistItem; readonly access: Access }) {
   const queryClient = useQueryClient();
-  const [pending, setPending] = useState(false);
-  const [failure, setFailure] = useState<ApiFailure | null>(null);
-
-  async function remove(): Promise<void> {
-    setPending(true);
-    setFailure(null);
-    const result = await deleteWatchlistItem(item.variant_key);
-    setPending(false);
-    if (!result.ok) {
-      // The last good list stays on screen; the failure shows beside the row.
-      setFailure(result);
-      return;
-    }
-    await queryClient.invalidateQueries({ queryKey: WATCHLIST_KEY });
-  }
+  // A failure leaves the last good list on screen and shows beside the row.
+  const remove = useAccountWrite({
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: WATCHLIST_KEY }),
+  });
+  const pending = remove.isPending;
+  const failure = remove.error;
 
   return (
     <ListItem row={item} price={<PriceLines price={item.price} missing={NO_PRICE} />}>
@@ -190,7 +179,7 @@ function WatchRow({ item, access }: { readonly item: WatchlistItem; readonly acc
             disabled={pending}
             aria-label={`Remove ${cardLabel(item)}, ${variantLabel(item)} from your watchlist`}
             onClick={() => {
-              if (!pending) void remove();
+              if (!pending) remove.run(() => deleteWatchlistItem(item.variant_key));
             }}
             className={SECONDARY_BUTTON}
           >

@@ -2,7 +2,6 @@
 // query keys and the date part of an API timestamp. The page reads no clock: every date it shows
 // is the date part of a timestamp the API sent.
 import { useQuery } from '@tanstack/react-query';
-import { useRef, useState } from 'react';
 import {
   getNotifications,
   getWebhooks,
@@ -45,20 +44,4 @@ export function useNotifications(enabled: boolean) {
     queryFn: ({ signal }) => unwrap(getNotifications({ signal })),
     enabled,
   });
-}
-
-/** A button that runs its action once per click: a second click while it runs does nothing. */
-export function useOnce(): readonly [boolean, (action: () => Promise<void>) => void] {
-  const running = useRef(false);
-  const [pending, setPending] = useState(false);
-  function run(action: () => Promise<void>): void {
-    if (running.current) return;
-    running.current = true;
-    setPending(true);
-    void action().finally(() => {
-      running.current = false;
-      setPending(false);
-    });
-  }
-  return [pending, run];
 }

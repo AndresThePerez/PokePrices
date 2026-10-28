@@ -3,14 +3,14 @@
 // header bar with the demo sentence as one role-less paragraph and a quiet Sign out at the right
 // (omitted on /account, which has its own). It reads the session passively (useKnownSession), so it
 // adds no observer and no request, and it leaves once another tab's session signal arrives (A1-7).
-import { useQueryClient } from '@tanstack/react-query';
-import { useState, type ReactNode } from 'react';
-import { signOut, type ApiFailure } from '../api/client';
-import { navigate, useRoute } from '../router';
+import type { ReactNode } from 'react';
+import { signOut, type ApiResult } from '../api/client';
+import { useRoute } from '../router';
 import { ProblemBlock } from './Form';
 import { QUIET_BUTTON, SECONDARY_BUTTON } from './fields';
 import { DEMO_NOTICE } from './lists';
-import { ME_KEY, endSession, useKnownSession } from './session';
+import { useAccountWrite, useSessionTransition } from './mutations';
+import { useKnownSession } from './session';
 
 /**
  * Signs out (POST /logout; a 401 is already signed out), marks ['me'] signed out, signals the other
@@ -26,27 +26,21 @@ export function SignOutButton({
   readonly className?: string;
   readonly heading?: ReactNode;
 }) {
-  const queryClient = useQueryClient();
-  const [pending, setPending] = useState(false);
-  const [failure, setFailure] = useState<ApiFailure | null>(null);
+  const transition = useSessionTransition({ clearsMe: true });
+  // The data is whether the API confirmed the sign-out. A 401 already asked GET /v1/me again (the
+  // query client hears every 401 write), so only a confirmed sign-out asks here: either way, one
+  // request.
+  const write = useAccountWrite<boolean>({
+    onSuccess: (confirmed) => transition('/', { reask: confirmed }),
+  });
+  const pending = write.isPending;
+  const failure = write.error;
 
-  async function leave(): Promise<void> {
-    setPending(true);
-    setFailure(null);
+  async function leave(): Promise<ApiResult<boolean>> {
     const result = await signOut();
-    setPending(false);
+    if (result.ok) return { ok: true, data: true };
     // A 401 means the session had already ended: that is signed out too, not a failure.
-    if (!result.ok && result.status !== 401) {
-      setFailure(result);
-      return;
-    }
-    // Signed out at once (no stale "Signed in as" on the next visit), then confirmed by the API. A
-    // 401 already asked GET /v1/me again (the query client hears every 401 write), so only a
-    // successful sign-out asks here: either way, one request.
-    queryClient.setQueryData(ME_KEY, null);
-    endSession(queryClient);
-    if (result.ok) void queryClient.invalidateQueries({ queryKey: ME_KEY });
-    navigate('/');
+    return result.status === 401 ? { ok: true, data: false } : result;
   }
 
   const look = quiet ? QUIET_BUTTON : SECONDARY_BUTTON;
@@ -55,7 +49,7 @@ export function SignOutButton({
       type="button"
       disabled={pending}
       onClick={() => {
-        if (!pending) void leave();
+        if (!pending) write.run(leave);
       }}
       className={heading === undefined ? look : `${look} -mr-4 shrink-0`}
     >

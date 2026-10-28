@@ -6,12 +6,13 @@
 // loading and failed keep the Display panel after their content. A fresh mount reads the session
 // from GET /v1/me alone, so a signed-in session survives a reload (D13).
 import { useId, useState, type ReactNode } from 'react';
-import { resendVerification, type ApiFailure, type Me } from '../api/client';
+import { resendVerification, type Me } from '../api/client';
 import { DisplaySettings } from '../Footer';
 import Link from '../Link';
 import Panel from '../ui/Panel';
 import { AccountMain, LoadingAccount, ProblemBlock, StatusLine } from './Form';
 import { FOCUS, MUTED, SECONDARY_BUTTON, TEXT_LINK } from './fields';
+import { useAccountWrite } from './mutations';
 import { useArrivalStatus, useSession } from './session';
 import { SignOutButton } from './SignOut';
 import TwoFactorSection from './TwoFactor';
@@ -59,19 +60,10 @@ function Display() {
 }
 
 function Verification({ verified }: { readonly verified: boolean }) {
-  const [pending, setPending] = useState(false);
-  const [sent, setSent] = useState(false);
-  const [failure, setFailure] = useState<ApiFailure | null>(null);
-
-  async function resend(): Promise<void> {
-    setPending(true);
-    setSent(false);
-    setFailure(null);
-    const result = await resendVerification();
-    setPending(false);
-    if (result.ok) setSent(true);
-    else setFailure(result);
-  }
+  const write = useAccountWrite<undefined>();
+  const pending = write.isPending;
+  const sent = write.isSuccess;
+  const failure = write.error;
 
   if (verified) return <p className={VERIFIED_CHIP}>Email verified</p>;
   return (
@@ -82,7 +74,7 @@ function Verification({ verified }: { readonly verified: boolean }) {
           type="button"
           disabled={pending}
           onClick={() => {
-            if (!pending) void resend();
+            if (!pending) write.run(resendVerification);
           }}
           className={SECONDARY_BUTTON}
         >

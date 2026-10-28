@@ -10,6 +10,7 @@ import {
   putHolding,
   putWatchlistItem,
   type ApiFailure,
+  type HoldingEntry,
   type PortfolioBody,
 } from '../api/client';
 import { variantLabel, type VariantNaming } from '../format';
@@ -19,6 +20,7 @@ import { ProblemBlock } from './Form';
 import { QUIET_BUTTON, TEXT_LINK, firstErrors } from './fields';
 import { QuantityForm } from './ListParts';
 import { PORTFOLIO_KEY, WATCHLIST_KEY, isDemoReadOnly, quantityOf, signInPath } from './lists';
+import { useAccountWrite, useWriteGuard } from './mutations';
 
 const WATCH_CONTEXT = 'Could not change your watchlist';
 const HOLD_CONTEXT = 'Could not change your portfolio';
@@ -90,7 +92,11 @@ function heldQuantity(body: PortfolioBody, variantKey: string): string {
   return holding === undefined ? '1' : String(holding.quantity);
 }
 
-/** The opened Add to portfolio form: it reads the portfolio once, then sets the quantity. */
+/**
+ * The opened Add to portfolio form: it reads the portfolio once, then sets the quantity. A typed
+ * quantity survives a refetch (QuantityForm's draft); another account's forgotten portfolio shows
+ * the loading line first, which drops it, and a successful save closes the form.
+ */
 function HoldingForm({
   id,
   cardId,
@@ -114,13 +120,9 @@ function HoldingForm({
   if (portfolio.error?.status === 401) {
     body = <SignInPrompt cardId={cardId} />;
   } else if (portfolio.data !== undefined) {
-    const initial = heldQuantity(portfolio.data, variantKey);
-    // Keyed by the quantity held: when the answer changes under the open form (another tab
-    // switched accounts and the portfolio was asked again), the form starts over from it.
     body = (
       <QuantityForm
-        key={initial}
-        initial={initial}
+        initial={heldQuantity(portfolio.data, variantKey)}
         pending={pending}
         error={error}
         onSave={onSave}
@@ -153,35 +155,41 @@ export default function CardActions({
   const formId = useId();
   const label = variantLabel(variant);
   const [open, setOpen] = useState(false);
-  const [pending, setPending] = useState(false);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
-
-  async function watch(): Promise<void> {
-    setPending(true);
-    setOutcome(null);
-    const result = await putWatchlistItem(variant.variant_key);
-    setPending(false);
-    if (!result.ok) {
-      setOutcome(refusal(result, WATCH_CONTEXT));
-      return;
-    }
-    setOutcome({ kind: 'watched' });
-    await queryClient.invalidateQueries({ queryKey: WATCHLIST_KEY });
-  }
-
-  async function hold(text: string): Promise<void> {
-    setPending(true);
-    setOutcome(null);
-    const result = await putHolding(variant.variant_key, quantityOf(text));
-    setPending(false);
-    if (!result.ok) {
-      setOutcome(refusal(result, HOLD_CONTEXT));
-      return;
-    }
-    setOpen(false);
-    setOutcome({ kind: 'held', quantity: result.data.data.quantity });
-    await queryClient.invalidateQueries({ queryKey: PORTFOLIO_KEY });
-  }
+  const guard = useWriteGuard();
+  const watch = useAccountWrite(
+    {
+      onMutate: () => {
+        setOutcome(null);
+      },
+      onSuccess: () => {
+        setOutcome({ kind: 'watched' });
+        return queryClient.invalidateQueries({ queryKey: WATCHLIST_KEY });
+      },
+      onError: (failure) => {
+        setOutcome(refusal(failure, WATCH_CONTEXT));
+      },
+    },
+    guard,
+  );
+  const hold = useAccountWrite<HoldingEntry>(
+    {
+      onMutate: () => {
+        setOutcome(null);
+      },
+      onSuccess: (entry) => {
+        setOpen(false);
+        setOutcome({ kind: 'held', quantity: entry.data.quantity });
+        return queryClient.invalidateQueries({ queryKey: PORTFOLIO_KEY });
+      },
+      onError: (failure) => {
+        setOutcome(refusal(failure, HOLD_CONTEXT));
+      },
+    },
+    guard,
+  );
+  // One write at a time on a row, as one pending flag before.
+  const pending = watch.isPending || hold.isPending;
 
   const quantityError =
     open && outcome?.kind === 'failed' ? firstErrors(outcome.failure).quantity : undefined;
@@ -195,7 +203,7 @@ export default function CardActions({
           aria-label={`Add ${label} to your watchlist`}
           disabled={pending}
           onClick={() => {
-            if (!pending) void watch();
+            if (!pending) watch.run(() => putWatchlistItem(variant.variant_key));
           }}
           className={QUIET_BUTTON}
         />
@@ -220,7 +228,7 @@ export default function CardActions({
           pending={pending}
           error={quantityError}
           onSave={(text) => {
-            void hold(text);
+            hold.run(() => putHolding(variant.variant_key, quantityOf(text)));
           }}
         />
       )}

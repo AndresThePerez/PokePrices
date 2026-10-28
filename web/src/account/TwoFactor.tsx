@@ -15,11 +15,13 @@ import {
   twoFactorQrCode,
   twoFactorSecretKey,
   type ApiFailure,
+  type ApiResult,
   type Me,
   type RecoveryCodes,
 } from '../api/client';
 import { Field, ProblemBlock } from './Form';
 import { PRIMARY_BUTTON, SECONDARY_BUTTON, firstErrors } from './fields';
+import { useAccountWrite } from './mutations';
 import { ME_KEY } from './session';
 
 const CONTEXT = 'Could not change two-factor authentication';
@@ -74,8 +76,10 @@ export default function TwoFactorSection({ me }: { readonly me: Me }) {
   const [asking, setAsking] = useState(false);
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
-  const [pending, setPending] = useState(false);
-  const [failure, setFailure] = useState<ApiFailure | null>(null);
+  // One write at a time: a step, or the password prompt followed by the step it unblocks.
+  const write = useAccountWrite<undefined>();
+  const pending = write.isPending;
+  const failure = write.error;
   // The step that answered 423: it runs again once the password is confirmed.
   const awaiting = useRef<Step | null>(null);
   const errors = firstErrors(failure);
@@ -85,18 +89,16 @@ export default function TwoFactorSection({ me }: { readonly me: Me }) {
     await queryClient.invalidateQueries({ queryKey: ME_KEY });
   }
 
-  async function run(step: Step): Promise<void> {
-    setPending(true);
-    setFailure(null);
+  /** Runs a step: a 423 asks for the password (the step waits for it); any other failure shows. */
+  async function attempt(step: Step): Promise<ApiResult<undefined>> {
     const outcome = await step();
-    setPending(false);
-    if (outcome === null) return;
+    if (outcome === null) return { ok: true, data: undefined };
     if (outcome.failure.status === 423) {
       awaiting.current = outcome.retry;
       setAsking(true);
-      return;
+      return { ok: true, data: undefined };
     }
-    setFailure(outcome.failure);
+    return outcome.failure;
   }
 
   const showCodes: Step = async () => {
@@ -147,29 +149,23 @@ export default function TwoFactorSection({ me }: { readonly me: Me }) {
   };
 
   function start(step: Step): void {
-    if (!pending) void run(step);
-  }
-
-  async function sendPassword(): Promise<void> {
-    setPending(true);
-    setFailure(null);
-    const result = await confirmPassword({ password });
-    // The password is never kept after a submit, whatever the answer.
-    setPassword('');
-    setPending(false);
-    if (!result.ok) {
-      setFailure(result);
-      return;
-    }
-    setAsking(false);
-    const retry = awaiting.current;
-    awaiting.current = null;
-    if (retry !== null) await run(retry);
+    if (!pending) write.run(() => attempt(step));
   }
 
   function submitPassword(event: SubmitEvent<HTMLFormElement>): void {
     event.preventDefault();
-    if (!pending) void sendPassword();
+    if (pending) return;
+    const form = { password };
+    write.run(async () => {
+      const result = await confirmPassword(form);
+      // The password is never kept after a submit, whatever the answer.
+      setPassword('');
+      if (!result.ok) return result;
+      setAsking(false);
+      const retry = awaiting.current;
+      awaiting.current = null;
+      return retry === null ? { ok: true, data: undefined } : attempt(retry);
+    });
   }
 
   function submitCode(event: SubmitEvent<HTMLFormElement>): void {
@@ -178,7 +174,7 @@ export default function TwoFactorSection({ me }: { readonly me: Me }) {
     const value = code;
     // The code is never kept after a submit, whatever the answer.
     setCode('');
-    void run(confirmWith(value));
+    write.run(() => attempt(confirmWith(value)));
   }
 
   const settingUp = !on && setup !== null;

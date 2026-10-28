@@ -2,15 +2,14 @@
 // {two_factor: true}, the authentication code step (T04) over POST /two-factor-challenge. Signed
 // in, the page says who; after a sign-in it refetches ['me'] and opens next (already checked by
 // the router) or /account.
-import { useQueryClient } from '@tanstack/react-query';
 import { useId, useState, type SubmitEvent } from 'react';
-import { signIn, twoFactorChallenge, type ApiFailure } from '../api/client';
+import { signIn, twoFactorChallenge, type SignInAnswer } from '../api/client';
 import Link from '../Link';
-import { navigate } from '../router';
 import { DemoPanel } from './DemoButton';
 import { AccountMain, Field, LoadingAccount, ProblemBlock, StatusLine } from './Form';
 import { PRIMARY_BUTTON, TEXT_LINK, firstErrors } from './fields';
-import { ME_KEY, endSession, useArrivalStatus, useSession } from './session';
+import { useAccountWrite, useSessionTransition } from './mutations';
+import { useArrivalStatus, useSession } from './session';
 
 const FIELDS = ['email', 'password'] as const;
 
@@ -18,40 +17,28 @@ type ChallengeField = 'code' | 'recovery_code';
 
 /** The two-factor step: an authentication code, or a recovery code instead. */
 function TwoFactorChallenge({ next }: { readonly next: string }) {
-  const queryClient = useQueryClient();
+  const transition = useSessionTransition({ clearsMe: false });
   const headingId = useId();
   const [field, setField] = useState<ChallengeField>('code');
   const [value, setValue] = useState('');
-  const [pending, setPending] = useState(false);
-  const [failure, setFailure] = useState<ApiFailure | null>(null);
+  const challenge = useAccountWrite<undefined>({ onSuccess: () => transition(next) });
+  const pending = challenge.isPending;
+  const failure = challenge.error;
   const errors = firstErrors(failure);
-
-  async function send(): Promise<void> {
-    setPending(true);
-    setFailure(null);
-    const form = field === 'code' ? { code: value } : { recovery_code: value };
-    // The code is never kept after a submit, whatever the answer.
-    setValue('');
-    const result = await twoFactorChallenge(form);
-    if (!result.ok) {
-      setPending(false);
-      setFailure(result);
-      return;
-    }
-    endSession(queryClient);
-    await queryClient.invalidateQueries({ queryKey: ME_KEY, refetchType: 'all' });
-    navigate(next);
-  }
 
   function submit(event: SubmitEvent<HTMLFormElement>): void {
     event.preventDefault();
-    if (!pending) void send();
+    if (pending) return;
+    const form = field === 'code' ? { code: value } : { recovery_code: value };
+    // The code is never kept after a submit, whatever the answer.
+    setValue('');
+    challenge.run(() => twoFactorChallenge(form));
   }
 
   function toggle(): void {
     setField(field === 'code' ? 'recovery_code' : 'code');
     setValue('');
-    setFailure(null);
+    if (challenge.isError) challenge.reset();
   }
 
   return (
@@ -109,37 +96,30 @@ function SignInForm({
   readonly challenge: boolean;
   readonly onChallenge: () => void;
 }) {
-  const queryClient = useQueryClient();
+  const transition = useSessionTransition({ clearsMe: false });
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [pending, setPending] = useState(false);
-  const [failure, setFailure] = useState<ApiFailure | null>(null);
+  const write = useAccountWrite<SignInAnswer>({
+    onSuccess: async (answer) => {
+      // two_factor true: the authenticator-app step follows; nothing is signed in yet.
+      if (answer.two_factor) onChallenge();
+      else await transition(next);
+    },
+  });
+  const pending = write.isPending;
+  const failure = write.error;
   const errors = firstErrors(failure);
-
-  async function send(): Promise<void> {
-    setPending(true);
-    setFailure(null);
-    const result = await signIn({ email, password });
-    // The password is never kept after a submit, whatever the answer.
-    setPassword('');
-    if (!result.ok) {
-      setPending(false);
-      setFailure(result);
-      return;
-    }
-    // two_factor true: the authenticator-app step follows; nothing is signed in yet.
-    if (result.data.two_factor) {
-      onChallenge();
-      return;
-    }
-    endSession(queryClient);
-    await queryClient.invalidateQueries({ queryKey: ME_KEY, refetchType: 'all' });
-    navigate(next);
-  }
 
   function submit(event: SubmitEvent<HTMLFormElement>): void {
     event.preventDefault();
-    if (!pending) void send();
+    if (pending) return;
+    const form = { email, password };
+    write.run(async () => {
+      const result = await signIn(form);
+      // The password is never kept after a submit, whatever the answer.
+      setPassword('');
+      return result;
+    });
   }
 
   if (challenge) return <TwoFactorChallenge next={next} />;

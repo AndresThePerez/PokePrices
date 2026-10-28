@@ -2,11 +2,12 @@
 // email move into component state and leave the address bar (history.replaceState), so the token
 // never stays in the browser history. POST /reset-password, then /sign-in with a status line.
 import { useEffect, useState, type SubmitEvent } from 'react';
-import { resetPassword, type ApiFailure } from '../api/client';
+import { resetPassword } from '../api/client';
 import Link from '../Link';
 import { navigate } from '../router';
 import { AccountMain, Field, ProblemBlock } from './Form';
 import { PRIMARY_BUTTON, TEXT_LINK, firstErrors } from './fields';
+import { useAccountWrite } from './mutations';
 
 const FIELDS = ['email', 'password', 'password_confirmation'] as const;
 const SAVED = 'Password saved. Sign in with the new password.';
@@ -19,29 +20,30 @@ interface ResetLink {
 function ResetForm({ link }: { readonly link: ResetLink }) {
   const [password, setPassword] = useState('');
   const [confirmation, setConfirmation] = useState('');
-  const [pending, setPending] = useState(false);
-  const [failure, setFailure] = useState<ApiFailure | null>(null);
+  const write = useAccountWrite({
+    onSuccess: () => {
+      navigate('/sign-in', SAVED);
+    },
+  });
+  const pending = write.isPending;
+  const failure = write.error;
   const errors = firstErrors(failure);
 
-  async function send(): Promise<void> {
-    setPending(true);
-    setFailure(null);
-    const result = await resetPassword({
+  function submit(event: SubmitEvent<HTMLFormElement>): void {
+    event.preventDefault();
+    if (pending) return;
+    const form = {
       token: link.token,
       email: link.email,
       password,
       password_confirmation: confirmation,
+    };
+    write.run(async () => {
+      const result = await resetPassword(form);
+      setPassword('');
+      setConfirmation('');
+      return result;
     });
-    setPassword('');
-    setConfirmation('');
-    setPending(false);
-    if (result.ok) navigate('/sign-in', SAVED);
-    else setFailure(result);
-  }
-
-  function submit(event: SubmitEvent<HTMLFormElement>): void {
-    event.preventDefault();
-    if (!pending) void send();
   }
 
   return (

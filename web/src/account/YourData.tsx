@@ -5,14 +5,13 @@
 // after every answer and whenever the checkbox is cleared. The demo sees why it cannot delete.
 // Both are panels of the Account page; Delete account stands apart as the danger zone (D2-i2-T07):
 // further down, its border in the problem tone.
-import { useQueryClient } from '@tanstack/react-query';
 import { useId, useState, type SubmitEvent } from 'react';
-import { deleteAccount, type ApiFailure, type Me } from '../api/client';
+import { deleteAccount, type Me } from '../api/client';
 import { Button } from '../ui/Button';
 import Panel from '../ui/Panel';
 import { Field, ProblemBlock } from './Form';
 import { FOCUS, TEXT_LINK, firstErrors } from './fields';
-import { ME_KEY, endSession } from './session';
+import { useAccountWrite, useSessionTransition } from './mutations';
 
 const EXPORT_PATH = '/v1/me/export';
 const EXPORT_FILE = 'pokeprices-export.json';
@@ -44,36 +43,31 @@ function ExportSection() {
 }
 
 function DeleteForm({ onDeleted }: { readonly onDeleted: () => void }) {
-  const queryClient = useQueryClient();
+  const transition = useSessionTransition({ clearsMe: true });
   const checkboxId = useId();
   const [understood, setUnderstood] = useState(false);
   const [password, setPassword] = useState('');
-  const [pending, setPending] = useState(false);
-  const [failure, setFailure] = useState<ApiFailure | null>(null);
+  const write = useAccountWrite<undefined>({
+    onSuccess: () => {
+      onDeleted();
+      // Signed out at once, then confirmed by the API; everything of the deleted account is dropped.
+      return transition(null);
+    },
+  });
+  const failure = write.error;
   const errors = firstErrors(failure);
-  const ready = understood && password !== '' && !pending;
-
-  async function remove(value: string): Promise<void> {
-    setPending(true);
-    setFailure(null);
-    const result = await deleteAccount({ password: value });
-    // The password is never kept after an answer, whatever it was.
-    setPassword('');
-    setPending(false);
-    if (!result.ok) {
-      setFailure(result);
-      return;
-    }
-    onDeleted();
-    // Signed out at once, then confirmed by the API; everything of the deleted account is dropped.
-    queryClient.setQueryData(ME_KEY, null);
-    endSession(queryClient);
-    void queryClient.invalidateQueries({ queryKey: ME_KEY });
-  }
+  const ready = understood && password !== '' && !write.isPending;
 
   function submit(event: SubmitEvent<HTMLFormElement>): void {
     event.preventDefault();
-    if (ready) void remove(password);
+    if (!ready) return;
+    const form = { password };
+    write.run(async () => {
+      const result = await deleteAccount(form);
+      // The password is never kept after an answer, whatever it was.
+      setPassword('');
+      return result;
+    });
   }
 
   return (

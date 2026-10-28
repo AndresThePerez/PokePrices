@@ -1,32 +1,27 @@
 // /password/forgot (D10, D2): POST /forgot-password. The API answers the same message whether or
 // not the address has an account; the page shows that message verbatim.
 import { useState, type SubmitEvent } from 'react';
-import { requestPasswordReset, type ApiFailure } from '../api/client';
+import { requestPasswordReset, type MessageAnswer } from '../api/client';
 import { AccountMain, Field, ProblemBlock, StatusLine } from './Form';
 import { PRIMARY_BUTTON, firstErrors } from './fields';
+import { useAccountWrite } from './mutations';
 
 const FIELDS = ['email'] as const;
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
-  const [pending, setPending] = useState(false);
-  const [failure, setFailure] = useState<ApiFailure | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const write = useAccountWrite<MessageAnswer>();
+  const pending = write.isPending;
+  const failure = write.error;
+  // The API's message, verbatim, once the request answered.
+  const message = write.data?.message ?? null;
   const errors = firstErrors(failure);
-
-  async function send(): Promise<void> {
-    setPending(true);
-    setFailure(null);
-    setMessage(null);
-    const result = await requestPasswordReset({ email });
-    setPending(false);
-    if (result.ok) setMessage(result.data.message);
-    else setFailure(result);
-  }
 
   function submit(event: SubmitEvent<HTMLFormElement>): void {
     event.preventDefault();
-    if (!pending) void send();
+    if (pending) return;
+    const form = { email };
+    write.run(() => requestPasswordReset(form));
   }
 
   return (

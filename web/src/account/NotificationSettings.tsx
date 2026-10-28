@@ -12,9 +12,10 @@ import {
   type NotificationsBody,
 } from '../api/client';
 import Link from '../Link';
-import { MOVEMENT_ABS, MOVEMENT_PCT, NOTIFICATIONS_KEY, WEBHOOKS_LOADING, useOnce } from './alerts';
+import { MOVEMENT_ABS, MOVEMENT_PCT, NOTIFICATIONS_KEY, WEBHOOKS_LOADING } from './alerts';
 import { ProblemBlock, StatusLine } from './Form';
 import { FOCUS, MUTED, PRIMARY_BUTTON, TEXT_LINK, firstErrors } from './fields';
+import { useAccountWrite } from './mutations';
 
 const DIGEST_HINT =
   `The digest lists the cards on your watchlist and portfolio whose daily close moved by at least ` +
@@ -45,14 +46,36 @@ function SettingsForm({
   const queryClient = useQueryClient();
   const id = useId();
   const [draft, setDraft] = useState<Draft | null>(null);
-  const [pending, run] = useOnce();
-  const [failure, setFailure] = useState<ApiFailure | null>(null);
   const [saved, setSaved] = useState(false);
   // What the PUT answered, held while the cache has had no newer read (dataUpdateCount unchanged).
   const [held, setHeld] = useState<{ readonly values: Draft; readonly reads: number } | null>(null);
   const reads = queryClient.getQueryState(NOTIFICATIONS_KEY)?.dataUpdateCount ?? 0;
   const confirmed = held !== null && held.reads === reads ? held.values : null;
   const shown: Draft = draft ?? confirmed ?? { channel: settings.channel, digest: settings.digest };
+  const write = useAccountWrite<NotificationsBody>({
+    onMutate: () => {
+      setSaved(false);
+    },
+    // Refetched, never written to the cache from the answer: an answer that lands after a session
+    // transition finds no query to refresh (endSession removed it) or refreshes the next account's
+    // own one (a query still read was reset and asked again with the new session). Only this form
+    // holds the answer, and only while the read again fails.
+    onSuccess: async (body) => {
+      const before = queryClient.getQueryState(NOTIFICATIONS_KEY)?.dataUpdateCount ?? 0;
+      await queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_KEY });
+      const after = queryClient.getQueryState(NOTIFICATIONS_KEY)?.dataUpdateCount ?? 0;
+      const answer = body.data;
+      setHeld(
+        after === before
+          ? { values: { channel: answer.channel, digest: answer.digest }, reads: after }
+          : null,
+      );
+      setDraft(null);
+      setSaved(true);
+    },
+  });
+  const pending = write.isPending;
+  const failure: ApiFailure | null = write.error;
   const channelError = firstErrors(failure).channel;
   const discordHintId = settings.discord_available ? undefined : `${id}-discord-hint`;
   const channelErrorId = channelError === undefined ? undefined : `${id}-channel-error`;
@@ -63,35 +86,10 @@ function SettingsForm({
     setSaved(false);
   }
 
-  async function save(form: Draft): Promise<void> {
-    setSaved(false);
-    setFailure(null);
-    const result = await putNotifications(form);
-    if (!result.ok) {
-      setFailure(result);
-      return;
-    }
-    // Refetched, never written to the cache from the answer: an answer that lands after a session
-    // transition finds no query to refresh (endSession removed it) or refreshes the next account's
-    // own one (a query still read was reset and asked again with the new session). Only this form
-    // holds the answer, and only while the read again fails.
-    const before = queryClient.getQueryState(NOTIFICATIONS_KEY)?.dataUpdateCount ?? 0;
-    await queryClient.invalidateQueries({ queryKey: NOTIFICATIONS_KEY });
-    const after = queryClient.getQueryState(NOTIFICATIONS_KEY)?.dataUpdateCount ?? 0;
-    const answer = result.data.data;
-    setHeld(
-      after === before
-        ? { values: { channel: answer.channel, digest: answer.digest }, reads: after }
-        : null,
-    );
-    setDraft(null);
-    setSaved(true);
-  }
-
   function submit(event: SubmitEvent<HTMLFormElement>): void {
     event.preventDefault();
     const form = { channel: shown.channel, digest: shown.digest };
-    run(() => save(form));
+    write.run(() => putNotifications(form));
   }
 
   return (

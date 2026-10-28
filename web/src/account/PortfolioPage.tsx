@@ -10,7 +10,6 @@ import {
   getPortfolio,
   putHolding,
   type ApiFailure,
-  type ApiResult,
   type Holding,
   type PortfolioBody,
 } from '../api/client';
@@ -30,6 +29,7 @@ import {
   SignedOutList,
 } from './ListParts';
 import { PORTFOLIO_KEY, cardLabel, quantityOf } from './lists';
+import { useAccountWrite } from './mutations';
 import { useSession } from './session';
 
 const EMPTY = 'Your portfolio is empty. Open a card from Search and choose Add to portfolio.';
@@ -51,22 +51,19 @@ function HoldingRow({
   readonly readOnly: boolean;
 }) {
   const queryClient = useQueryClient();
-  const [pending, setPending] = useState(false);
-  const [failure, setFailure] = useState<ApiFailure | null>(null);
+  // Successful saves: a new one (and nothing else, not a refetch) drops the quantity form's typed
+  // draft, once the list was read again.
+  const [saves, setSaves] = useState(0);
+  // A failure leaves the last good list on screen and shows in the row.
+  const write = useAccountWrite({
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: PORTFOLIO_KEY });
+      setSaves((count) => count + 1);
+    },
+  });
+  const pending = write.isPending;
+  const failure = write.error;
   const value = valueLine(holding);
-
-  async function write(send: () => Promise<ApiResult<unknown>>): Promise<void> {
-    setPending(true);
-    setFailure(null);
-    const result = await send();
-    setPending(false);
-    if (!result.ok) {
-      // The last good list stays on screen; the failure shows in the row.
-      setFailure(result);
-      return;
-    }
-    await queryClient.invalidateQueries({ queryKey: PORTFOLIO_KEY });
-  }
 
   const quantity = String(holding.quantity);
   return (
@@ -93,12 +90,12 @@ function HoldingRow({
       {!readOnly && (
         <div className="mt-3 flex flex-wrap items-end gap-x-6 gap-y-3 sm:col-span-2">
           <QuantityForm
-            key={quantity}
             initial={quantity}
+            saves={saves}
             pending={pending}
             error={firstErrors(failure).quantity}
             onSave={(text) => {
-              void write(() => putHolding(holding.variant_key, quantityOf(text)));
+              write.run(() => putHolding(holding.variant_key, quantityOf(text)));
             }}
           />
           <button
@@ -106,7 +103,7 @@ function HoldingRow({
             disabled={pending}
             aria-label={`Remove ${cardLabel(holding)}, ${variantLabel(holding)} from your portfolio`}
             onClick={() => {
-              if (!pending) void write(() => deleteHolding(holding.variant_key));
+              if (!pending) write.run(() => deleteHolding(holding.variant_key));
             }}
             className={SECONDARY_BUTTON}
           >
