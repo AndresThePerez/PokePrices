@@ -2,6 +2,8 @@
 
 declare(strict_types=1);
 
+use App\Domain\Alerts\CatalogName;
+use App\Domain\Alerts\DiscordMessage;
 use App\Domain\Alerts\NotificationText;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -235,4 +237,108 @@ it('measures the Discord digest after escaping, so escaped names still fit in 20
         ->and($lines[count($lines) - 2])->toBe('…and 4 more: '.Q3E_APP.'/watchlist')
         ->and(end($lines))->toBe(NotificationText::FOOTNOTE)
         ->and(ForbiddenWords::textMatches($text))->toBe([]);
+});
+
+// Reviewer's edge cases (Q1-i3 T01, round 1).
+
+it('strips control characters before it escapes, so a control character between markdown characters cannot hide one', function (string $name, string $email, string $discord): void {
+    expect(CatalogName::forEmail($name))->toBe($email)
+        ->and(CatalogName::forDiscord($name))->toBe($discord);
+})->with([
+    'control inside a scheme' => ["ht\ntps:\r//evil.example", 'https://evil.example', 'https\://evil.example'],
+    'backslash then control then star' => ["a\\\x07*b", 'a\*b', 'a\\\\\*b'],
+    'newline before a list marker' => ["\n- Pikachu", '- Pikachu', '\- Pikachu'],
+    'C1 before a numbered list' => ["\x07\u{85}1. Mew", '1. Mew', '1\. Mew'],
+    'control between brackets' => ["[\x00](x)", '[](x)', '\[\]\(x\)'],
+    'quote marker after a control' => ["\x1b> quoted", '> quoted', '\> quoted'],
+]);
+
+it('keeps format and separator characters, and every non-control character, exactly as the catalog gave them', function (): void {
+    // Cf (zero-width space, right-to-left override), NBSP, LINE SEPARATOR, accents, CJK and an emoji are not \p{Cc}.
+    $name = "A\u{200B}B\u{202E}C\u{00A0}D\u{2028}E é 日本語 ⚡️";
+
+    expect(CatalogName::forEmail($name))->toBe($name)
+        ->and(CatalogName::forDiscord($name))->toBe($name)
+        ->and(CatalogName::forEmail("\u{7f}\u{80}\u{9f}\u{a0}"))->toBe("\u{a0}");
+});
+
+it('does not throw on a name that is not UTF-8: it drops the single-byte controls and keeps the other bytes', function (): void {
+    $name = "a\xFF\x07b\x7f*\x00";
+
+    expect(CatalogName::forEmail($name))->toBe("a\xFFb*")
+        ->and(CatalogName::forDiscord($name))->toBe("a\xFFb\\*")
+        ->and(explode("\n", NotificationText::alert(q3eRow('base1-4:holo:-:-'), q3eCard($name), 5)['text'])[0])->toBe("a\xFFb* · holo")
+        ->and(explode("\n", NotificationText::discordAlert(q3eRow('base1-4:holo:-:-'), q3eCard($name), 5))[0])->toBe("a\xFFb\\* · holo");
+});
+
+it('leaves a plain name byte-identical between the email and Discord renderings of the alert and the digest', function (string $name): void {
+    $row = q3eRow('base1-4:holo:1st:-', ['change_pct' => '-8.40', 'change' => '-1.05', 'direction' => 'down']);
+    $moves = [['event' => $row, 'card' => q3eCard($name)], ['event' => q3eRow('base1-5:holo:-:-', ['id' => 2]), 'card' => null]];
+
+    expect(NotificationText::discordAlert($row, q3eCard($name), 7))->toBe(NotificationText::alert($row, q3eCard($name), 7)['text'])
+        ->and(NotificationText::discordAlert($row, null, 7))->toBe(NotificationText::alert($row, null, 7)['text'])
+        ->and(NotificationText::discordDigest('2026-10-12', $moves))->toBe(NotificationText::digest('2026-10-12', $moves, 25)['text']);
+})->with(['Pikachu ex', 'Mr. Mime', "Farfetch'd", 'Poké Ball', 'Nidoran♀ 12/102', 'Name of base1-4 v1.0']);
+
+it('keeps every Discord digest within 2000 characters, as full as it can be, with its text equal to the email digest of the escaped names', function (): void {
+    config(['alerts.digest.max_lines' => 25]);
+    $exact = 0;
+    for ($stars = 4; $stars <= 30; $stars++) {
+        for ($plain = 0; $plain <= 6; $plain++) {
+            $name = str_repeat('*', $stars).str_repeat('x', $plain);
+            $escaped = str_repeat('\*', $stars).str_repeat('x', $plain);
+            $raw = $pre = [];
+            for ($i = 1; $i <= 30; $i++) {
+                $event = q3eRow(sprintf('base1-%d:holo:-:-', $i), ['id' => $i]);
+                $raw[] = ['event' => $event, 'card' => q3eCard($name)];
+                $pre[] = ['event' => $event, 'card' => q3eCard($escaped)];
+            }
+
+            $text = NotificationText::discordDigest('2026-10-12', $raw);
+            $shown = count(explode("\n", $text)) - 3;
+            $length = mb_strlen($text);
+            $exact += $length === 2000 ? 1 : 0;
+
+            expect($length)->toBeLessThanOrEqual(2000, "{$stars} stars, {$plain} plain")
+                ->and($text)->toBe(NotificationText::digest('2026-10-12', $pre, $shown)['text'], "{$stars} stars, {$plain} plain")
+                // One more line would not have fitted.
+                ->and(mb_strlen(NotificationText::digest('2026-10-12', $pre, $shown + 1)['text']))->toBeGreaterThan(2000, "{$stars} stars, {$plain} plain");
+        }
+    }
+    // The sweep reaches the exact boundary at least once: 2000 characters is kept, not cut to 1999.
+    expect($exact)->toBeGreaterThan(0);
+});
+
+it('cuts a single escaped name longer than 2000 characters to a valid envelope that still has no unescaped metacharacter and still allows no mention', function (): void {
+    $row = q3eRow('base1-4:holo:-:-');
+    $card = q3eCard(str_repeat('*', 1500));
+
+    $body = json_decode(DiscordMessage::envelope(NotificationText::discordAlert($row, $card, 5)), true, 512, JSON_THROW_ON_ERROR);
+    $digest = NotificationText::discordDigest('2026-10-12', [['event' => $row, 'card' => $card]]);
+
+    expect(mb_strlen($body['content']))->toBeLessThanOrEqual(2000)
+        ->and($body['allowed_mentions'])->toBe(['parse' => []])
+        ->and(preg_match('/(?<!\\\\)\*/', $body['content']))->toBe(0)
+        ->and(mb_strlen($digest))->toBeLessThanOrEqual(2000)
+        ->and($digest)->toEndWith(NotificationText::FOOTNOTE)
+        ->and($digest)->toContain('…and 1 more: '.Q3E_APP.'/watchlist');
+});
+
+it('renders a control-only name as an empty label through the stored Discord alert, the stored Discord digest and the live switch', function (): void {
+    config(['alerts.discord.test_webhook_url' => Q3E_DISCORD_URL]);
+    AlertRows::runs('2026-10-11', '2026-10-12');
+    q3eFake($this, ['base1-4' => "\x00\r\n\x1b\x07\x7f"]);
+    q3eEvent();
+    $discord = q3ePerson('discord-blank@example.com', 'discord');
+    AlertRows::endpoint($discord, 'discord');
+
+    AlertRows::dispatch();
+    $code = Artisan::call('pokeprices:alerts:discord-test');
+
+    $requests = Http::recorded(fn (ClientRequest $r): bool => str_starts_with($r->url(), 'https://discord.com/api/webhooks/123456789012345678/SENTINELTOKEN-0001'))->values()->all();
+    $live = (string) json_decode($requests[0][0]->body(), true, 512, JSON_THROW_ON_ERROR)['content'];
+    expect(explode("\n", (string) q3eBody($discord, 'alert.triggered')['content'])[0])->toBe(' · holo, 1st')
+        ->and(explode("\n", (string) q3eBody($discord, 'digest')['content']))->toContain(' · holo, 1st: $1,234.50 → $1,389.95, ▲ +$155.45 (+12.59%) vs previous close (2026-10-11)')
+        ->and($code)->toBe(0)
+        ->and(explode("\n", $live)[2])->toStartWith(' · holo, 1st: ');
 });
