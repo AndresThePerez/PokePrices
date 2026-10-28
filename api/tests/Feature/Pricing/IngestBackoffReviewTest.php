@@ -51,7 +51,7 @@ function rvRun(string $status, CarbonImmutable $finishedAt, ?string $error = nul
 /** @return list<string> */
 function rvScanAt(string $root, CarbonImmutable $at): array
 {
-    test()->travelTo($at);
+    CarbonImmutable::setTestNow($at);
 
     return (new IngestPending($root, 'database'))->scan()['dispatched'];
 }
