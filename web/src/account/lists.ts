@@ -1,14 +1,12 @@
 // Shared pieces of the watchlist and portfolio views (D10) that are not components: the strings
 // every list view prints, the row naming of the P3 movers row and the answers' refusals.
 import type { ApiFailure, WatchlistItem } from '../api/client';
-import { variantLabel } from '../format';
 import { cardPath } from '../router';
 import { accountKey } from './session';
 
 export const WATCHLIST_KEY = accountKey('watchlist');
 export const PORTFOLIO_KEY = accountKey('portfolio');
 
-export const DEGRADED_LINE = 'Catalog data may be out of date: PokéSearch is unavailable';
 export const DEMO_NOTICE =
   'You are signed in to the read-only demo account. Its watchlist and portfolio cannot be changed.';
 export const NO_PRICE = 'No price in the collected snapshots';
@@ -22,14 +20,6 @@ export type ListRow = Omit<WatchlistItem, 'alert_pct'>;
 /** The card's name from the PokéSearch catalog, else its id (P3 movers row). */
 export function cardLabel(row: ListRow): string {
   return row.card === null ? `Card ${row.card_id}` : row.card.name;
-}
-
-/** The second line of a row: set and number when the catalog named the card, then the variant. */
-export function detailLine(row: ListRow): string {
-  const label = variantLabel(row);
-  const variant = label.charAt(0).toUpperCase() + label.slice(1);
-  if (row.card === null) return variant;
-  return `${row.card.set_name} No. ${row.card.number} · ${variant}`;
 }
 
 /** Where sign-in brings a visitor back to: this card's page (D10). */

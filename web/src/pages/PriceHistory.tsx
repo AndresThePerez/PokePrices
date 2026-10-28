@@ -28,8 +28,8 @@ import { unwrap } from '../query';
 import { cardPricesKey } from '../queryKeys';
 import { Button } from '../ui/Button';
 import { MUTED, TEXT_LINK } from '../ui/classes';
-import Notice from '../ui/Notice';
 import Panel from '../ui/Panel';
+import ProblemNotice from '../ui/ProblemNotice';
 
 const ZERO_ELIGIBLE = 'No daily close is held for this card yet.';
 const CHART_FAILED = 'The chart could not be drawn. Show the data table to read every close.';
@@ -64,14 +64,7 @@ function Attribution() {
 
 function Problem({ failure }: { readonly failure: ApiFailure }) {
   return (
-    <Notice tone="problem" role="alert" className="mt-3">
-      <p className="font-semibold">Could not load the price history: {failure.title}</p>
-      {failure.requestId !== null && (
-        <p className="mt-1 text-sm">
-          Request ID <code className="break-all">{failure.requestId}</code>
-        </p>
-      )}
-    </Notice>
+    <ProblemNotice context="Could not load the price history" failure={failure} className="mt-3" />
   );
 }
 

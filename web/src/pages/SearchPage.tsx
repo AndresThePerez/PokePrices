@@ -7,10 +7,10 @@ import { initialOf } from '../format';
 import { unwrap } from '../query';
 import { searchKey } from '../queryKeys';
 import { FOCUS, MUTED, SECONDARY_BUTTON } from '../ui/classes';
-import Notice from '../ui/Notice';
+import DegradedNotice from '../ui/DegradedNotice';
+import Page from '../ui/Page';
+import ProblemNotice from '../ui/ProblemNotice';
 import SearchForm from './SearchForm';
-
-const DEGRADED_LINE = 'Catalog data may be out of date: PokéSearch is unavailable';
 
 /** A page number from the URL; anything that is not a positive integer reads as page 1. */
 function readPage(raw: string | null): number {
@@ -25,16 +25,7 @@ function searchPath(q: string, page: number): string {
 }
 
 function Problem({ failure }: { readonly failure: ApiFailure }) {
-  return (
-    <Notice tone="problem" role="alert" className="mt-6">
-      <p className="font-semibold">Search failed: {failure.title}</p>
-      {failure.requestId !== null && (
-        <p className="mt-1 text-sm">
-          Request ID <code className="break-all">{failure.requestId}</code>
-        </p>
-      )}
-    </Notice>
-  );
+  return <ProblemNotice context="Search failed" failure={failure} className="mt-6" />;
 }
 
 function Pager({
@@ -117,11 +108,7 @@ function Results({ q, body }: { readonly q: string; readonly body: CardSearchPag
   }
   return (
     <>
-      {meta.degraded && (
-        <Notice tone="warn" as="p" className="mt-4">
-          {DEGRADED_LINE}
-        </Notice>
-      )}
+      {meta.degraded && <DegradedNotice className="mt-4" />}
       <p role="status" className="mt-4 text-base font-semibold text-ink">
         {summary}
       </p>
@@ -180,10 +167,10 @@ export default function SearchPage({ query }: { readonly query: URLSearchParams 
   }
 
   return (
-    <main className="mx-auto max-w-3xl p-6">
+    <Page>
       <h1 className="text-2xl font-semibold">Search cards</h1>
       <SearchForm key={q} initial={q} />
       {body}
-    </main>
+    </Page>
   );
 }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { changeLine, grouped, initialOf, signed, variantLabel } from './format';
+import { changeLine, detailLine, grouped, initialOf, signed, variantLabel } from './format';
 
 describe('grouped (D2)', () => {
   it.each([
@@ -129,5 +129,45 @@ describe('initialOf (D2-i2-T08)', () => {
     const initial = initialOf('\u{1F600}');
     expect(initial).toHaveLength(2);
     expect(initial.codePointAt(0)).toBe(0x1f600);
+  });
+});
+
+describe('detailLine (Q1-i5-T05)', () => {
+  const naming = {
+    variant_key: 'base1-4:holo:1st:-',
+    finish: 'holo',
+    edition: '1st',
+    treatment: '-',
+  };
+
+  it('puts the set and number before the capitalised variant when the catalog named the card', () => {
+    expect(detailLine({ ...naming, card: { set_name: 'Base', number: '4/102' } })).toBe(
+      'Base No. 4/102 · Holo, 1st',
+    );
+  });
+
+  it('prints only the capitalised variant without a catalog card', () => {
+    expect(detailLine({ ...naming, card: null })).toBe('Holo, 1st');
+  });
+
+  it('capitalises a fallback variant key and leaves an empty label empty', () => {
+    expect(
+      detailLine({
+        variant_key: 'x-1:-:-:-',
+        finish: '-',
+        edition: '',
+        treatment: '-',
+        card: null,
+      }),
+    ).toBe('X-1:-:-:-');
+    expect(
+      detailLine({ variant_key: '', finish: '', edition: '', treatment: '', card: null }),
+    ).toBe('');
+  });
+
+  it('capitalises a non-ASCII first letter', () => {
+    expect(
+      detailLine({ variant_key: 'k', finish: 'ñandu', edition: '', treatment: '', card: null }),
+    ).toBe('Ñandu');
   });
 });

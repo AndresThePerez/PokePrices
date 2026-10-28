@@ -6,7 +6,9 @@ import type { ApiFailure } from '../api/client';
 import Link from '../Link';
 import { Field as UiField, Input } from '../ui/Field';
 import Notice from '../ui/Notice';
+import Page from '../ui/Page';
 import Panel from '../ui/Panel';
+import ProblemNotice from '../ui/ProblemNotice';
 import { MUTED, QUIET_BUTTON, TEXT_LINK } from './fields';
 
 /** A show/hide toggle for a password field: its constant accessible name and its state. */
@@ -130,8 +132,12 @@ export function ProblemBlock({
     .map(([field, messages]) => [field, messages[0]] as const)
     .filter((entry): entry is readonly [string, string] => entry[1] !== undefined);
   return (
-    <Notice tone="problem" role="alert" className="mt-6">
-      <p className="font-semibold">{firstLine(context, failure)}</p>
+    <ProblemNotice
+      context={context}
+      failure={failure}
+      headline={firstLine(context, failure)}
+      className="mt-6"
+    >
       {unshown.length > 0 && (
         <ul className="mt-1 list-disc pl-5 text-sm">
           {unshown.map(([field, message]) => (
@@ -139,12 +145,7 @@ export function ProblemBlock({
           ))}
         </ul>
       )}
-      {failure.requestId !== null && (
-        <p className="mt-1 text-sm">
-          Request ID <code className="break-all">{failure.requestId}</code>
-        </p>
-      )}
-    </Notice>
+    </ProblemNotice>
   );
 }
 
@@ -187,19 +188,19 @@ export function AccountMain({
 }) {
   if (width === 'auth') {
     return (
-      <main className="mx-auto max-w-3xl p-6">
+      <Page>
         <Panel className={AUTH_PANEL}>
           <h1 className="text-2xl font-semibold">{title}</h1>
           {children}
         </Panel>
         {after}
-      </main>
+      </Page>
     );
   }
   return (
-    <main className="mx-auto max-w-3xl p-6">
+    <Page>
       <h1 className="text-2xl font-semibold">{title}</h1>
       <div className={width === 'wide' ? 'max-w-xl' : 'max-w-md'}>{children}</div>
-    </main>
+    </Page>
   );
 }

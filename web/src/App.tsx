@@ -22,6 +22,7 @@ import { createQueryClient } from './query';
 import { useRoute, type Route } from './router';
 import { pageTitle, useDocumentTitle, useRouteFocus, WORDMARK } from './title';
 import { MUTED, TEXT_LINK } from './ui/classes';
+import Page from './ui/Page';
 import RootBoundary from './ui/RootBoundary';
 
 const HOME_H1 = 'Pokémon card prices at the daily close';
@@ -72,7 +73,7 @@ function Routes() {
       // The landing (D2): the job in the h1, the source sentence, then the one task (search) and
       // the demo entry; the movers follow as supporting content.
       return (
-        <main className="mx-auto max-w-3xl p-6">
+        <Page>
           <h1 className="text-2xl font-semibold sm:text-4xl">{HOME_H1}</h1>
           <p className={`mt-2 text-base ${MUTED}`}>
             Pokémon card prices at the daily close. Every price shows its source and the date it is
@@ -81,7 +82,7 @@ function Routes() {
           <SearchForm initial="" size="hero" />
           <DemoButton placement="hero" />
           <BiggestMoves />
-        </main>
+        </Page>
       );
     case 'search':
       return <SearchPage query={route.query} />;

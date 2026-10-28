@@ -40,6 +40,22 @@ export function variantLabel(variant: VariantNaming): string {
   return parts.length > 0 ? parts.join(', ') : variant.variant_key;
 }
 
+/** A row that names a variant and, when the catalog named it, its card's set and number. */
+export interface DetailRow extends VariantNaming {
+  readonly card: { readonly set_name: string; readonly number: string } | null;
+}
+
+/**
+ * The second line of a movers, watchlist or portfolio row: set and number when the catalog named
+ * the card, then the variant with its first letter upper-cased.
+ */
+export function detailLine(row: DetailRow): string {
+  const label = variantLabel(row);
+  const variant = label.charAt(0).toUpperCase() + label.slice(1);
+  if (row.card === null) return variant;
+  return `${row.card.set_name} No. ${row.card.number} · ${variant}`;
+}
+
 const NEUTRAL = 'text-flat';
 const DECIMAL = /^(\d+)(\.\d+)?$/;
 

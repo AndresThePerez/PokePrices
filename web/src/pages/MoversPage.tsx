@@ -8,6 +8,7 @@ import { moversKey } from '../queryKeys';
 import { navigate } from '../router';
 import { Button } from '../ui/Button';
 import { TEXT_LINK } from '../ui/classes';
+import Page from '../ui/Page';
 import MoverList, {
   MoversDegraded,
   MoversFootnote,
@@ -74,7 +75,7 @@ export default function MoversPage({ direction }: { readonly direction: MoversDi
   // While loading, the page reserves one viewport so the footer starts below the fold (CLS).
   const loading = answer === undefined && query.error === null;
   return (
-    <main className={loading ? 'mx-auto min-h-svh max-w-3xl p-6' : 'mx-auto max-w-3xl p-6'}>
+    <Page reserve={loading}>
       <h1 className="text-2xl font-semibold">Biggest moves</h1>
       {answer?.meta.degraded === true ? <MoversDegraded /> : null}
       {answer === undefined ? null : <MoversScope body={answer} />}
@@ -96,6 +97,6 @@ export default function MoversPage({ direction }: { readonly direction: MoversDi
         <MoversStamp day={answer?.meta.day ?? null} className="sm:ml-auto" />
       </div>
       {body}
-    </main>
+    </Page>
   );
 }

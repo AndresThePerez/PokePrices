@@ -15,18 +15,19 @@ import {
 } from '../api/client';
 import { DEFAULT_RANGE } from '../chart/series';
 import Sparkline from '../chart/Sparkline';
-import { PRICE_FOOTNOTE, variantLabel } from '../format';
+import { PRICE_FOOTNOTE, initialOf, variantLabel } from '../format';
 import { MUTED, TEXT_LINK } from '../ui/classes';
-import Notice from '../ui/Notice';
+import DegradedNotice from '../ui/DegradedNotice';
+import Page from '../ui/Page';
 import Panel from '../ui/Panel';
 import PriceTag, { AsOf, ChangeChip, HeroPrice } from '../ui/PriceTag';
+import ProblemNotice from '../ui/ProblemNotice';
 import Skeleton from '../ui/Skeleton';
 import { unwrap } from '../query';
 import { cardKey, cardPricesKey } from '../queryKeys';
 import { pageTitle, useDocumentTitle } from '../title';
 import PriceHistory from './PriceHistory';
 
-const DEGRADED_LINE = 'Catalog data may be out of date: PokéSearch is unavailable';
 const CATALOG_MISSING_LINE = 'This card is no longer in the PokéSearch catalog';
 const CARD_NOT_FOUND = '/problems/card-not-found';
 
@@ -255,11 +256,6 @@ function PricesSection({ children }: { readonly children: ReactNode }) {
   );
 }
 
-function initialOf(name: string): string {
-  const code = name.trim().codePointAt(0);
-  return code === undefined ? '' : String.fromCodePoint(code).toUpperCase();
-}
-
 /** The card image in a 6 px mat, or the neutral card-back with the name's initial (CSS only). */
 function CardImage({ card }: { readonly card: Card }) {
   const src = card.images.large !== '' ? card.images.large : card.images.small;
@@ -348,11 +344,7 @@ function Loaded({ body }: { readonly body: CardDetail }) {
   const anyPriced = card.variants.some((variant) => variant.price !== null);
   return (
     <>
-      {body.meta.degraded && (
-        <Notice tone="warn" as="p" className="mb-6">
-          {DEGRADED_LINE}
-        </Notice>
-      )}
+      {body.meta.degraded && <DegradedNotice className="mb-6" />}
       {/* 390: the image beside the name and set line, the rest full width below. 640 up: a
           sticky 240 px image column and one right column (display: contents unwraps it). */}
       <article className="grid grid-cols-[104px_minmax(0,1fr)] gap-x-3 gap-y-6 sm:grid-cols-[240px_minmax(0,1fr)] sm:gap-x-8">
@@ -402,14 +394,7 @@ function Failed({ id, failure }: { readonly id: string; readonly failure: ApiFai
   return (
     <>
       <h1 className="text-2xl font-semibold">{`Card ${id}`}</h1>
-      <Notice tone="problem" role="alert" className="mt-6">
-        <p className="font-semibold">Could not load this card: {failure.title}</p>
-        {failure.requestId !== null && (
-          <p className="mt-1 text-sm">
-            Request ID <code className="break-all">{failure.requestId}</code>
-          </p>
-        )}
-      </Notice>
+      <ProblemNotice context="Could not load this card" failure={failure} className="mt-6" />
     </>
   );
 }
@@ -456,9 +441,5 @@ export default function CardPage({ id }: { readonly id: string }) {
   // While loading, the page reserves one viewport so the footer starts below the fold and the
   // scrollbar is there from the first frame (CLS); every other state keeps its own height.
   const loading = query.data === undefined && query.error === null;
-  return (
-    <main className={loading ? 'mx-auto min-h-svh max-w-3xl p-6' : 'mx-auto max-w-3xl p-6'}>
-      {body}
-    </main>
-  );
+  return <Page reserve={loading}>{body}</Page>;
 }

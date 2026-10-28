@@ -7,6 +7,7 @@ import { Fragment, type ReactNode } from 'react';
 import Link from '../Link';
 import { WEBHOOKS_LOADING, useNotifications, useWebhooks } from './alerts';
 import Notice from '../ui/Notice';
+import Page from '../ui/Page';
 import { ProblemBlock } from './Form';
 import { MUTED, TEXT_LINK } from './fields';
 import NotificationSettings, { PerCardAlerts } from './NotificationSettings';
@@ -20,10 +21,10 @@ const UNVERIFIED_LINE = 'Verify your email address to set alerts or add webhooks
 
 function AlertsMain({ children }: { readonly children: ReactNode }) {
   return (
-    <main className="mx-auto max-w-3xl p-6">
+    <Page>
       <h1 className="text-2xl font-semibold">Alerts and webhooks</h1>
       <div className="max-w-xl">{children}</div>
-    </main>
+    </Page>
   );
 }
 

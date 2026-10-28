@@ -5,21 +5,17 @@
 // printed through grouped(); nothing here reads the clock.
 import { useId, useState, type ReactNode, type SubmitEvent } from 'react';
 import type { WatchlistItem } from '../api/client';
-import { PRICE_FOOTNOTE } from '../format';
+import { PRICE_FOOTNOTE, detailLine, initialOf } from '../format';
 import Link from '../Link';
 import { cardPath } from '../router';
 import { INPUT } from '../ui/classes';
-import Notice from '../ui/Notice';
+import DegradedNotice from '../ui/DegradedNotice';
+import Page from '../ui/Page';
 import PriceTag from '../ui/PriceTag';
 import Skeleton from '../ui/Skeleton';
 import DemoButton from './DemoButton';
 import { FOCUS, MUTED, SECONDARY_BUTTON, TEXT_LINK } from './fields';
-import { DEGRADED_LINE, cardLabel, detailLine, type ListRow } from './lists';
-
-function initialOf(name: string): string {
-  const code = name.trim().codePointAt(0);
-  return code === undefined ? '' : String.fromCodePoint(code).toUpperCase();
-}
+import { cardLabel, type ListRow } from './lists';
 
 /** A list page: one main landmark, one h1, the width of the movers board. */
 export function ListMain({
@@ -30,10 +26,10 @@ export function ListMain({
   readonly children: ReactNode;
 }) {
   return (
-    <main className="mx-auto max-w-3xl p-6">
+    <Page>
       <h1 className="text-2xl font-semibold">{title}</h1>
       {children}
-    </main>
+    </Page>
   );
 }
 
@@ -51,11 +47,7 @@ export function ListLoading({ children }: { readonly children: string }) {
 
 /** The degraded catalog line (P3 D10): names may come from the last good copy. */
 export function DegradedLine() {
-  return (
-    <Notice tone="warn" as="p" className="mt-6">
-      {DEGRADED_LINE}
-    </Notice>
-  );
+  return <DegradedNotice className="mt-6" />;
 }
 
 /** The footnote that closes every list of prices. */

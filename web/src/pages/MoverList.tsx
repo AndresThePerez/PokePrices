@@ -13,32 +13,20 @@ import {
   type MoversDirection,
   type MoversPage,
 } from '../api/client';
-import { PRICE_FOOTNOTE, grouped, variantLabel } from '../format';
+import { PRICE_FOOTNOTE, detailLine, grouped } from '../format';
 import { unwrap } from '../query';
 import { moversKey } from '../queryKeys';
 import { cardPath } from '../router';
 import { FOCUS, MUTED, TEXT_LINK } from '../ui/classes';
-import Notice from '../ui/Notice';
+import DegradedNotice from '../ui/DegradedNotice';
 import { AsOf, ChangeChip, PriceFigure } from '../ui/PriceTag';
+import ProblemNotice from '../ui/ProblemNotice';
 import Skeleton from '../ui/Skeleton';
-
-const DEGRADED_LINE = 'Catalog data may be out of date: PokéSearch is unavailable';
 
 /** The number of rows each sub-list of the home strip asks for. */
 const STRIP_LIMIT = 5;
 
 const LIST_NAME: Record<MoversDirection, string> = { up: 'Rises', down: 'Falls' };
-
-function capitalised(label: string): string {
-  return label.charAt(0).toUpperCase() + label.slice(1);
-}
-
-/** The second line of a row: set and number when the catalog named the card, then the variant. */
-function detailLine(mover: Mover): string {
-  const variant = capitalised(variantLabel(mover));
-  if (mover.card === null) return variant;
-  return `${mover.card.set_name} No. ${mover.card.number} · ${variant}`;
-}
 
 /**
  * One mover row (D2), the same markup on the home strip and the board: rank in a 28 px mono muted
@@ -92,11 +80,7 @@ export function MoversScope({ body }: { readonly body: MoversPage }) {
 
 /** The degraded catalog line (D10), shown when an answer's names come from a stale copy. */
 export function MoversDegraded() {
-  return (
-    <Notice tone="warn" as="p" className="mt-4">
-      {DEGRADED_LINE}
-    </Notice>
-  );
+  return <DegradedNotice className="mt-4" />;
 }
 
 export function MoversFootnote() {
@@ -105,16 +89,7 @@ export function MoversFootnote() {
 
 /** A failure with no answer to show (D10). */
 export function MoversProblem({ failure }: { readonly failure: ApiFailure }) {
-  return (
-    <Notice tone="problem" role="alert" className="mt-4">
-      <p className="font-semibold">Could not load the movers: {failure.title}</p>
-      {failure.requestId !== null && (
-        <p className="mt-1 text-sm">
-          Request ID <code className="break-all">{failure.requestId}</code>
-        </p>
-      )}
-    </Notice>
-  );
+  return <ProblemNotice context="Could not load the movers" failure={failure} className="mt-4" />;
 }
 
 export function MoversLoading() {
