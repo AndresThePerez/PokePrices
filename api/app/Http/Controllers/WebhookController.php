@@ -55,7 +55,7 @@ final class WebhookController
     public function store(StoreWebhookRequest $request, #[CurrentUser] User $user): JsonResponse
     {
         $kind = $request->kind();
-        $url = $request->url();
+        $url = $request->webhookUrl();
         $description = $request->description();
 
         // The address guard resolves DNS, so it runs before the per-user lock is taken.

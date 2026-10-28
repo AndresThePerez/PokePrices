@@ -48,7 +48,7 @@ final class StoreWebhookRequest extends FormRequest
         return (string) $this->validated('kind');
     }
 
-    public function url(): string
+    public function webhookUrl(): string
     {
         return (string) $this->validated('url');
     }
