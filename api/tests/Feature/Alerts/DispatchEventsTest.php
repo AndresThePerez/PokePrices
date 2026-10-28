@@ -151,6 +151,7 @@ it('reads card names only when a delivery is missing', function (): void {
     // A cold catalog cache and a fresh request log: any cardNames() call would now have to ask PokéSearch.
     CatalogCache::flush($this->catalogPrefix);
     Http::swap(new Factory);
+    Http::preventStrayRequests();
     $this->catalogPrefix = AccountRows::fakePokeSearch();
     [, $line] = AlertRows::dispatch();
 

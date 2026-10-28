@@ -6,16 +6,18 @@ declare(strict_types=1);
  * PokéPrices local webhook sink (plan P5-i1 D12): a signature-verifying receiver for the delivery evidence.
  * Standalone on purpose: it loads nothing from the application, so its verification is independent of the sender.
  *
- * Serve:   SINK_SECRET_FILE=<file> SINK_LOG=<log.jsonl> [SINK_FAIL_FIRST=<n>] php -S <host>:<port> sink.php
+ * Serve:   SINK_SECRET_FILE=<file> SINK_LOG=<log.jsonl> [SINK_FAIL_FIRST=<n>] [SINK_NOW=<unix>]
+ *          php -S <host>:<port> sink.php
  * Summary: php sink.php --summary <log.jsonl>
  *
  * Each POST is verified as Standard Webhooks: webhook-id, webhook-timestamp and webhook-signature present, the
  * timestamp within 300 s of this clock, and one of the space-separated v1 signatures equal (constant time) to
  * base64(HMAC-SHA256(key, "<id>.<timestamp>.<body>")), key = the base64 part of the whsec_ secret in
- * SINK_SECRET_FILE. A failed check answers 401. A verified request answers 503 for the first SINK_FAIL_FIRST
- * verified attempts of each webhook-id (failure injection), then 204; a repeat after a 204 is a duplicate the
- * receiver drops (still 204). One JSON line per request goes to SINK_LOG: id, attempt, verified, answered,
- * duplicate_after_success. The secret, the signatures and the body are never written anywhere.
+ * SINK_SECRET_FILE. The clock is time(); SINK_NOW, a test-only override, replaces it with a fixed Unix time when
+ * set, and absent it changes nothing. A failed check answers 401. A verified request answers 503 for the first
+ * SINK_FAIL_FIRST verified attempts of each webhook-id (failure injection), then 204; a repeat after a 204 is a
+ * duplicate the receiver drops (still 204). One JSON line per request goes to SINK_LOG: id, attempt, verified,
+ * answered, duplicate_after_success. The secret, the signatures and the body are never written anywhere.
  */
 
 const SINK_TOLERANCE_SECONDS = 300;
@@ -83,12 +85,20 @@ function sink_header(string $name): string
     return is_string($value) ? trim($value) : '';
 }
 
+/** The sink's clock: time(), or the Unix time in SINK_NOW when a test sets it. */
+function sink_now(): int
+{
+    $now = getenv('SINK_NOW');
+
+    return is_string($now) && preg_match('/^[0-9]{1,12}$/D', $now) === 1 ? (int) $now : time();
+}
+
 function sink_verified(string $id, string $timestamp, string $signatures, string $body, string $secret): bool
 {
     if ($id === '' || $timestamp === '' || $signatures === '' || preg_match('/^[0-9]{1,12}$/D', $timestamp) !== 1) {
         return false;
     }
-    if (abs(time() - (int) $timestamp) > SINK_TOLERANCE_SECONDS) {
+    if (abs(sink_now() - (int) $timestamp) > SINK_TOLERANCE_SECONDS) {
         return false;
     }
     if (! str_starts_with($secret, 'whsec_')) {

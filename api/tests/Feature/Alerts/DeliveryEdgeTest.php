@@ -75,18 +75,21 @@ function p5eStop(array $server): void
 }
 
 /**
- * The real sink on loopback with the test secret.
+ * The real sink on loopback with the test secret. With $now set, the sink reads that Unix time as its clock
+ * (SINK_NOW) instead of time(), so a case at the edge of its 300 s window does not depend on the wall clock.
  *
  * @return array{process: InvokedProcess, dir: string, port: int}
  */
-function p5eSink(int $failFirst = 0): array
+function p5eSink(int $failFirst = 0, ?int $now = null): array
 {
     $dir = base_path('../.gates/tmp/P5-T02-edge-seed-'.bin2hex(random_bytes(4)));
     mkdir($dir, 0700, true);
     file_put_contents($dir.'/secret', AlertRows::secret());
-    $sink = p5eServe(base_path('../scripts/webhook-sink/sink.php'), [
-        'SINK_SECRET_FILE' => $dir.'/secret', 'SINK_LOG' => $dir.'/log.jsonl', 'SINK_FAIL_FIRST' => (string) $failFirst,
-    ]);
+    $env = ['SINK_SECRET_FILE' => $dir.'/secret', 'SINK_LOG' => $dir.'/log.jsonl', 'SINK_FAIL_FIRST' => (string) $failFirst];
+    if ($now !== null) {
+        $env['SINK_NOW'] = (string) $now;
+    }
+    $sink = p5eServe(base_path('../scripts/webhook-sink/sink.php'), $env);
     $sink['seed'] = $dir;
     Http::preventStrayRequests();
     Http::allowStrayRequests(["http://127.0.0.1:{$sink['port']}/*"]);
@@ -477,10 +480,12 @@ it('does not allow a bare host in the allow-list to open port 80', function (): 
 // The sink: a tampered request never verifies (D12).
 
 it('answers 401 to every tampered or malformed request, and 204 to the genuine forms, against the real sink', function (): void {
-    $sink = p5eSink();
+    // The sink's clock is pinned to the body's own timestamp (2026-10-15T12:00:00Z), so the 299 s and 301 s
+    // cases are exact however long the requests before them take.
+    $now = 1_792_065_600;
+    $sink = p5eSink(now: $now);
     $url = "http://127.0.0.1:{$sink['port']}/hook";
     $body = '{"type":"webhook.test","timestamp":"2026-10-15T12:00:00Z","data":{"message":"PokéPrices test message. It carries no price."}}';
-    $now = time();
     $ts = (string) $now;
     $good = p5eSign('msg_edge', $ts, $body);
     $stale = fn (int $age): array => [(string) ($now - $age), p5eSign('msg_edge', (string) ($now - $age), $body)];

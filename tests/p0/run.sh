@@ -52,7 +52,11 @@ fast_tier() {
 
 case $TIER in
   full)
-    run_scripts tests/p0/T*.sh tests/p1/T*.sh tests/gates/test_*.sh tests/scorecard/test_*.sh tests/verdict/test_*.sh
+    # p2 (HG-40 #12): the read-only scripts that passed the Q1-i4 T07 dry run. tests/p2/T07.sh never joins: it runs
+    # replay --fresh on the dev database. T13.sh stays out (a newly pulled movement_volume day turns it red), and so
+    # does T01.sh (it pins HEAD to p2-work; no p0/p1 check covers that pin).
+    run_scripts tests/p0/T*.sh tests/p1/T*.sh tests/p2/T03.sh tests/p2/T14.sh \
+      tests/gates/test_*.sh tests/scorecard/test_*.sh tests/verdict/test_*.sh
     if [ -x api/vendor/bin/pest ] && [ -f api/phpunit.xml ]; then
       docker compose -f compose.dev.yml exec -T -w /workspace/api api vendor/bin/pest -c phpunit.xml || rc=1
     fi

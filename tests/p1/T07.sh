@@ -40,7 +40,7 @@ RUN="/bin/sh tests/p0/run.sh"
 
 # ---- criterion 1: TIER defaults to full; full = today's loop plus tests/p1/T*.sh after tests/p0/T*.sh ----
 expect_full() {
-  for t in tests/p0/T*.sh tests/p1/T*.sh tests/gates/test_*.sh tests/scorecard/test_*.sh tests/verdict/test_*.sh; do
+  for t in tests/p0/T*.sh tests/p1/T*.sh tests/p2/T03.sh tests/p2/T14.sh tests/gates/test_*.sh tests/scorecard/test_*.sh tests/verdict/test_*.sh; do
     [ -f "$t" ] && printf 'sh %s\n' "$t"
   done
   printf '%s\n' 'docker compose -f compose.dev.yml exec -T -w /workspace/api api vendor/bin/pest -c phpunit.xml' \
@@ -49,7 +49,7 @@ expect_full() {
 expect_full > "$T/full.expected"
 runsh default $RUN
 runsh full TIER=full $RUN
-check "the full tier runs tests/p0/T*.sh, tests/p1/T*.sh, gates, scorecard and verdict tests, then Pest and Vitest, exactly" cmp -s "$T/full.expected" "$T/full.log"
+check "the full tier runs tests/p0/T*.sh, tests/p1/T*.sh, tests/p2/T03.sh and T14.sh, gates, scorecard and verdict tests, then Pest and Vitest, exactly" cmp -s "$T/full.expected" "$T/full.log"
 check "without TIER the runner runs the full tier (same commands, same order)" cmp -s "$T/full.log" "$T/default.log"
 check "the full tier includes this script (tests/p1 is in the runner)" /usr/bin/grep -qx 'sh tests/p1/T07.sh' "$T/full.log"
 check "the full tier still runs test_freeze.sh and T31.sh (nothing dropped from today's loop)" sh -c '/usr/bin/grep -qx "sh tests/gates/test_freeze.sh" "$0" && /usr/bin/grep -qx "sh tests/p0/T31.sh" "$0"' "$T/full.log"

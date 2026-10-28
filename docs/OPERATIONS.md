@@ -180,7 +180,7 @@ Two limits on `--resume`:
 
 - It does not apply the running-run guard that `--sync`, `--queued` and `--force` starts obey. It reopens the
   newest `running` queued run of the marker as well, so never `--resume` a day while a fresh `--queued` run of
-  that day is running: it would re-dispatch that live run's chunks that are not done.
+  that day is running: it would re-dispatch that running run's chunks that are not done.
 - It cannot rescue the chunks of a run from an older map build. After a map rebuild, each chunk of such a run
   that still has to run fails (see "Map rebuild then replay"), so `--resume` of it fails again; only a run
   whose chunks are all done (finalize failed) resumes. Otherwise ingest the day afresh with `--queued`, or
@@ -368,9 +368,11 @@ run goes `ok`.
   from the newest failed run's `finished_at`; after three or more, for 24 hours. At three or more the scan
   logs one `ingest_failed_repeatedly` warning per newest failed run, with the day, the marker, the count, the
   error and the end of the hold. A new marker (a re-collected folder) starts the count again, and so does
-  marking the newest failed run `superseded`. `--resume` and `--queued` by hand do not wait for the hold. To
-  stop the retries, fix the day (the cause in the error, or a good folder from the pull step) and get a run
-  to `ok` with `--resume` or a fresh `--queued`; the scan then sees the day as done.
+  marking the newest failed run `superseded`. `--resume` and `--queued` by hand do not wait for the hold.
+  By design, the scan resumes a stale (> 2 h) `running` run before it reads the hold, so such a run is
+  resumed even when newer `failed` runs of its marker would hold the day. To stop the retries, fix the day
+  (the cause in the error, or a good folder from the pull step) and get a run to `ok` with `--resume` or a
+  fresh `--queued`; the scan then sees the day as done.
 
 ### A stalled or crashed run
 

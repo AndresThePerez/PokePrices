@@ -25,6 +25,7 @@ beforeEach(function (): void {
     // A first stub that never answers (returns null) but runs the test's hook on every catalog batch read, then
     // the shared PokéSearch fake; a second stub overrides names for the hostile-name test.
     Http::swap(new Factory);
+    Http::preventStrayRequests();
     Http::fake(function (ClientRequest $request) {
         if (parse_url($request->url(), PHP_URL_PATH) === '/api/v1/cards') {
             $hook = $GLOBALS['p5e_hook'];

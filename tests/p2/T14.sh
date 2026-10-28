@@ -67,8 +67,8 @@ check "the runbook says what the exit codes are (0 and 1)" sh -c ''"$GREP"' -q -
 # The review record's runbook lines.
 check "a long replay: freshness answers a breach-like no-prices state until the replay's ok runs land" \
   sh -c ''"$GREP"' -q -F "no prices ingested" "$0" && '"$GREP"' -q -F "last_run" "$0" && '"$GREP"' -q -i "mode.*replay.*running\|replay.*status.*running" "$0"' "$F"
-check "a failing day re-runs at every :40 scan; only refused days are suppressed" \
-  sh -c ''"$GREP"' -q -i "every :40" "$0" && '"$GREP"' -q -i "only .*refused" "$0"' "$F"
+check "a failing day backs off: held for 6 hours after two failed runs, for 24 hours after three or more" \
+  sh -c 'sed -n "/^### A failed day/,/^### A stalled/p" "$0" | '"$GREP"' -q -F "held for 6 hours" && sed -n "/^### A failed day/,/^### A stalled/p" "$0" | '"$GREP"' -q -F "for 24 hours"' "$F"
 check "after job-class code changes, restart the worker and the scheduler" \
   $GREP -q -F 'docker compose -f compose.dev.yml restart worker scheduler' "$F"
 check "tests/p2/T07.sh leaves the dev database in the ascending replay state" \

@@ -227,6 +227,7 @@ it('sends the cache policy only on the 200, never on a 422, 429 or 502', functio
 
 it('answers 503 upstream-unavailable with Retry-After when PokéSearch times out', function (): void {
     Http::swap(new Factory);
+    Http::preventStrayRequests();
     Http::fake(fn () => throw new ConnectionException('cURL error 28: Operation timed out'));
 
     $response = $this->getJson('/v1/cards?q=a');
@@ -239,6 +240,7 @@ it('answers 503 upstream-unavailable with Retry-After when PokéSearch times out
 
 it('answers 502 upstream-contract, not a 500, when PokéSearch answers 200 with a body that is not JSON', function (): void {
     Http::swap(new Factory);
+    Http::preventStrayRequests();
     Http::fake([T44E_BASE.'/api/search*' => Http::response('<html>proxy error</html>', 200, ['Content-Type' => 'text/html'])]);
 
     $response = $this->getJson('/v1/cards?q=a');

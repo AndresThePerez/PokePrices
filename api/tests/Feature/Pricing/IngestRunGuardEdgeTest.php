@@ -89,6 +89,8 @@ test('FinalizeDay does not finalize, throw or release when a replay supersedes t
     }
 
     $finalize->assertNotReleased();
+    $finalize->assertNotFailed();
+    $finalize->assertNotDeleted();
     expect($fired)->toBeTrue()
         ->and($thrown)->toBeNull()
         ->and(DB::table('ingest_runs')->where('id', $runId)->value('status'))->toBe('superseded')
