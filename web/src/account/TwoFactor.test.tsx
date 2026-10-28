@@ -111,7 +111,11 @@ function qrImage(): HTMLImageElement {
   return within(main()).getByRole<HTMLImageElement>('img', { name: QR_ALT });
 }
 
-/** Everything the app's query and mutation caches hold, as one string. */
+/**
+ * Everything the app's query and mutation caches hold, as one string: query data and errors,
+ * mutation variables and data. A function anywhere in them fails the test: JSON.stringify would
+ * drop it, and a kept request function could replay the password or code it closes over.
+ */
 function cacheText(): string {
   return JSON.stringify(
     created.clients.map((client) => ({
@@ -122,8 +126,12 @@ function cacheText(): string {
       mutations: client
         .getMutationCache()
         .getAll()
-        .map((mutation) => mutation.state.data),
+        .map((mutation) => [mutation.state.variables, mutation.state.data]),
     })),
+    (_key, value: unknown) => {
+      if (typeof value === 'function') throw new Error('the cache holds a function');
+      return value;
+    },
   );
 }
 

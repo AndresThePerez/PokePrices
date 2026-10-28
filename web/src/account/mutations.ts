@@ -1,7 +1,8 @@
 // Account writes (Q1-i3 T02): every write runs through a TanStack mutation (useAccountWrite), and one
-// hook owns the session transition a write starts (useSessionTransition). A write's request is the
-// mutation's variables: a function, so no form value (a password, a code, a webhook URL) and no
-// secret an answer carries is ever kept as mutation-cache data that can be read back.
+// hook owns the session transition a write starts (useSessionTransition). A write's request rides in
+// the mutation's variables as a one-shot ticket that is emptied when the request starts, so no form
+// value (a password, a code, a webhook URL) is kept as mutation-cache data that can be read back, and
+// no request function is left there that could send it again (Q1-i4 T06).
 import { useMutation, useQueryClient, type UseMutationOptions } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
 import type { ApiFailure, ApiResult } from '../api/client';
@@ -21,21 +22,23 @@ export function answerOf<T>(result: ApiResult<T>): T {
   throw failure;
 }
 
+/**
+ * A write's request as the mutation's variables: `send` is taken (set to null) when the request
+ * starts, so a settled mutation holds no function that could replay it.
+ */
+interface Ticket<T> {
+  send: Send<T> | null;
+}
+
 export type AccountWriteOptions<T> = Omit<
-  UseMutationOptions<T, ApiFailure, Send<T>>,
+  UseMutationOptions<T, ApiFailure, Ticket<T>>,
   'mutationFn' | 'networkMode'
 >;
 
 /**
- * An account write as a mutation: `run(send)` starts it once. isPending covers the request and
- * the options' onSuccess (awaited), so a control that is `disabled={isPending}` stays disabled
- * until the write's follow-up (a refetch, a session transition) is over. A press while it runs
- * does nothing, even within the tick before isPending reaches the render (TanStack tells its
- * observers on a 0 ms timer). networkMode 'always': an offline write fails with the client's
- * network problem, as before, instead of waiting for the browser to come back online. Two hooks
- * that share a guard block each other within the tick.
+ * One write at a time: take() is false while a write it admitted has not released. Two hooks that
+ * share a guard block each other, even within the tick before isPending reaches the render.
  */
-/** One write at a time: take() is false while a write it admitted has not released. Two hooks that share a guard block each other, even within the tick before isPending reaches the render. */
 export interface WriteGuard {
   take: () => boolean;
   release: () => void;
@@ -58,19 +61,38 @@ export function useWriteGuard(): WriteGuard {
   return guard;
 }
 
+/** A ticket's request, taken once: a second take finds none. */
+async function sendOnce<T>(ticket: Ticket<T>): Promise<T> {
+  const send = ticket.send;
+  ticket.send = null;
+  if (send === null) throw new Error('An account write ran twice');
+  return answerOf(await send());
+}
+
+/**
+ * An account write as a mutation: `run(send)` starts it once. isPending covers the request and
+ * the options' onSuccess (awaited), so a control that is `disabled={isPending}` stays disabled
+ * until the write's follow-up (a refetch, a session transition) is over. A press while it runs
+ * does nothing, even within the tick before isPending reaches the render (TanStack tells its
+ * observers on a 0 ms timer). networkMode 'always': an offline write fails with the client's
+ * network problem, as before, instead of waiting for the browser to come back online. Two hooks
+ * that share a guard block each other within the tick.
+ */
 export function useAccountWrite<T>(options: AccountWriteOptions<T> = {}, guard?: WriteGuard) {
+  // The own guard is built even when `guard` is passed: the rules of hooks forbid calling
+  // useWriteGuard() conditionally, and the unused one is a single small closure in state.
   const own = useWriteGuard();
   const lock = guard ?? own;
-  const mutation = useMutation<T, ApiFailure, Send<T>>({
+  const mutation = useMutation<T, ApiFailure, Ticket<T>>({
     ...options,
     networkMode: 'always',
-    mutationFn: async (send) => answerOf(await send()),
+    mutationFn: sendOnce,
   });
   const { mutateAsync } = mutation;
   const run = useCallback(
     (send: Send<T>): void => {
       if (!lock.take()) return;
-      mutateAsync(send)
+      mutateAsync({ send })
         .catch(() => undefined)
         .finally(() => {
           lock.release();

@@ -59,55 +59,6 @@ function isProblem(value: unknown): value is Problem {
   );
 }
 
-async function readJson(response: Response, signal: AbortSignal | undefined): Promise<unknown> {
-  try {
-    return (await response.json()) as unknown;
-  } catch (error) {
-    // A cancelled request must look cancelled, not failed: rethrow an abort during the body read.
-    if (signal?.aborted === true) throw error;
-    return undefined;
-  }
-}
-
-async function request<T>(path: string, options: RequestOptions): Promise<ApiResult<T>> {
-  const init: RequestInit = { headers: { Accept: 'application/json' } };
-  if (options.signal !== undefined) init.signal = options.signal;
-  let response: Response;
-  try {
-    response = await fetch(BASE + path, init);
-  } catch (error) {
-    if (options.signal?.aborted === true) throw error;
-    return {
-      ok: false,
-      status: 0,
-      type: 'about:blank',
-      title: 'The PokéPrices API could not be reached',
-      requestId: null,
-      problem: null,
-    };
-  }
-  const body = await readJson(response, options.signal);
-  if (response.ok && body !== undefined) return { ok: true, data: body as T };
-  if (!response.ok && isProblem(body)) {
-    return {
-      ok: false,
-      status: response.status,
-      type: body.type,
-      title: body.title,
-      requestId: body.request_id,
-      problem: body,
-    };
-  }
-  return {
-    ok: false,
-    status: response.status,
-    type: 'about:blank',
-    title: `The PokéPrices API answered HTTP ${String(response.status)}`,
-    requestId: response.headers.get('X-Request-Id'),
-    problem: null,
-  };
-}
-
 /** A 200 whose JSON is not the shape Fortify or the /v1 contract documents. */
 const UNEXPECTED_ANSWER: ApiFailure = {
   ok: false,
@@ -122,35 +73,215 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-/** The top level a page dereferences: `data` as a list or an object, and `meta` when it has one. */
-interface Envelope {
-  readonly data: 'list' | 'object';
-  readonly meta: boolean;
+// ---- The decoder table (C6) ---------------------------------------------------------------------
+// Each read decodes the fields its page reads without a guard. A success whose fields are not the
+// documented ones is the unexpected-answer failure, so the page shows its problem block instead of
+// throwing in render. A decoder checks and never rebuilds: a well-shaped answer passes through as
+// the same value. The writes' answers and Fortify's empty ones stay typed by the contract and
+// unchecked (`trusted`); the Fortify answers that carry fields are checked where they are read.
+
+/** One check of an unknown value. */
+type Check = (value: unknown) => boolean;
+
+const text: Check = (value) => typeof value === 'string';
+const whole: Check = (value) => typeof value === 'number';
+const flag: Check = (value) => typeof value === 'boolean';
+const record: Check = isRecord;
+
+function orNull(check: Check): Check {
+  return (value) => value === null || check(value);
 }
 
-function hasEnvelope(body: unknown, envelope: Envelope): boolean {
-  if (!isRecord(body)) return false;
-  const data = envelope.data === 'list' ? Array.isArray(body.data) : isRecord(body.data);
-  return data && (!envelope.meta || isRecord(body.meta));
+function oneOf(...allowed: readonly string[]): Check {
+  return (value) => typeof value === 'string' && allowed.includes(value);
 }
+
+function listOf(check: Check): Check {
+  return (value) => Array.isArray(value) && value.every(check);
+}
+
+/** An object holding at least these fields, each passing its check (other fields are not read). */
+function fields(shape: Readonly<Record<string, Check>>): Check {
+  return (value) =>
+    isRecord(value) && Object.entries(shape).every(([key, check]) => check(value[key]));
+}
+
+/** A field the answer may leave out, checked when it is there. */
+function ifPresent(check: Check): Check {
+  return (value) => value === undefined || check(value);
+}
+
+/** The naming fields of a variant (variantLabel). */
+const VARIANT_NAMING = {
+  variant_key: text,
+  finish: text,
+  edition: text,
+  treatment: text,
+};
+
+/** A price block: the market price, its day and the change vs the previous close (PriceTag). */
+const PRICE = fields({
+  close: text,
+  day: text,
+  previous_close: orNull(text),
+  previous_day: orNull(text),
+  change: orNull(text),
+  change_pct: orNull(text),
+});
+
+/** The catalog naming of a list row (movers, watchlist, portfolio); null when not in the catalog. */
+const ROW_CARD = orNull(fields({ name: text, set_name: text, number: text }));
+
+const SEARCH = fields({
+  data: listOf(
+    fields({
+      id: text,
+      name: text,
+      number: text,
+      rarity: orNull(text),
+      set_name: text,
+      image_small: text,
+    }),
+  ),
+  meta: fields({ total: whole, page: whole, pages: whole, degraded: flag }),
+});
 
 /**
- * The envelope decoder: a success whose top level is not the documented envelope is the
- * unexpected-answer failure, so the page shows its problem block instead of throwing in render.
- * Failures pass through unchanged; the fields inside data are still trusted to the contract.
+ * The card: its id and name always; the other fields the page reads are checked whenever they are
+ * there (client.test.ts pins a card of only an id and a name as a success).
  */
+const CARD = fields({
+  data: fields({
+    id: text,
+    name: text,
+    number: ifPresent(text),
+    rarity: ifPresent(orNull(text)),
+    set: ifPresent(fields({ name: text })),
+    images: ifPresent(fields({ small: text, large: text })),
+    variants: ifPresent(
+      listOf(
+        fields({
+          ...VARIANT_NAMING,
+          sources: listOf(
+            fields({ source: text, product_id: whole, subtype: text, map_snapshot_day: text }),
+          ),
+          price: orNull(PRICE),
+        }),
+      ),
+    ),
+    catalog: ifPresent(fields({ seed_ref: orNull(text), seeded_at: orNull(text), status: text })),
+  }),
+  meta: fields({ degraded: flag }),
+});
+
+const POINT = fields({ day: text, close: text, is_filled: flag, series_epoch: whole });
+
+/**
+ * The history page guards the answer's shape itself (an unexpected one, a JSON null included,
+ * reads as "nothing held"), so only a series it would draw is checked: one with a points list and
+ * a history_begins of null or a day. Its points and naming are read without a guard.
+ */
+function pricesAnswer(value: unknown): boolean {
+  if (!isRecord(value) || !Array.isArray(value.data)) return true;
+  const drawn = fields({ points: listOf(() => true), history_begins: orNull(text) });
+  const series = fields({ ...VARIANT_NAMING, points: listOf(POINT) });
+  return value.data.every((one: unknown) => !drawn(one) || series(one));
+}
+
+const MOVERS = fields({
+  data: listOf(
+    fields({
+      ...VARIANT_NAMING,
+      rank: whole,
+      card_id: text,
+      card: ROW_CARD,
+      close: text,
+      previous_close: text,
+      previous_day: text,
+      change: text,
+      change_pct: text,
+    }),
+  ),
+  meta: fields({ day: orNull(text), min_previous_close: text, degraded: flag }),
+});
+
+const ME = fields({
+  data: fields({ email: text, email_verified: flag, two_factor: flag, read_only: flag }),
+});
+
+const LIST_ROW = {
+  ...VARIANT_NAMING,
+  card_id: text,
+  card: ROW_CARD,
+  price: orNull(PRICE),
+};
+
+const WATCHLIST = fields({
+  data: listOf(fields({ ...LIST_ROW, alert_pct: orNull(whole) })),
+  meta: fields({ degraded: flag }),
+});
+
+const PORTFOLIO = fields({
+  data: listOf(fields({ ...LIST_ROW, quantity: whole, value: orNull(text) })),
+  meta: fields({
+    total_value: orNull(text),
+    unpriced: whole,
+    first_day: orNull(text),
+    last_day: orNull(text),
+    degraded: flag,
+  }),
+});
+
+const WEBHOOKS = fields({
+  data: listOf(
+    fields({
+      id: whole,
+      kind: oneOf('discord', 'standard'),
+      url_hint: text,
+      description: orNull(text),
+      created_at: text,
+      disabled: flag,
+      last_delivery: orNull(fields({ status: oneOf('pending', 'delivered', 'failed'), at: text })),
+    }),
+  ),
+  meta: record,
+});
+
+const NOTIFICATIONS = fields({
+  data: fields({ channel: oneOf('discord', 'email'), digest: flag, discord_available: flag }),
+});
+
+/*
+ * The field decoders, one per read: each states its check as the type it proves, so the answer
+ * passes through as the same value (a predicate rather than `T | null`, because the history answer
+ * may be a JSON null that its page reads as "nothing held").
+ */
+const isCardSearchPage = (value: unknown): value is CardSearchPage => SEARCH(value);
+const isCardDetail = (value: unknown): value is CardDetail => CARD(value);
+const isCardPrices = (value: unknown): value is CardPrices => pricesAnswer(value);
+const isMoversPage = (value: unknown): value is MoversPage => MOVERS(value);
+const isMeBody = (value: unknown): value is MeBody => ME(value);
+const isWatchlistBody = (value: unknown): value is WatchlistBody => WATCHLIST(value);
+const isPortfolioBody = (value: unknown): value is PortfolioBody => PORTFOLIO(value);
+const isWebhooksBody = (value: unknown): value is WebhooksBody => WEBHOOKS(value);
+const isNotificationsBody = (value: unknown): value is NotificationsBody => NOTIFICATIONS(value);
+
+/** The success, or the unexpected-answer failure when its fields do not decode; failures pass. */
 async function decoded<T>(
   pending: Promise<ApiResult<unknown>>,
-  envelope: Envelope,
+  decode: (value: unknown) => value is T,
 ): Promise<ApiResult<T>> {
   const result = await pending;
   if (!result.ok) return result;
-  return hasEnvelope(result.data, envelope)
-    ? { ok: true, data: result.data as T }
-    : { ...UNEXPECTED_ANSWER };
+  const data = result.data;
+  return decode(data) ? { ok: true, data } : { ...UNEXPECTED_ANSWER };
 }
 
-const LIST_ENVELOPE: Envelope = { data: 'list', meta: true };
+/** An answer the contract types, passed through unchecked: the writes' and Fortify's answers. */
+async function trusted<T>(pending: Promise<ApiResult<unknown>>): Promise<ApiResult<T>> {
+  const result = await pending;
+  return result.ok ? { ok: true, data: result.data as T } : result;
+}
 
 /** GET /v1/cards?q=&page=&page_size= (the PokéSearch search, proxied by the API). */
 export function searchCards(
@@ -160,7 +291,7 @@ export function searchCards(
   const params = new URLSearchParams({ q: query.q });
   if (query.page !== undefined) params.set('page', String(query.page));
   if (query.page_size !== undefined) params.set('page_size', String(query.page_size));
-  return request<CardSearchPage>(`/cards?${params.toString()}`, options);
+  return decoded(publicRead(`/cards?${params.toString()}`, options), isCardSearchPage);
 }
 
 /** Segments that URL resolution removes, so /v1/cards/{id} would turn into another URL. */
@@ -192,7 +323,7 @@ const INVALID_ID: ApiFailure = {
 export function getCard(id: string, options: RequestOptions = {}): Promise<ApiResult<CardDetail>> {
   const segment = cardSegment(id);
   if (segment === null) return Promise.resolve({ ...INVALID_ID });
-  return decoded<CardDetail>(request(`/cards/${segment}`, options), { data: 'object', meta: true });
+  return decoded(publicRead(`/cards/${segment}`, options), isCardDetail);
 }
 
 /** GET /v1/cards/{id}/prices?range=; the same one-segment id and collapsing guard as getCard. */
@@ -204,7 +335,10 @@ export function getCardPrices(
   const segment = cardSegment(id);
   if (segment === null) return Promise.resolve({ ...INVALID_ID });
   const params = new URLSearchParams({ range });
-  return request<CardPrices>(`/cards/${segment}/prices?${params.toString()}`, options);
+  return decoded(
+    publicRead(`/cards/${segment}/prices?${params.toString()}`, options),
+    isCardPrices,
+  );
 }
 
 /** GET /v1/movers?direction=&limit= (the newest movers day, ranked; limit 1 to 50). */
@@ -214,7 +348,7 @@ export function getMovers(
   options: RequestOptions = {},
 ): Promise<ApiResult<MoversPage>> {
   const params = new URLSearchParams({ direction, limit: String(limit) });
-  return decoded<MoversPage>(request(`/movers?${params.toString()}`, options), LIST_ENVELOPE);
+  return decoded(publicRead(`/movers?${params.toString()}`, options), isMoversPage);
 }
 
 // ---- Accounts (P4 D11) --------------------------------------------------------------------------
@@ -388,54 +522,6 @@ function refreshCsrfCookie(signal: AbortSignal | undefined): Promise<Response | 
   return send('/sanctum/csrf-cookie', { method: 'GET', signal });
 }
 
-/** Reads an account answer: an empty 2xx is ok without data, a non-JSON 2xx is a failure. */
-async function settle<T>(
-  response: Response,
-  signal: AbortSignal | undefined,
-): Promise<ApiResult<T>> {
-  let text: string;
-  try {
-    text = await response.text();
-  } catch (error) {
-    if (signal?.aborted === true) throw error;
-    text = '';
-  }
-  let body: unknown = undefined;
-  let json = text.trim() === '';
-  if (!json) {
-    try {
-      body = JSON.parse(text) as unknown;
-      json = true;
-    } catch {
-      json = false;
-    }
-  }
-  if (response.ok && json) {
-    // Fortify answers 201/202/204 with no body or with JsonResponse('') ('""'): no data.
-    return { ok: true, data: (body === '' ? undefined : body) as T };
-  }
-  if (!response.ok && isProblem(body)) {
-    return {
-      ok: false,
-      status: response.status,
-      type: body.type,
-      title: body.title,
-      requestId: body.request_id,
-      problem: body,
-    };
-  }
-  return {
-    ok: false,
-    status: response.status,
-    type: 'about:blank',
-    title: response.ok
-      ? `The PokéPrices API sent an unexpected answer (HTTP ${String(response.status)})`
-      : `The PokéPrices API answered HTTP ${String(response.status)}`,
-    requestId: response.headers.get('X-Request-Id'),
-    problem: null,
-  };
-}
-
 const unauthenticatedWriteListeners = new Set<() => void>();
 
 /**
@@ -450,31 +536,118 @@ export function onUnauthenticatedWrite(listener: () => void): () => void {
   };
 }
 
+/** Which side of the API a request is on; the two keep their own small differences (see core). */
+type Side = 'public' | 'account';
+
+interface CoreInit extends AccountInit {
+  readonly side: Side;
+}
+
+/** The fetch of one request: the account flags on the account side, Accept alone on /v1 reads. */
+async function fetchOnce(path: string, init: CoreInit): Promise<Response | null> {
+  if (init.side === 'account') return send(path, init);
+  const request: RequestInit = { headers: { Accept: 'application/json' } };
+  if (init.signal !== undefined) request.signal = init.signal;
+  try {
+    return await fetch(path, request);
+  } catch (error) {
+    if (init.signal?.aborted === true) throw error;
+    return null;
+  }
+}
+
 /**
- * The account request (D11). A write first fetches the CSRF cookie when it is missing; a 419
- * answer fetches a fresh cookie and retries once, and a second 419 is the failure. A write that
- * answers 401 tells the onUnauthenticatedWrite listeners.
+ * Reads an answer. The account side takes an empty 2xx (and Fortify's JsonResponse('')) as ok
+ * without data, a body it cannot read as empty, and names a non-JSON 2xx an unexpected answer; the
+ * public side takes an empty or unreadable body as not JSON and names any such answer by its status.
  */
-async function accountRequest<T>(path: string, init: AccountInit): Promise<ApiResult<T>> {
-  if (!isAccountPath(path)) return { ...INVALID_PATH };
-  const write = init.method !== 'GET';
+async function readAnswer(response: Response, init: CoreInit): Promise<ApiResult<unknown>> {
+  const account = init.side === 'account';
+  let body: string | null;
+  try {
+    body = await response.text();
+  } catch (error) {
+    if (init.signal?.aborted === true) throw error;
+    body = account ? '' : null;
+  }
+  let data: unknown = undefined;
+  let json = account && body !== null && body.trim() === '';
+  if (body !== null && body.trim() !== '') {
+    try {
+      data = JSON.parse(body) as unknown;
+      json = true;
+    } catch {
+      json = false;
+    }
+  }
+  if (response.ok && json) {
+    return { ok: true, data: account && data === '' ? undefined : data };
+  }
+  if (!response.ok && isProblem(data)) {
+    return {
+      ok: false,
+      status: response.status,
+      type: data.type,
+      title: data.title,
+      requestId: data.request_id,
+      problem: data,
+    };
+  }
+  return {
+    ok: false,
+    status: response.status,
+    type: 'about:blank',
+    title:
+      account && response.ok
+        ? `The PokéPrices API sent an unexpected answer (HTTP ${String(response.status)})`
+        : `The PokéPrices API answered HTTP ${String(response.status)}`,
+    requestId: response.headers.get('X-Request-Id'),
+    problem: null,
+  };
+}
+
+/**
+ * The one request pipeline (C6). An account path outside the allowed set never reaches fetch. An
+ * account write first fetches the CSRF cookie when it is missing; a 419 answer fetches a fresh
+ * cookie and retries once, and a second 419 is the failure. A network failure is the unreachable
+ * failure on both sides; a cancelled request rejects as cancelled. An account write that answers
+ * 401 tells the onUnauthenticatedWrite listeners, after its answer is read.
+ */
+async function core(path: string, init: CoreInit): Promise<ApiResult<unknown>> {
+  if (init.side === 'account' && !isAccountPath(path)) return { ...INVALID_PATH };
+  const write = init.side === 'account' && init.method !== 'GET';
   if (write && xsrfToken() === null) await refreshCsrfCookie(init.signal);
-  let response = await send(path, init);
+  let response = await fetchOnce(path, init);
   if (write && response?.status === 419) {
     await refreshCsrfCookie(init.signal);
-    response = await send(path, init);
+    response = await fetchOnce(path, init);
   }
   if (response === null) return { ...UNREACHABLE };
-  const result = await settle<T>(response, init.signal);
+  const result = await readAnswer(response, init);
   if (write && response.status === 401) {
     for (const listener of [...unauthenticatedWriteListeners]) listener();
   }
   return result;
 }
 
+/** A public /v1 read (GET, no session flags). */
+function publicRead(path: string, options: RequestOptions): Promise<ApiResult<unknown>> {
+  return core(BASE + path, { side: 'public', method: 'GET', signal: options.signal });
+}
+
+/** An account request (D11) as the raw answer, for a read's decoder. */
+function accountAnswer(path: string, init: AccountInit): Promise<ApiResult<unknown>> {
+  return core(path, { ...init, side: 'account' });
+}
+
+/** An account request whose answer the contract types (see trusted). */
+function accountRequest<T>(path: string, init: AccountInit): Promise<ApiResult<T>> {
+  return trusted<T>(accountAnswer(path, init));
+}
+
 /** GET /v1/me: who is signed in. Signed out, the answer is a 401 failure. */
 export function getMe(options: RequestOptions = {}): Promise<ApiResult<MeBody>> {
-  return accountRequest<MeBody>('/v1/me', { method: 'GET', signal: options.signal });
+  return decoded(accountAnswer('/v1/me', { method: 'GET', signal: options.signal }), isMeBody);
 }
 
 /** The value of `key` when data is an object holding it, else undefined. */
@@ -633,9 +806,9 @@ function variantPath(list: 'watchlist' | 'portfolio', variantKey: string): strin
 
 /** GET /v1/watchlist: the signed-in account's variants with their prices (401 signed out). */
 export function getWatchlist(options: RequestOptions = {}): Promise<ApiResult<WatchlistBody>> {
-  return decoded<WatchlistBody>(
-    accountRequest('/v1/watchlist', { method: 'GET', signal: options.signal }),
-    LIST_ENVELOPE,
+  return decoded(
+    accountAnswer('/v1/watchlist', { method: 'GET', signal: options.signal }),
+    isWatchlistBody,
   );
 }
 
@@ -655,9 +828,9 @@ export function deleteWatchlistItem(variantKey: string): Promise<ApiResult<undef
 
 /** GET /v1/portfolio: the holdings, their values and the total, all computed by the API. */
 export function getPortfolio(options: RequestOptions = {}): Promise<ApiResult<PortfolioBody>> {
-  return decoded<PortfolioBody>(
-    accountRequest('/v1/portfolio', { method: 'GET', signal: options.signal }),
-    LIST_ENVELOPE,
+  return decoded(
+    accountAnswer('/v1/portfolio', { method: 'GET', signal: options.signal }),
+    isPortfolioBody,
   );
 }
 
@@ -727,9 +900,9 @@ function webhookPath(id: number): string | null {
 
 /** GET /v1/webhooks: the signed-in account's webhooks, never a URL or a secret (401 signed out). */
 export function getWebhooks(options: RequestOptions = {}): Promise<ApiResult<WebhooksBody>> {
-  return decoded<WebhooksBody>(
-    accountRequest('/v1/webhooks', { method: 'GET', signal: options.signal }),
-    LIST_ENVELOPE,
+  return decoded(
+    accountAnswer('/v1/webhooks', { method: 'GET', signal: options.signal }),
+    isWebhooksBody,
   );
 }
 
@@ -765,9 +938,9 @@ export type AlertEntry = operations['putAlert']['responses'][200]['content']['ap
 export function getNotifications(
   options: RequestOptions = {},
 ): Promise<ApiResult<NotificationsBody>> {
-  return decoded<NotificationsBody>(
-    accountRequest('/v1/me/notifications', { method: 'GET', signal: options.signal }),
-    { data: 'object', meta: false },
+  return decoded(
+    accountAnswer('/v1/me/notifications', { method: 'GET', signal: options.signal }),
+    isNotificationsBody,
   );
 }
 

@@ -63,7 +63,11 @@ function renderPage(client: QueryClient): void {
   );
 }
 
-/** Everything both caches hold, as text: query data and errors, mutation variables and data. */
+/**
+ * Everything both caches hold, as text: query data and errors, mutation variables and data. A
+ * function anywhere in them fails the test: JSON.stringify would drop it, and a kept request
+ * function could replay what it closes over.
+ */
 function cacheText(client: QueryClient): string {
   const queries = client
     .getQueryCache()
@@ -73,7 +77,10 @@ function cacheText(client: QueryClient): string {
     .getMutationCache()
     .getAll()
     .map((mutation) => [mutation.state.variables, mutation.state.data]);
-  return JSON.stringify([queries, mutations]);
+  return JSON.stringify([queries, mutations], (_key, value: unknown) => {
+    if (typeof value === 'function') throw new Error('the cache holds a function');
+    return value;
+  });
 }
 
 function requestText(calls: readonly AccountCall[]): string[] {
