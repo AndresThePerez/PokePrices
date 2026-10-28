@@ -14,6 +14,9 @@ final class AlertEligibility
 {
     public const string GATE = 'create-alerts';
 
+    /** allows() as a SQL predicate on the users table aliased u (the alert dispatch's joins). */
+    public const string SQL = 'u.email_verified_at IS NOT NULL AND NOT u.is_demo';
+
     public static function allows(User $user): bool
     {
         return $user->hasVerifiedEmail() && ! $user->is_demo;

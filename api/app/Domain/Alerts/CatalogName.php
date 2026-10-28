@@ -22,15 +22,19 @@ final class CatalogName
 
     /**
      * forEmail(), then a backslash before each of \ * _ ~ ` | < > [ ] ( ) # @ :, before a leading '-' or '+', and
-     * before the '.' of a leading "<digits>.". A '-' anywhere else stays as it is ("base1-4").
+     * before the '.' of a leading "<digits>.". Leading horizontal whitespace (spaces, no-break spaces) does not hide
+     * the marker: it is kept and the marker after it is escaped. A '-' anywhere else stays as it is ("base1-4").
      */
     public static function forDiscord(string $name): string
     {
         $escaped = (string) preg_replace('/[\\\\*_~`|<>\[\]()#@:]/', '\\\\$0', self::forEmail($name));
-        if (str_starts_with($escaped, '-') || str_starts_with($escaped, '+')) {
-            return '\\'.$escaped;
+
+        $markers = ['/^(\h*)([-+])/' => '$1\\\\$2', '/^(\h*)(\d+)\./' => '$1$2\\\\.'];
+        foreach ($markers as $pattern => $replacement) {
+            // Not UTF-8: the byte-wise pattern still escapes a marker after spaces.
+            $escaped = preg_replace($pattern.'u', $replacement, $escaped) ?? (string) preg_replace($pattern, $replacement, $escaped);
         }
 
-        return (string) preg_replace('/^(\d+)\./', '$1\\\\.', $escaped);
+        return $escaped;
     }
 }

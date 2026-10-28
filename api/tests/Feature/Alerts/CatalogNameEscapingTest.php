@@ -341,3 +341,19 @@ it('renders a control-only name as an empty label through the stored Discord ale
         ->and($code)->toBe(0)
         ->and(explode("\n", $live)[2])->toStartWith(' · holo, 1st: ');
 });
+
+// Plan Q1-i4 T01 (Q1-i3 T01 Low, HG-40 #14): a list marker after leading horizontal whitespace still renders a list
+// in Discord, so it is escaped too; the leading whitespace stays and email keeps the name raw.
+
+it('escapes a list marker after leading horizontal whitespace and keeps the spaces (a tab is a control character, dropped first)', function (string $name, string $discord): void {
+    expect(CatalogName::forDiscord($name))->toBe($discord)
+        ->and(CatalogName::forEmail($name))->toBe(str_replace("\t", '', $name));
+})->with([
+    'space dash' => [' - x', ' \- x'],
+    'tab numbered' => ["\t1. x", '1\. x'],
+    'spaces plus' => ['   + Pikachu', '   \+ Pikachu'],
+    'no-break space dash' => ["\u{A0}- x", "\u{A0}\\- x"],
+    'space long number' => [' 151. Mew', ' 151\. Mew'],
+    'space number without dot' => [' 151 Mew', ' 151 Mew'],
+    'space then inner dash' => [' Name of base1-4', ' Name of base1-4'],
+]);

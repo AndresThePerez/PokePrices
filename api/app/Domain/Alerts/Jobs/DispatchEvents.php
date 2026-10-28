@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace App\Domain\Alerts\Jobs;
 
+use App\Domain\Accounts\AlertEligibility;
 use App\Domain\Alerts\Deliverable;
 use App\Domain\Alerts\DeliverableDay;
 use App\Domain\Alerts\DiscordMessage;
 use App\Domain\Alerts\NotificationText;
 use App\Domain\Alerts\PriceMovedPayload;
 use App\Domain\Catalog\CatalogRepository;
+use App\Domain\Pricing\MovementRule;
 use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Queue\ShouldBeUnique;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -67,7 +69,8 @@ final class DispatchEvents implements ShouldBeUnique, ShouldQueue
             SELECT w.user_id, w.variant_key
             FROM watched w
             JOIN users u ON u.id = w.user_id
-            WHERE u.email_verified_at IS NOT NULL AND NOT u.is_demo
+            WHERE
+        SQL.' '.AlertEligibility::SQL."\n".<<<'SQL'
         )
         SQL;
 
@@ -176,7 +179,7 @@ final class DispatchEvents implements ShouldBeUnique, ShouldQueue
     {
         $row = $db->selectOne(
             'SELECT up + down AS n FROM movement_volume WHERE day = ?::date AND source = ? AND rule = ?',
-            [$day, $source, (string) config('pricing.movement.rule')],
+            [$day, $source, MovementRule::rule()],
             false,
         );
 
@@ -224,7 +227,8 @@ final class DispatchEvents implements ShouldBeUnique, ShouldQueue
                 CASE WHEN s.channel = 'discord' THEN d.id END AS discord_endpoint_id
                 FROM deliverable_events e
                 JOIN watchlist_items w ON w.variant_key = e.variant_key AND w.alert_pct IS NOT NULL AND abs(e.change_pct) >= w.alert_pct
-                JOIN users u ON u.id = w.user_id AND u.email_verified_at IS NOT NULL AND NOT u.is_demo
+                JOIN users u ON u.id = w.user_id AND
+                SQL.' '.AlertEligibility::SQL."\n".<<<'SQL'
                 LEFT JOIN notification_settings s ON s.user_id = w.user_id
                 LEFT JOIN webhook_endpoints d ON d.user_id = w.user_id AND d.kind = 'discord' AND d.disabled_at IS NULL
                 WHERE NOT EXISTS (

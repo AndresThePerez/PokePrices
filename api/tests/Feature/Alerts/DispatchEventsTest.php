@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Domain\Accounts\AlertEligibility;
 use App\Domain\Alerts\Jobs\DispatchEvents;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Scheduling\CallbackEvent;
@@ -298,3 +299,21 @@ it('schedules DispatchEvents every five minutes without overlapping as pokeprice
         ->and($event->withoutOverlapping)->toBeTrue();
     Bus::assertDispatched(DispatchEvents::class, fn (DispatchEvents $job): bool => $job->connection === 'redis' && $job->queue === 'default');
 });
+
+// Plan Q1-i4 T01 (a10, Q1-i1 review a): who may get alerts is stated once. AlertEligibility::SQL is the predicate the
+// dispatch's SQL uses for alias u, and it agrees with AlertEligibility::allows() for every verified × demo pair.
+
+it('agrees with AlertEligibility::allows() in SQL for every verified and demo combination', function (bool $verified, bool $demo, bool $expected): void {
+    // One account takes each combination in turn: the schema allows a single demo account.
+    $user = AlertRows::user('person@example.com', ['email_verified_at' => $verified ? now() : null, 'is_demo' => $demo]);
+
+    $selected = DB::table('users as u')->whereRaw(AlertEligibility::SQL)->where('u.id', $user->id)->count();
+
+    expect(AlertEligibility::allows($user))->toBe($expected)
+        ->and($selected)->toBe($expected ? 1 : 0);
+})->with([
+    'verified, not demo' => [true, false, true],
+    'unverified, not demo' => [false, false, false],
+    'verified demo' => [true, true, false],
+    'unverified demo' => [false, true, false],
+]);

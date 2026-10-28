@@ -6,18 +6,19 @@ namespace App\Http\Controllers;
 
 use App\Domain\Accounts\AccountLimits;
 use App\Domain\Accounts\VariantKey;
+use App\Domain\Alerts\AlertThresholds;
+use App\Domain\Pricing\MovementRule;
 use App\Http\Resources\AlertResource;
 use App\Models\User;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 #[Group('Account', 'The signed-in PokéPrices account (cookie session; sign in through the session endpoints first).')]
 final class AlertController
 {
-    public const string NOT_WATCHED = 'Add this variant to your watchlist first.';
+    public function __construct(private readonly AlertThresholds $thresholds) {}
 
     /**
      * Set an alert on a watchlist card.
@@ -34,24 +35,18 @@ final class AlertController
         if (! VariantKey::isValid($variantKey)) {
             throw ValidationException::withMessages(['variant_key' => [AccountLimits::UNKNOWN_VARIANT]]);
         }
-        // The floor comes from config, so the range is checked after the type (the contract documents an integer).
-        $floor = self::floor();
-        $message = "Choose a whole percentage from {$floor} to 100.";
-        $validated = $request->validate([
-            'pct' => ['bail', 'required', 'integer:strict'],
+        // The floor comes from the movement rule; every refusal of pct shows the same range.
+        $message = 'Choose a whole percentage from '.MovementRule::alertFloor().' to '.AlertThresholds::MAX.'.';
+        $request->validate([
+            'pct' => ['bail', 'required', 'integer:strict', 'min:'.MovementRule::alertFloor(), 'max:'.AlertThresholds::MAX],
         ], [
             'pct.required' => $message,
             'pct.integer' => $message,
+            'pct.min' => $message,
+            'pct.max' => $message,
         ]);
-        $pct = $validated['pct'];
-        if (! is_int($pct) || $pct < $floor || $pct > 100) {
-            throw ValidationException::withMessages(['pct' => [$message]]);
-        }
-
-        $updated = DB::update('UPDATE watchlist_items SET alert_pct = ? WHERE user_id = ? AND variant_key = ?', [$pct, self::userId($request), $variantKey]);
-        if ($updated === 0) {
-            throw ValidationException::withMessages(['variant_key' => [self::NOT_WATCHED]]);
-        }
+        $pct = $request->integer('pct');
+        $this->thresholds->set(self::userId($request), $variantKey, $pct);
 
         return new AlertResource($variantKey, $pct);
     }
@@ -66,18 +61,10 @@ final class AlertController
     public function destroy(Request $request, string $variantKey): Response
     {
         if (VariantKey::isValid($variantKey)) {
-            DB::update('UPDATE watchlist_items SET alert_pct = NULL WHERE user_id = ? AND variant_key = ? AND alert_pct IS NOT NULL', [self::userId($request), $variantKey]);
+            $this->thresholds->clear(self::userId($request), $variantKey);
         }
 
         return response()->noContent();
-    }
-
-    /** The smallest threshold: the movement rule's percentage rounded up (no event exists below it, D9). */
-    private static function floor(): int
-    {
-        $pct = config('pricing.movement.pct');
-
-        return max(1, (int) ceil(is_numeric($pct) ? (float) $pct : 5.0));
     }
 
     /** auth:sanctum on the account group has already answered 401 to a signed-out request. */

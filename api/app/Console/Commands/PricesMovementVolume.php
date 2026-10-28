@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Domain\Pricing\IngestLock;
+use App\Domain\Pricing\MovementRule;
 use App\Domain\Pricing\MovementVolume;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -112,7 +113,7 @@ final class PricesMovementVolume extends Command
     private function markdown(ConnectionInterface $db, array $rows, array $summary): string
     {
         $source = (string) config('pricing.source');
-        $draft = (string) config('pricing.movement.rule');
+        $draft = MovementRule::rule();
         $days = array_column($rows[$draft], 'day');
         $build = $db->table('map_builds')->max('id');
         $epochs = [];

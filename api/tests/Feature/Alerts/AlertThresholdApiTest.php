@@ -249,3 +249,29 @@ it('leaves portfolio holdings without alert_pct', function (): void {
     expect($holding)->not->toHaveKey('alert_pct')
         ->and(array_key_last($holding))->toBe('value');
 });
+
+// Plan Q1-i4 T01 (A2, D4 server half): the floor and the 100 ceiling are validation rules (one message for every
+// refusal), and the contract states them as the putAlert pct schema's minimum and maximum.
+
+it('rounds a 7.50 % movement rule up to a floor of 8: 7 is refused with "from 8 to 100", 8 is set', function (): void {
+    config(['pricing.movement.pct' => '7.50']);
+    $user = Accounts::user();
+    AccountRows::watch($user, T5_KEY);
+
+    $seven = t5Put($this, $user, T5_KEY, ['pct' => 7]);
+    $eight = t5Put($this, $user, T5_KEY, ['pct' => 8]);
+
+    expect($seven->getStatusCode())->toBe(422)
+        ->and($seven->json('errors'))->toBe(['pct' => ['Choose a whole percentage from 8 to 100.']])
+        ->and($eight->getStatusCode())->toBe(200)
+        ->and(t5Thresholds($user))->toBe([T5_KEY => 8]);
+});
+
+it('documents the putAlert pct as a whole number from 5 to 100 in the committed contract', function (): void {
+    $spec = json_decode((string) file_get_contents(base_path('../openapi/api.json')), true, 512, JSON_THROW_ON_ERROR);
+    $body = $spec['paths']['/alerts/{variantKey}']['put']['requestBody']['content']['application/json']['schema'];
+
+    expect($spec['paths']['/alerts/{variantKey}']['put']['operationId'])->toBe('putAlert')
+        ->and($body['properties'])->toBe(['pct' => ['type' => 'integer', 'minimum' => 5, 'maximum' => 100]])
+        ->and($body['required'])->toBe(['pct']);
+});

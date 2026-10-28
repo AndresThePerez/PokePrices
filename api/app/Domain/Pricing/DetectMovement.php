@@ -14,7 +14,7 @@ use stdClass;
  *
  * A real (never filled) close on day D fires when its D4 previous close exists (the most recent real close on an
  * earlier day in the same series_epoch, at most config('pricing.fill_cap_days') days back), abs(change_pct) is at
- * least config('pricing.movement.pct') and abs(change) at least config('pricing.movement.abs'), and D is the newest
+ * least MovementRule::pct() and abs(change) at least MovementRule::abs(), and D is the newest
  * finalized day of the source. Only the run's own day is written, one row per variant, with ON CONFLICT DO NOTHING on
  * the outbox key: an event is never updated or deleted, so re-finalizing a day adds nothing. dispatched_at stays null
  * (dispatch is P5). The run's counts gain:
@@ -86,9 +86,9 @@ final class DetectMovement
     {
         $source = (string) config('pricing.source');
         $cap = (int) config('pricing.fill_cap_days');
-        $rule = (string) config('pricing.movement.rule');
-        $pct = (string) config('pricing.movement.pct');
-        $abs = (string) config('pricing.movement.abs');
+        $rule = MovementRule::rule();
+        $pct = MovementRule::pct();
+        $abs = MovementRule::abs();
 
         $events = 0;
         if ($newest) {

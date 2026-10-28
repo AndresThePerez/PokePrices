@@ -1247,7 +1247,9 @@
                                 "type": "object",
                                 "properties": {
                                     "pct": {
-                                        "type": "integer"
+                                        "type": "integer",
+                                        "minimum": 5,
+                                        "maximum": 100
                                     }
                                 },
                                 "required": [

@@ -25,7 +25,7 @@ use stdClass;
  */
 final class MovementVolume
 {
-    /** The grid: rule => [pct, abs]; draft-v1 comes from config('pricing.movement'). */
+    /** The grid: rule => [pct, abs]; draft-v1 comes from MovementRule. */
     public const array GRID = [
         'tight' => ['3.00', '0.50'],
         'loose' => ['10.00', '2.00'],
@@ -45,7 +45,7 @@ final class MovementVolume
      */
     public static function rules(): array
     {
-        return [(string) config('pricing.movement.rule') => [(string) config('pricing.movement.pct'), (string) config('pricing.movement.abs')]] + self::GRID;
+        return [MovementRule::rule() => [MovementRule::pct(), MovementRule::abs()]] + self::GRID;
     }
 
     /**

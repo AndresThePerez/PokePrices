@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Alerts;
 
+use App\Domain\Pricing\MovementRule;
 use stdClass;
 
 /**
@@ -13,7 +14,7 @@ use stdClass;
  * thousands and never re-rounded) and carries its source and close day: "as of <day> from TCGCSV (daily close)".
  * Texts show dates only, never a time of day. The card label is the PokéSearch catalog name, else "Card <card_id>";
  * the variant label is the web's variantLabel rule. The movement rule's figures (5 % and $1.00) come from
- * config('pricing.movement'), never from a literal.
+ * MovementRule, never from a literal.
  */
 final class NotificationText
 {
@@ -131,7 +132,7 @@ final class NotificationText
     {
         $ordered = self::ordered($moves);
         $shown = array_slice($ordered, 0, max(0, $maxLines));
-        $lines = ['Cards on your watchlist and portfolio that moved by at least '.self::rulePct().'% and $'.self::ruleAbs()
+        $lines = ['Cards on your watchlist and portfolio that moved by at least '.MovementRule::pctText().'% and $'.self::ruleAbs()
             .' between two daily closes, '.self::asOf($day).':'];
         foreach ($shown as $move) {
             $lines[] = DiscordMessage::moveLine($move['event'], $move['card'], $discord);
@@ -150,18 +151,10 @@ final class NotificationText
         return "as of {$day} from TCGCSV (daily close)";
     }
 
-    /** The movement rule's percentage without trailing zeros: '5.00' gives '5', '7.50' gives '7.5'. */
-    private static function rulePct(): string
-    {
-        $pct = (string) config('pricing.movement.pct');
-
-        return str_contains($pct, '.') ? rtrim(rtrim($pct, '0'), '.') : $pct;
-    }
-
     /** The movement rule's amount as money: '1.00' gives '1.00'. */
     private static function ruleAbs(): string
     {
-        return DiscordMessage::grouped((string) config('pricing.movement.abs'));
+        return DiscordMessage::grouped(MovementRule::abs());
     }
 
     private static function url(string $path): string
