@@ -160,7 +160,8 @@ docker compose -f compose.dev.yml exec -T postgres psql -U pokeprices -d pokepri
 - `ingest_run_chunks.status` is `pending`, `done` or `failed`; `attempts` counts the tries and `error`
   holds the last one.
 - `failed_jobs` holds one row per job that exhausted its tries (`IngestChunk`, `FinalizeDay`). It is the
-  record of the failure; leave the rows in place.
+  record of the failure; the rows are kept 30 days (720 hours), then pruned once a day with `job_batches`
+  (`pokeprices-prune-failed` and `pokeprices-prune-batches` in the schedule).
 
 Fix the cause (a file that was rewritten, a full disk, a stopped database), then resume:
 

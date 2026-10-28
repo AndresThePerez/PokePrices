@@ -23,3 +23,9 @@ Schedule::job(new DispatchEvents, PricingConfig::queue(), 'redis')->everyFiveMin
 
 // The delivery sweep (plan P5-i1 T02, D7, D8): every minute, due deliveries sent in-line within the sweep caps.
 Schedule::job(new DeliverDue, PricingConfig::queue(), 'redis')->everyMinute()->withoutOverlapping()->name('pokeprices-deliveries');
+
+// Queue bookkeeping (plan Q1-i5 T06, HG-45 #1): failed jobs are kept 30 days (720 h), then pruned once a day.
+Schedule::command('queue:prune-failed --hours=720')->daily()->name('pokeprices-prune-failed');
+
+// Queue bookkeeping (plan Q1-i5 T06, HG-45 #1): job batches are kept 30 days (720 h), then pruned once a day.
+Schedule::command('queue:prune-batches --hours=720')->daily()->name('pokeprices-prune-batches');

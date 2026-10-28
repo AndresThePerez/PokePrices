@@ -14,6 +14,7 @@ use App\Domain\Pricing\Models\PriceLatest;
 use App\Domain\Pricing\PricingConfig;
 use App\Jobs\ProbeJob;
 use Illuminate\Console\Scheduling\CallbackEvent;
+use Illuminate\Console\Scheduling\Event as ScheduledEvent;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Queue;
 use Tests\Support\AccountRows;
@@ -107,7 +108,7 @@ it('never reports a movers limit above the movers the rebuild keeps: with a knob
         ->and($zero->getStatusCode())->toBe(422);
 });
 
-it('puts the jobs and every scheduled line on pricing.queue and the redis connection, and a default config on default', function (): void {
+it('puts the jobs and every scheduled job line on pricing.queue and the redis connection, and a default config on default', function (): void {
     config(['pricing.queue' => 'example-queue']);
     $start = new StartDayIngest('2026-10-12');
     $finalize = new FinalizeDay(1);
@@ -119,15 +120,17 @@ it('puts the jobs and every scheduled line on pricing.queue and the redis connec
     require base_path('routes/console.php');
     $added = array_slice($schedule->events(), $before);
     Queue::fake();
-    foreach ($added as $event) {
+    foreach (array_slice($added, 0, 5) as $event) {
         expect($event)->toBeInstanceOf(CallbackEvent::class);
         $event->run(app());
     }
 
+    // Q1-i5 T06 adds the two queue bookkeeping prunes: artisan commands the scheduler runs itself, never queued jobs.
     expect([$start->queue, $start->connection, $finalize->queue, $finalize->connection, $probe->queue, $probe->connection])
         ->toBe(['example-queue', 'redis', 'example-queue', 'redis', 'example-queue', 'redis'])
-        ->and(array_map(fn (CallbackEvent $e): string => (string) $e->description, $added))
-        ->toBe(['pokeprices-probe', 'pokeprices-ingest-pending', 'pokeprices-freshness', 'pokeprices-alerts-dispatch', 'pokeprices-deliveries']);
+        ->and(array_map(fn (ScheduledEvent $e): string => (string) $e->description, $added))
+        ->toBe(['pokeprices-probe', 'pokeprices-ingest-pending', 'pokeprices-freshness', 'pokeprices-alerts-dispatch', 'pokeprices-deliveries', 'pokeprices-prune-failed', 'pokeprices-prune-batches'])
+        ->and(array_map(fn (ScheduledEvent $e): bool => $e instanceof CallbackEvent, array_slice($added, 5)))->toBe([false, false]);
     foreach ([ProbeJob::class, IngestPending::class, LogFreshness::class, DispatchEvents::class, DeliverDue::class] as $class) {
         Queue::assertPushedOn('example-queue', $class);
     }

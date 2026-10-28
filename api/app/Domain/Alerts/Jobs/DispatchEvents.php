@@ -37,7 +37,9 @@ use stdClass;
  * Alerts and digests go to the user's channel: their active Discord endpoint when they chose Discord and have one at
  * fan-out time, else email (the address is read when the email is sent). Creation is INSERT ... ON CONFLICT DO
  * NOTHING on deliveries_moved_unique, deliveries_alert_unique and deliveries_digest_unique, so any number of runs
- * creates each delivery once, and a watcher added later gets the day's deliveries on the next run. Card names are
+ * creates each delivery once, and a watcher added later gets the day's deliveries on the next run. Each row is inserted
+ * only while its user and endpoint still exist, so rows whose endpoint or user vanished during the catalog read are
+ * skipped and the rest are created. Card names are
  * read once, only when a delivery is missing; while that read is degraded within config('alerts.catalog_grace_minutes')
  * of the day's newest ok run, nothing is created this run.
  *
@@ -319,13 +321,11 @@ final class DispatchEvents implements ShouldBeUnique, ShouldQueue
             foreach ($chunk as $row) {
                 $eventId = (int) $row->id;
                 $bodies[$eventId] ??= PriceMovedPayload::encode($row, $cards[(string) $row->card_id] ?? null);
-                $values[] = "(?, ?, 'price.moved', 'webhook', ?, ?, ?::date, ?, ?::timestamptz)";
+                $values[] = "(?, ?::bigint, 'price.moved', 'webhook', ?::bigint, ?::bigint, ?::date, ?, ?::timestamptz)";
                 array_push($bindings, 'msg_'.Str::ulid(), (int) $row->endpoint_user_id, (int) $row->endpoint_id, $eventId, (string) $row->day, $bodies[$eventId], $due);
             }
             $created += $db->affectingStatement(
-                'INSERT INTO deliveries (message_id, user_id, kind, channel, endpoint_id, event_id, day, body, next_attempt_at) VALUES '
-                .implode(', ', $values)
-                ." ON CONFLICT (event_id, endpoint_id) WHERE kind = 'price.moved' DO NOTHING",
+                self::insertExisting($values)." ON CONFLICT (event_id, endpoint_id) WHERE kind = 'price.moved' DO NOTHING",
                 $bindings,
             );
         }
@@ -394,17 +394,29 @@ final class DispatchEvents implements ShouldBeUnique, ShouldQueue
             $values = [];
             $bindings = [];
             foreach ($chunk as [$userId, $endpointId, $eventId, $day, $body]) {
-                $values[] = '(?, ?, ?, ?, ?::bigint, ?::bigint, ?::date, ?, ?::timestamptz)';
+                $values[] = '(?, ?::bigint, ?, ?, ?::bigint, ?::bigint, ?::date, ?, ?::timestamptz)';
                 array_push($bindings, 'msg_'.Str::ulid(), $userId, $kind, $endpointId === null ? 'email' : 'discord', $endpointId, $eventId, $day, $body, $due);
             }
-            $created += $db->affectingStatement(
-                'INSERT INTO deliveries (message_id, user_id, kind, channel, endpoint_id, event_id, day, body, next_attempt_at) VALUES '
-                .implode(', ', $values)." ON CONFLICT {$conflict} DO NOTHING",
-                $bindings,
-            );
+            $created += $db->affectingStatement(self::insertExisting($values)." ON CONFLICT {$conflict} DO NOTHING", $bindings);
         }
 
         return $created;
+    }
+
+    /**
+     * INSERT INTO deliveries of the VALUES rows whose user, and endpoint when one is given, still exist: a row whose
+     * endpoint or user was deleted after the missing SELECTs (during the catalog read) is skipped, not a 23503 for
+     * the whole statement (plan Q1-i5 T06, B8).
+     *
+     * @param  list<string>  $values  one typed "(?, ...)" tuple per row, in the column order below
+     */
+    private static function insertExisting(array $values): string
+    {
+        return 'INSERT INTO deliveries (message_id, user_id, kind, channel, endpoint_id, event_id, day, body, next_attempt_at) '
+            .'SELECT v.* FROM (VALUES '.implode(', ', $values).') '
+            .'AS v(message_id, user_id, kind, channel, endpoint_id, event_id, day, body, next_attempt_at) '
+            .'WHERE EXISTS (SELECT 1 FROM users u WHERE u.id = v.user_id) '
+            .'AND (v.endpoint_id IS NULL OR EXISTS (SELECT 1 FROM webhook_endpoints e WHERE e.id = v.endpoint_id))';
     }
 
     /**
