@@ -338,9 +338,11 @@ final class DispatchEvents implements ShouldBeUnique, ShouldQueue
     {
         $rows = [];
         foreach ($alerts as $row) {
-            $message = NotificationText::alert($row, $cards[(string) $row->card_id] ?? null, (int) $row->alert_pct);
+            $card = $cards[(string) $row->card_id] ?? null;
             $discord = $row->discord_endpoint_id === null ? null : (int) $row->discord_endpoint_id;
-            $body = $discord === null ? NotificationText::emailBody($message) : DiscordMessage::envelope($message['text']);
+            $body = $discord === null
+                ? NotificationText::emailBody(NotificationText::alert($row, $card, (int) $row->alert_pct))
+                : DiscordMessage::envelope(NotificationText::discordAlert($row, $card, (int) $row->alert_pct));
             $rows[] = [(int) $row->notify_user_id, $discord, (int) $row->id, (string) $row->day, $body];
         }
 

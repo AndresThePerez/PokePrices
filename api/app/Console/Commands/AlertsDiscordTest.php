@@ -94,7 +94,7 @@ final class AlertsDiscordTest extends Command
         }
         $lines = ['PokéPrices test message.', "The largest moves between two daily closes, as of {$day} from TCGCSV (daily close):"];
         foreach ($events as $event) {
-            $lines[] = DiscordMessage::moveLine($event, $cards[(string) $event->card_id] ?? null);
+            $lines[] = DiscordMessage::moveLine($event, $cards[(string) $event->card_id] ?? null, forDiscord: true);
         }
         $lines[] = 'TCGplayer market prices via TCGCSV, collected once a day.';
 

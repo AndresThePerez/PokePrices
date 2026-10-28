@@ -75,13 +75,15 @@ final class DiscordMessage
 
     /**
      * One move as a digest line (D4): "<card label> · <variant label>: $<previous close> → $<close>, <change line>".
+     * The label (catalog name, else "Card <card_id>") is CatalogName::forEmail's, or forDiscord's when $forDiscord.
      *
      * @param  stdClass  $event  a price_events row selected with PriceMovedPayload::COLUMNS
      * @param  array{name: string, set_name: string, number: string}|null  $card
      */
-    public static function moveLine(stdClass $event, ?array $card): string
+    public static function moveLine(stdClass $event, ?array $card, bool $forDiscord = false): string
     {
-        $label = $card === null ? 'Card '.(string) $event->card_id : $card['name'];
+        $name = $card === null ? 'Card '.(string) $event->card_id : $card['name'];
+        $label = $forDiscord ? CatalogName::forDiscord($name) : CatalogName::forEmail($name);
 
         return $label.' · '.self::variantLabel((string) $event->variant_key)
             .': $'.self::grouped((string) $event->previous_close).' → $'.self::grouped((string) $event->close)

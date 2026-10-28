@@ -36,15 +36,19 @@ final class NotificationText
 
         return [
             'subject' => "PokéPrices alert: {$label} moved {$sign}{$digits}% ({$day})",
-            'text' => implode("\n", [
-                $label.' · '.VariantLabel::of((string) $event->variant_key),
-                'Market price $'.DiscordMessage::grouped((string) $event->close),
-                DiscordMessage::changeLine((string) $event->change, $pct, (string) $event->previous_day),
-                self::asOf($day),
-                "Your alert threshold: {$threshold}% (and at least \$".self::ruleAbs().').',
-                self::url('/card/'.rawurlencode((string) $event->card_id)),
-            ]),
+            'text' => self::alertText($event, $label, $threshold),
         ];
+    }
+
+    /**
+     * The alert's text for Discord: alert()'s text with the card label escaped for Discord (CatalogName::forDiscord).
+     *
+     * @param  stdClass  $event  a price_events row selected with PriceMovedPayload::COLUMNS
+     * @param  array{name: string, set_name: string, number: string}|null  $card
+     */
+    public static function discordAlert(stdClass $event, ?array $card, int $threshold): string
+    {
+        return self::alertText($event, CatalogName::forDiscord(self::rawLabel($event, $card)), $threshold);
     }
 
     /**
@@ -56,38 +60,26 @@ final class NotificationText
      */
     public static function digest(string $day, array $moves, int $maxLines): array
     {
-        $ordered = self::ordered($moves);
-        $shown = array_slice($ordered, 0, max(0, $maxLines));
-        $lines = ['Cards on your watchlist and portfolio that moved by at least '.self::rulePct().'% and $'.self::ruleAbs()
-            .' between two daily closes, '.self::asOf($day).':'];
-        foreach ($shown as $move) {
-            $lines[] = DiscordMessage::moveLine($move['event'], $move['card']);
-        }
-        $left = count($ordered) - count($shown);
-        if ($left > 0) {
-            $lines[] = "…and {$left} more: ".self::url('/watchlist');
-        }
-        $lines[] = self::FOOTNOTE;
-
-        return ['subject' => "PokéPrices daily digest: closes of {$day}", 'text' => implode("\n", $lines)];
+        return ['subject' => "PokéPrices daily digest: closes of {$day}", 'text' => self::digestText($day, $moves, $maxLines, false)];
     }
 
     /**
      * The digest's text for Discord: as many move lines as fit in Discord's 2000 characters (at most the configured
-     * number), the rest counted in the "…and <k> more" line, the footnote kept.
+     * number), the rest counted in the "…and <k> more" line, the footnote kept. The labels are escaped for Discord
+     * (CatalogName::forDiscord), and the length is measured after escaping.
      *
      * @param  list<array{event: stdClass, card: array{name: string, set_name: string, number: string}|null}>  $moves
      */
     public static function discordDigest(string $day, array $moves): string
     {
         for ($lines = (int) config('alerts.digest.max_lines', 25); $lines > 0; $lines--) {
-            $text = self::digest($day, $moves, $lines)['text'];
+            $text = self::digestText($day, $moves, $lines, true);
             if (mb_strlen($text) <= DiscordMessage::MAX_CHARACTERS) {
                 return $text;
             }
         }
 
-        return DiscordMessage::content(self::digest($day, $moves, 0)['text']);
+        return DiscordMessage::content(self::digestText($day, $moves, 0, true));
     }
 
     /**
@@ -100,10 +92,57 @@ final class NotificationText
         return json_encode(['subject' => $message['subject'], 'text' => $message['text']], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
     }
 
-    /** @param  array{name: string, set_name: string, number: string}|null  $card */
+    /**
+     * The card label as email shows it: the catalog name, else "Card <card_id>", control characters removed.
+     *
+     * @param  array{name: string, set_name: string, number: string}|null  $card
+     */
     public static function cardLabel(stdClass $event, ?array $card): string
     {
+        return CatalogName::forEmail(self::rawLabel($event, $card));
+    }
+
+    /** @param  array{name: string, set_name: string, number: string}|null  $card */
+    private static function rawLabel(stdClass $event, ?array $card): string
+    {
         return $card === null ? 'Card '.(string) $event->card_id : $card['name'];
+    }
+
+    /** The alert's lines under an already rendered card label. */
+    private static function alertText(stdClass $event, string $label, int $threshold): string
+    {
+        return implode("\n", [
+            $label.' · '.VariantLabel::of((string) $event->variant_key),
+            'Market price $'.DiscordMessage::grouped((string) $event->close),
+            DiscordMessage::changeLine((string) $event->change, (string) $event->change_pct, (string) $event->previous_day),
+            self::asOf((string) $event->day),
+            "Your alert threshold: {$threshold}% (and at least \$".self::ruleAbs().').',
+            self::url('/card/'.rawurlencode((string) $event->card_id)),
+        ]);
+    }
+
+    /**
+     * The digest's lines: the as-of header, at most $maxLines moves ordered by the size of the change, the
+     * "…and <k> more" pointer for the rest, the footnote. $discord renders the labels for Discord.
+     *
+     * @param  list<array{event: stdClass, card: array{name: string, set_name: string, number: string}|null}>  $moves
+     */
+    private static function digestText(string $day, array $moves, int $maxLines, bool $discord): string
+    {
+        $ordered = self::ordered($moves);
+        $shown = array_slice($ordered, 0, max(0, $maxLines));
+        $lines = ['Cards on your watchlist and portfolio that moved by at least '.self::rulePct().'% and $'.self::ruleAbs()
+            .' between two daily closes, '.self::asOf($day).':'];
+        foreach ($shown as $move) {
+            $lines[] = DiscordMessage::moveLine($move['event'], $move['card'], $discord);
+        }
+        $left = count($ordered) - count($shown);
+        if ($left > 0) {
+            $lines[] = "…and {$left} more: ".self::url('/watchlist');
+        }
+        $lines[] = self::FOOTNOTE;
+
+        return implode("\n", $lines);
     }
 
     private static function asOf(string $day): string
