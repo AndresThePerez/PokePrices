@@ -8,7 +8,6 @@ use Database\Seeders\SetAliasSeeder;
 use Illuminate\Cache\RateLimiter;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter as RateLimiterFacade;
 use Illuminate\Testing\TestResponse;
@@ -63,7 +62,6 @@ beforeEach(function (): void {
     if ($code !== 0) {
         throw new RuntimeException('the fixture map build failed: '.Artisan::output());
     }
-    Http::preventStrayRequests();
 });
 
 it('does not leak an older close of one variant into its prefix-sharing siblings or into another card', function (): void {

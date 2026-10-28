@@ -7,7 +7,6 @@ use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\AccountRows;
@@ -26,7 +25,6 @@ beforeEach(function (): void {
     Accounts::setUp();
     Notification::fake();
     $this->prefix = AccountRows::fakePokeSearch();
-    Http::preventStrayRequests();
 });
 
 afterEach(function (): void {

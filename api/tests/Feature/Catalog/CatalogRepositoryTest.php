@@ -72,7 +72,6 @@ beforeEach(function (): void {
     // path => [status, body] or 'timeout'; the fake answers from this table at the time of each request.
     $this->routes = ['/api/meta' => [200, t42Meta(T42_REF_A)], T42_CARD => [200, t42Card()], '/api/search' => [200, t42Search()]];
     $this->calls = [];
-    Http::preventStrayRequests();
     Http::fake(function (ClientRequest $request) {
         $path = (string) parse_url($request->url(), PHP_URL_PATH);
         $this->calls[] = $path;

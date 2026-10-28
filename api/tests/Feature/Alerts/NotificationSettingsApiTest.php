@@ -8,7 +8,6 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\AccountRows;
@@ -26,7 +25,6 @@ const T5_DISCORD_FIRST = 'Add a Discord webhook first.';
 beforeEach(function (): void {
     Accounts::setUp();
     Notification::fake();
-    Http::preventStrayRequests();
     $this->travelTo(CarbonImmutable::parse('2026-10-15 12:00:00', 'UTC'));
 });
 

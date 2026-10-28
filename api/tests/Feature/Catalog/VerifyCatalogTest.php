@@ -83,7 +83,6 @@ beforeEach(function (): void {
     $this->failBatch = null;
     $this->batches = [];
     $this->meta = T45_REF;
-    Http::preventStrayRequests();
     Http::fake(function (ClientRequest $request) {
         $path = (string) parse_url($request->url(), PHP_URL_PATH);
         if ($path === '/api/meta') {

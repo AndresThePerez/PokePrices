@@ -16,7 +16,7 @@ L=web/package-lock.json
 $DC up -d --wait node >/dev/null 2>&1
 
 # --- 1. every package.json pin equals the plan table (and nothing extra) -------------------------
-check "dependencies are exactly react and react-dom" jq -e '(.dependencies|keys) == ["react","react-dom"]' $P
+check "dependencies are exactly @tanstack/react-query, lightweight-charts, react and react-dom" jq -e '(.dependencies|keys) == ["@tanstack/react-query","lightweight-charts","react","react-dom"]' $P
 # T09 added the six ESLint packages (exact pins checked in T09), T10 the five Vitest packages, T11 the two Tailwind packages, T12 Prettier, T21 the Spectral CLI, T23 openapi-typescript; a later task that adds packages edits this list.
 check "devDependencies are exactly the plan's six T05 packages, the six T09 ESLint packages, the five T10 Vitest packages, the two T11 Tailwind packages, the T12 Prettier package, the T21 Spectral CLI and the T23 openapi-typescript generator" jq -e '(.devDependencies|keys) == ["@eslint/js","@stoplight/spectral-cli","@tailwindcss/vite","@testing-library/dom","@testing-library/react","@types/node","@types/react","@types/react-dom","@vitejs/plugin-react","@vitest/coverage-v8","eslint","eslint-plugin-react-hooks","eslint-plugin-react-refresh","globals","jsdom","openapi-typescript","prettier","tailwindcss","typescript","typescript-eslint","vite","vitest"]' $P
 check_out "T12 Prettier carries the plan's exact pin" 3.9.10 jq -r .devDependencies.prettier $P
@@ -48,9 +48,9 @@ check_out "lockfileVersion is 3" 3 jq -r .lockfileVersion $L
 # --- 3. node service hardening -------------------------------------------------------------------
 check "node service has no published port" J '(.services.node.ports // []) | length == 0'
 check "node service is not privileged and not host-networked" J '((.services.node.privileged // false) == false) and ((.services.node.network_mode // "") != "host")'
-check "node memory cap is really applied to the running container (cgroup via inspect)" sh -c '
+check "node memory cap is 2g and really applied to the running container (cgroup via inspect)" sh -c '
   id=$(docker compose -f compose.dev.yml ps -q node); test -n "$id" &&
-  test "$(docker inspect -f "{{.HostConfig.Memory}}" "$id")" = 1073741824'
+  test "$(docker inspect -f "{{.HostConfig.Memory}}" "$id")" = 2147483648'
 check "node container publishes nothing on the host" sh -c '
   id=$(docker compose -f compose.dev.yml ps -q node); test -n "$id" &&
   test "$(docker inspect -f "{{len .NetworkSettings.Ports}}" "$id")" = 0 || test -z "$(docker port "$id" 2>/dev/null)"'

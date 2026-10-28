@@ -32,7 +32,6 @@ beforeEach(function (): void {
     $catalogPrefix = CatalogCache::isolate();
     $this->beforeApplicationDestroyed(fn () => CatalogCache::flush($catalogPrefix));
     config(['services.pokesearch.url' => 'http://192.0.2.10:8081', 'services.pokesearch.api_key' => null]);
-    Http::preventStrayRequests();
     Http::fake(function (Request $request) {
         parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);
 

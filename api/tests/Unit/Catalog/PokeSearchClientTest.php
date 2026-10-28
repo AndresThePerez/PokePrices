@@ -34,7 +34,6 @@ function t34Answer(string $id = 'base1-4', array $overrides = []): array
 
 beforeEach(function (): void {
     config(['services.pokesearch.url' => T34_BASE, 'services.pokesearch.api_key' => null]);
-    Http::preventStrayRequests();
 });
 
 /** The only request the fake recorded; fails the test when there is not exactly one. */

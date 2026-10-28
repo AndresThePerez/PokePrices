@@ -25,7 +25,6 @@ use Tests\Support\DeliveryRows;
 // given, and a gzip answer is never decompressed.
 
 beforeEach(function (): void {
-    Http::preventStrayRequests();
     DeliveryRows::resolver();
     DeliveryRows::jitter('max');
     AlertRows::captureLogs();

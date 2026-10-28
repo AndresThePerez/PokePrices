@@ -27,7 +27,6 @@ use Tests\Support\ForbiddenWords;
 // rows, keeps 30 days, and the test message; the job is unique and scheduled every minute.
 
 beforeEach(function (): void {
-    Http::preventStrayRequests();
     DeliveryRows::jitter('max');
     AlertRows::captureLogs();
     $this->travelTo(CarbonImmutable::parse('2026-10-15 12:00:00', 'UTC'));

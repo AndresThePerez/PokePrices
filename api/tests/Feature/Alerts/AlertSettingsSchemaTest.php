@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 use Tests\Support\AccountRows;
 use Tests\Support\Accounts;
 
@@ -13,10 +12,6 @@ use Tests\Support\Accounts;
 // card_variants or any price table, and the migration's round trip.
 
 const T5_SCHEMA_MIGRATION = 'migrations/2026_10_16_000002_add_alert_settings.php';
-
-beforeEach(function (): void {
-    Http::preventStrayRequests();
-});
 
 /** @return array<string, array{type: string, nullable: bool, default: string|null}> */
 function t5Columns(string $table): array

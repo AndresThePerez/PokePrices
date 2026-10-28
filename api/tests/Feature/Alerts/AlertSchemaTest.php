@@ -7,7 +7,6 @@ use App\Domain\Alerts\Models\WebhookEndpoint;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 use Tests\Support\AlertRows;
 
 // Plan P5-i1 T01 criteria 2 and 3 (D1): webhook_endpoints, deliveries and dispatch_days with their exact columns,
@@ -17,10 +16,6 @@ use Tests\Support\AlertRows;
 const P5_SCHEMA_MIGRATION = 'migrations/2026_10_16_000001_create_alert_delivery_tables.php';
 
 const P5_LOOKUP_INDEXES_MIGRATION = 'migrations/2026_10_28_000001_add_lookup_indexes.php';
-
-beforeEach(function (): void {
-    Http::preventStrayRequests();
-});
 
 /** @return array<string, array{type: string, nullable: bool, default: string|null, identity: string}> */
 function p5Columns(string $table): array

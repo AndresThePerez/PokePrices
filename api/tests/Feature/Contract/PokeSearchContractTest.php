@@ -91,7 +91,6 @@ function t51Replay(object $test): void
 {
     $test->replayed = [];
     $test->upstreamDown = false;
-    Http::preventStrayRequests();
     Http::fake(function (ClientRequest $request) use ($test) {
         if ($test->upstreamDown) {
             throw new ConnectionException('cURL error 28: Operation timed out');

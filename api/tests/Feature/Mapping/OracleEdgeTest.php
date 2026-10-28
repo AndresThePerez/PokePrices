@@ -4,16 +4,11 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 
 // Reviewer edge cases for T41: the exact disagreement limits, the stale boundary, the key mapping, and that the
 // comparison leaks no price. Each test writes its own oracle page and its own collected day (zstd) to a temp dir.
 
 const T41E_DAY = '2026-10-11';
-
-beforeEach(function (): void {
-    Http::preventStrayRequests();
-});
 
 afterEach(function (): void {
     foreach (t41eRoots(null, true) as $root) {

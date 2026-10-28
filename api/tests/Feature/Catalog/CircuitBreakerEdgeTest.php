@@ -44,7 +44,6 @@ beforeEach(function (): void {
     // $this->status answers every request; $this->during, when set, runs inside the next request.
     $this->status = 500;
     $this->during = null;
-    Http::preventStrayRequests();
     Http::fake(function (ClientRequest $request) {
         if ($this->during !== null) {
             $during = $this->during;

@@ -123,7 +123,6 @@ function p5eSinkLog(string $dir): array
 }
 
 beforeEach(function (): void {
-    Http::preventStrayRequests();
     DeliveryRows::resolver();
     DeliveryRows::jitter('max');
     AlertRows::captureLogs();

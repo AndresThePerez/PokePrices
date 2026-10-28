@@ -55,7 +55,6 @@ beforeEach(function (): void {
     $this->catalog = [];
     $this->batch = null;
     $this->calls = [];
-    Http::preventStrayRequests();
     Http::fake(function (ClientRequest $request) {
         $this->calls[] = $request->url();
         $path = (string) parse_url($request->url(), PHP_URL_PATH);

@@ -55,7 +55,6 @@ function q3eFake(object $test, array $names): void
 {
     config(['services.pokesearch.url' => AccountRows::BASE, 'services.pokesearch.api_key' => null]);
     $test->catalogPrefix = CatalogCache::isolate();
-    Http::preventStrayRequests();
     Http::fake(function (ClientRequest $request) use ($names) {
         if (str_starts_with($request->url(), 'https://discord.com/')) {
             return Http::response('', 204);

@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Testing\TestResponse;
 use Tests\Support\AccountRows;
@@ -20,7 +19,6 @@ const T4E_MESSAGE = 'A description cannot hold control or text-direction charact
 beforeEach(function (): void {
     Accounts::setUp();
     Notification::fake();
-    Http::preventStrayRequests();
     FakeHostResolver::install(['hooks.example.com' => ['203.0.113.10']]);
 });
 

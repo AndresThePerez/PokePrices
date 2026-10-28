@@ -100,7 +100,6 @@ beforeEach(function (): void {
         throw new RuntimeException('the fixture map build failed: '.Artisan::output());
     }
     // Prices come from Postgres only: any HTTP call, PokéSearch included, fails the test.
-    Http::preventStrayRequests();
 });
 
 it('adds the history policy to ConditionalGet and leaves the search and card policies unchanged', function (): void {

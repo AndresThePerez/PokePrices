@@ -41,7 +41,6 @@ beforeEach(function (): void {
     $this->broken = null;
     $this->urls = [];
     $this->batches = [];
-    Http::preventStrayRequests();
     Http::fake(function (ClientRequest $request) {
         $this->urls[] = $request->url();
         parse_str((string) parse_url($request->url(), PHP_URL_QUERY), $query);

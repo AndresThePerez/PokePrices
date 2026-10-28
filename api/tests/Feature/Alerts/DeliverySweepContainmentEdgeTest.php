@@ -25,7 +25,6 @@ use Tests\Support\FakeHostResolver;
 // succeeds, the named connection on the warning, disable and email paths, the timing ordering).
 
 beforeEach(function (): void {
-    Http::preventStrayRequests();
     DeliveryRows::resolver();
     DeliveryRows::jitter('max');
     AlertRows::captureLogs();

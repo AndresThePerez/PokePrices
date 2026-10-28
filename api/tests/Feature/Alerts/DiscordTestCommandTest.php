@@ -22,7 +22,6 @@ use Tests\Support\ForbiddenWords;
 const T3C_URL = 'https://discord.com/api/webhooks/123456789012345678/SENTINELTOKEN-0001';
 
 beforeEach(function (): void {
-    Http::preventStrayRequests();
     FakeHostResolver::install(['discord.com' => ['198.51.100.7'], 'hooks.example.com' => ['203.0.113.10']]);
     AlertRows::captureLogs();
     $this->travelTo(CarbonImmutable::parse('2026-10-15 12:00:00', 'UTC'));
@@ -52,7 +51,6 @@ function t3cFake(object $test, mixed $answer, bool $catalogDown = false): void
 {
     config(['services.pokesearch.url' => AccountRows::BASE, 'services.pokesearch.api_key' => null]);
     $test->catalogPrefix = CatalogCache::isolate();
-    Http::preventStrayRequests();
     Http::fake(function (ClientRequest $request, array $options) use ($answer, $catalogDown) {
         if (str_starts_with($request->url(), 'https://discord.com/')) {
             return $answer instanceof Closure ? $answer($request, $options) : $answer;

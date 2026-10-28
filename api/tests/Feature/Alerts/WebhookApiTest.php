@@ -15,7 +15,6 @@ use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Testing\TestResponse;
@@ -38,7 +37,6 @@ const T3_DISCORD_SHAPE = 'A Discord webhook URL looks like https://discord.com/a
 beforeEach(function (): void {
     Accounts::setUp();
     Notification::fake();
-    Http::preventStrayRequests();
     FakeHostResolver::install([
         'hooks.example.com' => ['203.0.113.10'],
         'discord.com' => ['198.51.100.7'],

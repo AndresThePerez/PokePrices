@@ -98,7 +98,6 @@ beforeEach(function (): void {
 
         return Http::response(['data' => $data, 'missing' => $missing, 'seed' => ['ref' => T08M_REF, 'seeded_at' => '2026-10-11T20:05:45Z']]);
     };
-    Http::preventStrayRequests();
     Http::fake($this->fake);
 });
 

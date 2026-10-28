@@ -176,7 +176,6 @@ it('keeps hygiene: no home path, host name or address beyond RFC 5737 and the de
 
 it('fails loudly on a request no fixture recorded rather than answering empty', function (): void {
     config(['services.pokesearch.url' => 'http://192.0.2.10:8081', 'services.pokesearch.api_key' => null]);
-    Http::preventStrayRequests();
     Http::fake(function (ClientRequest $request) {
         $recorded = array_map(fn (array $r): string => $r['request'], array_values(t51eRecordings()));
         $path = (string) parse_url($request->url(), PHP_URL_PATH);

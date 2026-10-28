@@ -3,14 +3,12 @@
 declare(strict_types=1);
 
 use App\Domain\Alerts\UrlGuard;
-use Illuminate\Support\Facades\Http;
 use Tests\Support\FakeHostResolver;
 
 // Plan P5-i1 T02 criterion 7 (D6): the address guard. Every blocked address in this file is computed at run time
 // from UrlGuard::BLOCKS (written abbreviated, the parser right-pads IPv4 octets); no private address is a literal.
 
 beforeEach(function (): void {
-    Http::preventStrayRequests();
     config(['alerts.webhooks.private_allow' => []]);
 });
 

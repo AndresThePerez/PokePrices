@@ -8,7 +8,6 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Exceptions;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Tests\Support\AccountRows;
 use Tests\Support\AlertRows;
@@ -306,7 +305,6 @@ it('drops a deleted person\'s pending messages and sends nothing; an account fli
 
     DB::table('users')->where('id', $gone->id)->delete();
     DB::table('users')->where('id', $flipped->id)->update(['email_verified_at' => null, 'is_demo' => true]);
-    Http::preventStrayRequests();
     [$code, $summary] = DeliveryRows::sweep();
 
     $transport = Mail::mailer()->getSymfonyTransport();

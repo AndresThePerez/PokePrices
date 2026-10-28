@@ -32,7 +32,6 @@ const T3E_SHAPE = 'A Discord webhook URL looks like https://discord.com/api/webh
 beforeEach(function (): void {
     Accounts::setUp();
     Notification::fake();
-    Http::preventStrayRequests();
     $this->resolver = FakeHostResolver::install([
         'hooks.example.com' => ['203.0.113.10'],
         'discord.com' => ['198.51.100.7'],

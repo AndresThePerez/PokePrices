@@ -6,7 +6,6 @@ use App\Domain\Alerts\Jobs\DeliverDue;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Tests\Support\AlertRows;
 
@@ -14,10 +13,6 @@ use Tests\Support\AlertRows;
 // committed on a cloned connection outside the test's RefreshDatabase transaction (a claim race needs row
 // visibility), due on 2099-01-01 so no other test's sweep (on the real clock) can ever claim them, and removed in
 // a finally block.
-
-beforeEach(function (): void {
-    Http::preventStrayRequests();
-});
 
 it('gives two concurrent claims disjoint committed rows: the second skips what the first holds', function (): void {
     config([

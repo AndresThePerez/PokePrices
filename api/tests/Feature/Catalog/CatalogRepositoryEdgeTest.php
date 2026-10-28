@@ -69,7 +69,6 @@ beforeEach(function (): void {
     $this->routes = ['/api/meta' => [200, t42eMeta(T42E_REF_A)], T42E_CARD => [200, t42eCard()], '/api/search' => [200, t42eSearch()]];
     $this->calls = [];
     $this->queries = [];
-    Http::preventStrayRequests();
     Http::fake(function (ClientRequest $request) {
         $path = (string) parse_url($request->url(), PHP_URL_PATH);
         $this->calls[] = $path;

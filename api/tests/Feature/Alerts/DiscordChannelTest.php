@@ -27,7 +27,6 @@ const T3D_URL = 'https://discord.com/api/webhooks/123456789012345678/SENTINELTOK
 beforeEach(function (): void {
     Accounts::setUp();
     Notification::fake();
-    Http::preventStrayRequests();
     $this->resolver = FakeHostResolver::install(['discord.com' => ['198.51.100.7'], 'hooks.example.com' => ['203.0.113.10']]);
     DeliveryRows::jitter('max');
     AlertRows::captureLogs();

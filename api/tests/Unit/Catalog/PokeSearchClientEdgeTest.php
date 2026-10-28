@@ -77,7 +77,6 @@ it('never retries a throwable that is neither a request nor a connection failure
 });
 
 it('makes at most two attempts: 503, 503, 200 sends 2 and still reports unavailable', function (): void {
-    Http::preventStrayRequests();
     Http::fake(['*' => Http::sequence()->push('', 503)->push('', 503)->push(T34E_CARD, 200)]);
 
     expect(fn () => (new PokeSearchClient)->card('base1-4'))->toThrow(UpstreamUnavailable::class);
@@ -85,7 +84,6 @@ it('makes at most two attempts: 503, 503, 200 sends 2 and still reports unavaila
 });
 
 it('does not retry a second time when the retry itself times out: 503 then timeout sends 2', function (): void {
-    Http::preventStrayRequests();
     Http::fake(['*' => Http::sequence()
         ->push('', 503)
         ->pushFailedConnection('cURL error 28: Operation timed out after 2001 milliseconds')]);
@@ -95,7 +93,6 @@ it('does not retry a second time when the retry itself times out: 503 then timeo
 });
 
 it('answers a 404 after a refused first attempt: refused then 404 sends 2 and returns null', function (): void {
-    Http::preventStrayRequests();
     Http::fake(['*' => Http::sequence()
         ->pushFailedConnection('cURL error 7: Failed to connect: Connection refused')
         ->push(['code' => 'not_found'], 404)]);
@@ -105,7 +102,6 @@ it('answers a 404 after a refused first attempt: refused then 404 sends 2 and re
 });
 
 it('reports a 4xx that follows a refused first attempt as a contract break', function (): void {
-    Http::preventStrayRequests();
     Http::fake(['*' => Http::sequence()
         ->pushFailedConnection('cURL error 7: Failed to connect: Connection refused')
         ->push(['code' => 'bad'], 400)]);
@@ -115,7 +111,6 @@ it('reports a 4xx that follows a refused first attempt as a contract break', fun
 });
 
 it('only ever sends GET, including on the retry', function (): void {
-    Http::preventStrayRequests();
     Http::fake(['*' => Http::sequence()->push('', 503)->push(T34E_CARD, 200)]);
 
     (new PokeSearchClient)->card('base1-4');
@@ -125,7 +120,6 @@ it('only ever sends GET, including on the retry', function (): void {
 });
 
 it('gives every client-side UpstreamUnavailable a Retry-After of at least 1 whatever the cause', function (string $kind): void {
-    Http::preventStrayRequests();
     Http::fake(['*' => match ($kind) {
         'refused' => Http::failedConnection('cURL error 7: refused'),
         'timeout' => Http::failedConnection('cURL error 28: timed out'),
@@ -146,7 +140,6 @@ it('gives every client-side UpstreamUnavailable a Retry-After of at least 1 what
 
 it('joins a base url with a trailing slash to the path without a double slash', function (string $base): void {
     config(['services.pokesearch.url' => $base]);
-    Http::preventStrayRequests();
     Http::fake(['*' => Http::response(T34E_CARD)]);
 
     (new PokeSearchClient)->card('base1-4');
@@ -158,7 +151,6 @@ it('joins a base url with a trailing slash to the path without a double slash', 
 
 it('sends X-Api-Key with exactly the configured value and never when the key is empty', function (?string $key): void {
     config(['services.pokesearch.api_key' => $key]);
-    Http::preventStrayRequests();
     Http::fake(['*' => Http::response(T34E_CARD)]);
 
     (new PokeSearchClient)->card('base1-4');
@@ -175,7 +167,6 @@ it('sends X-Api-Key with exactly the configured value and never when the key is 
 it('forwards a 128-character request id without altering it and without failing the call', function (): void {
     $id = str_repeat('a', 128);
     Context::add('request_id', $id);
-    Http::preventStrayRequests();
     Http::fake(['*' => Http::response(T34E_CARD)]);
 
     (new PokeSearchClient)->card('base1-4');
@@ -185,7 +176,6 @@ it('forwards a 128-character request id without altering it and without failing 
 
 it('sends no X-Request-Id for an empty or non-string context value', function (mixed $value): void {
     Context::add('request_id', $value);
-    Http::preventStrayRequests();
     Http::fake(['*' => Http::response(T34E_CARD)]);
 
     (new PokeSearchClient)->card('base1-4');
@@ -226,7 +216,6 @@ it('accepts and rejects card ids exactly at the pattern edges', function (string
 
 it('sends a batch with commas encoded as %2C and parses back to the same ids', function (): void {
     $ids = ['ex10-?', 'ex10-!', 'base1-4', 'a'.str_repeat('b', 127)];
-    Http::preventStrayRequests();
     Http::fake(['*' => Http::response(['data' => [], 'missing' => $ids])]);
 
     (new PokeSearchClient)->cards($ids);
@@ -240,7 +229,6 @@ it('sends a batch with commas encoded as %2C and parses back to the same ids', f
 });
 
 it('sends a single-id batch and an associative-keyed list as the plain joined ids', function (): void {
-    Http::preventStrayRequests();
     Http::fake(['*' => Http::response(['data' => [], 'missing' => []])]);
 
     (new PokeSearchClient)->cards(['base1-4']);
@@ -258,7 +246,6 @@ it('sends a single-id batch and an associative-keyed list as the plain joined id
 it('does not retry and does not leak the api key into the thrown exception message', function (): void {
     $key = 'sentinel-key-'.str_repeat('7', 16);
     config(['services.pokesearch.api_key' => $key]);
-    Http::preventStrayRequests();
     Http::fake(['*' => Http::response('', 401)]);
 
     $thrown = null;

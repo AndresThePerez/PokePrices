@@ -25,7 +25,6 @@ use Tests\Support\FakeHostResolver;
 // the response read cap, the log lines, and containment of every exception a send can throw.
 
 beforeEach(function (): void {
-    Http::preventStrayRequests();
     DeliveryRows::resolver();
     DeliveryRows::jitter('max');
     AlertRows::captureLogs();

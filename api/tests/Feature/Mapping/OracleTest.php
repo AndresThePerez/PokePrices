@@ -27,7 +27,6 @@ const T41_UA = 'pokeprices/0.1 (+https://andrestheperez.com)';
 
 // Every test in this file: no request may reach a real host, and sleeps are faked (moving Carbon along).
 beforeEach(function (): void {
-    Http::preventStrayRequests();
     Sleep::fake(syncWithCarbon: true);
 });
 

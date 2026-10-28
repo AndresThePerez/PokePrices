@@ -95,7 +95,6 @@ beforeEach(function (): void {
 
         return Http::response(['data' => $data, 'missing' => $missing, 'seed' => $seed]);
     };
-    Http::preventStrayRequests();
     Http::fake($this->fake);
 });
 

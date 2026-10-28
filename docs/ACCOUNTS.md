@@ -111,7 +111,8 @@ Fortify's profile-update, password-update and passkey routes are not enabled, an
   `base1-4:holo:unlimited:-`, `base1-4:holo:1st:-` and `ex5-17:reverse:-:-` and a portfolio of one
   `base1-4:holo:unlimited:-` and three `ex5-17:reverse:-:-`. A variant missing from the database is skipped with one
   console line each, so it runs on an empty database. It refuses to touch a non-demo account that holds the demo
-  address. `DatabaseSeeder` seeds nothing (there is no default user); the demo account comes only from `DemoAccountSeeder`.
+  address. `DatabaseSeeder` seeds nothing (there is no default user); the demo account comes only
+  from `DemoAccountSeeder`.
 - **Configuration** (names only; values are set in `api/.env` or the defaults in `api/config/accounts.php`):
   - `DEMO_ENABLED`: default on; off makes the entry answer `404`.
   - `DEMO_EMAIL`: the demo's address; the default is an `example.com` address.

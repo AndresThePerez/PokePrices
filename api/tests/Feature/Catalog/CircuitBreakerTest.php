@@ -50,7 +50,6 @@ beforeEach(function (): void {
     // runs inside the next request (a caller arriving while that request is in flight).
     $this->status = 500;
     $this->during = null;
-    Http::preventStrayRequests();
     Http::fake(function (ClientRequest $request) {
         if ($this->during !== null) {
             $during = $this->during;

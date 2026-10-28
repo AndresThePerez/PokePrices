@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Notification;
 use Tests\Support\AccountRows;
 use Tests\Support\Accounts;
@@ -20,7 +19,6 @@ const T5_EXPORT_DISCORD = 'https://discord.com/api/webhooks/1/test-token-0000';
 beforeEach(function (): void {
     Accounts::setUp();
     Notification::fake();
-    Http::preventStrayRequests();
 });
 
 function t5eDelivery(User $user, array $fields): void
