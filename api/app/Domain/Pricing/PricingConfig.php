@@ -16,6 +16,9 @@ final class PricingConfig
     /** The movers a request gets when it names no limit. */
     public const int MOVERS_DEFAULT_LIMIT = 20;
 
+    /** The most movers price_movers can keep per day and direction, and the export's maximum for GET /v1/movers limit. */
+    public const int MOVERS_CEILING = 50;
+
     public static function source(): string
     {
         return (string) config('pricing.source');
@@ -32,10 +35,18 @@ final class PricingConfig
         return (string) config('pricing.queue');
     }
 
-    /** The movers price_movers keeps per day and direction, and so the most a request may ask for. */
+    /**
+     * The movers price_movers keeps per day and direction, and so the most a request may ask for: pricing.movers.limit,
+     * read as AccountLimits reads its knobs (Q1-i5 T03). A knob that is not an integer, or is below 1, gives 50; a knob
+     * above 50 is clamped to 50, so the value is always in [1, 50].
+     *
+     * @return int<1, 50>
+     */
     public static function moversLimit(): int
     {
-        return (int) config('pricing.movers.limit');
+        $value = config('pricing.movers.limit', self::MOVERS_CEILING);
+
+        return is_int($value) && $value >= 1 ? min($value, self::MOVERS_CEILING) : self::MOVERS_CEILING;
     }
 
     /** The default page size of GET /v1/movers: 20, or fewer when the rebuild keeps fewer rows per day and direction. */

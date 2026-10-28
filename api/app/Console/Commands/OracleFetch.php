@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Console\Commands;
 
+use App\Support\IsoDay;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -54,7 +55,7 @@ final class OracleFetch extends Command
             return self::FAILURE;
         }
         $day = $this->stringOption('day');
-        if (preg_match('/\A\d{4}-\d{2}-\d{2}\z/', $day) !== 1 || CarbonImmutable::createFromFormat('!Y-m-d', $day)?->format('Y-m-d') !== $day) {
+        if (! IsoDay::isDay($day)) {
             $this->error('--day must be a date in the form YYYY-MM-DD');
 
             return self::FAILURE;

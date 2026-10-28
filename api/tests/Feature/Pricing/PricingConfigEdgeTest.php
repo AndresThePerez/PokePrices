@@ -183,3 +183,35 @@ it('answers the empty movers list and the price.moved payload byte for byte as b
     expect($movers->getContent())->toBe('{"data":[],"meta":{"day":null,"as_of":null,"source":"tcgplayer","feed":"tcgcsv","basis":"market","currency":"USD","window":"previous_close","min_previous_close":"2.00","direction":"up","limit":20,"degraded":false}}')
         ->and(PriceMovedPayload::encode($event, null))->toContain('"rule":"draft-v1","source":"tcgplayer","feed":"tcgcsv","basis":"market","currency":"USD","cadence":"daily"}');
 });
+
+it('keeps pricing.movers.limit between 1 and the 50 movers price_movers keeps: an unusable knob gives 50, a larger one is clamped to 50', function (mixed $knob, int $expected): void {
+    config(['pricing.movers.limit' => $knob]);
+
+    expect(PricingConfig::moversLimit())->toBe($expected);
+})->with([
+    'zero' => [0, 50],
+    'negative' => [-3, 50],
+    'non-numeric string' => ['abc', 50],
+    'numeric string' => ['30', 50],
+    'null' => [null, 50],
+    'above the keep' => [80, 50],
+    'int max' => [PHP_INT_MAX, 50],
+    'within the keep' => [30, 30],
+    'one' => [1, 1],
+    'the keep' => [50, 50],
+]);
+
+it('answers GET /v1/movers?limit=50 with 200 under a knob of 0, and refuses 51 under a knob of 80', function (): void {
+    config(['pricing.movers.limit' => 0]);
+    $fifty = $this->getJson('/v1/movers?limit=50');
+    $none = $this->getJson('/v1/movers');
+    config(['pricing.movers.limit' => 80]);
+    $over = $this->getJson('/v1/movers?limit=51');
+
+    expect($fifty->getStatusCode())->toBe(200)
+        ->and($fifty->json('meta.limit'))->toBe(50)
+        ->and($none->getStatusCode())->toBe(200)
+        ->and($none->json('meta.limit'))->toBe(20)
+        ->and($over->getStatusCode())->toBe(422)
+        ->and(array_keys($over->json('errors')))->toBe(['limit']);
+});

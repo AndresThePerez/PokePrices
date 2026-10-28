@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Accounts;
 
 use App\Models\User;
-use Illuminate\Cache\RateLimiter;
+use App\Support\NamedRateLimiters;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -33,12 +33,12 @@ final class AccountRateLimits
     public static function register(): void
     {
         $tiers = self::tiers(config(self::CONFIG));
-        app()->afterResolving(RateLimiter::class, static function (RateLimiter $limiter) use ($tiers): void {
-            self::apply($limiter, $tiers);
-        });
-        if (app()->resolved(RateLimiter::class)) {
-            self::apply(app(RateLimiter::class), $tiers);
-        }
+        NamedRateLimiters::register(
+            $tiers,
+            static fn (string $tier, int $perMinute, Request $request): Limit => $tier === 'account' && self::isDemo($request)
+                ? Limit::perMinute($tiers['account-demo'])->by(self::key('account-demo', $request))
+                : Limit::perMinute($perMinute)->by(self::key($tier, $request)),
+        );
     }
 
     /**
@@ -76,16 +76,6 @@ final class AccountRateLimits
         return Str::transliterate(AccountEmail::key($request->input(AccountEmail::FIELD))).'|'.$request->ip();
     }
 
-    /** @param array<string, int<1, max>> $tiers */
-    private static function apply(RateLimiter $limiter, array $tiers): void
-    {
-        foreach ($tiers as $name => $perMinute) {
-            $limiter->for($name, static fn (Request $request): Limit => $name === 'account' && self::isDemo($request)
-                ? Limit::perMinute($tiers['account-demo'])->by(self::key('account-demo', $request))
-                : Limit::perMinute($perMinute)->by(self::key($name, $request)));
-        }
-    }
-
     private static function isDemo(Request $request): bool
     {
         $user = $request->user();
@@ -98,7 +88,7 @@ final class AccountRateLimits
         return match ($tier) {
             'login' => self::loginKey($request),
             'two-factor' => self::pendingSignIn($request),
-            'password-confirm', 'account' => self::user($request),
+            'password-confirm', 'account' => NamedRateLimiters::userKey($request),
             'account-demo' => 'demo:'.$request->ip(),
             default => (string) $request->ip(),
         };
@@ -109,12 +99,5 @@ final class AccountRateLimits
         $id = $request->hasSession() ? $request->session()->get('login.id') : null;
 
         return 'login:'.(is_int($id) || is_string($id) ? (string) $id : '');
-    }
-
-    private static function user(Request $request): string
-    {
-        $id = $request->user()?->getAuthIdentifier();
-
-        return is_int($id) || is_string($id) ? 'user:'.$id : 'ip:'.$request->ip();
     }
 }

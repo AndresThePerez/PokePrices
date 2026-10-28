@@ -8,6 +8,7 @@ use App\Domain\Alerts\DeliverableDay;
 use App\Domain\Alerts\Jobs\DispatchEvents;
 use App\Domain\Catalog\CatalogRepository;
 use App\Domain\Pricing\PricingConfig;
+use App\Support\IsoDay;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
@@ -40,7 +41,7 @@ final class AlertsDispatch extends Command
 
     private function reset(string $day): int
     {
-        if (preg_match('/^(\d{4})-(\d{2})-(\d{2})$/D', $day, $m) !== 1 || ! checkdate((int) $m[2], (int) $m[3], (int) $m[1])) {
+        if (! IsoDay::isDay($day)) {
             $this->error('--reset-watermark needs a date as YYYY-MM-DD; nothing was deleted.');
 
             return self::FAILURE;

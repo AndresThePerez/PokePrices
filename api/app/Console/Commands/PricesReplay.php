@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Console\Commands;
 
 use App\Domain\Pricing\Replay;
-use Carbon\CarbonImmutable;
+use App\Support\IsoDay;
 use Illuminate\Console\Attributes\Description;
 use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
@@ -96,7 +96,7 @@ final class PricesReplay extends Command
         }
         $days = [];
         foreach (array_filter(array_map(trim(...), explode(',', $value)), fn (string $d): bool => $d !== '') as $day) {
-            if (preg_match('/\A\d{4}-\d{2}-\d{2}\z/', $day) !== 1 || CarbonImmutable::createFromFormat('!Y-m-d', $day)?->format('Y-m-d') !== $day) {
+            if (! IsoDay::isDay($day)) {
                 return "--days: {$day} is not a day in the form YYYY-MM-DD";
             }
             $days[] = $day;

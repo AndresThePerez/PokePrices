@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Catalog;
 
-use Illuminate\Cache\RateLimiter;
+use App\Support\NamedRateLimiters;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use RuntimeException;
@@ -27,13 +27,10 @@ final class RateLimits
      */
     public static function register(): void
     {
-        $tiers = self::tiers(config(self::CONFIG));
-        app()->afterResolving(RateLimiter::class, static function (RateLimiter $limiter) use ($tiers): void {
-            self::apply($limiter, $tiers);
-        });
-        if (app()->resolved(RateLimiter::class)) {
-            self::apply(app(RateLimiter::class), $tiers);
-        }
+        NamedRateLimiters::register(
+            self::tiers(config(self::CONFIG)),
+            static fn (string $tier, int $perMinute, Request $request): Limit => Limit::perMinute($perMinute)->by((string) $request->ip()),
+        );
     }
 
     /** The file the tiers come from: a Laravel config file under api/, so the runtime image carries it. */
@@ -63,13 +60,5 @@ final class RateLimits
         }
 
         return $tiers;
-    }
-
-    /** @param array<string, int<1, max>> $tiers */
-    private static function apply(RateLimiter $limiter, array $tiers): void
-    {
-        foreach ($tiers as $name => $perMinute) {
-            $limiter->for($name, static fn (Request $request): Limit => Limit::perMinute($perMinute)->by((string) $request->ip()));
-        }
     }
 }

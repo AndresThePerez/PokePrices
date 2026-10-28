@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Alerts;
 
-use Illuminate\Cache\RateLimiter;
+use App\Support\NamedRateLimiters;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use RuntimeException;
@@ -22,13 +22,10 @@ final class AlertRateLimits
 
     public static function register(): void
     {
-        $tiers = self::tiers(config(self::CONFIG));
-        app()->afterResolving(RateLimiter::class, static function (RateLimiter $limiter) use ($tiers): void {
-            self::apply($limiter, $tiers);
-        });
-        if (app()->resolved(RateLimiter::class)) {
-            self::apply(app(RateLimiter::class), $tiers);
-        }
+        NamedRateLimiters::register(
+            self::tiers(config(self::CONFIG)),
+            static fn (string $tier, int $perMinute, Request $request): Limit => Limit::perMinute($perMinute)->by(NamedRateLimiters::userKey($request)),
+        );
     }
 
     /**
@@ -50,20 +47,5 @@ final class AlertRateLimits
         }
 
         return $tiers;
-    }
-
-    /** @param array<string, int<1, max>> $tiers */
-    private static function apply(RateLimiter $limiter, array $tiers): void
-    {
-        foreach ($tiers as $name => $perMinute) {
-            $limiter->for($name, static fn (Request $request): Limit => Limit::perMinute($perMinute)->by(self::user($request)));
-        }
-    }
-
-    private static function user(Request $request): string
-    {
-        $id = $request->user()?->getAuthIdentifier();
-
-        return is_int($id) || is_string($id) ? 'user:'.$id : 'ip:'.$request->ip();
     }
 }
