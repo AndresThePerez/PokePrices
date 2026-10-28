@@ -215,10 +215,10 @@ final class DayIngest
     }
 
     /**
-     * Rolls up the D3 window, rebuilds price_latest from price_daily (T05), the window's price_movers (T12) and
-     * movement_volume (T13), runs DetectMovement when the run is live (mode sync or queued; never replay, R180a), sums
-     * the run's counts (start-level plus every done chunk, plus `events`, `epoch_breaks` and `backfill` for a live
-     * run) and marks the run `ok`, all in one transaction.
+     * Rolls up the D3 window, rebuilds the price_latest rows it can change (T05, Q1-i3 T04), the window's price_movers
+     * (T12) and movement_volume (T13), runs DetectMovement when the run is live (mode sync or queued; never replay,
+     * R180a), sums the run's counts (start-level plus every done chunk, plus `events`, `epoch_breaks` and `backfill`
+     * for a live run) and marks the run `ok`, all in one transaction.
      * It refuses a run with any chunk not done: finalize never runs on a partial day.
      *
      * @return array<string, int>
@@ -239,7 +239,7 @@ final class DayIngest
             $previous = $this->db->selectOne("SELECT max(day)::text AS day FROM ingest_runs WHERE source = ? AND status = 'ok'", [$source], false);
             $previousDay = $previous instanceof stdClass && is_string($previous->day) ? $previous->day : null;
             $window = DailyRollup::rollup($this->db, (string) $run->day, $previousDay);
-            LatestPrices::rebuild($this->db);
+            LatestPrices::rebuild($this->db, $window['from'], $window['to']);
             Movers::rebuild($this->db, $window['from'], $window['to']);
             MovementVolume::rebuild($this->db, $window['from'], $window['to']);
             // D6, R180a: only a live run (sync or queued) writes the outbox, and only for the newest finalized day.

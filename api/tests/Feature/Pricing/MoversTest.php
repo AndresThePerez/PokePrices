@@ -206,13 +206,14 @@ test('price_movers has exactly the planned columns, all NOT NULL, money and chan
         'previous_day:date:NOT NULL',
         'change:numeric(12,2):NOT NULL',
         'change_pct:numeric(12,2):NOT NULL',
+        'as_of:timestamp with time zone:NOT NULL',
     ]);
 });
 
 test('each price_movers key and CHECK rejects a violating row', function (array $overrides, string $state, string $constraint): void {
     $row = ['day' => '2026-10-11', 'source' => 'tcgplayer', 'direction' => 'up', 'rank' => 1, 'variant_key' => 'basep-8:holo:-:-',
         'card_id' => 'basep-8', 'series_epoch' => 1, 'close' => '28.00', 'previous_close' => '25.00', 'previous_day' => '2026-10-10',
-        'change' => '3.00', 'change_pct' => '12.00'];
+        'change' => '3.00', 'change_pct' => '12.00', 'as_of' => '2026-10-11 20:05:45+00'];
     DB::table('price_movers')->insert($row);
 
     expect(t12Violation(fn () => DB::table('price_movers')->insert(array_merge($row, $overrides))))->toBe([$state, $constraint]);
@@ -344,7 +345,8 @@ test('replay truncates price_movers, rebuilds it and prints an equal movers_chec
     // A stray movers row a replay must wipe.
     DB::table('price_movers')->insert(['day' => '2026-09-01', 'source' => 'tcgplayer', 'direction' => 'up', 'rank' => 1,
         'variant_key' => 'basep-8:holo:-:-', 'card_id' => 'basep-8', 'series_epoch' => 1, 'close' => '28.00',
-        'previous_close' => '25.00', 'previous_day' => '2026-08-31', 'change' => '3.00', 'change_pct' => '12.00']);
+        'previous_close' => '25.00', 'previous_day' => '2026-08-31', 'change' => '3.00', 'change_pct' => '12.00',
+        'as_of' => '2026-09-01 20:05:45+00']);
 
     $code = Artisan::call('pokeprices:prices:replay', ['--fresh' => true, '--order' => 'desc', '--snapshots' => t12Fixture('snapshots')]);
     $output = Artisan::output();
@@ -363,7 +365,8 @@ test('a movers_check that differs between passes makes the replay not identical'
         if (str_starts_with($query->sql, 'TRUNCATE') && ++$wipes === 2) {
             DB::table('price_movers')->insert(['day' => '2030-01-01', 'source' => 'tcgplayer', 'direction' => 'up', 'rank' => 1,
                 'variant_key' => 'basep-8:holo:-:-', 'card_id' => 'basep-8', 'series_epoch' => 1, 'close' => '28.00',
-                'previous_close' => '25.00', 'previous_day' => '2029-12-31', 'change' => '3.00', 'change_pct' => '12.00']);
+                'previous_close' => '25.00', 'previous_day' => '2029-12-31', 'change' => '3.00', 'change_pct' => '12.00',
+                'as_of' => '2030-01-01 20:05:45+00']);
         }
     });
 

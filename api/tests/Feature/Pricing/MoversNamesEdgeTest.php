@@ -28,7 +28,8 @@ function t08xMover(string $direction, int $rank, string $card, string $finish = 
     $up = $direction === 'up';
     DB::table('price_movers')->insert(['day' => '2026-10-11', 'source' => 'tcgplayer', 'direction' => $direction, 'rank' => $rank,
         'variant_key' => $key, 'card_id' => $card, 'series_epoch' => 1, 'close' => $up ? '11.00' : '9.00', 'previous_close' => '10.00',
-        'previous_day' => '2026-10-10', 'change' => $up ? '1.00' : '-1.00', 'change_pct' => $up ? '10.00' : '-10.00']);
+        'previous_day' => '2026-10-10', 'change' => $up ? '1.00' : '-1.00', 'change_pct' => $up ? '10.00' : '-10.00',
+        'as_of' => '2026-10-11 20:05:45+00']);
 }
 
 function t08xCard(string $id, string $suffix = ''): array

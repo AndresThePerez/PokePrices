@@ -5,14 +5,13 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Domain\Catalog\CatalogRepository;
-use App\Domain\Pricing\Models\PriceMover;
+use App\Domain\Pricing\Movers;
 use App\Http\Resources\MoverResource;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
-use stdClass;
 
 #[Group('Prices', 'Daily TCGplayer market prices via TCGCSV and their freshness.')]
 final class MoversController
@@ -35,27 +34,11 @@ final class MoversController
         $limit = isset($validated['limit']) ? (int) $validated['limit'] : 20;
         $source = (string) config('pricing.source');
 
-        // Query 1 of 2: the newest movers day and the snapshot marker of its real closes (review F9, R181(5)).
-        $newest = DB::selectOne(<<<'SQL'
-            SELECT to_char(m.day, 'YYYY-MM-DD') AS day,
-                   (SELECT to_char(max(d.as_of) AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')
-                    FROM price_daily d WHERE d.source = ? AND d.day = m.day AND NOT d.is_filled) AS as_of
-            FROM (SELECT max(day) AS day FROM price_movers WHERE source = ?) m
-            SQL, [$source, $source]);
-        $day = $newest instanceof stdClass && is_string($newest->day) ? $newest->day : null;
-        $asOf = $newest instanceof stdClass && is_string($newest->as_of) ? $newest->as_of : null;
+        // Query 1 of 2: the newest movers day and the snapshot marker stored with its rows (review F9, R181(5), Q1-i3 T04).
+        ['day' => $day, 'as_of' => $asOf] = Movers::newest(DB::connection(), $source);
 
         // Query 2 of 2: that day's ranked rows with each variant's finish, edition and treatment.
-        $movers = $day === null ? collect() : PriceMover::query()
-            ->from('price_movers as m')
-            ->join('card_variants as v', 'v.variant_key', '=', 'm.variant_key')
-            ->where('m.source', $source)
-            ->where('m.day', $day)
-            ->where('m.direction', $direction)
-            ->orderBy('m.rank')
-            ->limit($limit)
-            ->get(['m.rank', 'm.card_id', 'm.variant_key', 'v.finish', 'v.edition', 'v.treatment', 'm.close', 'm.previous_close',
-                'm.previous_day', 'm.change', 'm.change_pct', 'm.series_epoch']);
+        $movers = $day === null ? collect() : Movers::page($source, $day, $direction, $limit);
 
         // The names: one batched, cached catalog read of the rows' distinct card ids; it never throws (P3-i1 T08).
         /** @var list<string> $ids */
