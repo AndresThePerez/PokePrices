@@ -6,6 +6,8 @@
 # arguments, then the fast tier; with PS=1 it adds the PokéSearch Go checks in ${POKESEARCH_DIR:-../pokesearch}.
 set -u
 cd "$(dirname "$0")/../.." || exit 1
+# HY-trailers and HY-hygiene scan from PHASE_BASE to HEAD; take it from gates/phase-base unless the caller set it.
+if [ -z "${PHASE_BASE+set}" ] && [ -f gates/phase-base ]; then PHASE_BASE=$(sed -e '/^[[:space:]]*#/d' -e '/^[[:space:]]*$/d' gates/phase-base | tr -d '[:space:]'); export PHASE_BASE; fi
 TIER=${TIER:-full}
 PS=${PS:-0}
 # The 18 self-contained scripts of review-2 §4; later self-contained P1 scripts are appended in order.

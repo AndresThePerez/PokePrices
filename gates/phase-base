@@ -1,0 +1,6 @@
+# The phase base: the commit the current phase's work starts from (Q1: d2-work d932336, R311).
+# tests/p0/run.sh exports it as PHASE_BASE, so HY-trailers and HY-hygiene scan only the commits
+# from here to HEAD instead of the whole history from the root commit. A PHASE_BASE already set in
+# the environment wins (an empty one scans from the root). The orchestrator moves this line to the
+# new base at each phase start.
+d932336
