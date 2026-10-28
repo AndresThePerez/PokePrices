@@ -361,13 +361,16 @@ run goes `ok`.
   run is `failed`; the chunk is `failed`; `failed_jobs` has an `IngestChunk` or `FinalizeDay` row; `last_run`
   in the freshness data shows `failed`. A sync ingest exits 1 with `ingest failed (run N): <error>`.
 - **What to run.** The queries in "Resume a failed run", then fix the cause, then `--resume`.
-- **A deterministically failing day loops.** The :40 scan suppresses only refused days. A day whose last
-  run `failed` is not suppressed: it gets a new run at every :40 scan, with full tries and backoffs,
-  and writes a new failed run and `failed_jobs` rows each hour until the cause is gone. Marking the old
-  run `superseded` does not stop it, because the scan looks only for an `ok` or a recent `running` run. To
-  stop the loop, fix the day (the cause in the error, or a good folder from the pull step) and get a run
-  to `ok` with `--resume` or a fresh `--queued`; the scan then sees the day as done. While it is not
-  fixed, treat the hourly failed runs as one problem, not many.
+- **A day that keeps failing backs off.** The :40 scan suppresses not only refused days: a failing day is
+  no longer retried at every :40 scan either. The scan counts the consecutive `failed` runs of the day's
+  marker, newest first, up to the first run of that marker that is not `failed` (`skipped_unchanged` runs do
+  not count either way). After one failure the next :40 scan retries. After two, the day is held for 6 hours
+  from the newest failed run's `finished_at`; after three or more, for 24 hours. At three or more the scan
+  logs one `ingest_failed_repeatedly` warning per newest failed run, with the day, the marker, the count, the
+  error and the end of the hold. A new marker (a re-collected folder) starts the count again, and so does
+  marking the newest failed run `superseded`. `--resume` and `--queued` by hand do not wait for the hold. To
+  stop the retries, fix the day (the cause in the error, or a good folder from the pull step) and get a run
+  to `ok` with `--resume` or a fresh `--queued`; the scan then sees the day as done.
 
 ### A stalled or crashed run
 
