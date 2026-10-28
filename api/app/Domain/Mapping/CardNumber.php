@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Mapping;
 
 /**
- * The card-number key both sides of the map compare on (plan T38 item 4, adversary rec 3). The same rule runs on
+ * The card-number key both sides of the map compare on. The same rule runs on
  * the dataset's `number` and on TCGplayer's `Number` value: the printed total after `/` is dropped, a letter prefix
  * (RC, SV, TG, GG, SWSH, ...) and a letter suffix (98a) are kept, and leading zeros leave the numeric part only.
  * Tokens without digits (`!`, `?`, Unown letters, Mew `R`) are kept as they are, so `!` and `?` never merge.

@@ -1,5 +1,5 @@
-// /alerts (P5 D10): where a verified account manages its webhooks (T04) and, above them, where
-// alerts go and the per-card pointer (T07). Signed out, it offers sign-in (and back here) and
+// /alerts: where a verified account manages its webhooks and, above them, where
+// alerts go and the per-card pointer. Signed out, it offers sign-in (and back here) and
 // sign-up. The demo and an unverified account read the page and are told, in words, why they cannot
 // change it: no form and no button. Requests: GET /v1/me, then GET /v1/webhooks once signed in, and
 // GET /v1/me/notifications only for an account that may change its settings.

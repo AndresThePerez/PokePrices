@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * The current mapping of one source product and subtype to a card variant (plan T36, R131). A remap moves the
+ * The current mapping of one source product and subtype to a card variant. A remap moves the
  * old row into source_product_map_history and writes the new one with series_epoch + 1.
  *
  * @property int $id

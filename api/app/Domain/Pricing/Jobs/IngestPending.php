@@ -25,12 +25,12 @@ use stdClass;
 use Throwable;
 
 /**
- * The hourly pending scan (plan P2-i1 T08 item 4; scheduled at :40, R177(5)). It is a no-op unless a collected day
+ * The hourly pending scan (scheduled at :40). It is a no-op unless a collected day
  * needs work. It skips its whole pass while another session holds the `pricing:ingest` lock (a replay or a start),
  * then walks the day folders holding SUCCESS, oldest first:
  *
  * - a day whose marker has an `ok` run is done (a `superseded` run does not count, so the days a crashed replay wiped
- *   are re-ingested; review F6);
+ *   are re-ingested);
  * - a day whose marker has a `running` run younger than 2 h is left alone; one older than 2 h is a stalled run and is
  *   resumed (only its chunks that are not done are re-dispatched);
  * - a day whose newest run is `refused` within the last 24 h, for the same marker and the same error, is skipped, so a
@@ -38,15 +38,15 @@ use Throwable;
  * - a marker whose newest runs are k consecutive `failed` runs (newest first, up to the first run that is not `failed`;
  *   `skipped_unchanged` runs are ignored) is retried at the next scan when k is 1, held 6 h after the newest failed
  *   run ended when k is 2, and 24 h when k is 3 or more; at k >= 3 it logs `ingest_failed_repeatedly` once per newest
- *   failed run (plan Q1-i3 T05). `--resume` and `--queued` by hand do not consult the hold;
- * - every other day gets a StartDayIngest, whose start re-validates the whole folder (D1, including the manifest
+ *   failed run. `--resume` and `--queued` by hand do not consult the hold;
+ * - every other day gets a StartDayIngest, whose start re-validates the whole folder (including the manifest
  *   cross-check) before anything is written.
  *
  * It never dispatches the same marker twice in one pass. The lock is only probed for the plan: it is released before
  * anything is dispatched, and each start takes it again for itself. The plan reads ingest_runs with two set-based
  * statements (one per marker, one per day) whatever the number of collected days.
  *
- * ShouldBeUnique (plan Q1-i1 T02, review b b2): at most one scan is queued or running, so scans queued behind a busy
+ * ShouldBeUnique: at most one scan is queued or running, so scans queued behind a busy
  * worker never plan the same day twice; uniqueFor (50 min) stays below the hourly schedule. Timeout 80 s, below the
  * redis queue's retry_after (90 s); three tries, as the worker's --tries gave it before.
  */

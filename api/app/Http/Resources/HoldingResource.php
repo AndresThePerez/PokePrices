@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * One holding as GET /v1/portfolio lists it (plan P4-i1 D6, D9): the watchlist item fields, the quantity held and
+ * One holding as GET /v1/portfolio lists it: the watchlist item fields, the quantity held and
  * value, quantity × close computed by Postgres as numeric(20,2) text (null when the variant has no close: a missing
  * price is never valued at zero).
  */

@@ -7,7 +7,7 @@ namespace App\Domain\Accounts;
 use Illuminate\Database\ConnectionInterface;
 
 /**
- * The per-user write lock of the watchlist and the portfolio (plan P4-i1 D5, review F-P4-06): a Postgres advisory
+ * The per-user write lock of the watchlist and the portfolio: a Postgres advisory
  * lock held until the end of the caller's transaction, keyed by (NAMESPACE, user id). Two writers of one user's lists
  * take turns, so a count-then-insert can never let a list grow past its limit; different users never wait on each
  * other. The two-key form keeps clear of the one-key price ingest lock (App\Domain\Pricing\IngestLock).

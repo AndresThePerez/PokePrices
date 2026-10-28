@@ -16,8 +16,8 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Runs one PokéPrices alerts dispatch in-line (plan P5-i1 T01, D2, D8) and prints its summary as one JSON line;
- * exit 0, also when nothing is deliverable. --reset-watermark=<YYYY-MM-DD> is the operator reset (review A09): it
+ * Runs one PokéPrices alerts dispatch in-line and prints its summary as one JSON line;
+ * exit 0, also when nothing is deliverable. --reset-watermark=<YYYY-MM-DD> is the operator reset: it
  * deletes the source's dispatch_days rows dated after that day, prints {"reset_after", "deleted"} and dispatches
  * nothing; a malformed date, or one after the newest finalized day, exits 1 and deletes nothing.
  */

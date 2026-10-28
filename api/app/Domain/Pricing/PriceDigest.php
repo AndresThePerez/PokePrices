@@ -8,12 +8,12 @@ use Illuminate\Database\ConnectionInterface;
 use stdClass;
 
 /**
- * The determinism digest (plan P2-i1 D11, R180b/c). For each covered table it gives {rows, sha256}: the sha256 is
+ * The determinism digest. For each covered table it gives {rows, sha256}: the sha256 is
  * taken over the rows serialized in primary-key order (byte order, COLLATE "C") with an explicit column list, one
  * row per line, columns joined by `|`, NULL written as `\N`, instants in UTC with microseconds, dates as YYYY-MM-DD
  * and numerics in their own text form. Volatile bookkeeping (ingest_run_id) is left out; price_daily has no volatile
- * column (D3) and price_latest none (R177(6)). Covered tables: price_points, price_daily and price_latest (T05);
- * never price_events. price_movers stays outside the digest too (R180b): movers() gives its separate check.
+ * column and price_latest none. Covered tables: price_points, price_daily and price_latest;
+ * never price_events. price_movers stays outside the digest too: movers() gives its separate check.
  *
  * The digest also records map_build_id (the newest map_builds.id) and the map's row count per series_epoch, so a map
  * change between two digests is visible: "identical" holds at a fixed (day set, map build, code sha).
@@ -45,7 +45,7 @@ final class PriceDigest
         ],
     ];
 
-    /** price_movers, serialized the same way but outside the digest (R180b, R181(1)): the replay's movers_check. */
+    /** price_movers, serialized the same way but outside the digest: the replay's movers_check. */
     private const array MOVERS = [
         "to_char(day, 'YYYY-MM-DD'), source, direction, rank::text, variant_key, card_id, series_epoch::text,"
         .' close::text, previous_close::text, to_char(previous_day, \'YYYY-MM-DD\'), change::text, change_pct::text',
@@ -79,7 +79,7 @@ final class PriceDigest
 
     /**
      * The movers check: {rows, sha256} of price_movers in primary-key order with an explicit column list, computed like
-     * a digest table but never part of compute() (R180b). The replay prints it per pass beside the digests.
+     * a digest table but never part of compute(). The replay prints it per pass beside the digests.
      *
      * @return array{rows: int, sha256: string}
      */

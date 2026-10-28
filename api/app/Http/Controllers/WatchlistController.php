@@ -53,7 +53,7 @@ final class WatchlistController
      */
     public function put(#[CurrentUser] User $user, string $variantKey): WatchlistEntryResource
     {
-        // The key's shape is checked before any query (plan P4-i1 D5).
+        // The key's shape is checked before any query.
         ValidVariantKey::check($variantKey);
         $this->watchlist->add($user->id, $variantKey);
 

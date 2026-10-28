@@ -1,7 +1,7 @@
-// /watchlist (D10): the signed-in account's variants over GET /v1/watchlist, each row the P3
-// movers row with its own "as of" line (rows can carry different days). Signed out, it offers
+// /watchlist: the signed-in account's variants over GET /v1/watchlist, each row the movers
+// row with its own "as of" line (rows can carry different days). Signed out, it offers
 // sign-in, sign-up and the demo; the demo sees its rows without a Remove button. A verified account
-// that is not the demo also sets each row's alert threshold here (P5 T07); an unverified one is told
+// that is not the demo also sets each row's alert threshold here; an unverified one is told
 // to verify first. The page asks for nothing beyond the session and the list.
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useId, useState } from 'react';
@@ -224,7 +224,7 @@ function Loaded({ body, access }: { readonly body: WatchlistBody; readonly acces
 export default function WatchlistPage() {
   const session = useSession();
   const signedIn = session.state === 'signed-in';
-  // Polled like every query (P3 D9); asked for only once the session is known to be signed in.
+  // Polled like every query; asked for only once the session is known to be signed in.
   const query = useQuery<WatchlistBody, ApiFailure>({
     queryKey: WATCHLIST_KEY,
     queryFn: ({ signal }) => unwrap(getWatchlist({ signal })),

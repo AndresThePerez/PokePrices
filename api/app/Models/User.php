@@ -11,7 +11,7 @@ use Illuminate\Support\Carbon;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 
 /**
- * A PokéPrices account (plan P4-i1 D2, D5): an email and a password, an optional confirmed TOTP second factor, and
+ * A PokéPrices account: an email and a password, an optional confirmed TOTP second factor, and
  * is_demo for the one read-only demo account.
  *
  * @property int $id

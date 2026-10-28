@@ -25,7 +25,7 @@ final class ProblemDetails
     public static function fromThrowable(Throwable $e, Request $request): JsonResponse
     {
         if ($e instanceof ValidationException && $e->status === 429) {
-            // Fortify's lockout throws a ValidationException with status 429 (plan P4-i1 D4): it is a 429, never a 422.
+            // Fortify's lockout throws a ValidationException with status 429: it is a 429, never a 422.
             $retryAfter = $e->response?->headers->get('Retry-After');
 
             return self::withHeaders(self::response(429, 'too-many-requests', 'Too Many Requests', $request), is_string($retryAfter) ? ['Retry-After' => $retryAfter] : []);
@@ -54,7 +54,7 @@ final class ProblemDetails
         return match (true) {
             $e instanceof NotFoundHttpException => self::response(404, 'not-found', 'Not Found', $request),
             $e instanceof MethodNotAllowedHttpException => self::response(405, 'method-not-allowed', 'Method Not Allowed', $request),
-            // A CSRF failure reaches the renderer as HttpException(419): prepareException runs first (plan P4-i1 D4).
+            // A CSRF failure reaches the renderer as HttpException(419): prepareException runs first.
             $status === 419 => self::response(419, 'csrf-token-mismatch', 'CSRF Token Mismatch', $request),
             $status === 429 => self::response(429, 'too-many-requests', 'Too Many Requests', $request),
             default => self::response($status, 'http-'.$status, Response::$statusTexts[$status] ?? 'Error', $request),

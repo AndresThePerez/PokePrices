@@ -63,7 +63,7 @@ final class MapBuild extends Command
 
         $this->line(json_encode(['map_build_id' => $result['build_id']] + $result['counts'], JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR));
 
-        // T45: check the built rows against the PokéSearch catalog, on the connection the build wrote to.
+        // Check the built rows against the PokéSearch catalog, on the connection the build wrote to.
         VerifyCatalog::dispatch($name === '' ? null : $name);
 
         return self::SUCCESS;

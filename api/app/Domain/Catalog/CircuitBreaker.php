@@ -14,7 +14,7 @@ use LogicException;
 use Throwable;
 
 /**
- * The request-path circuit breaker in front of PokéSearch (plan T35, F-P1-024, R129).
+ * The request-path circuit breaker in front of PokéSearch.
  *
  * Its state lives on the "locks" cache store, which is redis-queue (noeviction), so evicting cache data never
  * closes it:
@@ -29,7 +29,7 @@ use Throwable;
  * - a success while closed clears the counter.
  *
  * Time is the application clock (Carbon), not Redis's, so the windows hold under travel() in tests as well.
- * The queued catalog job (VerifyCatalog, T45) throttles with ThrottlesExceptionsWithRedis under the same
+ * The queued catalog job (VerifyCatalog) throttles with ThrottlesExceptionsWithRedis under the same
  * prefix, keyPrefix(), in a key of its own: that middleware keeps a Redis hash, this breaker plain values, and
  * one key cannot be both.
  */

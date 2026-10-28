@@ -7,7 +7,7 @@ namespace App\Domain\Mapping;
 use Normalizer;
 
 /**
- * The tag grammar of a TCGplayer product name (plan T38 items 1–2, adversary rec 2). Every `(…)` and `[…]` tag is
+ * The tag grammar of a TCGplayer product name. Every `(…)` and `[…]` tag is
  * removed and classified, then a trailing ` - NNN/NNN` number is stripped from what is left, which is the base name.
  *
  * Classes: `deck` (the trainer-kit decks), `delta`, `treatment` (ball and energy patterns, Cosmos, Cracked Ice,
@@ -31,7 +31,7 @@ final readonly class ProductName
     /** The four EX trainer-kit decks; the deck tag must equal the kit's deck (tk1a/tk1b/tk2a/tk2b). */
     private const array DECKS = ['latias' => 'Latias', 'latios' => 'Latios', 'plusle' => 'Plusle', 'minun' => 'Minun'];
 
-    /** Pattern treatments: the finish is reverse whatever subTypeName says (F-P1-013). */
+    /** Pattern treatments: the finish is reverse whatever subTypeName says. */
     private const array PATTERNS = ['pokeball', 'masterball', 'friendball', 'loveball', 'quickball', 'duskball', 'energy'];
 
     private const array TREATMENTS = [

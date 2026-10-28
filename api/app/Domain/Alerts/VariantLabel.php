@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Alerts;
 
 /**
- * A variant in words, the server-side twin of the web's variantLabel (web/src/format.ts; plan P5-i1 D4): the finish,
+ * A variant in words, the server-side twin of the web's variantLabel (web/src/format.ts): the finish,
  * edition and treatment of the variant key (<card_id>:<finish>:<edition>:<treatment>), '-' and '' meaning none,
  * joined by ', '; the key itself when none is left.
  */

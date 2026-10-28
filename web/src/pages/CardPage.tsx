@@ -1,5 +1,5 @@
 // The PokéPrices card page: /card/:id over GET /v1/cards/{id}. Every date and version it shows
-// comes from the API response (R132), never from the request or render time.
+// comes from the API response, never from the request or render time.
 import { useQuery } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import CardActions from '../account/CardActions';
@@ -201,8 +201,8 @@ function VariantRow({
 
 /**
  * The priced card: the hero, the Price history section and the Prices list, all driven by one
- * variant choice (D2 T01). The page owns the chosen key; the default is the first priced variant
- * with an eligible series, in card order, else the first priced variant (A1-4). The 1M history
+ * variant choice. The page owns the chosen key; the default is the first priced variant
+ * with an eligible series, in card order, else the first priced variant. The 1M history
  * query is the chart's default one (same key), so the page still asks for it once; it feeds the
  * sparklines and the default choice, and nothing is drawn while it loads or after it fails.
  */

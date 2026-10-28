@@ -8,8 +8,8 @@ use Closure;
 use Illuminate\Validation\Rules\Password;
 
 /**
- * The PokéPrices password rule (plan P4-i1 D2): a string of 12 to 72 characters and at most 72 bytes (bcrypt ignores
- * every byte past 72, and max counts characters; review F-P4-05), confirmed. No breached-password check: it would
+ * The PokéPrices password rule: a string of 12 to 72 characters and at most 72 bytes (bcrypt ignores
+ * every byte past 72, and max counts characters), confirmed. No breached-password check: it would
  * call the network.
  */
 trait PasswordValidationRules

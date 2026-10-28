@@ -18,7 +18,7 @@ final class CardSearchController
     /** The only query parameters accepted; anything else (debug, a PokéSearch filter) is a 422, never forwarded. */
     private const array PARAMETERS = ['q', 'page', 'page_size'];
 
-    /** The search goes through the catalog cache (T42): cached answers, and the degraded last-good copy. */
+    /** The search goes through the catalog cache: cached answers, and the degraded last-good copy. */
     public function __construct(private readonly CatalogRepository $catalog) {}
 
     /**
@@ -50,7 +50,7 @@ final class CardSearchController
         // keep the integers visible to the contract export (Scramble does not read the @var).
         /** @var array{total: int, page: int, pages: int, page_size: int, results: list<array<string, mixed>>} $answer */
         $answer = $result->data;
-        // conditional-get reads this, never the body, to answer a degraded copy no-store (Q1-i5 T02).
+        // conditional-get reads this, never the body, to answer a degraded copy no-store.
         $request->attributes->set(CachePolicy::DEGRADED, $result->degraded);
 
         return CardSummaryResource::collection($answer['results'])->additional(['meta' => [

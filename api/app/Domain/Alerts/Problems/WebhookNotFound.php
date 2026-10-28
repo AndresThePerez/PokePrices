@@ -8,7 +8,7 @@ use App\Domain\ProblemType;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
- * No webhook of the signed-in account has this id: 404 webhook-not-found (plan P5-i1 D9). Another user's webhook is
+ * No webhook of the signed-in account has this id: 404 webhook-not-found. Another user's webhook is
  * answered the same way, so its existence is never revealed.
  */
 final class WebhookNotFound extends HttpException implements ProblemType

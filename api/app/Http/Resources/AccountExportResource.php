@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * GET /v1/me/export (plan P4-i1 D6): everything PokéPrices keeps about the signed-in person, sent as a download named
+ * GET /v1/me/export: everything PokéPrices keeps about the signed-in person, sent as a download named
  * pokeprices-export.json. The fields are App\Domain\Accounts\AccountExport's, never a secret.
  */
 final class AccountExportResource extends JsonResource

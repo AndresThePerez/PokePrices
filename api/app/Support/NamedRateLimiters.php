@@ -10,7 +10,7 @@ use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 
 /**
- * The one registrar of the PokéPrices named rate limiters (Q1-i5 T03): the catalog, account and alert tiers each check
+ * The one registrar of the PokéPrices named rate limiters: the catalog, account and alert tiers each check
  * their own config and pass their tiers here with the Limit each tier answers.
  */
 final class NamedRateLimiters

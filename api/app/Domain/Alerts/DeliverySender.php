@@ -23,28 +23,28 @@ use Throwable;
 use UnexpectedValueException;
 
 /**
- * One attempt of one claimed delivery (plan P5-i1 D7; channel webhook from T02, discord from T03, email from T06).
+ * One attempt of one claimed delivery (channels webhook, discord and email).
  *
  * send() acts only on a row that is still pending AND whose next_attempt_at is the lease its claim set (compare and
  * set), so a delivered or failed row, or a row another sweep re-claimed, is never sent again. A row whose endpoint
  * is gone or turned off, or is not of the row's channel (webhook: a signed endpoint; discord: a Discord endpoint), fails
- * with no_channel and no request. Otherwise it makes one attempt: the address guard (D6), then one POST pinned to the
+ * with no_channel and no request. Otherwise it makes one attempt: the address guard, then one POST pinned to the
  * approved address, redirects off, 2 s connect and 5 s total timeouts, at most 64 KiB of the response read: signed
- * (D5) for a webhook; for Discord the stored envelope with no signature headers, and only to a URL of D6's Discord
- * shape; for email one raw message (Mail::raw, the default mailer) with the stored subject and text to the person's
+ * for a webhook; for Discord the stored envelope with no signature headers, and only to a URL of the Discord
+ * webhook shape; for email one raw message (Mail::raw, the default mailer) with the stored subject and text to the person's
  * address as it is at send time (never stored in the row; no_channel when there is none), delivered when the mailer
  * does not throw. The UPDATE that records the outcome is the one that raises attempts, under the same compare and
  * set. A 410 turns the endpoint off, and so do a Discord endpoint's 404 and 401 (Discord's answers for a deleted
- * webhook or a bad token, review A10.6).
+ * webhook or a bad token).
  *
- * Containment (review A05, A08): everything after loading the row runs inside catch (Throwable). An exception is
+ * Containment: everything after loading the row runs inside catch (Throwable). An exception is
  * recorded as last_error internal (retryable, so it still ends failed after the last attempt) and logged as its
  * class short name only: never rethrown, never reported, its message and trace never logged. No log line carries a
- * URL, url_hint, secret, signature, body or email address. When the outcome write itself fails (review b, B9), the
+ * URL, url_hint, secret, signature, body or email address. When the outcome write itself fails, the
  * row keeps its lease and is claimed and sent again, with the same webhook-id, once the lease runs out; that is
  * logged once as delivery_outcome_unrecorded with the delivery id and the exception's class short name only.
  *
- * Every statement runs on the connection send() is given (the sweep's, review b, b7); the default connection when
+ * Every statement runs on the connection send() is given (the sweep's); the default connection when
  * none is given. A gzip answer is never decoded, so the 64 KiB read cap counts bytes as they came off the wire.
  */
 final class DeliverySender

@@ -1,4 +1,4 @@
-// The pieces the watchlist and the portfolio share (D10, D2-T05): the row (a CSS-only card-back
+// The pieces the watchlist and the portfolio share: the row (a CSS-only card-back
 // placeholder, the card link and set line, a fixed right-aligned price column with its own "as of"
 // line, the controls under them), the quantity form, and the signed-out, degraded and footnote
 // lines. The demo is named once, by the header's strip. Every amount is the API's decimal string
@@ -45,7 +45,7 @@ export function ListLoading({ children }: { readonly children: string }) {
   );
 }
 
-/** The degraded catalog line (P3 D10): names may come from the last good copy. */
+/** The degraded catalog line: names may come from the last good copy. */
 export function DegradedLine() {
   return <DegradedNotice className="mt-6" />;
 }

@@ -8,15 +8,15 @@ use App\Models\User;
 use Illuminate\Database\ConnectionInterface;
 
 /**
- * Everything PokéPrices keeps about a person, as GET /v1/me/export hands it over (plan P4-i1 D6; review F-P4-08):
+ * Everything PokéPrices keeps about a person, as GET /v1/me/export hands it over:
  * the account (email, when it was verified, whether two-factor is on, when it was created), the watchlist (with each
  * alert threshold) and the portfolio ordered by variant key, and the session records newest first (last activity,
- * address, browser). Version 2 (plan P5-i1 D9) adds where alerts go, the webhooks (url_hint only) and the newest
+ * address, browser). Version 2 adds where alerts go, the webhooks (url_hint only) and the newest
  * deliveries (at most alerts.export_deliveries_limit, without their body).
  *
  * Every demo visitor signs in as the one demo user, so the demo's session records are those of other visitors too:
- * for the demo only the caller's own record (the row of $sessionId) is exported, and none without a session id
- * (plan Q0-i1 T02, security finding A1). A real account gets every session record it has.
+ * for the demo only the caller's own record (the row of $sessionId) is exported, and none without a session id.
+ * A real account gets every session record it has.
  *
  * It never holds a secret: no password hash, remember token, two-factor secret, recovery code, session id, session
  * payload, webhook URL, signing secret or delivery body is ever selected. Times are RFC 3339 in UTC to the second.
@@ -111,7 +111,7 @@ final class AccountExport
     }
 
     /**
-     * The newest deliveries first, at most alerts.export_deliveries_limit (review A10.4). Never the body: it is not
+     * The newest deliveries first, at most alerts.export_deliveries_limit. Never the body: it is not
      * selected.
      *
      * @return list<array{kind: string, channel: string, day: string|null, status: string, attempts: int, created_at: string, delivered_at: string|null}>

@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\Table;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * One PokéSearch set → TCGplayer group row (plan T36/T37). Constraints live in the migration.
+ * One PokéSearch set → TCGplayer group row. Constraints live in the migration.
  *
  * @property int $id
  * @property string $pokesearch_set_id

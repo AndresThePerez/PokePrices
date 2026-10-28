@@ -17,11 +17,11 @@ use Illuminate\Support\Facades\DB;
 use stdClass;
 
 /**
- * The delivery sweep (plan P5-i1 T02, D7, D8; scheduled every minute as pokeprices-deliveries; pokeprices:alerts:
- * deliver runs one in-line). One worker serves ingest too, so a sweep is short and bounded (review A04):
+ * The delivery sweep (scheduled every minute as pokeprices-deliveries; pokeprices:alerts:
+ * deliver runs one in-line). One worker serves ingest too, so a sweep is short and bounded:
  *
  * 1. Retire: pending rows claimed 2 x max_attempts times fail with internal (a row whose sends never finish cannot
- *    loop, review A05); delivered and failed rows created more than retention_days ago are deleted (A10.4).
+ *    loop); delivered and failed rows created more than retention_days ago are deleted.
  * 2. Claim: at most batch due rows, at most per_endpoint per endpoint, oldest first, FOR UPDATE SKIP LOCKED in one
  *    short transaction; each gets claims + 1 and a lease (next_attempt_at = now + lease_seconds) that only a crashed
  *    sweep ever waits out.
@@ -34,7 +34,7 @@ use stdClass;
  * contains every exception, the outcome write included), so a sweep never ends in failed_jobs because of a row.
  * Every statement of a sweep, the sender's included, runs on the connection sweep() is given.
  *
- * Timeout 80 s with FailOnTimeout (review b, B2): above the 60 s send budget plus one bounded send, below the redis
+ * Timeout 80 s with FailOnTimeout: above the 60 s send budget plus one bounded send, below the redis
  * queue's retry_after (90 s), so a hung sweep is stopped and failed by its worker before the queue hands it out again.
  */
 #[Timeout(80)]

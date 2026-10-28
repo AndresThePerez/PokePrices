@@ -7,7 +7,7 @@ namespace App\Domain\Accounts;
 use Illuminate\Database\ConnectionInterface;
 use stdClass;
 
-/** The two reads every list write makes under the per-user lock (plan P4-i1 D5): does the variant exist, and how full is the list. */
+/** The two reads every list write makes under the per-user lock: does the variant exist, and how full is the list. */
 final class Variants
 {
     /** Whether card_variants holds the key (read only: P4 never writes card_variants). */

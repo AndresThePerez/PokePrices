@@ -17,11 +17,11 @@ use Illuminate\Support\Facades\DB;
 use Throwable;
 
 /**
- * Normalizes and upserts one chunk of a queued run (plan P2-i1 T08 item 2): at most config('pricing.chunk_rows')
+ * Normalizes and upserts one chunk of a queued run: at most config('pricing.chunk_rows')
  * de-duplicated rows of one group, one statement, its own counts (DayIngest::chunk()).
  *
  * - It returns without writing when its batch is cancelled, and DayIngest::chunk() returns without writing when the
- *   run is no longer `running` (a replay superseded it; D12: the run row is read FOR SHARE).
+ *   run is no longer `running` (a replay superseded it; the run row is read FOR SHARE).
  * - Every failed attempt is counted on the chunk row with its error. When the tries run out, failed() marks the chunk
  *   and the run `failed`, also on the sync queue, where a job fails once without retries; the worker writes the
  *   failed_jobs row. The batch allows no failure, so finalize never runs on a partial day.
@@ -29,7 +29,7 @@ use Throwable;
  *   roll the failed() writes back with it. There the job fails itself instead of throwing (a sync job fails once
  *   without retries either way), and the failure stays recorded.
  *
- * Timeout 80 s (plan Q1-i1 T02, review b B2): below the redis queue's retry_after (90 s), so a hung chunk is stopped by
+ * Timeout 80 s: below the redis queue's retry_after (90 s), so a hung chunk is stopped by
  * its worker before the queue hands it out again; a timeout is one of the three tries.
  */
 #[Tries(3)]

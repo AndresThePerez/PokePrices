@@ -7,7 +7,7 @@ namespace App\Http\Middleware;
 use Illuminate\Routing\Middleware\ThrottleRequests;
 
 /**
- * A ThrottleRequests that runs before any session starts (plan P4-i1 D6, D7, review F-P4-07). The framework's
+ * A ThrottleRequests that runs before any session starts. The framework's
  * middleware priority would sort a plain throttle after StartSession and the authenticators, so an anonymous request
  * could start (and store) a session before being counted. FortifyServiceProvider puts this class first in the
  * middleware priority, ahead of Sanctum's EnsureFrontendRequestsAreStateful.

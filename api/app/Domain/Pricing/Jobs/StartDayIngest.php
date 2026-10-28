@@ -18,7 +18,7 @@ use Illuminate\Support\Facades\Log;
 use Throwable;
 
 /**
- * Starts the queued ingest of one collected day (plan P2-i1 T08, D12): under the `pricing:ingest` lock it runs
+ * Starts the queued ingest of one collected day: under the `pricing:ingest` lock it runs
  * DayIngest::start() in one transaction (validation, the run row, the older-marker delete and the chunk plan), then
  * dispatches the chunks as one batch. When another session holds the lock, the job releases itself for 60 s; when
  * the day already has a running run, start() writes nothing and the job is done (that run finishes or is resumed).
@@ -26,7 +26,7 @@ use Throwable;
  * Every job of the queued path goes on $queueConnection (`redis` in production), queue PricingConfig::queue(); the
  * connection travels to the chunks and to finalize, so tests can run the same jobs on `database` or `sync`.
  *
- * Runtime policy (plan Q1-i1 T02, review b B2, B3): timeout 80 s, below the redis queue's retry_after (90 s). A release
+ * Runtime policy: timeout 80 s, below the redis queue's retry_after (90 s). A release
  * on lock contention is not a failure: the job retries until 6 h after it was queued, and three real exceptions
  * (a timeout counts as one) fail it, the three tries the worker's --tries gave it before.
  */

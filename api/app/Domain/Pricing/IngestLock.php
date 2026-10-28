@@ -8,7 +8,7 @@ use Illuminate\Database\ConnectionInterface;
 use stdClass;
 
 /**
- * One writer of the price tables at a time (plan P2-i1 D12, review F6): the Postgres advisory lock keyed
+ * One writer of the price tables at a time: the Postgres advisory lock keyed
  * `pricing:ingest`. The sync ingest takes it with pg_try_advisory_lock for its whole run and exits 1 with
  * `pricing ingest lock held` when another session holds it. The lock is per session, so it is taken and released on
  * the connection the run writes through.

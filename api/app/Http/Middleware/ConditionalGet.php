@@ -12,17 +12,17 @@ use LogicException;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Validators and cache policy for public reads (plan T44, review-1 recs 5 and 10), alias conditional-get.
+ * Validators and cache policy for public reads, alias conditional-get.
  *
  * A 200 to a GET or HEAD gets a strong ETag over its body (xxh128) and the route's Cache-Control policy, named
  * as the middleware parameter: conditional-get (or conditional-get:search) sends public, max-age=60,
- * s-maxage=300; conditional-get:card sends public, max-age=60, stale-while-revalidate=300 (T43, review-1
- * rec 12); conditional-get:history sends public, max-age=300, stale-while-revalidate=600 for the daily price reads
- * cards.prices and movers (P2-i1 T11 and T12, review F9), whose bodies change at most once per ingested day. The
+ * s-maxage=300; conditional-get:card sends public, max-age=60, stale-while-revalidate=300;
+ * conditional-get:history sends public, max-age=300, stale-while-revalidate=600 for the daily price reads
+ * cards.prices and movers, whose bodies change at most once per ingested day. The
  * values live in CachePolicy. A matching If-None-Match turns it into a 304 that keeps the ETag and drops the body.
  * An answer its controller marked degraded (the request attribute CachePolicy::DEGRADED is true, set beside the
  * body's meta.degraded) is a stale copy: it gets Cache-Control no-store, no ETag, and is never answered 304; the
- * body is never decoded to find out (Q1-i5 T02). Any other status passes through untouched. The ETag only holds
+ * body is never decoded to find out. Any other status passes through untouched. The ETag only holds
  * because these bodies are deterministic: no request id and no upstream timing in a 200.
  */
 final class ConditionalGet

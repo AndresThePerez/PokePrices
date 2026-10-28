@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Alerts;
 
 /**
- * The address guard's answer for one URL (plan P5-i1 D6). error is null when the URL may be requested, else the
+ * The address guard's answer for one URL. error is null when the URL may be requested, else the
  * GuardError that says why it was refused.
  * address is the approved address to pin, or null for an allow-listed host:port (which is never resolved).
  */

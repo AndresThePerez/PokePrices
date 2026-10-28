@@ -9,7 +9,7 @@ use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Facades\DB;
 
 /**
- * The monthly partitions of price_points (plan P2-i1 T02). price_points has no DEFAULT partition, so an ingest run
+ * The monthly partitions of price_points. price_points has no DEFAULT partition, so an ingest run
  * calls ensureFor() with its marker before it writes; a month nobody prepared fails with SQLSTATE 23514.
  */
 final class PricePartitions
@@ -17,7 +17,7 @@ final class PricePartitions
     /**
      * Creates the partition of the UTC calendar month holding $observedAt unless it exists, and returns its name
      * (price_points_yYYYYmMM, bounds [month start, next month start) at 00:00+00). $db is the connection the run
-     * writes through (T04's --connection); the default connection when omitted.
+     * writes through (the ingest's --connection); the default connection when omitted.
      */
     public static function ensureFor(CarbonImmutable $observedAt, ?ConnectionInterface $db = null): string
     {

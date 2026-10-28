@@ -10,8 +10,8 @@ use Illuminate\Database\Eloquent\Attributes\Table;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * One ingest of one collected day (plan P2-i1 T02). marker is null only for a refusal before the marker was read;
- * status superseded marks a run whose rows a replay wiped (D12). counts holds the start-level counts plus the sum
+ * One ingest of one collected day. marker is null only for a refusal before the marker was read;
+ * status superseded marks a run whose rows a replay wiped. counts holds the start-level counts plus the sum
  * of the run's done chunks.
  *
  * @property int $id

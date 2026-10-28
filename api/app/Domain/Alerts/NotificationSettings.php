@@ -11,7 +11,7 @@ use Illuminate\Validation\ValidationException;
 use stdClass;
 
 /**
- * Where a person's alerts and digest go (plan P5-i1 D1, D3 channel rule, D9; T05): email or their Discord webhook,
+ * Where a person's alerts and digest go: email or their Discord webhook,
  * and whether a daily digest is sent. A person without a notification_settings row has the defaults (email, digest
  * off). Discord can be chosen only while the person has an active (not disabled) Discord webhook; saving and deleting
  * a webhook both run under the per-user lock (App\Domain\Accounts\AccountLock), so a save can never choose a Discord

@@ -10,7 +10,7 @@ use InvalidArgumentException;
 use stdClass;
 
 /**
- * The daily candles of price_daily (plan P2-i1 T04 item 5, T07 item 1, D1, D3; review F3).
+ * The daily candles of price_daily.
  *
  * Ingesting day D recomputes the window LEAST(D, P + 1) .. LEAST(D + 14, N), where P is the newest ingested day
  * before the run (none: the window starts at D) and N the newest after it. The window therefore holds the

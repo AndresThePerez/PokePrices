@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * The guest middleware, aliased as guest (plan P4-i1 D1, review F-P4-02). Laravel's RedirectIfAuthenticated always
+ * The guest middleware, aliased as guest. Laravel's RedirectIfAuthenticated always
  * redirects, and fetch would follow a 302 into the SPA's index.html; here a signed-in person gets the 409 problem
  * already-signed-in and the route never runs. A guest passes.
  */

@@ -10,8 +10,7 @@ use JsonException;
 use RuntimeException;
 
 /**
- * Builds the TCGplayer product map from one collected TCGCSV day and one dataset checkout (plan T39, R131,
- * adversary recs 1–3). Every priced (productId, subTypeName) pair of the day is either mapped to one card variant
+ * Builds the TCGplayer product map from one collected TCGCSV day and one dataset checkout. Every priced (productId, subTypeName) pair of the day is either mapped to one card variant
  * or written to unmapped_source_items with its reason; no price value is read or stored.
  *
  * Join order for one price row:
@@ -34,9 +33,9 @@ use RuntimeException;
  *
  * Cards: a dataset card that no price row reached (neither matched nor a candidate of an unmapped item) is listed
  * in unmapped_cards for the build, `no_set_alias` when its set has no alias row and `no_priced_product` otherwise,
- * so every catalog card is either mapped or listed for review (DC5).
+ * so every catalog card is either mapped or listed for review.
  *
- * Epochs (R131): a key whose (product, subtype) changes has its row moved to source_product_map_history with
+ * Epochs: a key whose (product, subtype) changes has its row moved to source_product_map_history with
  * ended_at and end_reason `remapped`, and the new row gets series_epoch + 1. A row whose (product, subtype) is now
  * claimed by another key is ended the same way. Every other current row is left exactly as it is.
  */
@@ -44,7 +43,7 @@ final readonly class MapBuilder
 {
     public const string SOURCE = 'tcgplayer';
 
-    /** The EX trainer-kit decks (plan T39 item 3.4). */
+    /** The EX trainer-kit decks. */
     private const array KIT_DECKS = ['tk1a' => 'Latias', 'tk1b' => 'Latios', 'tk2a' => 'Plusle', 'tk2b' => 'Minun'];
 
     private const array SUBTYPE_ORDER = [
@@ -479,7 +478,7 @@ final readonly class MapBuilder
     }
 
     /**
-     * Applies the R131 epoch rules to source_product_map and returns the epoch counts.
+     * Applies the epoch rules to source_product_map and returns the epoch counts.
      *
      * @param  list<array<string, mixed>>  $mapped
      * @return array{remapped: int, unchanged: int, inserted: int, stale_kept: int}

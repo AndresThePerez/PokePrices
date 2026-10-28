@@ -1,10 +1,10 @@
-// /account (D10) as titled panels (D2-i2-T07): Profile (who is signed in, the verified chip with
+// /account as titled panels: Profile (who is signed in, the verified chip with
 // the resend button, and Sign out at the top right; the read-only demo is named by the header's
-// strip), the two-factor section (T04), Notifications (a static row link to /alerts, P5 T04),
-// Display (the Theme and Up/down colours selects, which the footer omits here, R297), Your data,
-// then Delete account set apart (T08). Signed out, it links to sign-in and sign-up; signed out,
+// strip), the two-factor section, Notifications (a static row link to /alerts),
+// Display (the Theme and Up/down colours selects, which the footer omits here), Your data,
+// then Delete account set apart. Signed out, it links to sign-in and sign-up; signed out,
 // loading and failed keep the Display panel after their content. A fresh mount reads the session
-// from GET /v1/me alone, so a signed-in session survives a reload (D13).
+// from GET /v1/me alone, so a signed-in session survives a reload.
 import { useId, useState, type ReactNode } from 'react';
 import { resendVerification, type Me } from '../api/client';
 import { DisplaySettings } from '../Footer';
@@ -50,7 +50,7 @@ function AccountPanel({
   );
 }
 
-/** Theme and Up/down colours, reachable on /account in every state (R297). */
+/** Theme and Up/down colours, reachable on /account in every state. */
 function Display() {
   return (
     <AccountPanel title="Display">
@@ -130,7 +130,7 @@ function SignedIn({ me, onDeleted }: { readonly me: Me; readonly onDeleted: () =
 export default function AccountPage() {
   const session = useSession();
   const status = useArrivalStatus();
-  // Set when this visit deleted the account (T08): the line stays above the signed-out view.
+  // Set when this visit deleted the account: the line stays above the signed-out view.
   const [deleted, setDeleted] = useState(false);
   let body;
   switch (session.state) {

@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Alerts;
 
 /**
- * A catalog name (or the "Card <card_id>" fallback) as a notification shows it (plan Q1-i3 T01, sec B1, HG-40 #14).
+ * A catalog name (or the "Card <card_id>" fallback) as a notification shows it.
  * The name is PokéSearch's text, not template: email drops its control characters; Discord also backslash-escapes
  * the markdown metacharacters so the name cannot render a link, a heading, a list, a code span or a mention. Only the
  * label goes through here; template text, money, URLs and the honesty lines never do.

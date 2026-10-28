@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Attributes\Table;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * A user's signed (standard) webhook or Discord webhook (plan P5-i1 D1). url and secret go through the encrypted
+ * A user's signed (standard) webhook or Discord webhook. url and secret go through the encrypted
  * casts (APP_KEY), so the database never holds them in clear, and both are hidden: they never appear in toArray()
  * or toJson(). url_hint (scheme, host and port) is what is ever shown back.
  *

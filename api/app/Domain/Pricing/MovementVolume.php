@@ -8,18 +8,18 @@ use Illuminate\Database\ConnectionInterface;
 use stdClass;
 
 /**
- * The measured movement volume in movement_volume (plan P2-i1 T13 items 5 and 6, D4, D6): per (day, source, rule),
+ * The measured movement volume in movement_volume: per (day, source, rule),
  * computed from price_daily and never from price_events, so it holds for every collected day whatever was ingested
  * in which mode. Per day and rule of the grid:
  *
- * - `compared`: real closes with a D4 previous close;
+ * - `compared`: real closes with a previous close;
  * - `up` / `down`: the comparisons crossing the rule (change_pct >= pct and change >= abs, or <= -pct and <= -abs);
  * - `epoch_breaks`: real closes whose only previous real close within the cap is in another epoch;
  * - `filled_skipped`: the filled rows of the day (they never fire);
  * - `extreme`: comparisons with close / previous_close > 5 or < 0.2 and abs(change) >= $5;
  * - `sub_2_previous`: the rule's movers whose previous close is under $2.00.
  *
- * Days without a real close (uncollected gap days) have no row. rebuild() runs inside every finalize for the run's D3
+ * Days without a real close (uncollected gap days) have no row. rebuild() runs inside every finalize for the run's
  * recompute window (the days whose closes or previous closes the run can change), replay included, and the
  * pokeprices:prices:movement-volume command runs it over every day.
  */

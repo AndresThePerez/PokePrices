@@ -50,7 +50,7 @@ export interface ButtonInputProps extends Omit<InputHTMLAttributes<HTMLInputElem
 }
 
 /**
- * A button that is an <input type="button"> (R221): its words are its value, not text in the
+ * A button that is an <input type="button">: its words are its value, not text in the
  * surrounding element, so rows keep their exact text. Name it with aria-label.
  */
 export function ButtonInput({ variant, className, ...rest }: ButtonInputProps) {

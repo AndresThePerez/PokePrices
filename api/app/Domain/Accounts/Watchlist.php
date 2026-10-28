@@ -9,7 +9,7 @@ use Illuminate\Database\ConnectionInterface;
 use Illuminate\Validation\ValidationException;
 
 /**
- * A person's watchlist (plan P4-i1 D5, D6): the variants they watch, read with their latest closes in one SQL
+ * A person's watchlist: the variants they watch, read with their latest closes in one SQL
  * statement, added and removed by variant key. Every write is idempotent in effect, and adding counts then inserts
  * under the per-user lock (AccountLock), so the list never holds more than accounts.limits.watchlist rows.
  */
@@ -19,7 +19,7 @@ final class Watchlist
 
     /**
      * The user's items ordered by card id, then variant key: variant_key, card_id, finish, edition, treatment, the
-     * price_<column> values of its latest close (null columns without one) and its alert_pct (plan P5-i1 T05), in one
+     * price_<column> values of its latest close (null columns without one) and its alert_pct, in one
      * statement.
      *
      * @return list<array<string, mixed>>

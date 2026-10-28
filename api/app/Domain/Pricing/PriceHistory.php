@@ -12,7 +12,7 @@ use InvalidArgumentException;
 use stdClass;
 
 /**
- * The daily candles of a card's variants over a chart range (plan P2-i1 T11, D3, review F9; System Design §4:
+ * The daily candles of a card's variants over a chart range (System Design §4:
  * price_daily serves every chart range). The window is anchored on the data, never the clock: `to` and `as_of` are
  * the day and marker of the newest `ok` ingest run of the source, read once. `from` is `to` minus 6, 29, 89 or 364
  * days for 1W, 1M, 3M and 1Y, and January 1 of `to`'s year for YTD. There is no 1D range.
@@ -22,10 +22,10 @@ use stdClass;
  * variants gives no series. Missing days stay gaps; each point carries its own row's as_of (for a filled point, the
  * marker of the real close it repeats), is_filled, filled_from and series_epoch. Money stays a decimal string.
  *
- * Each series also carries history_begins (plan P3-i1 T04, D5): the day of the variant's earliest real close
+ * Each series also carries history_begins: the day of the variant's earliest real close
  * (is_filled false) for the source, in any series_epoch, over all days, so it does not depend on the range. It rides
  * the variants query as a correlated min(day) on the price_daily primary key prefix (no fourth query), and is null
- * without a real close and on every series while there is no ok run, whatever the subquery returned (F-P3-03).
+ * without a real close and on every series while there is no ok run, whatever the subquery returned.
  */
 final class PriceHistory
 {

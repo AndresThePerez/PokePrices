@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 use Throwable;
 
 /**
- * The chunk batch's `catch` callback (plan P2-i1 T08, review F4): an invokable, serializable class, never a captured
+ * The chunk batch's `catch` callback: an invokable, serializable class, never a captured
  * closure. The first chunk that runs out of tries marks the still-running run `failed`.
  */
 final class MarkRunFailed

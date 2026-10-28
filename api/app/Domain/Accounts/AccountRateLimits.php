@@ -12,13 +12,13 @@ use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
- * The account rate tiers (plan P4-i1 D7), one named limiter each, per minute from config/accounts.php rate_limits.
+ * The account rate tiers, one named limiter each, per minute from config/accounts.php rate_limits.
  * A 429 is the existing problem too-many-requests with Retry-After.
  *
  * Keys: login by the normalised email and the IP (a non-string email keys as ''); two-factor by the pending sign-in
  * in the session (Fortify's login.id); register, account-guest and demo-session by IP; password-confirm and account
  * by user. The shared demo user is not one person, so on the account tier it gets the account-demo value keyed
- * demo:<ip> instead (plan P4-i1 T06): one visitor cannot spend the demo's budget for every other visitor.
+ * demo:<ip> instead: one visitor cannot spend the demo's budget for every other visitor.
  */
 final class AccountRateLimits
 {

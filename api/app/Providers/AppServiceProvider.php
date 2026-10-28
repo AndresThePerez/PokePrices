@@ -27,7 +27,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // The webhook-test limiter (plan P5-i1 D9, D14), keyed user:<id>.
+        // The webhook-test limiter, keyed user:<id>.
         AlertRateLimits::register();
 
         // Servers, contact, the readiness problem schema and closed objects (R78, .spectral.yaml).

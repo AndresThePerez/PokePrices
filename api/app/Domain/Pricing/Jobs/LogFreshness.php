@@ -12,13 +12,12 @@ use Illuminate\Queue\Attributes\Tries;
 use Illuminate\Support\Facades\Log;
 
 /**
- * The hourly freshness log line (plan P2-i1 T10 item 3, D8; scheduled as pokeprices-freshness). One record with
+ * The hourly freshness log line (scheduled as pokeprices-freshness). One record with
  * message price_freshness and context {source, feed, as_of, age_hours, slo_hours, within_slo} through the default
  * channel's JSON formatter: info within the SLO, warning when breached or when no prices were ingested. age_hours is
  * the same one-decimal value the API and the command print.
  *
- * Timeout 30 s, below the redis queue's retry_after (90 s); three tries, as the worker's --tries gave it before (plan
- * Q1-i1 T02).
+ * Timeout 30 s, below the redis queue's retry_after (90 s); three tries, as the worker's --tries gave it before.
  */
 #[Tries(3)]
 #[Timeout(30)]

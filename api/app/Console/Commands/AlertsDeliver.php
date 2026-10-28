@@ -14,7 +14,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Runs one PokéPrices delivery sweep in-line (plan P5-i1 T02, D7, D8), with the same caps and budget as the
+ * Runs one PokéPrices delivery sweep in-line, with the same caps and budget as the
  * scheduled job, and prints {"retired", "claimed", "delivered", "retry", "failed", "released"}; exit 0.
  */
 #[Description('Send the webhook deliveries that are due, once, within the sweep caps.')]

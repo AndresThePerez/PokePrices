@@ -7,7 +7,7 @@ namespace App\Domain\Catalog;
 use App\Domain\Catalog\Problems\UpstreamContract;
 
 /**
- * Which pokemon-tcg-data snapshot the PokéSearch index holds (plan T42): the seed object of GET /api/meta.
+ * Which pokemon-tcg-data snapshot the PokéSearch index holds: the seed object of GET /api/meta.
  *
  * The ref is the cache key segment for every catalog answer, so a reseed moves every key at once; an index
  * seeded before provenance stamping reports seed: null and keys under the segment "unseeded".

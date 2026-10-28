@@ -32,13 +32,13 @@ final class MoversController
         $limit = $request->limit();
         $source = PricingConfig::source();
 
-        // Query 1 of 2: the newest movers day and the snapshot marker stored with its rows (review F9, R181(5), Q1-i3 T04).
+        // Query 1 of 2: the newest movers day and the snapshot marker stored with its rows.
         ['day' => $day, 'as_of' => $asOf] = Movers::newest($this->db, $source);
 
         // Query 2 of 2: that day's ranked rows with each variant's finish, edition and treatment.
         $movers = $day === null ? collect() : Movers::page($source, $day, $direction, $limit);
 
-        // The names: one batched, cached catalog read of the rows' distinct card ids; it never throws (P3-i1 T08).
+        // The names: one batched, cached catalog read of the rows' distinct card ids; it never throws.
         /** @var list<string> $ids */
         $ids = $movers->pluck('card_id')->map(fn (mixed $id): string => (string) $id)->unique()->values()->all();
         $names = $catalog->cardNames($ids);
@@ -47,7 +47,7 @@ final class MoversController
         }
         // Compared, not copied, so the exported schema types meta.degraded as a boolean (Amendment 1).
         $degraded = $names['degraded'] === true;
-        // conditional-get reads this, never the body, to answer a degraded copy no-store (Q1-i5 T02). It goes on the
+        // conditional-get reads this, never the body, to answer a degraded copy no-store. It goes on the
         // request the middleware holds, request(): the form request is a copy with attributes of its own, and a
         // second Request parameter would be filled with the form request again.
         request()->attributes->set(CachePolicy::DEGRADED, $degraded);

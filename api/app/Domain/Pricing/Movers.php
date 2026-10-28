@@ -10,22 +10,22 @@ use Illuminate\Database\Eloquent\Collection;
 use stdClass;
 
 /**
- * The ranked movers of each collected day in price_movers (plan P2-i1 T12, D4, D7; System Design §4: a nightly ranked
+ * The ranked movers of each collected day in price_movers (System Design §4: a nightly ranked
  * snapshot, so "top movers" is an index scan).
  *
- * For day D, the variants with a real (never filled) close on D and a D4 previous close (the most recent real close
+ * For day D, the variants with a real (never filled) close on D and a previous close (the most recent real close
  * on an earlier day in the same series_epoch, at most config('pricing.fill_cap_days') days back) of at least
  * config('pricing.movers.min_previous_close') are ranked: `up` when change > 0, `down` when change < 0, by
  * abs(change_pct) desc, abs(change) desc, variant_key asc (byte order), top PricingConfig::moversLimit() per
- * direction. There is no $1 floor (R177(10)); that belongs to the movement rule. The window is the previous close.
+ * direction. There is no $1 floor; that belongs to the movement rule. The window is the previous close.
  *
- * rebuild() runs inside the ingest finalize transaction, after the rollup and price_latest, for every day of the D3
+ * rebuild() runs inside the ingest finalize transaction, after the rollup and price_latest, for every day of the
  * recompute window (the days whose real closes or previous closes the ingest can change): it deletes those days'
  * rows and re-inserts them with one statement each. Identical price_daily therefore gives identical rows, whatever
- * the order days arrive in. It runs in a replay too: movers are derived data, outside PriceDigest (R180b).
+ * the order days arrive in. It runs in a replay too: movers are derived data, outside PriceDigest.
  *
  * Each row also carries as_of, the snapshot marker of its day: max(as_of) of that day's real price_daily closes for the
- * source (review F9, Q1-i3 T04). A day's real closes only change when its day is in a recompute window, and the same
+ * source. A day's real closes only change when its day is in a recompute window, and the same
  * window rebuilds its movers, so the stored value always equals that maximum. newest() and page() are the board's two
  * reads; neither touches price_daily.
  */

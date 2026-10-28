@@ -18,19 +18,19 @@ use InvalidArgumentException;
 use LogicException;
 
 /**
- * PokéSearch answers through the catalog cache (plan T42, F-P1-025, review-1 recs 9-10, R13).
+ * PokéSearch answers through the catalog cache.
  *
  * - Seed ref: Cache::flexible('catalog:v1:seed_ref', [60, 300]) over GET /api/meta. Every upstream read also
  *   writes catalog:v1:seed_ref:last on redis-queue (30 days), the copy used while PokéSearch is down. A read
- *   whose ref differs from that copy queues VerifyCatalog (T45).
+ *   whose ref differs from that copy queues VerifyCatalog.
  * - Card: catalog:v1:card:{seedRef}:{id}, flexible [3600, 86400]; a 404 is remembered 60 s under …:none.
- * - Card names (the movers, P3-i1 T08): catalog:v1:cardname:{seedRef}:{id}, judged against [3600, 86400] by
+ * - Card names (the movers): catalog:v1:cardname:{seedRef}:{id}, judged against [3600, 86400] by
  *   fetched_at and filled in one batch (cardNames()); …:none for 60 s, last-good catalog:v1:lastgood:cardname:{id}.
  * - Search: catalog:v1:search:{seedRef}:{sha1(normalised q|page|page_size)}, flexible [300, 900].
  * - Every upstream success also writes a last-good copy, catalog:v1:lastgood:{card|search}:…, for 7 days.
  *   A 5xx, a timeout or a contract violation is never cached.
  * - A cold key is filled under the lock catalog:v1:fill:{key} (5 s), waiting at most 2 s for another filler.
- * - Degraded: when the upstream call fails (UpstreamUnavailable from the client, which is where T35's breaker
+ * - Degraded: when the upstream call fails (UpstreamUnavailable from the client, which is where the request breaker
  *   reports "open", or no fill lock within 2 s) and a last-good copy exists, the answer is that copy flagged
  *   degraded with stale_since; without one the UpstreamUnavailable (503, Retry-After) goes to the caller.
  *
@@ -92,7 +92,7 @@ final class CatalogRepository
                 $last = SeedRef::fromArray($this->seedLastStore->get(self::SEED_LAST_KEY));
                 $this->seedLastStore->put(self::SEED_LAST_KEY, $seed->toArray(), self::SEED_LAST_SECONDS);
                 if ($last !== null && $last->ref !== $seed->ref) {
-                    // T45: PokéSearch was reseeded; check which mapped cards it still has.
+                    // PokéSearch was reseeded; check which mapped cards it still has.
                     VerifyCatalog::dispatch();
                 }
 
@@ -170,7 +170,7 @@ final class CatalogRepository
     }
 
     /**
-     * The name, set name and number of each card id, read in one batch (plan P3-i1 T08, review F-P3-06, F-P3-07).
+     * The name, set name and number of each card id, read in one batch.
      *
      * Every distinct id maps to {name, set_name, number} or null; it never throws. An id failing CardId maps to
      * null and is never sent. Each valid id is read from its own key catalog:v1:cardname:{seedRef}:{id} and judged

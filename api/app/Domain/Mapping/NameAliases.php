@@ -7,8 +7,7 @@ namespace App\Domain\Mapping;
 use Normalizer;
 
 /**
- * Card-name agreement between a PokéSearch card and a TCGplayer product base name (plan T38 item 3, adversary
- * rec 2). Both names are folded the same way: accents dropped, case ignored, `★` read as `Star`, `♂`/`♀` as
+ * Card-name agreement between a PokéSearch card and a TCGplayer product base name. Both names are folded the same way: accents dropped, case ignored, `★` read as `Star`, `♂`/`♀` as
  * `M`/`F`, the Impostor/Imposter and Drowzee/Drowsee spellings merged, and the type letters before `Energy`
  * (R W G L P F D M) read as the type name. Delta is one-directional: a card marked `δ` may meet a product without
  * the tag (Eevee - 068/113 against Eevee δ), but a `(Delta Species)` product never stands for a plain card.

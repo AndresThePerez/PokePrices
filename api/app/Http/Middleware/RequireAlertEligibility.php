@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Gate;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Verification before alerts (plan P5-i1 D9, attaching P4's D15 seam; System Design §7): unless the Gate
+ * Verification before alerts (System Design §7): unless the Gate
  * create-alerts allows the signed-in user (verified and not the demo), the request answers 403 email-not-verified
  * before the route runs. Only on the alert-creating routes; the demo meets DemoReadOnly (403 demo-read-only) first.
  */

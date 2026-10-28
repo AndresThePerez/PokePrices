@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\Table;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * One ranked mover of a collected day (plan P2-i1 T12, D7). The table is derived: Movers::rebuild() rewrites it inside
+ * One ranked mover of a collected day. The table is derived: Movers::rebuild() rewrites it inside
  * every ingest finalize, so the model only reads. The key is (day, source, direction, rank). Money and change_pct
  * stay decimal strings, never floats.
  *

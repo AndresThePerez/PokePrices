@@ -29,7 +29,7 @@ final class PutQuantityRequest extends FormRequest
         return (int) $this->validated('quantity');
     }
 
-    /** The key's shape is checked before any query and before the body (plan P4-i1 D5). */
+    /** The key's shape is checked before any query and before the body. */
     protected function prepareForValidation(): void
     {
         ValidVariantKey::check($this->route('variantKey'));

@@ -13,7 +13,7 @@ use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
 
 /**
- * Invite-only registration (plan P4-i1 D2, D3): the invite code first (nothing else is examined without it), then the
+ * Invite-only registration: the invite code first (nothing else is examined without it), then the
  * email (NormalizeAccountEmail has already trimmed and lower-cased it) and the password. The account stores an email
  * and a password only; name stays null.
  */

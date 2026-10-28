@@ -11,9 +11,9 @@ use Throwable;
 
 /**
  * Reads one collected TCGCSV day, `<snapshots>/<day>/{SUCCESS, marker.txt, groups.json, products/<g>.json.zst,
- * prices/<g>.json.zst}` (plan T39 item 1). It only ever opens files for reading.
+ * prices/<g>.json.zst}`. It only ever opens files for reading.
  *
- * pecl-zstd returns "" or partial data for a stream cut mid-frame instead of false (T16 review), so a non-false
+ * pecl-zstd returns "" or partial data for a stream cut mid-frame instead of false, so a non-false
  * return proves nothing: every file must decode to one whole JSON object with `success: true` and a `results`
  * list, and a products file's `totalItems`, when present, must equal its result count. A group with no products
  * is legitimate (the real day has empty groups, written without totalItems) only when its JSON says so in full.

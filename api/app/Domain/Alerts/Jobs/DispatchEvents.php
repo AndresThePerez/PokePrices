@@ -26,8 +26,8 @@ use Illuminate\Support\Str;
 use stdClass;
 
 /**
- * Watchlist-scoped fan-out of movement events (plan P5-i1 T01, D2, D3, D4, D8; scheduled every five minutes as
- * pokeprices-alerts-dispatch; pokeprices:alerts:dispatch runs it in-line). T06 adds alerts and the daily digest.
+ * Watchlist-scoped fan-out of movement events (scheduled every five minutes as
+ * pokeprices-alerts-dispatch; pokeprices:alerts:dispatch runs it in-line). It also creates the alerts and the daily digest.
  *
  * Only the events DeliverableDay allows are read. Each becomes one price.moved delivery (channel webhook) per active
  * standard endpoint of each eligible user (verified, not the demo) holding its variant on the watchlist or the
@@ -47,7 +47,7 @@ use stdClass;
  * alerts_dispatch_skipped warning for every skip: repair in progress, newest older than the last dispatched day,
  * days passed over, a future-dated run ignored, catalog degraded.
  *
- * ShouldBeUnique (plan Q1-i1 T02, review b b2): at most one dispatch is queued or running; uniqueFor (240 s) stays
+ * ShouldBeUnique: at most one dispatch is queued or running; uniqueFor (240 s) stays
  * below the five-minute schedule. Timeout 80 s, below the redis queue's retry_after (90 s); three tries, as the
  * worker's --tries gave it before.
  */
@@ -406,7 +406,7 @@ final class DispatchEvents implements ShouldBeUnique, ShouldQueue
     /**
      * INSERT INTO deliveries of the VALUES rows whose user, and endpoint when one is given, still exist: a row whose
      * endpoint or user was deleted after the missing SELECTs (during the catalog read) is skipped, not a 23503 for
-     * the whole statement (plan Q1-i5 T06, B8).
+     * the whole statement.
      *
      * @param  list<string>  $values  one typed "(?, ...)" tuple per row, in the column order below
      */

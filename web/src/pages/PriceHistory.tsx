@@ -1,7 +1,7 @@
-// The card page's Price history section (D4, D5, D7, D9, D10) over
-// GET /v1/cards/{id}/prices?range=. Every day and amount it prints is the API's (R132); the
-// browser's clock is never read. The canvas chart (T06) is a lazy chunk inside an error boundary.
-// D2 T02: the section is a Panel; its header row holds the Variant and Chart range segments, then
+// The card page's Price history section over
+// GET /v1/cards/{id}/prices?range=. Every day and amount it prints is the API's; the
+// browser's clock is never read. The canvas chart is a lazy chunk inside an error boundary.
+// The section is a Panel; its header row holds the Variant and Chart range segments, then
 // the data table toggle, the stamp, the History begins note, the plot and the attribution link.
 import { Component, Suspense, lazy, useId, useMemo, useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';

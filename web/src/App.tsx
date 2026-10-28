@@ -109,7 +109,7 @@ function Routes() {
     case 'alerts':
       return <AlertsPage />;
     case 'not-found':
-      // Designed not-found (D2-i2-T07): the path in a chip, the search form as the primary
+      // Designed not-found: the path in a chip, the search form as the primary
       // action, then the three ways on. It sends no request.
       return (
         <main className="mx-auto max-w-3xl px-6 pt-12 pb-6">

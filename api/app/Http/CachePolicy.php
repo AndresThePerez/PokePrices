@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Http;
 
 /**
- * Every Cache-Control value the PokéPrices API sends, in one place (Q1-i5 T02), and the request attribute a
+ * Every Cache-Control value the PokéPrices API sends, in one place, and the request attribute a
  * controller sets when its answer is a degraded last-good copy.
  *
  * NO_STORE is the readiness and freshness answers and every degraded public read; ACCOUNT is every account

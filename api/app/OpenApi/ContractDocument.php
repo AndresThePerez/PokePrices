@@ -34,13 +34,12 @@ use Illuminate\Support\Arr;
  * - middleware `throttle` / `throttle:<tier>` (ThrottleRequests or a subclass): 429 with Retry-After;
  * - route action attribute POKESEARCH === true, e.g. Route::group(['pokesearch' => true], ...); the innermost
  *   declaration wins: 503 upstream-unavailable with Retry-After and 502 upstream-contract;
- * - middleware resolving to Authenticate or a subclass (`auth`, `auth:<guard>`): 401 unauthenticated (plan P4-i1 D4);
+ * - middleware resolving to Authenticate or a subclass (`auth`, `auth:<guard>`): 401 unauthenticated;
  * - middleware STATEFUL (Sanctum's EnsureFrontendRequestsAreStateful) on an operation whose method is not GET or
- *   HEAD: 419 csrf-token-mismatch (plan P4-i1 D4);
+ *   HEAD: 419 csrf-token-mismatch;
  * - middleware DEMO_READ_ONLY (App\Http\Middleware\DemoReadOnly) on an operation whose method is not GET or HEAD:
- *   403 demo-read-only (plan P4-i1 D4);
- * - middleware ALERT_ELIGIBILITY (App\Http\Middleware\RequireAlertEligibility): 403 email-not-verified (plan P5-i1
- *   D9); where demo-read-only applies too, the one 403 description names both problem types.
+ *   403 demo-read-only;
+ * - middleware ALERT_ELIGIBILITY (App\Http\Middleware\RequireAlertEligibility): 403 email-not-verified; where demo-read-only applies too, the one 403 description names both problem types.
  */
 final class ContractDocument
 {
@@ -101,7 +100,7 @@ final class ContractDocument
                 }
                 usort($responses, fn (Response|Reference $a, Response|Reference $b): int => strcmp(self::code($a), self::code($b)));
                 $operation->responses = $responses;
-                // Request bodies close the same way (a PUT's validated fields, plan P4-i1 T05).
+                // Request bodies close the same way (a PUT's validated fields).
                 foreach ($operation->requestBodyObject->content ?? [] as $mediaType => $schema) {
                     if ($schema instanceof Schema && $operation->requestBodyObject !== null) {
                         $operation->requestBodyObject->content[$mediaType] = Schema::fromType(self::close($schema->type));

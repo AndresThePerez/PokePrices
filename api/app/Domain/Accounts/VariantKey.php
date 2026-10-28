@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Accounts;
 
 /**
- * The shape of a variant key "card_id:finish:edition:treatment" (plan P4-i1 D5, review F-P4-05), mirroring
+ * The shape of a variant key "card_id:finish:edition:treatment", mirroring
  * card_variants_variant_key_check and the card_id, finish, edition and treatment checks of card_variants: at most
  * 300 bytes of valid UTF-8. Every {variantKey} route runs it before any query, so a malformed key never reaches the
  * database.

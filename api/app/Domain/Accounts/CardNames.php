@@ -7,7 +7,7 @@ namespace App\Domain\Accounts;
 use App\Domain\Catalog\CatalogRepository;
 
 /**
- * Names watchlist and portfolio rows from the PokéSearch catalog (plan P4-i1 D6, P3-i1 T08): one batched, cached
+ * Names watchlist and portfolio rows from the PokéSearch catalog: one batched, cached
  * cardNames() read of the rows' distinct card ids; it never throws. degraded is its flag.
  */
 final class CardNames

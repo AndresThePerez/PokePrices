@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\Table;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * One chunk of a queued ingest run, keyed "<groupId>:<offset>" (plan P2-i1 T02). offset indexes the de-duplicated
+ * One chunk of a queued ingest run, keyed "<groupId>:<offset>". offset indexes the de-duplicated
  * row list of the group; counts (mapped, unmapped, null_market, upserted, unchanged) is overwritten by a retry.
  *
  * @property int $id

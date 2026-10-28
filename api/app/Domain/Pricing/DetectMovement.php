@@ -8,16 +8,16 @@ use Illuminate\Database\ConnectionInterface;
 use stdClass;
 
 /**
- * Movement rule `draft-v1` into the price_events outbox (plan P2-i1 T13 item 2, D4, D6, R177(4), R180a; System Design
+ * Movement rule `draft-v1` into the price_events outbox (System Design
  * §2, §5). detect() runs inside the finalize transaction of a sync or queued run, after the rollup, price_latest,
  * price_movers and movement_volume; replay never calls it.
  *
- * A real (never filled) close on day D fires when its D4 previous close exists (the most recent real close on an
+ * A real (never filled) close on day D fires when its previous close exists (the most recent real close on an
  * earlier day in the same series_epoch, at most config('pricing.fill_cap_days') days back), abs(change_pct) is at
  * least MovementRule::pct() and abs(change) at least MovementRule::abs(), and D is the newest
  * finalized day of the source. Only the run's own day is written, one row per variant, with ON CONFLICT DO NOTHING on
  * the outbox key: an event is never updated or deleted, so re-finalizing a day adds nothing. dispatched_at stays null
- * (dispatch is P5). The run's counts gain:
+ * (dispatch is a later step). The run's counts gain:
  *
  * - `events`: the rows this finalize inserted;
  * - `epoch_breaks`: real closes on D with no previous close in their own epoch but a real close within the cap in

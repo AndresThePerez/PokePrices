@@ -351,7 +351,7 @@ export function getMovers(
   return decoded(publicRead(`/movers?${params.toString()}`, options), isMoversPage);
 }
 
-// ---- Accounts (P4 D11) --------------------------------------------------------------------------
+// ---- Accounts --------------------------------------------------------------------------
 // The account layer serves /v1/me and the session paths Fortify and Sanctum answer at the root of
 // the same origin. Every account request sends the session cookie (same-origin credentials), a
 // same-origin Referer (Sanctum's first-party check) and refuses redirects, so a redirect never
@@ -709,7 +709,7 @@ export function resendVerification(): Promise<ApiResult<undefined>> {
   return accountRequest<undefined>('/email/verification-notification', { method: 'POST' });
 }
 
-// ---- Two-factor (P4 T04) -----------------------------------------------------------------------
+// ---- Two-factor -----------------------------------------------------------------------
 // Fortify's two-factor routes all sit behind RequirePassword (confirmPassword: true): any of them
 // may answer 423 {"message": "Password confirmation required."}, which surfaces as an ApiFailure
 // with status 423 and type about:blank. The QR code, the setup key and the recovery codes are
@@ -783,7 +783,7 @@ export function twoFactorChallenge(form: TwoFactorChallengeForm): Promise<ApiRes
   return accountRequest<undefined>('/two-factor-challenge', { method: 'POST', body: form });
 }
 
-// ---- Watchlist, portfolio and the demo (P4 T07) -------------------------------------------------
+// ---- Watchlist, portfolio and the demo -------------------------------------------------
 // Every price, value and total in these answers is the API's decimal string: the pages print them
 // and never compute one. The variant key travels as one encoded path segment.
 
@@ -859,7 +859,7 @@ export function startDemo(): Promise<ApiResult<undefined>> {
   return accountRequest<undefined>('/v1/demo/session', { method: 'POST' });
 }
 
-// ---- Your data (P4 T08) ------------------------------------------------------------------------
+// ---- Your data ------------------------------------------------------------------------
 // The export is not fetched here: /account links to GET /v1/me/export and the browser downloads it.
 
 /** The deletion body: the current password, in the JSON body and never in the URL (D4). */
@@ -871,7 +871,7 @@ export function deleteAccount(form: DeleteAccountForm): Promise<ApiResult<undefi
   return accountRequest<undefined>('/v1/me/deletion', { method: 'POST', body: form });
 }
 
-// ---- Webhooks (P5 T04) -------------------------------------------------------------------------
+// ---- Webhooks -------------------------------------------------------------------------
 // The signing secret of a new signed webhook arrives once, in the 201 answer: it is returned to the
 // caller only, never cached or stored here. A webhook is addressed by its numeric id.
 
@@ -925,7 +925,7 @@ export function testWebhook(id: number): Promise<ApiResult<WebhookTestAnswer>> {
   return accountRequest<WebhookTestAnswer>(`${path}/test`, { method: 'POST' });
 }
 
-// ---- Alert settings and per-card alerts (P5 T07) -----------------------------------------------
+// ---- Alert settings and per-card alerts -----------------------------------------------
 
 export type NotificationsBody =
   operations['getNotifications']['responses'][200]['content']['application/json'];

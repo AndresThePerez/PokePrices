@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Alerts;
 
 /**
- * The per-user webhook limits (plan P5-i1 D9) from config/alerts.php webhooks: the most signed webhooks an account
+ * The per-user webhook limits from config/alerts.php webhooks: the most signed webhooks an account
  * holds, and the most Discord webhooks. The one place either is read.
  */
 final class AlertLimits

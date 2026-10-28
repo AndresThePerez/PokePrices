@@ -1,8 +1,8 @@
-// Account writes (Q1-i3 T02): every write runs through a TanStack mutation (useAccountWrite), and one
+// Account writes: every write runs through a TanStack mutation (useAccountWrite), and one
 // hook owns the session transition a write starts (useSessionTransition). A write's request rides in
 // the mutation's variables as a one-shot ticket that is emptied when the request starts, so no form
 // value (a password, a code, a webhook URL) is kept as mutation-cache data that can be read back, and
-// no request function is left there that could send it again (Q1-i4 T06).
+// no request function is left there that could send it again.
 import { useMutation, useQueryClient, type UseMutationOptions } from '@tanstack/react-query';
 import { useCallback, useState } from 'react';
 import type { ApiFailure, ApiResult } from '../api/client';

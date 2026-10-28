@@ -10,7 +10,7 @@ use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Contracts\FailedPasswordResetResponse;
 
 /**
- * The one answer to a failed POST /reset-password (plan P4-i1 D2): always the invalid-token message, whatever the
+ * The one answer to a failed POST /reset-password: always the invalid-token message, whatever the
  * broker said. Fortify echoes the broker status (INVALID_USER for an unregistered email, INVALID_TOKEN otherwise), so
  * answering with the status would tell a registered email from an unregistered one. The status is ignored on purpose.
  */

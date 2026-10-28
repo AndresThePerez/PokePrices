@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Alerts;
 
 /**
- * The address guard for outbound webhooks (plan P5-i1 D6; T03 calls it at registration, every send calls it again).
+ * The address guard for outbound webhooks (registration calls it, and every send calls it again).
  *
  * A URL passes when: its scheme is https (http only for an exact allow-listed host:port); it has no user-info and
  * no fragment; it is at most 2048 printable ASCII bytes; its host is a plain DNS name or a canonical IP literal

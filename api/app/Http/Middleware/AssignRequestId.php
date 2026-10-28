@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\Response;
 
-/** One request id per request: nginx passes the client's or its own; Laravel validates or replaces it (F-P0-064). */
+/** One request id per request: nginx passes the client's or its own; Laravel validates or replaces it. */
 final class AssignRequestId
 {
     private const string PATTERN = '/\A[A-Za-z0-9][A-Za-z0-9._-]{7,127}\z/';

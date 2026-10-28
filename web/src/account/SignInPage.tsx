@@ -1,5 +1,5 @@
-// /sign-in (D10): email and password over POST /login, then, when Fortify answers
-// {two_factor: true}, the authentication code step (T04) over POST /two-factor-challenge. Signed
+// /sign-in: email and password over POST /login, then, when Fortify answers
+// {two_factor: true}, the authentication code step over POST /two-factor-challenge. Signed
 // in, the page says who; after a sign-in it refetches ['me'] and opens next (already checked by
 // the router) or /account.
 import { useId, useState, type SubmitEvent } from 'react';

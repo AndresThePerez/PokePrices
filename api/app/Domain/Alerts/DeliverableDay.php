@@ -9,7 +9,7 @@ use Illuminate\Database\ConnectionInterface;
 use stdClass;
 
 /**
- * Crash-repair delivery semantics (plan P5-i1 D2, R192, Amendment 1 A01, A09): the one predicate that decides
+ * Crash-repair delivery semantics: the one predicate that decides
  * which price_events may ever be delivered. Everything that fans events out reads them through eventsCte().
  *
  * - newest: the newest day of an ok run (the newest finalized day, DayIngest's expression);
@@ -21,7 +21,7 @@ use stdClass;
  * collected (ADR 0001). The day is deliverable when allows(newest, floor, watermark) holds. At its first dispatch
  * dispatch_days records the highest price_events id of that day (the ceiling); only events of the day with an id up
  * to it are deliverable, so an event written for an already-dispatched day is never delivered. price_events is
- * never written here (dispatched_at stays null, so Replay's R180a interlock never trips).
+ * never written here (dispatched_at stays null, so Replay's dispatched-rows interlock never trips).
  */
 final class DeliverableDay
 {

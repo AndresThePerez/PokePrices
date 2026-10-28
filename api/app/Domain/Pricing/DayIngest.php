@@ -16,24 +16,22 @@ use stdClass;
 use Throwable;
 
 /**
- * Ingests one collected TCGCSV day into price_points, price_daily and price_latest (plan P2-i1 T04, T05; System Design §5
- * FetchSnapshot → Normalize → Upsert → Rollup). It is built from three seams that T08 wires to queued jobs unchanged
- * (review F10):
+ * Ingests one collected TCGCSV day into price_points, price_daily and price_latest (System Design §5
+ * FetchSnapshot → Normalize → Upsert → Rollup). It is built from three seams that the queued mode wires to jobs unchanged:
  *
  * - start(): validates every file of the day before any write (a refusal records a `refused` run and nothing else),
  *   skips a marker that already has an `ok` run unless forced, opens the run, prepares the month's partition, deletes
- *   the day's rows of any other marker (D1: the latest marker per UTC date wins; review F7) and plans the chunks;
+ *   the day's rows of any other marker (the latest marker per UTC date wins) and plans the chunks;
  * - chunk(): normalizes and upserts one chunk of at most config('pricing.chunk_rows') de-duplicated rows of a group;
- * - finalize(): rolls the D3 window up with its carry-forward fills (T07), rebuilds price_latest (T05), the window's
- *   price_movers (T12) and movement_volume (T13), then, for a live run only, writes the newest day's movement events
- *   into the price_events outbox (DetectMovement, T13; never in a replay, R180a), sums the counts and marks the run `ok`.
+ * - finalize(): rolls the recompute window up with its carry-forward fills, rebuilds price_latest, the window's
+ *   price_movers and movement_volume, then, for a live run only, writes the newest day's movement events
+ *   into the price_events outbox (DetectMovement; never in a replay), sums the counts and marks the run `ok`.
  *
- * sync() holds the `pricing:ingest` lock (D12) and runs all three inside one transaction, so a failure anywhere
+ * sync() holds the `pricing:ingest` lock and runs all three inside one transaction, so a failure anywhere
  * leaves no price row; the `failed` run is written after the rollback. The product map is read, never written: each
- * chunk loads only its own products' rows, and only while the map build its run started on is current (plan Q1-i1 T03,
- * review b B1). Prices never leave Postgres for Elasticsearch.
+ * chunk loads only its own products' rows, and only while the map build its run started on is current. Prices never leave Postgres for Elasticsearch.
  *
- * Queued mode (T08) wires the same seams to jobs: StartDayIngest runs start() under the lock and dispatchChunks()
+ * Queued mode wires the same seams to jobs: StartDayIngest runs start() under the lock and dispatchChunks()
  * sends one IngestChunk per chunk as a batch whose `then` dispatches FinalizeDay; resume() re-opens a queued run and
  * re-dispatches only its chunks that are not done.
  */
@@ -50,7 +48,7 @@ final class DayIngest
     public function __construct(private readonly ConnectionInterface $db, private readonly string $snapshotsRoot) {}
 
     /**
-     * The sync ingest: lock, then start, every chunk and finalize in one transaction. The replay (T07) runs each day
+     * The sync ingest: lock, then start, every chunk and finalize in one transaction. The replay runs each day
      * through here with mode `replay` while it already holds the lock; the advisory lock is re-entrant per session.
      *
      * @param  'sync'|'replay'  $mode
@@ -91,7 +89,7 @@ final class DayIngest
     /**
      * Validates the day and opens its run (status `running`) with its chunks planned, or records why it did not.
      *
-     * One running run per (source, day) (plan Q1-i1 T02, review b B6): while the day has a `running` run, start()
+     * One running run per (source, day): while the day has a `running` run, start()
      * writes nothing (no run, no chunk, so no batch) and answers `locked` with that run's id, which every caller
      * already treats as "another ingest holds this day"; the running run finishes, or the pending scan resumes it.
      *
@@ -131,7 +129,7 @@ final class DayIngest
         $this->readers = [$runId => $reader];
         PricePartitions::ensureFor($marker, $this->db);
 
-        // D1, review F7: price_points always equals what the folder on disk holds for the day.
+        // price_points always equals what the folder on disk holds for the day.
         $deleted = $this->db->delete(
             'DELETE FROM price_points WHERE source = ? AND day = ?::date'
             .' AND observed_at >= ?::timestamptz AND observed_at < ?::timestamptz AND observed_at <> ?::timestamptz',
@@ -215,9 +213,9 @@ final class DayIngest
     }
 
     /**
-     * Rolls up the D3 window, rebuilds the price_latest rows it can change (T05, Q1-i3 T04), the window's price_movers
-     * (T12) and movement_volume (T13), runs DetectMovement when the run is live (mode sync or queued; never replay,
-     * R180a), sums the run's counts (start-level plus every done chunk, plus `events`, `epoch_breaks` and `backfill`
+     * Rolls up the recompute window, rebuilds the price_latest rows it can change, the window's price_movers
+     * and movement_volume, runs DetectMovement when the run is live (mode sync or queued; never replay),
+     * sums the run's counts (start-level plus every done chunk, plus `events`, `epoch_breaks` and `backfill`
      * for a live run) and marks the run `ok`, all in one transaction.
      * It refuses a run with any chunk not done: finalize never runs on a partial day.
      *
@@ -242,7 +240,7 @@ final class DayIngest
             LatestPrices::rebuild($this->db, $window['from'], $window['to']);
             Movers::rebuild($this->db, $window['from'], $window['to']);
             MovementVolume::rebuild($this->db, $window['from'], $window['to']);
-            // D6, R180a: only a live run (sync or queued) writes the outbox, and only for the newest finalized day.
+            // Only a live run (sync or queued) writes the outbox, and only for the newest finalized day.
             $movement = $run->mode === 'replay' ? [] : DetectMovement::detect(
                 $this->db, $runId, (string) $run->day, $window, $previousDay === null || strcmp((string) $run->day, $previousDay) >= 0,
             );
@@ -277,9 +275,9 @@ final class DayIngest
     }
 
     /**
-     * Queued mode (T08): dispatches the run's chunks as one batch on $queueConnection, queue PricingConfig::queue().
+     * Queued mode: dispatches the run's chunks as one batch on $queueConnection, queue PricingConfig::queue().
      * The batch's `then` dispatches FinalizeDay and its `catch` marks the run failed; both are invokable serializable
-     * classes (review F4) and the batch does not allow failures, so finalize never runs on a partial day. A run without
+     * classes and the batch does not allow failures, so finalize never runs on a partial day. A run without
      * a chunk to run goes straight to FinalizeDay.
      *
      * @param  list<int>  $chunkIds
@@ -385,7 +383,7 @@ final class DayIngest
     /**
      * The run's reader; a reader opened after start (a queued chunk) first checks the folder still holds the run's
      * marker. ingest_runs stores the marker to the second (the 'Y-m-d H:i:sP' text every writer uses), so the folder's
-     * marker is compared at that same precision: a fractional-second marker is not a mismatch (T08).
+     * marker is compared at that same precision: a fractional-second marker is not a mismatch.
      */
     private function readerFor(int $runId, string $day, CarbonImmutable $marker): PriceSnapshotReader
     {
@@ -401,8 +399,8 @@ final class DayIngest
     }
 
     /**
-     * The map rows of the chunk's products only, in one query: "<productId>|<subTypeName>" => variant and epoch (D2).
-     * The run is pinned to the map build it started on (plan Q1-i1 T03): when a newer build has landed since, the chunk
+     * The map rows of the chunk's products only, in one query: "<productId>|<subTypeName>" => variant and epoch.
+     * The run is pinned to the map build it started on: when a newer build has landed since, the chunk
      * throws, writes nothing, and fails through the job's tries; the next scan opens a fresh run on the new map. A run
      * that recorded no build skips the check.
      *

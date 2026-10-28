@@ -19,7 +19,7 @@ use Illuminate\Support\Carbon;
 #[Group('Cards', 'Pokémon cards from the PokéSearch catalog.')]
 final class CardController
 {
-    /** The card goes through the catalog cache (T42): cached answers, and the degraded last-good copy. */
+    /** The card goes through the catalog cache: cached answers, and the degraded last-good copy. */
     public function __construct(private readonly CatalogRepository $catalog) {}
 
     /**
@@ -40,11 +40,11 @@ final class CardController
             throw new CardNotFound($this->flagMissing($id));
         }
 
-        // conditional-get reads this, never the body, to answer a degraded copy no-store (Q1-i5 T02).
+        // conditional-get reads this, never the body, to answer a degraded copy no-store.
         $request->attributes->set(CachePolicy::DEGRADED, $result->degraded);
 
-        // Four queries whatever the number of rows (P8): the variants, their sources, the sources' builds and the
-        // variants' latest prices (P2-i1 T05).
+        // Four queries whatever the number of rows: the variants, their sources, the sources' builds and the
+        // variants' latest prices.
         $variants = CardVariant::query()
             ->where('card_id', $id)
             ->orderBy('variant_key')
@@ -59,12 +59,12 @@ final class CardController
     }
 
     /**
-     * Flags every variant row of a card PokéSearch does not have as catalog_missing (review-1 rec 11): the rows
-     * stay, with their mappings, until the catalog check (T45) sees the card again. One aggregate SELECT counts the
+     * Flags every variant row of a card PokéSearch does not have as catalog_missing: the rows
+     * stay, with their mappings, until the catalog check sees the card again. One aggregate SELECT counts the
      * card's rows and the ones whose flag or seed ref would change; only those are written, so a repeated miss under
      * the same seed sends that one SELECT and no UPDATE, and a new seed restamps once. catalog_checked_at is
-     * therefore the last time a row's flag or seed ref changed (or VerifyCatalog wrote it), not the last miss
-     * (Q1-i5 T02, HG-45 #4). Returns whether any row of the card exists.
+     * therefore the last time a row's flag or seed ref changed (or VerifyCatalog wrote it), not the last miss.
+     * Returns whether any row of the card exists.
      */
     private function flagMissing(string $id): bool
     {

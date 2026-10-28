@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 /**
- * A priced variant of a PokéSearch card, keyed "card_id:finish:edition:treatment" (plan T36). card_id has no
+ * A priced variant of a PokéSearch card, keyed "card_id:finish:edition:treatment". card_id has no
  * foreign key: PokéSearch owns card identity.
  *
  * @property string $variant_key
@@ -44,7 +44,7 @@ final class CardVariant extends Model
     }
 
     /**
-     * The variant's latest TCGplayer close (P2-i1 T05): its price_latest row for the configured source, if any.
+     * The variant's latest TCGplayer close: its price_latest row for the configured source, if any.
      *
      * @return HasOne<PriceLatest, $this>
      */

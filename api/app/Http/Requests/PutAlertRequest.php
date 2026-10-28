@@ -47,7 +47,7 @@ final class PutAlertRequest extends FormRequest
         return (int) $this->validated('pct');
     }
 
-    /** The key's shape is checked before any query and before the body (plan P4-i1 D5). */
+    /** The key's shape is checked before any query and before the body. */
     protected function prepareForValidation(): void
     {
         ValidVariantKey::check($this->route('variantKey'));

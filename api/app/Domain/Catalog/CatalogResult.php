@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Catalog;
 
 /**
- * One catalog answer from CatalogRepository (plan T42) and how honest it is.
+ * One catalog answer from CatalogRepository and how honest it is.
  *
  * cached: the data comes from the catalog cache, not from a PokéSearch call this read made (a stale copy
  * refreshed in the background still counts as cached). degraded: PokéSearch failed and this is the

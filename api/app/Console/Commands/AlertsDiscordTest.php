@@ -20,11 +20,11 @@ use stdClass;
 use Throwable;
 
 /**
- * The live Discord switch (plan P5-i1 D13, R230, HG-04). config('alerts.discord.test_webhook_url') comes from
+ * The live Discord switch. config('alerts.discord.test_webhook_url') comes from
  * DISCORD_TEST_WEBHOOK_URL. Unset or empty: it prints that nothing was sent and exits 1 (the switch is off). Set: it
- * checks the URL as a Discord webhook (D6; on failure the field message, exit 1), then sends one Discord envelope
+ * checks the URL as a Discord webhook (on failure the field message, exit 1), then sends one Discord envelope
  * synchronously through the sender's guarded, pinned POST: "PokéPrices test message." and the three largest moves of
- * the deliverable day (D2) as digest lines with their source and day, or a line saying there is none; it prints
+ * the deliverable day as digest lines with their source and day, or a line saying there is none; it prints
  * {"status": <HTTP status or null>, "delivered": <bool>} and exits 0 on a 2xx, else 1. It never prints or logs the
  * URL, and it writes nothing: no delivery, no dispatch_days row (a day not dispatched yet shows all its events).
  */
@@ -54,7 +54,7 @@ final class AlertsDiscordTest extends Command
         try {
             [$status] = $sender->discord($url, $body);
         } catch (Throwable) {
-            // Containment (D7, review A08): an exception message can carry the URL, so it is never printed or logged.
+            // Containment: an exception message can carry the URL, so it is never printed or logged.
             $status = null;
         }
         $delivered = $status !== null && $status >= 200 && $status < 300;

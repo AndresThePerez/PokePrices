@@ -10,7 +10,7 @@ use Illuminate\Container\Attributes\Config;
 use Throwable;
 
 /**
- * Retry delays (plan P5-i1 D7): after failed attempt n, d = min(cap, base x factor^(n-1)) seconds (30, 120, 480,
+ * Retry delays: after failed attempt n, d = min(cap, base x factor^(n-1)) seconds (30, 120, 480,
  * 1920, 3600 by default), with equal jitter intdiv(d, 2) + random(0, intdiv(d, 2)). A Retry-After larger than that
  * raises the delay, never above the cap. The randomness is injectable so tests can pin either end.
  */

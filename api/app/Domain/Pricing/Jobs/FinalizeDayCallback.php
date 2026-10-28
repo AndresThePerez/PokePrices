@@ -8,7 +8,7 @@ use Illuminate\Bus\Batch;
 use Illuminate\Support\Facades\Bus;
 
 /**
- * The chunk batch's `then` callback (plan P2-i1 T08, review F4): an invokable, serializable class, never a captured
+ * The chunk batch's `then` callback: an invokable, serializable class, never a captured
  * closure. It runs once every chunk is done and dispatches FinalizeDay on the run's queue connection.
  */
 final class FinalizeDayCallback

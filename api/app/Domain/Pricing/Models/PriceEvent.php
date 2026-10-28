@@ -9,9 +9,9 @@ use Illuminate\Database\Eloquent\Attributes\Table;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * One `price.moved` row of the movement outbox (plan P2-i1 T13, D6, R177(4), R180a). DetectMovement inserts it inside
+ * One `price.moved` row of the movement outbox. DetectMovement inserts it inside
  * a sync or queued finalize, never replay; nothing updates or deletes it, so the model only reads. dispatched_at is
- * always null in P2 (dispatch is P5). Money and change_pct stay decimal strings, never floats.
+ * always null here (dispatch is a later step). Money and change_pct stay decimal strings, never floats.
  *
  * @property int $id
  * @property string $type

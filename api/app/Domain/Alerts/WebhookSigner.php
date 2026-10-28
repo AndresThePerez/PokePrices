@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Alerts;
 
 /**
- * Standard Webhooks signatures (plan P5-i1 D5): v1,<base64(HMAC-SHA256(key, "<id>.<timestamp>.<body>"))>. The body
+ * Standard Webhooks signatures: v1,<base64(HMAC-SHA256(key, "<id>.<timestamp>.<body>"))>. The body
  * and id stay the same on every attempt of a delivery; the timestamp, and so the signature, is fresh per attempt.
  */
 final class WebhookSigner

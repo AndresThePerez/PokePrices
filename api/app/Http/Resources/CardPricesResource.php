@@ -9,10 +9,10 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * The daily candles of a card's variants as GET /v1/cards/{id}/prices answers them (plan P2-i1 T11): one series per
+ * The daily candles of a card's variants as GET /v1/cards/{id}/prices answers them: one series per
  * variant (by variant_key) with its points ascending by day, and the provenance and window in meta. Every point
  * carries its own as_of, the snapshot marker of the close it shows; meta.as_of is the newest ingested day's marker.
- * history_begins (plan P3-i1 T04) is the day of the variant's first real close in any epoch, or null; not range-bound.
+ * history_begins is the day of the variant's first real close in any epoch, or null; not range-bound.
  */
 final class CardPricesResource extends JsonResource
 {

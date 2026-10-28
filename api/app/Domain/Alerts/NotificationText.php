@@ -8,7 +8,7 @@ use App\Domain\Pricing\MovementRule;
 use stdClass;
 
 /**
- * The plain text of an alert and of the daily digest (plan P5-i1 D4, D11; T06), one renderer for email and Discord.
+ * The plain text of an alert and of the daily digest, one renderer for email and Discord.
  *
  * Every price comes verbatim from one price_events row (the database's decimal text, grouped with ',' between
  * thousands and never re-rounded) and carries its source and close day: "as of <day> from TCGCSV (daily close)".

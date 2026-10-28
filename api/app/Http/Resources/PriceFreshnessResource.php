@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * The freshness of the source's prices as GET /v1/prices/freshness answers it (plan P2-i1 T10, D8). age_hours keeps
+ * The freshness of the source's prices as GET /v1/prices/freshness answers it. age_hours keeps
  * its one decimal in JSON (26.0, never 26), so the API prints the same value as the command and the log line.
  */
 final class PriceFreshnessResource extends JsonResource

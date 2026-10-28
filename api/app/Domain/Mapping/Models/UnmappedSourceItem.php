@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Attributes\Table;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * A source product a map build could not map, with the reason and its candidates (plan T36).
+ * A source product a map build could not map, with the reason and its candidates.
  *
  * @property int $id
  * @property int $map_build_id

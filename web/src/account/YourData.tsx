@@ -1,9 +1,9 @@
-// "Your data" and "Delete account" on /account (D10, T08). The export is a plain link the browser
+// "Your data" and "Delete account" on /account. The export is a plain link the browser
 // downloads (GET /v1/me/export, a top-level navigation with a same-origin Referer so Sanctum treats
-// it as first-party; never rel="noreferrer", review F-P4-09), so nothing here fetches it. Deleting
+// it as first-party; never rel="noreferrer"), so nothing here fetches it. Deleting
 // needs the checkbox first; only then does the password field appear, and the password is dropped
 // after every answer and whenever the checkbox is cleared. The demo sees why it cannot delete.
-// Both are panels of the Account page; Delete account stands apart as the danger zone (D2-i2-T07):
+// Both are panels of the Account page; Delete account stands apart as the danger zone:
 // further down, its border in the problem tone.
 import { useId, useState, type SubmitEvent } from 'react';
 import { deleteAccount, type Me } from '../api/client';

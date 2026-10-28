@@ -8,7 +8,7 @@ use InvalidArgumentException;
 
 /**
  * The card id rule PokéSearch enforces (^[A-Za-z0-9][A-Za-z0-9._!?-]{0,127}$). An id that fails it never
- * reaches PokéSearch; callers map the InvalidArgumentException to a 404 (plan T34, review-1 F-P1-R1-02).
+ * reaches PokéSearch; callers map the InvalidArgumentException to a 404.
  */
 final class CardId
 {

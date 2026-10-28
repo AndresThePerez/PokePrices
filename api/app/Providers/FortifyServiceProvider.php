@@ -33,7 +33,7 @@ use Laravel\Sanctum\Sanctum;
 use RuntimeException;
 
 /**
- * Fortify and Sanctum for PokéPrices (plan P4-i1 D1, D2, D3, D7, D15): the actions, the account limiters, the two
+ * Fortify and Sanctum for PokéPrices: the actions, the account limiters, the two
  * mailed links, the enumeration-safe reset-link answer, no API tokens, the create-alerts Gate, and the limiters and
  * email normalisation on the package routes, which exist by now (package providers boot before this one).
  */
@@ -75,9 +75,9 @@ final class FortifyServiceProvider extends ServiceProvider
 
         $this->attachRouteMiddleware();
 
-        // account-guest must count a request before Sanctum's stateful pipeline starts a session (review F-P4-07),
-        // and NoStore sorts ahead of it so a throttled (429) account or demo-session answer is no-store too (Q1-i5
-        // T02, HG-45 #2). Each prepend goes to the front, so NoStore is prepended last.
+        // account-guest must count a request before Sanctum's stateful pipeline starts a session,
+        // and NoStore sorts ahead of it so a throttled (429) account or demo-session answer is no-store too.
+        // Each prepend goes to the front, so NoStore is prepended last.
         $kernel = $this->app->make(KernelContract::class);
         if ($kernel instanceof Kernel) {
             $kernel->prependToMiddlewarePriority(ThrottleBeforeSession::class);

@@ -7,7 +7,7 @@ namespace App\Support;
 use Carbon\CarbonImmutable;
 
 /**
- * The one parse of a collected day the PokéPrices commands take (--day, --days, --reset-watermark; Q1-i5 T03): exactly
+ * The one parse of a collected day the PokéPrices commands take (--day, --days, --reset-watermark): exactly
  * YYYY-MM-DD, nothing around it, and a real calendar day (checkdate, so year 0000, 2026-02-30 and an unpadded
  * 2026-2-3 are refused). Each command keeps its own error text.
  */

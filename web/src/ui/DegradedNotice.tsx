@@ -1,4 +1,4 @@
-// The degraded catalog line (D10, Q1-i5-T05): shown when an answer's names come from the last good
+// The degraded catalog line: shown when an answer's names come from the last good
 // PokéSearch copy. A warn Notice as a paragraph with no role; the sentence is one text node.
 import Notice from './Notice';
 

@@ -21,12 +21,12 @@ use stdClass;
 use Throwable;
 
 /**
- * Finalizes a queued run (plan P2-i1 T08 item 1, D12): in one transaction under pg_advisory_xact_lock on the
- * `pricing:ingest` key, DayIngest::finalize() rolls up the D3 window, rebuilds price_latest and sums the chunk counts
+ * Finalizes a queued run: in one transaction under pg_advisory_xact_lock on the
+ * `pricing:ingest` key, DayIngest::finalize() rolls up the recompute window, rebuilds price_latest and sums the chunk counts
  * into the run. A run that is no longer `running` (already finalized by a duplicate delivery, superseded by a replay,
  * or failed) is left as it is. When the tries run out, failed() marks the run `failed`, so --resume can re-open it.
  *
- * Bounded lock wait (plan Q1-i1 T02, review b B3): the run status is read first, so a run that is no longer running
+ * Bounded lock wait: the run status is read first, so a run that is no longer running
  * returns without touching the lock. A running run takes the lock with pg_try_advisory_xact_lock; while another
  * session holds it (a replay, a sync ingest or a start) the job releases itself for 60 s instead of waiting. Such a
  * release is not a failure: the job retries until 6 h after it was queued, and three real exceptions (a timeout

@@ -7,7 +7,7 @@ namespace App\Http\Problems;
 use App\Domain\ProblemType;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
-/** A signed-in person posted to a guest-only route (sign in, register, reset, two-factor challenge): 409, never a redirect (plan P4-i1 D1, D4). */
+/** A signed-in person posted to a guest-only route (sign in, register, reset, two-factor challenge): 409, never a redirect. */
 final class AlreadySignedIn extends HttpException implements ProblemType
 {
     public function __construct()

@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * GET and PUT /v1/me/notifications (plan P5-i1 D9): where alerts and the digest go (email, or the account's Discord
+ * GET and PUT /v1/me/notifications: where alerts and the digest go (email, or the account's Discord
  * webhook), whether a daily digest is sent, and whether the account has an active Discord webhook to choose.
  */
 final class NotificationSettingsResource extends JsonResource

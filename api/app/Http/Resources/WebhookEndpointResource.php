@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * One webhook as GET /v1/webhooks lists it (plan P5-i1 D9): its id, kind (standard: a signed webhook; discord), the
+ * One webhook as GET /v1/webhooks lists it: its id, kind (standard: a signed webhook; discord), the
  * URL's scheme and host only (url_hint; the path, query and any token never leave the server), the description,
  * when it was added, whether it is turned off, and its newest delivery. Never the URL or the signing secret.
  */

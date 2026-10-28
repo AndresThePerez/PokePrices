@@ -7,7 +7,7 @@ namespace App\Domain\Accounts;
 use App\Domain\Pricing\PriceColumns;
 
 /**
- * The shared shape of a watchlist or portfolio read (plan P4-i1 D6): each row's variant fields from card_variants
+ * The shared shape of a watchlist or portfolio read: each row's variant fields from card_variants
  * and its latest close from price_latest, joined in the same statement. card_variants is append-only, so the join
  * always finds the variant; should it not, the fields come from the key itself (a card id holds no colon).
  */

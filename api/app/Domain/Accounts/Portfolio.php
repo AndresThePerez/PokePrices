@@ -9,7 +9,7 @@ use Illuminate\Database\ConnectionInterface;
 use Illuminate\Validation\ValidationException;
 
 /**
- * A person's portfolio (plan P4-i1 D5, D6, D9): the variants they hold with a quantity, read with their latest closes
+ * A person's portfolio: the variants they hold with a quantity, read with their latest closes
  * and valued in one SQL statement, set and removed by variant key. All money arithmetic happens in Postgres numeric:
  * a holding's value is quantity × close as numeric(20,2) text, the total sums the priced holdings only, and
  * first_day/last_day are the oldest and newest close days it rests on. A holding without a close has no value and is

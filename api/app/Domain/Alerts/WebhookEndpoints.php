@@ -15,8 +15,8 @@ use Illuminate\Validation\ValidationException;
 use stdClass;
 
 /**
- * A person's webhooks (plan P5-i1 D1, D6, D9; T03): the URL check with its 422 messages, the per-user limits and
- * the insert. Registration counts then inserts under the per-user lock (App\Domain\Accounts\AccountLock, P4), so two
+ * A person's webhooks: the URL check with its 422 messages, the per-user limits and
+ * the insert. Registration counts then inserts under the per-user lock (App\Domain\Accounts\AccountLock), so two
  * concurrent registrations can never pass a limit. url and secret are written encrypted exactly as the model's
  * encrypted casts write them (APP_KEY); url_hint keeps only the scheme, host and a non-default port.
  */
@@ -163,7 +163,7 @@ final class WebhookEndpoints
     /**
      * Deletes the user's endpoint with this id (nothing when the user has none: another user's id changes nothing),
      * its deliveries with it (cascade), and, when it was the Discord webhook, sets the notification channel back to
-     * email in the same transaction (D9, T05), under the per-user lock.
+     * email in the same transaction, under the per-user lock.
      */
     public function delete(int $userId, int $id): void
     {

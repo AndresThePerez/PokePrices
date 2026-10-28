@@ -7,7 +7,7 @@ namespace App\Http\Problems;
 use App\Domain\ProblemType;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
-/** Only a verified account may create alerts or webhooks: 403 email-not-verified (plan P5-i1 D9; P4 D15). */
+/** Only a verified account may create alerts or webhooks: 403 email-not-verified. */
 final class EmailNotVerified extends HttpException implements ProblemType
 {
     public function __construct()

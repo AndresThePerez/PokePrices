@@ -1,4 +1,4 @@
-// The sections T07 adds to /alerts (P5 D10), above Webhooks: "Where alerts go" (email or Discord,
+// The sections added to /alerts, above Webhooks: "Where alerts go" (email or Discord,
 // the daily digest, Save) and "Per-card alerts" (a pointer to the watchlist). Only a verified account
 // that is not the demo sees them. The form shows the saved settings until a choice is changed; Save
 // sends exactly { channel, digest } and, once it succeeds, the saved settings are read again (if that

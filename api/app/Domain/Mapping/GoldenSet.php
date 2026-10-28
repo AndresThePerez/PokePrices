@@ -12,8 +12,7 @@ use RuntimeException;
 use Throwable;
 
 /**
- * Judges the current product map against the golden file Andres signs at HG-18 (plan T53; DC4's artefact in T25's
- * dc.py contract).
+ * Judges the current product map against the golden file Andres signs off (the artefact follows the dc.py contract).
  *
  * Per golden row: the current tcgplayer mapping of `variant_key` must be exactly `expect` (groupId, productId,
  * subTypeName), else a mismatch (an unmapped key is a mismatch with actual null); a mapping to any `forbid`
@@ -27,7 +26,7 @@ use Throwable;
  * (its lower-case sha256, two spaces, its path from the checkout root), that hash is the golden file's, and both
  * files are ratified.
  *
- * classes_missing counts the required classes (every scope-8 risk class and every DC2 blind class) that no row
+ * classes_missing counts the required classes (every scope-8 risk class and every oracle-blind class) that no row
  * names. mapped_cards_regression is 0 only when gates/data-baseline.json is well-formed and ratified and the cards
  * the current map reaches are at least 99.5% of its mapped_cards; anything it cannot decide counts as 1.
  * denominator = golden rows evaluated. Reads only.

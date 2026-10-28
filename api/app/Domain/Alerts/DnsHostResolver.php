@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Alerts;
 
-/** The system resolver's A and AAAA records (dns_get_record), for the address guard (plan P5-i1 D6). */
+/** The system resolver's A and AAAA records (dns_get_record), for the address guard. */
 final class DnsHostResolver extends HostResolver
 {
     public function resolve(string $host): array

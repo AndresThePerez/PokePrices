@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Attributes\Table;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * One map build over a collected snapshot day (plan T36). snapshot_day is the day the map was built from, never a
+ * One map build over a collected snapshot day. snapshot_day is the day the map was built from, never a
  * price date.
  *
  * @property int $id

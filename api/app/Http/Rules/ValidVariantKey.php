@@ -11,7 +11,7 @@ use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Validation\ValidationException;
 
 /**
- * A {variantKey} route key must have the shape VariantKey checks (plan P4-i1 D5, review F-P4-05). The rule runs
+ * A {variantKey} route key must have the shape VariantKey checks. The rule runs
  * before any query, so a malformed key never reaches the database, and refuses with the same message as a key that
  * names no variant. It is implicit, so an empty key is refused too.
  */

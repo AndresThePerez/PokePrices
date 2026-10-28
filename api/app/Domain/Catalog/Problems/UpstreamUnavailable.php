@@ -8,7 +8,7 @@ use App\Domain\ProblemType;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Throwable;
 
-/** PokéSearch did not answer and no last-good copy exists: 503 upstream-unavailable with Retry-After in whole seconds, at least 1 (F-P1-027). */
+/** PokéSearch did not answer and no last-good copy exists: 503 upstream-unavailable with Retry-After in whole seconds, at least 1. */
 final class UpstreamUnavailable extends HttpException implements ProblemType
 {
     public function __construct(int $retryAfterSeconds, ?Throwable $previous = null)

@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Attributes\Table;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * One outbound message (plan P5-i1 D1, D7). body is the exact bytes sent; message_id (msg_ + ULID) is the
+ * One outbound message. body is the exact bytes sent; message_id (msg_ + ULID) is the
  * webhook-id and never changes across attempts; event_id is a price_events id without a foreign key.
  *
  * @property int $id

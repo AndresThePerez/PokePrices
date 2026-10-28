@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\URL;
 use RuntimeException;
 
 /**
- * The links PokéPrices mails (plan P4-i1 D2). Both land on SPA pages, whose paths avoid every prefix nginx sends to
+ * The links PokéPrices mails. Both land on SPA pages, whose paths avoid every prefix nginx sends to
  * Laravel:
  * - verification: <APP_URL>/account/verify-email?link=<rawurlencode of /email/verify/<id>/<hash>?expires=…&signature=…>;
  *   the page calls that path with Accept: application/json and Fortify answers 204;

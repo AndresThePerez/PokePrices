@@ -9,8 +9,8 @@ use Illuminate\Database\Eloquent\Attributes\Table;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * A holding in a person's portfolio (plan P4-i1 D5): portfolio_holdings, one row per (user, variant) with a quantity
- * of 1 to 9999, deleted with the user. variant_key has no foreign key to card_variants (D5). Rows are written by
+ * A holding in a person's portfolio: portfolio_holdings, one row per (user, variant) with a quantity
+ * of 1 to 9999, deleted with the user. variant_key has no foreign key to card_variants. Rows are written by
  * Portfolio, under the per-user lock.
  *
  * @property int $id

@@ -1,6 +1,6 @@
-// The PokéPrices footer (D1): the display settings strip (D8), Theme and Up/down colours, moved
+// The PokéPrices footer: the display settings strip, Theme and Up/down colours, moved
 // out of the header bar. Labels and option strings are unchanged. On /account the same settings sit
-// in the page's Display panel (R297), so the footer keeps its landmark and top rule but no content
+// in the page's Display panel, so the footer keeps its landmark and top rule but no content
 // there and every control name stays unique. It reads no session and sends no request.
 import { useId, type ChangeEvent } from 'react';
 import {

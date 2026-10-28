@@ -11,11 +11,10 @@ use RuntimeException;
 use Throwable;
 
 /**
- * Judges the product map per set against the recorded pokemontcg.io oracle (plan T41, R125, R128; DC2's
- * artefact in T25's dc.py contract).
+ * Judges the product map per set against the recorded pokemontcg.io oracle (the artefact follows the dc.py contract).
  *
  * Our side: every current tcgplayer mapping row, priced from the COLLECTED day's prices/<group>.json.zst (the map
- * stores no price, EC-P1-18). The oracle side: `tcgplayer.prices.<key>.market` of the card with the same id in
+ * stores no price). The oracle side: `tcgplayer.prices.<key>.market` of the card with the same id in
  * `<oracle dir>/cards-NNN.json`. Both are held in memory only; nothing price-shaped is returned except counts,
  * and nothing is written anywhere.
  *

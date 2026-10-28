@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * One raw observation of a variant at a TCGCSV marker (plan P2-i1 T02, D1). The key is (variant_key, source,
+ * One raw observation of a variant at a TCGCSV marker. The key is (variant_key, source,
  * observed_at); a save or delete matches all three. Money stays a decimal string, never a float. Instants are
  * written with their offset, so the session time zone never shifts them.
  *

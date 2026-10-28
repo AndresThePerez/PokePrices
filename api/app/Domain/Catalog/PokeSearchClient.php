@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Http;
 use InvalidArgumentException;
 
 /**
- * Reads cards from the PokéSearch v1 API (plan T34) and searches its /api/search (T44) through the
+ * Reads cards from the PokéSearch v1 API and searches its /api/search through the
  * Http::pokesearch() macro.
  *
  * Ids are checked against CardId before anything is sent, then percent-encoded with rawurlencode: a path
@@ -29,9 +29,9 @@ final class PokeSearchClient
     public const int RETRY_AFTER_SECONDS = 5;
 
     /**
-     * The container builds the client with the request-path circuit breaker (plan T35), so every read through
-     * CatalogRepository, the controllers and the catalog job passes it. A client built without one (the T34
-     * unit tests) calls PokéSearch directly.
+     * The container builds the client with the request-path circuit breaker, so every read through
+     * CatalogRepository, the controllers and the catalog job passes it. A client built without one (the unit tests)
+     * calls PokéSearch directly.
      */
     public function __construct(private readonly ?CircuitBreaker $breaker = null) {}
 
@@ -131,7 +131,7 @@ final class PokeSearchClient
     }
 
     /**
-     * GET /api/meta: build identity and corpus provenance (seed: {ref, seeded_at} or null), decoded (plan T42).
+     * GET /api/meta: build identity and corpus provenance (seed: {ref, seeded_at} or null), decoded.
      *
      * @return array<mixed>
      *

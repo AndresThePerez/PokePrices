@@ -11,7 +11,7 @@ use Symfony\Component\HttpFoundation\Response;
 
 /**
  * The one email normalisation step on Fortify's POST routes /register, /login, /forgot-password, /reset-password and
- * /email/verification-notification (plan P4-i1 D1, review F-P4-04): a string email is trimmed and lower-cased
+ * /email/verification-notification: a string email is trimmed and lower-cased
  * before validation and the password broker; a non-string email is left for validation to reject (422).
  */
 final class NormalizeAccountEmail

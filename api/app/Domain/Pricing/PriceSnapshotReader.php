@@ -11,13 +11,13 @@ use UnexpectedValueException;
 
 /**
  * Reads the prices of one collected TCGCSV day, `<snapshots>/<day>/{SUCCESS, marker.txt, manifest.json, groups.json,
- * products/<g>.json.zst, prices/<g>.json.zst}` (plan P2-i1 T04, D1, D5). It only ever opens files for reading.
+ * products/<g>.json.zst, prices/<g>.json.zst}`. It only ever opens files for reading.
  *
  * validate() checks the whole day before anything is written and throws DayRefused naming the first problem. rows()
  * decodes one group's prices file: every row must carry an integer productId, a string subTypeName and all five price
  * fields, each a JSON number or null that PriceNormalizer::money() accepts. Rows are then de-duplicated on
  * (productId, subTypeName), first occurrence kept (as App\Domain\Mapping\SnapshotReader does), so chunk offsets
- * index the de-duplicated list and no single upsert ever sees one key twice (review F10).
+ * index the de-duplicated list and no single upsert ever sees one key twice.
  *
  * A number written with an exponent (`1e2`) is no plain decimal price: json_decode would turn it into an exact
  * float, so it is rewritten into an object before decoding and money() then refuses it like any other non-number.
@@ -47,7 +47,7 @@ final class PriceSnapshotReader
     }
 
     /**
-     * Validates every file of the day (T04 item 1) and returns the marker, each group's de-duplicated row count in
+     * Validates every file of the day and returns the marker, each group's de-duplicated row count in
      * groups.json order, and the day's totals.
      *
      * @return array{marker: CarbonImmutable, groups: array<int, int>, rows: int, duplicate_rows: int}

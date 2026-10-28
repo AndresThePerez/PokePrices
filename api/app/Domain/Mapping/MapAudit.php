@@ -9,19 +9,19 @@ use JsonException;
 use RuntimeException;
 
 /**
- * Audits one product-map build (plan T40, R128). Each check returns an artefact in T25's dc.py contract: `id`,
+ * Audits one product-map build. Each check returns an artefact in the dc.py contract: `id`,
  * `value`, `denominator`, `details` (a list) and `inputs` {snapshot_day, dataset_ref, marker, map_build_id};
  * `coverage` adds `coverage_pct` and `unlisted_sets`. A value of 0 is a pass; the threshold lives in the gate.
  *
- *  - names (DC1): every current source_product_map row, tie-breaks included, re-checked against the dataset card
+ *  - names: every current source_product_map row, tie-breaks included, re-checked against the dataset card
  *    name with ProductName + NameAliases (the builder's own rule). A row whose card is not in the dataset counts.
- *  - constraints (DC3): the six UNIQUE constraints read from pg_constraint with exactly their columns, plus
+ *  - constraints: the six UNIQUE constraints read from pg_constraint with exactly their columns, plus
  *    duplicate rows over the same columns found by GROUP BY (rows with a NULL in the key are never duplicates,
  *    as in a UNIQUE). The Pest group DC3 is run beside it, not by it.
- *  - coverage (DC5): dataset cards neither mapped, nor named as a candidate by an unmapped_source_items row of the
+ *  - coverage: dataset cards neither mapped, nor named as a candidate by an unmapped_source_items row of the
  *    build, nor listed in unmapped_cards for the build (a card no priced item reached); unlisted_sets counts dataset sets with neither a set_aliases row nor an explicit `none` row in
- *    database/data/set_aliases.csv (the table the seeder loads; fut20's row cannot be stored, F-P1-016).
- *  - ambiguity (DC6): the number join is recomputed from set_aliases and the dataset; a card is ambiguous when it
+ *    database/data/set_aliases.csv (the table the seeder loads; fut20's row cannot be stored).
+ *  - ambiguity: the number join is recomputed from set_aliases and the dataset; a card is ambiguous when it
  *    is one of two or more candidates of a source item of the build. It fails when the mapped item that chose it
  *    records a method outside name_tiebreak, alias, golden; an item left in unmapped_source_items is `unmapped`.
  *
@@ -32,7 +32,7 @@ final readonly class MapAudit
     /** check name => gate id */
     public const array CHECKS = ['names' => 'DC1', 'constraints' => 'DC3', 'coverage' => 'DC5', 'ambiguity' => 'DC6'];
 
-    /** The UNIQUE constraints R131 requires, as [table, columns]. */
+    /** The UNIQUE constraints the epoch rules require, as [table, columns]. */
     private const array REQUIRED_UNIQUE = [
         ['source_product_map', ['source', 'source_product_id', 'source_subtype']],
         ['source_product_map', ['variant_key', 'source']],

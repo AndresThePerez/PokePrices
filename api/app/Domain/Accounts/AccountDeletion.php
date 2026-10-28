@@ -8,9 +8,9 @@ use App\Models\User;
 use Illuminate\Database\ConnectionInterface;
 
 /**
- * Deletes a person's account (plan P4-i1 D6): in one transaction, every sessions row with the user's id, the
+ * Deletes a person's account: in one transaction, every sessions row with the user's id, the
  * password_reset_tokens row of the email and the user row, whose watchlist_items and portfolio_holdings rows go with
- * it (ON DELETE CASCADE, D5). Nothing of anyone else is touched. Signing the current browser out is the caller's.
+ * it (ON DELETE CASCADE). Nothing of anyone else is touched. Signing the current browser out is the caller's.
  */
 final class AccountDeletion
 {

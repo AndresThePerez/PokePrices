@@ -7,7 +7,7 @@ namespace App\Domain\Pricing;
 use UnexpectedValueException;
 
 /**
- * Money conversion and normalization of decoded price rows (plan P2-i1 D2, D5).
+ * Money conversion and normalization of decoded price rows.
  *
  * money() is the one place a decoded JSON number becomes a price: `sprintf('%.2f')`, accepted only when the string
  * reads back as the same float. After it every price is a decimal string and all arithmetic happens in SQL numeric.

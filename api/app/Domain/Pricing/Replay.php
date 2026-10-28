@@ -9,30 +9,30 @@ use Illuminate\Database\ConnectionInterface;
 use stdClass;
 
 /**
- * The deterministic replay of every collected day (plan P2-i1 T07 item 3, D11, D12, R180; review F5, F6).
+ * The deterministic replay of every collected day.
  *
  * - It holds the `pricing:ingest` advisory lock for its whole run and stops before anything else when another session
  *   holds it.
  * - Preflight, before any wipe: it lists the days once (every <root>/<YYYY-MM-DD>/ with SUCCESS, or the days named),
  *   validates each with the ingest's own start checks (SUCCESS, marker, marker/folder date, manifest, every group file
- *   present and decodable, money per D5) and pins that list and each day's marker for all three passes. An empty list,
+ *   present and decodable, money as the ingest reads it) and pins that list and each day's marker for all three passes. An empty list,
  *   a refused day or a dispatched price_events row stops it with nothing written.
  * - Pass 1 and pass 2 each wipe the derived tables, then ingest every pinned day in the chosen order (mode `replay`);
  *   pass 3 ingests again without wiping. Each pass ends with a PriceDigest and, beside it, the movers check of
- *   price_movers (T12; outside the digest by R180b, R181(1)).
+ *   price_movers (outside the digest).
  * - The wipe truncates price_points, price_daily, price_latest and price_movers and, in the same transaction, marks
- *   the `ok` and `running` runs of the source `superseded` (D12). That covers the runs of every pinned day; with a --days subset it
+ *   the `ok` and `running` runs of the source `superseded`. That covers the runs of every pinned day; with a --days subset it
  *   also covers the runs of the other days, whose rows the truncate removes too, so the pending scan re-ingests them.
  *   Chunks read their run FOR SHARE, so a chunk either commits before the wipe or finds its run superseded.
- * - It never writes, updates, deletes or truncates price_events (R180a), never writes the map tables, and only reads
+ * - It never writes, updates, deletes or truncates price_events, never writes the map tables, and only reads
  *   the raw snapshot files.
  *
  * Identical means the three digests and the three movers checks are equal, all taken in the same order, at a fixed
- * (day set, map build, code sha) (R180c): the replay normalizes with the current map build and epochs.
+ * (day set, map build, code sha): the replay normalizes with the current map build and epochs.
  */
 final class Replay
 {
-    /** The derived tables a fresh replay truncates; never price_events (R180a). */
+    /** The derived tables a fresh replay truncates; never price_events. */
     public const array WIPED_TABLES = ['price_points', 'price_daily', 'price_latest', 'price_movers', 'movement_volume'];
 
     public const string NO_DAYS = 'no collected days';

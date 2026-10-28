@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Alerts;
 
 /**
- * Why the address guard refused a URL (plan P5-i1 D6): scheme (not https, and not an allow-listed http host:port),
+ * Why the address guard refused a URL: scheme (not https, and not an allow-listed http host:port),
  * invalid (malformed, user-info, a fragment, a host that is not a plain name or a canonical address), too_long (over
  * 2048 bytes), blocked_address, unresolvable. The value is what a delivery stores as last_error.
  */

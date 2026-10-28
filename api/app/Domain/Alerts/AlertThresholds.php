@@ -8,7 +8,7 @@ use Illuminate\Database\ConnectionInterface;
 use Illuminate\Validation\ValidationException;
 
 /**
- * The alert threshold of one of a person's watchlist rows (plan P5-i1 T05, D9): a whole percentage from
+ * The alert threshold of one of a person's watchlist rows: a whole percentage from
  * MovementRule::alertFloor() to MAX, or none. The caller has validated the key's shape and the percentage.
  */
 final class AlertThresholds

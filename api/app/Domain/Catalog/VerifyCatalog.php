@@ -15,7 +15,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Checks every card the product map holds against the PokéSearch catalog (plan T45, F-P1-031, R129 queue half).
+ * Checks every card the product map holds against the PokéSearch catalog (the queue half of the catalog check).
  *
  * Queued when a catalog read sees a seed ref other than the remembered one (CatalogRepository) and after each
  * pokeprices:map:build. The distinct card_variants.card_id values go to GET /api/v1/cards?ids= in chunks of 100;
@@ -29,8 +29,7 @@ use Illuminate\Support\Facades\DB;
  * breaker's prefix: the job is released, and after five failures within 30 s further runs are released
  * without calling PokéSearch until the 30 s are over.
  *
- * Timeout 80 s, below the redis queue's retry_after (90 s); three tries, as the worker's --tries gave it before (plan
- * Q1-i1 T02, review b b4: attributes only).
+ * Timeout 80 s, below the redis queue's retry_after (90 s); three tries, as the worker's --tries gave it before (attributes only).
  */
 #[Tries(3)]
 #[Timeout(80)]

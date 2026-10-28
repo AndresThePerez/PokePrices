@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * One daily candle of a variant (plan P2-i1 T02, D3). A filled row repeats the last real close (n_obs 0,
+ * One daily candle of a variant. A filled row repeats the last real close (n_obs 0,
  * filled_from that day, at most 14 days back). The key is (variant_key, source, day); a save or delete matches all
  * three. Money stays a decimal string, never a float.
  *

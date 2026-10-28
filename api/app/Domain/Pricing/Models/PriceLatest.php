@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * The latest real close of a variant with its previous close and change (plan P2-i1 T05, D4, D5). The table is
+ * The latest real close of a variant with its previous close and change. The table is
  * derived: LatestPrices::rebuild() rewrites it inside every ingest finalize, so the model only reads. The key is
  * (variant_key, source). Money and change_pct stay decimal strings, never floats.
  *

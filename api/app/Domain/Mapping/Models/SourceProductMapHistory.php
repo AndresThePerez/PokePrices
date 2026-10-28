@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Attributes\Table;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * An ended mapping epoch (plan T36, R131). Append-only: the database refuses UPDATE and DELETE.
+ * An ended mapping epoch. Append-only: the database refuses UPDATE and DELETE.
  *
  * @property int $id
  * @property string $source

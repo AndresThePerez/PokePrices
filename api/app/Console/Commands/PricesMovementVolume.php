@@ -16,14 +16,14 @@ use Illuminate\Support\Facades\DB;
 use stdClass;
 
 /**
- * Measures the PokéPrices movement volume (plan P2-i1 T13 items 5 and 6): rewrites movement_volume for every day
- * price_daily holds, from price_daily only (never from price_events), under the `pricing:ingest` lock (D12), and
+ * Measures the PokéPrices movement volume: rewrites movement_volume for every day
+ * price_daily holds, from price_daily only (never from price_events), under the `pricing:ingest` lock, and
  * prints a JSON summary. --markdown writes the measurement document: the days, the map build and its epochs, one
  * table per rule, the per-rule mean crossings per day and the comparison with the planner's raw pre-measure.
  *
  * A relative --markdown path is taken from the working directory, as any shell path is: run from the repository
  * root (`exec -w /workspace api php api/artisan ...`), `--markdown docs/measurements/movement-volume.md` writes the
- * committed file. Nothing here reaches above base_path() on its own (R160).
+ * committed file. Nothing here reaches above base_path() on its own.
  */
 #[Description('Measure how many PokéPrices daily closes cross each movement rule per collected day, from price_daily, into movement_volume.')]
 #[Signature('pokeprices:prices:movement-volume

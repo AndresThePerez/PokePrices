@@ -10,7 +10,7 @@ use Laravel\Fortify\Contracts\FailedPasswordResetLinkRequestResponse;
 use Laravel\Fortify\Contracts\SuccessfulPasswordResetLinkRequestResponse;
 
 /**
- * The enumeration-safe answer to POST /forgot-password (plan P4-i1 D2): the same 200 body whatever the broker says
+ * The enumeration-safe answer to POST /forgot-password: the same 200 body whatever the broker says
  * (sent, unknown user, throttled), so a reset request never reveals whether an account exists. A malformed email
  * still fails validation (422) before the broker runs.
  */

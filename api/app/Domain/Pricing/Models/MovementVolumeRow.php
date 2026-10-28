@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\Table;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * One measured (day, source, rule) of movement_volume (plan P2-i1 T13 item 5). The table is derived from price_daily
+ * One measured (day, source, rule) of movement_volume. The table is derived from price_daily
  * by MovementVolume::rebuild() (in every finalize and in pokeprices:prices:movement-volume), so the model only reads.
  *
  * @property CarbonImmutable $day

@@ -9,8 +9,8 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * One ranked mover as GET /v1/movers answers it (plan P2-i1 T12, D7): the variant with its card id, the card's name, set
- * name and number from the PokéSearch catalog or null (P3-i1 T08), finish, edition and treatment, its close, the
+ * One ranked mover as GET /v1/movers answers it: the variant with its card id, the card's name, set
+ * name and number from the PokéSearch catalog or null, finish, edition and treatment, its close, the
  * previous close it is compared with, and the change.
  * Money and change_pct are decimal strings with two decimals as Postgres numeric(12,2) gives them.
  *

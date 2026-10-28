@@ -7,7 +7,7 @@ namespace App\Domain\Alerts;
 use InvalidArgumentException;
 
 /**
- * A Standard Webhooks signing secret (plan P5-i1 D5): whsec_ followed by 32 random bytes, base64-encoded. The HMAC
+ * A Standard Webhooks signing secret: whsec_ followed by 32 random bytes, base64-encoded. The HMAC
  * key is the decoded part after the prefix. A secret is shown to its owner once and never logged.
  */
 final class WebhookSecret

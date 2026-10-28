@@ -1,4 +1,4 @@
-// The root boundary (Q1-i2 T01): a page that throws while it renders takes only itself down. It sits
+// The root boundary: a page that throws while it renders takes only itself down. It sits
 // inside #content around the routes, so the banner, the skip target and the footer stay mounted,
 // and its fallback is the page's one main: a short sentence and a link that loads the page again.
 // It is plain content (no live region, no status) and it clears once the pathname changes.

@@ -8,7 +8,7 @@ use App\Domain\Pricing\PricingConfig;
 use stdClass;
 
 /**
- * The Standard Webhooks body of a price.moved message (plan P5-i1 D4, D11). Every value comes from one price_events
+ * The Standard Webhooks body of a price.moved message. Every value comes from one price_events
  * row verbatim: money and change_pct are the database's numeric(12,2) text, never a float; timestamp and as_of are
  * the event's as_of (the data's own instant, never the send time). card is the PokéSearch catalog name, or null
  * when the catalog read had none. The body is stored and resent byte for byte, so its key order is fixed here.

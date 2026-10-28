@@ -9,8 +9,7 @@ use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * Credentials travel in the request body only (plan P5-i1 D9; the P4 carry-forward on ?password=; plan Q1-i1 T04,
- * review a1). A password, password_confirmation or current_password in the query string is removed from every
+ * Credentials travel in the request body only (the carry-forward on ?password=). A password, password_confirmation or current_password in the query string is removed from every
  * request, and a write (any method but GET or HEAD) to a credential-bearing endpoint loses its whole query string,
  * so an invite code, a two-factor code, a recovery code, a reset token or a remember flag that travels only in the
  * URL counts for nothing: POST /register?invite_code=… answers 422 errors.invite_code, POST /login?remember=1 mints

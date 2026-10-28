@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Pricing;
 
 /**
- * The one place PokéPrices reads config/pricing.php's source, feed, queue and movers limit (Q1-i4 T03), and the
+ * The one place PokéPrices reads config/pricing.php's source, feed, queue and movers limit, and the
  * provenance every price-shaped answer carries: source and feed from config, market basis, USD. CADENCE is the
  * cadence the card prices, the price block and the price.moved payload state; the movers and portfolio meta do not.
  */
@@ -37,7 +37,7 @@ final class PricingConfig
 
     /**
      * The movers price_movers keeps per day and direction, and so the most a request may ask for: pricing.movers.limit,
-     * read as AccountLimits reads its knobs (Q1-i5 T03). A knob that is not an integer, or is below 1, gives 50; a knob
+     * read as AccountLimits reads its knobs. A knob that is not an integer, or is below 1, gives 50; a knob
      * above 50 is clamped to 50, so the value is always in [1, 50].
      *
      * @return int<1, 50>

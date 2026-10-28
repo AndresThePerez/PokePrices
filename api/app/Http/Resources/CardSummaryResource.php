@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * One search hit as GET /v1/cards lists it (plan T44, review-1 rec 12): nine catalog fields, nothing else.
+ * One search hit as GET /v1/cards lists it: nine catalog fields, nothing else.
  *
  * PokéSearch's highlights, matched branches, facets, query DSL and timing never reach a client, and neither
  * does any hit field beyond these nine. rarity is null when PokéSearch omits it.

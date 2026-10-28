@@ -12,20 +12,20 @@ use Illuminate\Support\Facades\Schedule;
 
 Schedule::job(new ProbeJob('scheduler'), PricingConfig::queue(), 'redis')->everyMinute()->name('pokeprices-probe');
 
-// The pending price scan (plan P2-i1 T08, R177(5)): hourly at :40, a no-op unless a collected day needs work.
+// The pending price scan: hourly at :40, a no-op unless a collected day needs work.
 Schedule::job(new IngestPending, PricingConfig::queue(), 'redis')->hourlyAt(40)->withoutOverlapping()->name('pokeprices-ingest-pending');
 
-// The freshness log line (plan P2-i1 T10, D8): hourly, info within the 26 h SLO, warning when breached.
+// The freshness log line: hourly, info within the 26 h SLO, warning when breached.
 Schedule::job(new LogFreshness, PricingConfig::queue(), 'redis')->hourly()->name('pokeprices-freshness');
 
-// The alerts dispatch (plan P5-i1 T01, D2, D8): every five minutes, price.moved deliveries of the deliverable day.
+// The alerts dispatch: every five minutes, price.moved deliveries of the deliverable day.
 Schedule::job(new DispatchEvents, PricingConfig::queue(), 'redis')->everyFiveMinutes()->withoutOverlapping()->name('pokeprices-alerts-dispatch');
 
-// The delivery sweep (plan P5-i1 T02, D7, D8): every minute, due deliveries sent in-line within the sweep caps.
+// The delivery sweep: every minute, due deliveries sent in-line within the sweep caps.
 Schedule::job(new DeliverDue, PricingConfig::queue(), 'redis')->everyMinute()->withoutOverlapping()->name('pokeprices-deliveries');
 
-// Queue bookkeeping (plan Q1-i5 T06, HG-45 #1): failed jobs are kept 30 days (720 h), then pruned once a day.
+// Queue bookkeeping: failed jobs are kept 30 days (720 h), then pruned once a day.
 Schedule::command('queue:prune-failed --hours=720')->daily()->name('pokeprices-prune-failed');
 
-// Queue bookkeeping (plan Q1-i5 T06, HG-45 #1): job batches are kept 30 days (720 h), then pruned once a day.
+// Queue bookkeeping: job batches are kept 30 days (720 h), then pruned once a day.
 Schedule::command('queue:prune-batches --hours=720')->daily()->name('pokeprices-prune-batches');

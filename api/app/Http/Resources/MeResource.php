@@ -9,7 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * The signed-in account as GET /v1/me answers it (plan P4-i1 D6): exactly email, email_verified, two_factor (true
+ * The signed-in account as GET /v1/me answers it: exactly email, email_verified, two_factor (true
  * once two-factor authentication is confirmed) and read_only (the demo account). Never any other user field.
  */
 final class MeResource extends JsonResource

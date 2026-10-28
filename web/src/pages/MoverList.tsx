@@ -1,7 +1,7 @@
-// The PokéPrices movers list (D3, D10, D11), shared by the /movers board and the home page's
-// biggest-moves strip. Every rank, name, day and amount is the API's (R132): a row's direction
+// The PokéPrices movers list, shared by the /movers board and the home page's
+// biggest-moves strip. Every rank, name, day and amount is the API's: a row's direction
 // comes from the sign of its change string, never from change_pct, and nothing reads the clock.
-// The strip is a static ticker: no marquee, no animation; it changes only when a D9 poll brings
+// The strip is a static ticker: no marquee, no animation; it changes only when a poll brings
 // a new answer.
 import { useId } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -141,7 +141,7 @@ export default function MoverList({
 
 function StripLoaded({ up, down }: { readonly up: MoversPage; readonly down: MoversPage }) {
   // The two directions are separate, separately polled requests: one stamp for the section only
-  // while both answers carry the same day, else one per sub-list (review F-P3-05).
+  // while both answers carry the same day, else one per sub-list.
   const sameDay = up.meta.day === down.meta.day;
   const hasRows = up.data.length > 0 || down.data.length > 0;
   return (
@@ -171,8 +171,8 @@ function StripLoaded({ up, down }: { readonly up: MoversPage; readonly down: Mov
 }
 
 /**
- * The home page's "Biggest moves vs previous close" strip (T10): the top five rises and falls of
- * the newest movers day, polled like every query (D9). A failed poll keeps the last good answer;
+ * The home page's "Biggest moves vs previous close" strip: the top five rises and falls of
+ * the newest movers day, polled like every query. A failed poll keeps the last good answer;
  * the Problem block shows only while a direction has never answered.
  */
 export function BiggestMoves() {

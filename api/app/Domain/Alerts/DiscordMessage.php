@@ -7,14 +7,14 @@ namespace App\Domain\Alerts;
 use stdClass;
 
 /**
- * Discord as a notification channel (plan P5-i1 D4, D6, D13; T03). A Discord webhook receives plain text in the
+ * Discord as a notification channel. A Discord webhook receives plain text in the
  * envelope {"content", "username", "allowed_mentions"} (mentions off), with no signature headers. Content over
  * Discord's 2000 characters is cut on a line boundary and ends with a "…and <k> more" line. A Discord webhook URL is
  * https on one of the four Discord hosts with the path /api/webhooks/<id>/<token> and nothing else; it carries a
  * token, so it is stored encrypted and never shown, logged or echoed.
  *
- * moveLine() renders one move of a price_events row as the digest does (D4), so the live switch's test message
- * (pokeprices:alerts:discord-test) shows real closes with their source and day; T06's renderer shares the rule.
+ * moveLine() renders one move of a price_events row as the digest does, so the live switch's test message
+ * (pokeprices:alerts:discord-test) shows real closes with their source and day; the email renderer shares the rule.
  */
 final class DiscordMessage
 {

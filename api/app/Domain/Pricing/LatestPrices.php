@@ -7,7 +7,7 @@ namespace App\Domain\Pricing;
 use Illuminate\Database\ConnectionInterface;
 
 /**
- * Rebuilds price_latest from price_daily (plan P2-i1 T05 item 2, D4, D5; Q1-i3 T04). It runs inside the ingest finalize
+ * Rebuilds price_latest from price_daily. It runs inside the ingest finalize
  * transaction, after the rollup, and recomputes, with one set-based statement, the newest real (never filled) candle of
  * each variant of a set S with its previous close:
  *

@@ -8,10 +8,10 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * One variant on the watchlist as GET /v1/watchlist lists it (plan P4-i1 D6): the variant, its card's name, set name
+ * One variant on the watchlist as GET /v1/watchlist lists it: the variant, its card's name, set name
  * and number from the PokéSearch catalog (null when PokéSearch does not have the id or is unavailable without a last
  * good copy), the card page's price block from price_latest (null without a close in the collected snapshots) and,
- * last, its alert threshold in whole percent (plan P5-i1 D9; null when no alert is set). Holdings share fields(),
+ * last, its alert threshold in whole percent (null when no alert is set). Holdings share fields(),
  * which has no alert_pct.
  */
 final class WatchlistItemResource extends JsonResource

@@ -16,12 +16,12 @@ use Illuminate\Support\Sleep;
 use Throwable;
 
 /**
- * Records the pokemontcg.io price oracle for one collected day, once (plan T41 item 1, F-P1-010, F-P1-011).
+ * Records the pokemontcg.io price oracle for one collected day, once.
  *
  * Keyless GETs of every cards page with the PokéPrices user agent, at least 2 s apart; a page answered with a 5xx,
  * an HTML body or a body that is not a cards page is retried up to 5 times, 2 s apart. Each page body is written
  * verbatim to <oracle root>/<day>/cards-NNN.json and the run to fetch.json. The run must start inside
- * [marker, marker+24h) of the collected day; --allow-late lifts the upper bound and records late: true (DC2 then
+ * [marker, marker+24h) of the collected day; --allow-late lifts the upper bound and records late: true (the oracle comparison then
  * reports a fetch-window violation). It refuses inside a gate run (GATES_OUT set), never overwrites a recorded
  * day and never deletes a file. This command is run by hand by the operator, never by a test or a gate.
  */

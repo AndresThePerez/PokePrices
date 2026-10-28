@@ -7,7 +7,7 @@ namespace App\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
-/** The answer to PUT /v1/watchlist/{variantKey} (plan P4-i1 D6): the variant key now on the watchlist. */
+/** The answer to PUT /v1/watchlist/{variantKey}: the variant key now on the watchlist. */
 final class WatchlistEntryResource extends JsonResource
 {
     public function __construct(private readonly string $variantKey)

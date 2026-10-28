@@ -13,13 +13,13 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * One card as GET /v1/cards/{id} answers it (plan T43, review-1 rec 12): the PokéSearch card fields PokéPrices
+ * One card as GET /v1/cards/{id} answers it: the PokéSearch card fields PokéPrices
  * shows, its set and images, the PokéPrices variants with their current source mappings and their latest daily
- * close (price, P2-i1 T05), and the provenance of the catalog that answered.
+ * close (price), and the provenance of the catalog that answered.
  *
  * Image URLs are passed through as PokéSearch sends them (OQ4: the SPA rewrites them). hp, rarity and artist
  * are null and subtypes and types empty when PokéSearch omits them. catalog.status is the variant rows' catalog
- * check (T45): catalog_missing when any row is flagged, ok when every row is verified, otherwise (and for a card
+ * check: catalog_missing when any row is flagged, ok when every row is verified, otherwise (and for a card
  * without rows) unverified.
  */
 final class CardResource extends JsonResource

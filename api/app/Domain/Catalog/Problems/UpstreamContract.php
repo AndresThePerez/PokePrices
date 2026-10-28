@@ -8,7 +8,7 @@ use App\Domain\ProblemType;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Throwable;
 
-/** PokéSearch answered outside its contract (unexpected status or shape): 502 upstream-contract (F-P1-027). */
+/** PokéSearch answered outside its contract (unexpected status or shape): 502 upstream-contract. */
 final class UpstreamContract extends HttpException implements ProblemType
 {
     public function __construct(string $message = 'PokéSearch answered outside its contract.', ?Throwable $previous = null)

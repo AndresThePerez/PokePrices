@@ -1,4 +1,4 @@
-// The two-factor section of /account (D10, T04): off with `Turn on`; the password prompt when
+// The two-factor section of /account: off with `Turn on`; the password prompt when
 // Fortify answers 423; the setup step (QR code, setup key, authentication code, Confirm); on with
 // `Show new recovery codes` and `Turn off`; the recovery codes, shown once right after confirming
 // or regenerating. The QR code, the setup key and the codes live in this component's state only,
@@ -26,7 +26,7 @@ import { ME_KEY } from './session';
 
 const CONTEXT = 'Could not change two-factor authentication';
 
-/** The one named exemption from the lightOnly rule (review F-P4-10): a white quiet zone for scanners in both themes. */
+/** The one named exemption from the lightOnly rule: a white quiet zone for scanners in both themes. */
 const QR_BOX = 'inline-block bg-white p-4';
 
 interface Setup {

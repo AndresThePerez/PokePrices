@@ -10,7 +10,7 @@ use Illuminate\Http\Request;
 use RuntimeException;
 
 /**
- * The alert rate tiers (plan P5-i1 D9, D14), per minute from config/alerts.php rate_limits, one named limiter each,
+ * The alert rate tiers, per minute from config/alerts.php rate_limits, one named limiter each,
  * keyed user:<id>: webhook-test (POST /v1/webhooks/{id}/test). A 429 is the existing problem too-many-requests with
  * Retry-After. Registered like App\Domain\Accounts\AccountRateLimits, on every RateLimiter the container builds.
  */

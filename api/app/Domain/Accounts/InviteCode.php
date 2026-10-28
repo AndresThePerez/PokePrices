@@ -7,7 +7,7 @@ namespace App\Domain\Accounts;
 use Illuminate\Validation\ValidationException;
 
 /**
- * Invite-only registration (plan P4-i1 D3, R208). The code is configuration (INVITE_CODE), never a committed value.
+ * Invite-only registration. The code is configuration (INVITE_CODE), never a committed value.
  *
  * A submitted value that is not a non-empty string fails without a comparison; otherwise hash_equals against the
  * configured code, and only a non-empty configured string can match. The check runs before anything else of the

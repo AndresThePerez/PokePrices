@@ -10,8 +10,8 @@ use Illuminate\Http\Request;
 use RuntimeException;
 
 /**
- * The PokéPrices rate tiers (plan T44, S8): one named limiter per tier in config/rate_limits.php, which ships
- * inside api/ with the app (R160).
+ * The PokéPrices rate tiers: one named limiter per tier in config/rate_limits.php, which ships
+ * inside api/ with the app.
  *
  * Each tier is ['per_minute' => n, 'by' => 'ip']; routes opt in with throttle:<tier>. A request over the limit
  * gets ThrottleRequestsException, which ProblemDetails answers as 429 too-many-requests with Retry-After.

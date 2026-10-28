@@ -1,6 +1,6 @@
-// The PokéPrices movers board: /movers over GET /v1/movers?direction=&limit=50 (T09). It shows the
-// newest movers day only, with one scope line and one "as of" line for the whole list (D11): the
-// stamp is the caption of the sticky Direction bar (D2), so it stays beside the rows as they scroll.
+// The PokéPrices movers board: /movers over GET /v1/movers?direction=&limit=50. It shows the
+// newest movers day only, with one scope line and one "as of" line for the whole list: the
+// stamp is the caption of the sticky Direction bar, so it stays beside the rows as they scroll.
 import { useQuery } from '@tanstack/react-query';
 import { getMovers, type ApiFailure, type MoversDirection, type MoversPage } from '../api/client';
 import { unwrap } from '../query';

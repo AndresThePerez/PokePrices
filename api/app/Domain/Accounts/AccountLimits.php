@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace App\Domain\Accounts;
 
 /**
- * The account list limits (plan P4-i1 D5) from config/accounts.php limits, and the messages a full list or an
- * unknown variant answers with (422 errors.variant_key, D6).
+ * The account list limits from config/accounts.php limits, and the messages a full list or an
+ * unknown variant answers with (422 errors.variant_key).
  */
 final class AccountLimits
 {
@@ -25,7 +25,7 @@ final class AccountLimits
         return self::read('portfolio', 100);
     }
 
-    /** The most a holding may hold: the database checks 1 to 9999, so a knob above it is clamped to 9999 (Q1-i4 T03). */
+    /** The most a holding may hold: the database checks 1 to 9999, so a knob above it is clamped to 9999. */
     public static function quantityMax(): int
     {
         return min(self::read('quantity_max', self::QUANTITY_CEILING), self::QUANTITY_CEILING);

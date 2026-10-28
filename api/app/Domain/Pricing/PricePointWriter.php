@@ -8,7 +8,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\ConnectionInterface;
 
 /**
- * Upserts one chunk of normalized price rows into price_points with one multi-row statement (plan P2-i1 T04 item 4).
+ * Upserts one chunk of normalized price rows into price_points with one multi-row statement.
  * A conflicting row is rewritten only when a stored value differs, so the RETURNING count is the rows inserted or
  * changed (`upserted`); the rest of the chunk's rows were already stored as they are (`unchanged`). The caller keeps
  * a chunk at config('pricing.chunk_rows') rows (200), and the reader's de-duplication means no statement ever carries

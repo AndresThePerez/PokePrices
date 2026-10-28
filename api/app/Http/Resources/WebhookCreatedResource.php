@@ -8,7 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
- * The 201 answer to POST /v1/webhooks (plan P5-i1 D5, D9): the new webhook as GET /v1/webhooks lists it, plus its
+ * The 201 answer to POST /v1/webhooks: the new webhook as GET /v1/webhooks lists it, plus its
  * signing secret (whsec_…) for a signed webhook, null for Discord. The only answer that ever carries the secret.
  */
 final class WebhookCreatedResource extends JsonResource

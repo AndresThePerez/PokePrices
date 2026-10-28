@@ -9,8 +9,8 @@ use App\Domain\Pricing\PriceColumns;
 use App\Domain\Pricing\PricingConfig;
 
 /**
- * The price block of a variant (P2-i1 T05, D4, D5), shared by the card page (CardResource) and the watchlist and
- * portfolio (plan P4-i1 T05, D6): its latest TCGplayer close via TCGCSV with the previous close and change, or null
+ * The price block of a variant, shared by the card page (CardResource) and the watchlist and
+ * portfolio: its latest TCGplayer close via TCGCSV with the previous close and change, or null
  * when the collected snapshots hold no close for it. Money and change_pct are decimal strings with two decimals as
  * Postgres numeric(12,2) gives them; day and previous_day are YYYY-MM-DD and as_of (the snapshot marker of the close)
  * is RFC 3339 UTC.

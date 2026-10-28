@@ -10,7 +10,7 @@ use Illuminate\Console\Attributes\Signature;
 use Illuminate\Console\Command;
 
 /**
- * Prints the freshness of the PokéPrices prices (plan P2-i1 T10 item 2, D8): one line
+ * Prints the freshness of the PokéPrices prices: one line
  * `tcgplayer via tcgcsv: as of <as_of>, <age_hours> h old, SLO 26 h: ok` (or BREACHED), or
  * `tcgplayer via tcgcsv: no prices ingested`; --json prints GET /v1/prices/freshness's data object instead. It exits 0
  * only within the SLO. BREACHED is the metric working: no newer collected day was ingested in time.

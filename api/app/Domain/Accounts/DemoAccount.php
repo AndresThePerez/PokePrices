@@ -12,7 +12,7 @@ use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
- * The read-only demo account (plan P4-i1 D8, R209), configured in config/accounts.php demo: whether it may be
+ * The read-only demo account, configured in config/accounts.php demo: whether it may be
  * entered, its email, its optional password (DEMO_PASSWORD, never committed) and the watchlist and portfolio it is
  * seeded with. seed() is idempotent: one demo user (is_demo, verified, no two-factor) holding exactly the configured
  * rows whose variants exist in card_variants. Without DEMO_PASSWORD the demo gets a random 40-character password that

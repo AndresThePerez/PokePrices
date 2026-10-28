@@ -8,11 +8,11 @@ use App\Domain\Pricing\Models\IngestRun;
 use Carbon\CarbonImmutable;
 
 /**
- * The freshness metric of the source's prices (plan P2-i1 T10, D8; ADR draft 0001 "schedule and freshness").
+ * The freshness metric of the source's prices (ADR draft 0001 "schedule and freshness").
  *
  * - as_of is the newest marker among the source's ingest runs with status ok (any mode, replay included); a
  *   superseded, failed, refused, running or skipped_unchanged run never moves it. day is that run's day, the marker's
- *   UTC date (D1).
+ *   UTC date.
  * - age_hours is (measured_at - as_of) in hours, shown with one decimal, rounded half up from the unrounded age.
  * - within_slo is judged on the unrounded age: unrounded < freshness.slo_hours (26). 25.96 h is within the SLO and
  *   shows 26.0; 26.00 h is not. The display never decides the SLO.
