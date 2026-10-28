@@ -4,14 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Domain\Accounts\AccountLimits;
 use App\Domain\Accounts\VariantKey;
 use App\Domain\Alerts\AlertThresholds;
-use App\Domain\Pricing\MovementRule;
+use App\Http\Requests\PutAlertRequest;
 use App\Http\Resources\AlertResource;
 use App\Models\User;
 use Dedoc\Scramble\Attributes\Group;
-use Illuminate\Http\Request;
+use Illuminate\Container\Attributes\CurrentUser;
 use Illuminate\Http\Response;
 use Illuminate\Validation\ValidationException;
 
@@ -29,24 +28,10 @@ final class AlertController
      *
      * @throws ValidationException 422 errors.variant_key or errors.pct
      */
-    public function put(Request $request, string $variantKey): AlertResource
+    public function put(PutAlertRequest $request, #[CurrentUser] User $user, string $variantKey): AlertResource
     {
-        // The key's shape is checked before any query (plan P4-i1 D5).
-        if (! VariantKey::isValid($variantKey)) {
-            throw ValidationException::withMessages(['variant_key' => [AccountLimits::UNKNOWN_VARIANT]]);
-        }
-        // The floor comes from the movement rule; every refusal of pct shows the same range.
-        $message = 'Choose a whole percentage from '.MovementRule::alertFloor().' to '.AlertThresholds::MAX.'.';
-        $request->validate([
-            'pct' => ['bail', 'required', 'integer:strict', 'min:'.MovementRule::alertFloor(), 'max:'.AlertThresholds::MAX],
-        ], [
-            'pct.required' => $message,
-            'pct.integer' => $message,
-            'pct.min' => $message,
-            'pct.max' => $message,
-        ]);
-        $pct = $request->integer('pct');
-        $this->thresholds->set(self::userId($request), $variantKey, $pct);
+        $pct = $request->pct();
+        $this->thresholds->set($user->id, $variantKey, $pct);
 
         return new AlertResource($variantKey, $pct);
     }
@@ -58,21 +43,12 @@ final class AlertController
      *
      * @operationId deleteAlert
      */
-    public function destroy(Request $request, string $variantKey): Response
+    public function destroy(#[CurrentUser] User $user, string $variantKey): Response
     {
         if (VariantKey::isValid($variantKey)) {
-            $this->thresholds->clear(self::userId($request), $variantKey);
+            $this->thresholds->clear($user->id, $variantKey);
         }
 
         return response()->noContent();
-    }
-
-    /** auth:sanctum on the account group has already answered 401 to a signed-out request. */
-    private static function userId(Request $request): int
-    {
-        /** @var User $user */
-        $user = $request->user();
-
-        return $user->id;
     }
 }

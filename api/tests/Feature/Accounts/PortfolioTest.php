@@ -327,3 +327,41 @@ it('never lets a quantity_max above the database\'s 9999 reach Postgres: 9999 is
         ->and(array_keys($over->json('errors')))->toBe(['quantity'])
         ->and(AccountRows::held($user))->toBe(['ex5-17:reverse:-:-' => 9999]);
 });
+
+it('characterises every PUT /v1/portfolio refusal: the exact errors object, and no query for a malformed key (Q1-i4 T05)', function (string $path, array $body, array $errors, bool $malformed): void {
+    $user = Accounts::user();
+    AccountRows::variant('ex5-17:reverse:-:-');
+    AccountRows::signIn($this, $user);
+    $queries = [];
+    DB::listen(function (QueryExecuted $query) use (&$queries): void {
+        if (! preg_match('/\bfrom\s+"?users"?\b/i', $query->sql)) {
+            $queries[] = $query->sql;
+        }
+    });
+
+    $response = pfPut($this, $user, $path, $body);
+    $during = $queries;
+
+    expect($response->getStatusCode())->toBe(422)
+        ->and($response->json('type'))->toBe(ProblemDetails::BASE.'validation-failed')
+        ->and($response->json('errors'))->toBe($errors)
+        ->and(AccountRows::held($user))->toBe([]);
+    if ($malformed) {
+        expect($during)->toBe([]);
+    }
+})->with([
+    'malformed key' => ['base1-4:foil:-:-', ['quantity' => 1], ['variant_key' => ['PokéPrices has no variant with this key.']], true],
+    'malformed key, quantity missing' => ['NOT A KEY', [], ['variant_key' => ['PokéPrices has no variant with this key.']], true],
+    'malformed key, quantity a string' => ['base1-4', ['quantity' => 'abc'], ['variant_key' => ['PokéPrices has no variant with this key.']], true],
+    'malformed key, quantity 0' => ['base1-4:holo:-', ['quantity' => 0], ['variant_key' => ['PokéPrices has no variant with this key.']], true],
+    'quantity missing' => ['ex5-17:reverse:-:-', [], ['quantity' => ['The quantity field is required.']], false],
+    'quantity null' => ['ex5-17:reverse:-:-', ['quantity' => null], ['quantity' => ['The quantity field is required.']], false],
+    'quantity a string' => ['ex5-17:reverse:-:-', ['quantity' => 'abc'], ['quantity' => ['The quantity field must be an integer.']], false],
+    'quantity a numeric string' => ['ex5-17:reverse:-:-', ['quantity' => '3'], ['quantity' => ['The quantity field must be an integer.']], false],
+    'quantity a float' => ['ex5-17:reverse:-:-', ['quantity' => 1.5], ['quantity' => ['The quantity field must be an integer.']], false],
+    'quantity true' => ['ex5-17:reverse:-:-', ['quantity' => true], ['quantity' => ['The quantity field must be an integer.']], false],
+    'quantity a list' => ['ex5-17:reverse:-:-', ['quantity' => [3]], ['quantity' => ['The quantity field must be an integer.']], false],
+    'quantity 0' => ['ex5-17:reverse:-:-', ['quantity' => 0], ['quantity' => ['The quantity field must be at least 1.']], false],
+    'quantity -1' => ['ex5-17:reverse:-:-', ['quantity' => -1], ['quantity' => ['The quantity field must be at least 1.']], false],
+    'quantity 10000' => ['ex5-17:reverse:-:-', ['quantity' => 10000], ['quantity' => ['The quantity field must not be greater than 9999.']], false],
+]);

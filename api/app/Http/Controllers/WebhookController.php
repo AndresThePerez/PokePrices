@@ -8,16 +8,16 @@ use App\Domain\Alerts\AlertLimits;
 use App\Domain\Alerts\TestMessage;
 use App\Domain\Alerts\WebhookEndpoints;
 use App\Domain\Alerts\WebhookSecret;
+use App\Http\Requests\StoreWebhookRequest;
 use App\Http\Resources\WebhookCreatedResource;
 use App\Http\Resources\WebhookEndpointResource;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Dedoc\Scramble\Attributes\Group;
+use Illuminate\Container\Attributes\CurrentUser;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 #[Group('Account', 'The signed-in PokéPrices account (cookie session; sign in through the session endpoints first).')]
@@ -32,9 +32,9 @@ final class WebhookController
      *
      * @operationId getWebhooks
      */
-    public function index(Request $request): AnonymousResourceCollection
+    public function index(#[CurrentUser] User $user): AnonymousResourceCollection
     {
-        $rows = $this->endpoints->rows(self::userId($request));
+        $rows = $this->endpoints->rows($user->id);
 
         return WebhookEndpointResource::collection(array_map(fn (array $row): WebhookEndpointResource => new WebhookEndpointResource($row), $rows))
             ->additional(['meta' => [
@@ -52,25 +52,11 @@ final class WebhookController
      *
      * @throws ValidationException 422 errors.kind, errors.url or errors.description
      */
-    public function store(Request $request): JsonResponse
+    public function store(StoreWebhookRequest $request, #[CurrentUser] User $user): JsonResponse
     {
-        $validated = $request->validate([
-            'kind' => ['bail', 'required', 'string', Rule::in(WebhookEndpoints::KINDS)],
-            'url' => ['bail', 'required', 'string'],
-            'description' => ['bail', 'nullable', 'string', function (string $attribute, mixed $value, callable $fail): void {
-                if (! mb_check_encoding((string) $value, 'UTF-8')) {
-                    $fail('A description must be UTF-8 text.');
-                }
-            }, 'min:1', 'max:100', 'not_regex:/[\p{Cc}\x{200E}\x{200F}\x{202A}-\x{202E}\x{2066}-\x{2069}]/u'],
-        ], [
-            'description.not_regex' => 'A description cannot hold control or text-direction characters.',
-            'kind.required' => WebhookEndpoints::KIND,
-            'kind.string' => WebhookEndpoints::KIND,
-            'kind.in' => WebhookEndpoints::KIND,
-        ]);
-        $kind = (string) $validated['kind'];
-        $url = (string) $validated['url'];
-        $description = isset($validated['description']) ? (string) $validated['description'] : null;
+        $kind = $request->kind();
+        $url = $request->url();
+        $description = $request->description();
 
         // The address guard resolves DNS, so it runs before the per-user lock is taken.
         [$error, $hint] = $this->endpoints->check($kind, $url);
@@ -78,10 +64,9 @@ final class WebhookController
             throw ValidationException::withMessages(['url' => [$error ?? WebhookEndpoints::HTTPS]]);
         }
 
-        $userId = self::userId($request);
         $secret = $kind === 'standard' ? WebhookSecret::generate() : null;
-        $created = $this->endpoints->create($userId, $kind, $url, $hint, $description, $secret, CarbonImmutable::now());
-        $rows = $this->endpoints->rows($userId, $created);
+        $created = $this->endpoints->create($user->id, $kind, $url, $hint, $description, $secret, CarbonImmutable::now());
+        $rows = $this->endpoints->rows($user->id, $created);
 
         return (new WebhookCreatedResource($rows[0], $secret))->response()->setStatusCode(201);
     }
@@ -93,9 +78,9 @@ final class WebhookController
      *
      * @operationId deleteWebhook
      */
-    public function destroy(Request $request, string $id): Response
+    public function destroy(#[CurrentUser] User $user, string $id): Response
     {
-        $this->endpoints->delete(self::userId($request), (int) $id);
+        $this->endpoints->delete($user->id, (int) $id);
 
         return response()->noContent();
     }
@@ -107,20 +92,11 @@ final class WebhookController
      *
      * @operationId testWebhook
      */
-    public function test(Request $request, string $id): JsonResponse
+    public function test(#[CurrentUser] User $user, string $id): JsonResponse
     {
-        $endpoint = $this->endpoints->testable(self::userId($request), (int) $id);
+        $endpoint = $this->endpoints->testable($user->id, (int) $id);
         $delivery = TestMessage::queue($endpoint);
 
         return response()->json(['data' => ['message_id' => $delivery->message_id]], 202);
-    }
-
-    /** auth:sanctum on the account group has already answered 401 to a signed-out request. */
-    private static function userId(Request $request): int
-    {
-        /** @var User $user */
-        $user = $request->user();
-
-        return $user->id;
     }
 }

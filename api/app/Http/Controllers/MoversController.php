@@ -7,12 +7,11 @@ namespace App\Http\Controllers;
 use App\Domain\Catalog\CatalogRepository;
 use App\Domain\Pricing\Movers;
 use App\Domain\Pricing\PricingConfig;
+use App\Http\Requests\MoversRequest;
 use App\Http\Resources\MoverResource;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Database\ConnectionInterface;
-use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Validation\Rule;
 
 #[Group('Prices', 'Daily TCGplayer market prices via TCGCSV and their freshness.')]
 final class MoversController
@@ -26,15 +25,10 @@ final class MoversController
      *
      * @operationId getMovers
      */
-    public function __invoke(Request $request, CatalogRepository $catalog): AnonymousResourceCollection
+    public function __invoke(MoversRequest $request, CatalogRepository $catalog): AnonymousResourceCollection
     {
-        // limit stops at the rows price_movers keeps per day and direction (PricingConfig::moversLimit(), D9).
-        $validated = $request->validate([
-            'direction' => ['sometimes', 'required', 'string', Rule::in(['up', 'down'])],
-            'limit' => ['sometimes', 'required', 'integer', 'min:1', 'max:'.PricingConfig::moversLimit()],
-        ]);
-        $direction = isset($validated['direction']) ? (string) $validated['direction'] : 'up';
-        $limit = isset($validated['limit']) ? (int) $validated['limit'] : PricingConfig::defaultMoversLimit();
+        $direction = $request->direction();
+        $limit = $request->limit();
         $source = PricingConfig::source();
 
         // Query 1 of 2: the newest movers day and the snapshot marker stored with its rows (review F9, R181(5), Q1-i3 T04).

@@ -11,6 +11,7 @@ use App\Http\Resources\MeResource;
 use App\Models\User;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Auth\RequestGuard;
+use Illuminate\Container\Attributes\CurrentUser;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
@@ -28,10 +29,10 @@ final class MeController
      *
      * @operationId getMe
      */
-    public function __invoke(Request $request): MeResource
+    public function __invoke(#[CurrentUser] User $user): MeResource
     {
         // auth:sanctum on the account group has already answered 401 to a signed-out request.
-        return new MeResource(self::user($request));
+        return new MeResource($user);
     }
 
     /**
@@ -48,12 +49,12 @@ final class MeController
      *
      * @operationId exportMe
      */
-    public function export(Request $request, AccountExport $export): AccountExportResource
+    public function export(Request $request, AccountExport $export, #[CurrentUser] User $user): AccountExportResource
     {
         // The session id narrows the demo's session records to the caller's own (Q0-i1 T02); without one, none.
         $sessionId = $request->hasSession() ? $request->session()->getId() : null;
 
-        return new AccountExportResource($export->of(self::user($request), $sessionId));
+        return new AccountExportResource($export->of($user, $sessionId));
     }
 
     /**
@@ -68,12 +69,12 @@ final class MeController
      *
      * @throws ValidationException 422 errors.password for a missing or wrong password
      */
-    public function deletion(Request $request, AccountDeletion $deletion): Response
+    public function deletion(Request $request, AccountDeletion $deletion, #[CurrentUser] User $user): Response
     {
         // bail: a non-string password never reaches the hash check (review F-P4-05: 422, never a TypeError 500).
         $request->validate(['password' => ['bail', 'required', 'string', 'current_password:web']]);
 
-        $deletion->delete(self::user($request));
+        $deletion->delete($user);
 
         // The current device only: the user row is gone, so there is no remember token to cycle.
         Auth::guard('web')->logoutCurrentDevice();
@@ -90,14 +91,5 @@ final class MeController
         }
 
         return response()->noContent();
-    }
-
-    /** auth:sanctum on the account group has already answered 401 to a signed-out request. */
-    private static function user(Request $request): User
-    {
-        /** @var User $user */
-        $user = $request->user();
-
-        return $user;
     }
 }

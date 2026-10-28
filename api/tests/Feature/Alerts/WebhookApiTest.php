@@ -495,3 +495,27 @@ it('accepts a description with accented letters and emoji', function (string $de
     'a ZWJ emoji sequence' => ["Family \u{1F468}\u{200D}\u{1F469}\u{200D}\u{1F467}"],
     'right-to-left letters without controls' => ['תראה מחיר'],
 ]);
+
+it('characterises every POST /v1/webhooks field refusal: the exact errors object, in field order (Q1-i4 T05)', function (array $body, array $errors): void {
+    $response = t3Store($this, Accounts::user(), $body);
+
+    expect($response->getStatusCode())->toBe(422)
+        ->and($response->json('type'))->toBe(ProblemDetails::BASE.'validation-failed')
+        ->and($response->json('errors'))->toBe($errors)
+        ->and(DB::table('webhook_endpoints')->count())->toBe(0);
+})->with([
+    'nothing' => [[], ['kind' => ['Choose a signed webhook or Discord.'], 'url' => ['The url field is required.']]],
+    'kind missing' => [['url' => T3_URL], ['kind' => ['Choose a signed webhook or Discord.']]],
+    'kind slack' => [['kind' => 'slack', 'url' => T3_URL], ['kind' => ['Choose a signed webhook or Discord.']]],
+    'kind a list' => [['kind' => ['standard'], 'url' => T3_URL], ['kind' => ['Choose a signed webhook or Discord.']]],
+    'url missing' => [['kind' => 'standard'], ['url' => ['The url field is required.']]],
+    'url a number' => [['kind' => 'standard', 'url' => 12345], ['url' => ['The url field must be a string.']]],
+    'description a number' => [['kind' => 'standard', 'url' => T3_URL, 'description' => 5], ['description' => ['The description field must be a string.']]],
+    'description of 101 characters' => [['kind' => 'standard', 'url' => T3_URL, 'description' => str_repeat('a', 101)], ['description' => ['The description field must not be greater than 100 characters.']]],
+    'description with a control character' => [['kind' => 'standard', 'url' => T3_URL, 'description' => "a\tb"], ['description' => ['A description cannot hold control or text-direction characters.']]],
+    'every field bad' => [['kind' => 'slack', 'url' => 5, 'description' => str_repeat('a', 101)], [
+        'kind' => ['Choose a signed webhook or Discord.'],
+        'url' => ['The url field must be a string.'],
+        'description' => ['The description field must not be greater than 100 characters.'],
+    ]],
+]);

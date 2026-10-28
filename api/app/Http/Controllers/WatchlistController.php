@@ -6,14 +6,14 @@ namespace App\Http\Controllers;
 
 use App\Domain\Accounts\AccountLimits;
 use App\Domain\Accounts\CardNames;
-use App\Domain\Accounts\VariantKey;
 use App\Domain\Accounts\Watchlist;
 use App\Domain\Catalog\CatalogRepository;
 use App\Http\Resources\WatchlistEntryResource;
 use App\Http\Resources\WatchlistItemResource;
+use App\Http\Rules\ValidVariantKey;
 use App\Models\User;
 use Dedoc\Scramble\Attributes\Group;
-use Illuminate\Http\Request;
+use Illuminate\Container\Attributes\CurrentUser;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Validation\ValidationException;
@@ -30,9 +30,9 @@ final class WatchlistController
      *
      * @operationId getWatchlist
      */
-    public function index(Request $request, CatalogRepository $catalog): AnonymousResourceCollection
+    public function index(#[CurrentUser] User $user, CatalogRepository $catalog): AnonymousResourceCollection
     {
-        $rows = $this->watchlist->items(self::userId($request));
+        $rows = $this->watchlist->items($user->id);
         $names = CardNames::attach($rows, $catalog);
 
         return WatchlistItemResource::collection($names['rows'])->additional(['meta' => [
@@ -51,13 +51,11 @@ final class WatchlistController
      *
      * @throws ValidationException 422 errors.variant_key for an unknown key or a full list
      */
-    public function put(Request $request, string $variantKey): WatchlistEntryResource
+    public function put(#[CurrentUser] User $user, string $variantKey): WatchlistEntryResource
     {
         // The key's shape is checked before any query (plan P4-i1 D5).
-        if (! VariantKey::isValid($variantKey)) {
-            throw ValidationException::withMessages(['variant_key' => [AccountLimits::UNKNOWN_VARIANT]]);
-        }
-        $this->watchlist->add(self::userId($request), $variantKey);
+        ValidVariantKey::check($variantKey);
+        $this->watchlist->add($user->id, $variantKey);
 
         return new WatchlistEntryResource($variantKey);
     }
@@ -69,19 +67,10 @@ final class WatchlistController
      *
      * @operationId deleteWatchlistItem
      */
-    public function destroy(Request $request, string $variantKey): Response
+    public function destroy(#[CurrentUser] User $user, string $variantKey): Response
     {
-        $this->watchlist->remove(self::userId($request), $variantKey);
+        $this->watchlist->remove($user->id, $variantKey);
 
         return response()->noContent();
-    }
-
-    /** auth:sanctum on the account group has already answered 401 to a signed-out request. */
-    private static function userId(Request $request): int
-    {
-        /** @var User $user */
-        $user = $request->user();
-
-        return $user->id;
     }
 }

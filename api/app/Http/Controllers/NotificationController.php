@@ -9,6 +9,7 @@ use App\Http\Resources\NotificationSettingsResource;
 use App\Models\User;
 use Carbon\CarbonImmutable;
 use Dedoc\Scramble\Attributes\Group;
+use Illuminate\Container\Attributes\CurrentUser;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -25,9 +26,9 @@ final class NotificationController
      *
      * @operationId getNotifications
      */
-    public function show(Request $request): NotificationSettingsResource
+    public function show(#[CurrentUser] User $user): NotificationSettingsResource
     {
-        return new NotificationSettingsResource($this->settings->of(self::userId($request)));
+        return new NotificationSettingsResource($this->settings->of($user->id));
     }
 
     /**
@@ -39,7 +40,7 @@ final class NotificationController
      *
      * @throws ValidationException 422 errors.channel or errors.digest
      */
-    public function put(Request $request): NotificationSettingsResource
+    public function put(Request $request, #[CurrentUser] User $user): NotificationSettingsResource
     {
         $validated = $request->validate([
             'channel' => ['bail', 'required', 'string', Rule::in(NotificationSettings::CHANNELS)],
@@ -51,19 +52,8 @@ final class NotificationController
             'digest.required' => NotificationSettings::DIGEST,
             'digest.boolean' => NotificationSettings::DIGEST,
         ]);
-        $userId = self::userId($request);
+        $this->settings->save($user->id, (string) $validated['channel'], $validated['digest'] === true, CarbonImmutable::now());
 
-        $this->settings->save($userId, (string) $validated['channel'], $validated['digest'] === true, CarbonImmutable::now());
-
-        return new NotificationSettingsResource($this->settings->of($userId));
-    }
-
-    /** auth:sanctum on the account group has already answered 401 to a signed-out request. */
-    private static function userId(Request $request): int
-    {
-        /** @var User $user */
-        $user = $request->user();
-
-        return $user->id;
+        return new NotificationSettingsResource($this->settings->of($user->id));
     }
 }

@@ -275,3 +275,40 @@ it('documents the putAlert pct as a whole number from 5 to 100 in the committed 
         ->and($body['properties'])->toBe(['pct' => ['type' => 'integer', 'minimum' => 5, 'maximum' => 100]])
         ->and($body['required'])->toBe(['pct']);
 });
+
+it('characterises every PUT /v1/alerts refusal: the exact errors object, and no query for a malformed key (Q1-i4 T05)', function (string $path, array $body, array $errors, bool $malformed): void {
+    $user = Accounts::user();
+    AccountRows::watch($user, T5_KEY);
+    AccountRows::signIn($this, $user);
+    $queries = [];
+    DB::listen(function (QueryExecuted $query) use (&$queries): void {
+        if (! preg_match('/\bfrom\s+"?users"?\b/i', $query->sql)) {
+            $queries[] = $query->sql;
+        }
+    });
+
+    $response = t5Put($this, $user, $path, $body);
+    $during = $queries;
+
+    expect($response->getStatusCode())->toBe(422)
+        ->and($response->json('type'))->toBe(ProblemDetails::BASE.'validation-failed')
+        ->and($response->json('errors'))->toBe($errors)
+        ->and(t5Thresholds($user))->toBe([T5_KEY => null]);
+    if ($malformed) {
+        expect($during)->toBe([]);
+    }
+})->with([
+    'malformed key' => ['base1-4:foil:-:-', ['pct' => 10], ['variant_key' => ['PokéPrices has no variant with this key.']], true],
+    'malformed key, pct missing' => ['NOT A KEY', [], ['variant_key' => ['PokéPrices has no variant with this key.']], true],
+    'malformed key, pct a string' => ['base1-4', ['pct' => 'ten'], ['variant_key' => ['PokéPrices has no variant with this key.']], true],
+    'malformed key, pct 101' => ['base1-4:holo:-', ['pct' => 101], ['variant_key' => ['PokéPrices has no variant with this key.']], true],
+    'pct missing' => [T5_KEY, [], ['pct' => [T5_PCT]], false],
+    'pct null' => [T5_KEY, ['pct' => null], ['pct' => [T5_PCT]], false],
+    'pct a string' => [T5_KEY, ['pct' => 'ten'], ['pct' => [T5_PCT]], false],
+    'pct a numeric string' => [T5_KEY, ['pct' => '10'], ['pct' => [T5_PCT]], false],
+    'pct a float' => [T5_KEY, ['pct' => 7.5], ['pct' => [T5_PCT]], false],
+    'pct a list' => [T5_KEY, ['pct' => [10]], ['pct' => [T5_PCT]], false],
+    'pct 4' => [T5_KEY, ['pct' => 4], ['pct' => [T5_PCT]], false],
+    'pct 101' => [T5_KEY, ['pct' => 101], ['pct' => [T5_PCT]], false],
+    'a key not on the list, pct 101' => [T5_OTHER_KEY, ['pct' => 101], ['pct' => [T5_PCT]], false],
+]);

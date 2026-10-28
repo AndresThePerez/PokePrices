@@ -7,14 +7,14 @@ namespace App\Http\Controllers;
 use App\Domain\Accounts\AccountLimits;
 use App\Domain\Accounts\CardNames;
 use App\Domain\Accounts\Portfolio;
-use App\Domain\Accounts\VariantKey;
 use App\Domain\Catalog\CatalogRepository;
 use App\Domain\Pricing\PricingConfig;
+use App\Http\Requests\PutQuantityRequest;
 use App\Http\Resources\HoldingEntryResource;
 use App\Http\Resources\HoldingResource;
 use App\Models\User;
 use Dedoc\Scramble\Attributes\Group;
-use Illuminate\Http\Request;
+use Illuminate\Container\Attributes\CurrentUser;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
 use Illuminate\Validation\ValidationException;
@@ -31,9 +31,9 @@ final class PortfolioController
      *
      * @operationId getPortfolio
      */
-    public function index(Request $request, CatalogRepository $catalog): AnonymousResourceCollection
+    public function index(#[CurrentUser] User $user, CatalogRepository $catalog): AnonymousResourceCollection
     {
-        $holdings = $this->portfolio->holdings(self::userId($request));
+        $holdings = $this->portfolio->holdings($user->id);
         $rows = $holdings['rows'];
         $names = CardNames::attach($rows, $catalog);
         $priced = count(array_filter($rows, fn (array $row): bool => ($row['price_variant_key'] ?? null) !== null));
@@ -63,17 +63,10 @@ final class PortfolioController
      *
      * @throws ValidationException 422 errors.variant_key for an unknown key or a full list
      */
-    public function put(Request $request, string $variantKey): HoldingEntryResource
+    public function put(PutQuantityRequest $request, #[CurrentUser] User $user, string $variantKey): HoldingEntryResource
     {
-        // The key's shape is checked before any query (plan P4-i1 D5).
-        if (! VariantKey::isValid($variantKey)) {
-            throw ValidationException::withMessages(['variant_key' => [AccountLimits::UNKNOWN_VARIANT]]);
-        }
-        $validated = $request->validate([
-            'quantity' => ['required', 'integer:strict', 'min:1', 'max:'.AccountLimits::quantityMax()],
-        ]);
-        $quantity = (int) $validated['quantity'];
-        $this->portfolio->set(self::userId($request), $variantKey, $quantity);
+        $quantity = $request->quantity();
+        $this->portfolio->set($user->id, $variantKey, $quantity);
 
         return new HoldingEntryResource($variantKey, $quantity);
     }
@@ -85,19 +78,10 @@ final class PortfolioController
      *
      * @operationId deleteHolding
      */
-    public function destroy(Request $request, string $variantKey): Response
+    public function destroy(#[CurrentUser] User $user, string $variantKey): Response
     {
-        $this->portfolio->remove(self::userId($request), $variantKey);
+        $this->portfolio->remove($user->id, $variantKey);
 
         return response()->noContent();
-    }
-
-    /** auth:sanctum on the account group has already answered 401 to a signed-out request. */
-    private static function userId(Request $request): int
-    {
-        /** @var User $user */
-        $user = $request->user();
-
-        return $user->id;
     }
 }

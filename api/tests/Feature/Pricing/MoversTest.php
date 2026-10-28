@@ -504,3 +504,24 @@ it('caps limit at pricing.movers.limit: with 10, limit=10 answers 200 and limit=
         ->and($eleven->json('type'))->toBe(ProblemDetails::BASE.'validation-failed')
         ->and(array_keys($eleven->json('errors')))->toBe(['limit']);
 });
+
+it('characterises every GET /v1/movers refusal: the exact errors object (Q1-i4 T05)', function (string $query, array $errors): void {
+    $response = $this->getJson("/v1/movers?{$query}");
+
+    expect($response->getStatusCode())->toBe(422)
+        ->and($response->json('type'))->toBe(ProblemDetails::BASE.'validation-failed')
+        ->and($response->json('errors'))->toBe($errors);
+})->with([
+    'direction sideways' => ['direction=sideways', ['direction' => ['The selected direction is invalid.']]],
+    'direction empty' => ['direction=', ['direction' => ['The direction field is required.']]],
+    'direction a list' => ['direction[]=up', ['direction' => ['The direction field must be a string.', 'The selected direction is invalid.']]],
+    'limit empty' => ['limit=', ['limit' => ['The limit field is required.']]],
+    'limit ten' => ['limit=ten', ['limit' => ['The limit field must be an integer.']]],
+    'limit 1.5' => ['limit=1.5', ['limit' => ['The limit field must be an integer.']]],
+    'limit 0' => ['limit=0', ['limit' => ['The limit field must be at least 1.']]],
+    'limit 51' => ['limit=51', ['limit' => ['The limit field must not be greater than 50.']]],
+    'both bad' => ['direction=UP&limit=51', [
+        'direction' => ['The selected direction is invalid.'],
+        'limit' => ['The limit field must not be greater than 50.'],
+    ]],
+]);
