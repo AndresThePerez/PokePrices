@@ -215,3 +215,44 @@ it('answers GET /v1/movers?limit=50 with 200 under a knob of 0, and refuses 51 u
         ->and($over->getStatusCode())->toBe(422)
         ->and(array_keys($over->json('errors')))->toBe(['limit']);
 });
+
+it('keeps pricing.movers.limit in [1, 50] for the knobs nobody tried: a float, a bool, an array, a million, a missing key and the edge of the keep', function (mixed $knob, int $expected): void {
+    config(['pricing.movers.limit' => $knob]);
+
+    expect(PricingConfig::moversLimit())->toBe($expected)
+        ->and(PricingConfig::defaultMoversLimit())->toBe(min(20, $expected));
+})->with([
+    'a float with a fraction' => [30.5, 50],
+    'a whole float' => [30.0, 50],
+    'true' => [true, 50],
+    'false' => [false, 50],
+    'an empty array' => [[], 50],
+    'a million' => [1_000_000_000, 50],
+    'int min' => [PHP_INT_MIN, 50],
+    'fifty-one' => [51, 50],
+    'forty-nine' => [49, 49],
+    'twenty' => [20, 20],
+    'twenty-one' => [21, 21],
+    'nineteen' => [19, 19],
+    'five' => [5, 5],
+]);
+
+it('lets a request ask for exactly the clamped knob and no more: a knob of 5 answers limit=5 with 200 and limit=6 with 422, and a knob of 80 stops at 50', function (): void {
+    config(['pricing.movers.limit' => 5]);
+    $five = $this->getJson('/v1/movers?limit=5');
+    $six = $this->getJson('/v1/movers?limit=6');
+    $none = $this->getJson('/v1/movers');
+    config(['pricing.movers.limit' => 80]);
+    $fifty = $this->getJson('/v1/movers?limit=50');
+    $over = $this->getJson('/v1/movers?limit=51');
+
+    expect($five->getStatusCode())->toBe(200)
+        ->and($five->json('meta.limit'))->toBe(5)
+        ->and($six->getStatusCode())->toBe(422)
+        ->and(array_keys($six->json('errors')))->toBe(['limit'])
+        ->and($none->json('meta.limit'))->toBe(5)
+        ->and($fifty->getStatusCode())->toBe(200)
+        ->and($fifty->json('meta.limit'))->toBe(50)
+        ->and($over->getStatusCode())->toBe(422)
+        ->and($over->json('errors.limit'))->toBe(['The limit field must not be greater than 50.']);
+});
