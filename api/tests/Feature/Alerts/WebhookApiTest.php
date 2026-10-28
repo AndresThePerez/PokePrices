@@ -249,7 +249,7 @@ it('holds the per-user lock across the count, so a concurrent registration at th
         }
         $outcome = 'counting';
         try {
-            $result = WebhookEndpoints::create($rival, $user->id, 'standard', T3_URL, 'https://hooks.example.com/…', null, AlertRows::secret(), CarbonImmutable::now());
+            $result = (new WebhookEndpoints(app(UrlGuard::class), $rival))->create($user->id, 'standard', T3_URL, 'https://hooks.example.com/…', null, AlertRows::secret(), CarbonImmutable::now());
             $outcome = 'rival finished: '.var_export($result, true);
         } catch (QueryException $e) {
             $outcome = (string) $e->getCode();

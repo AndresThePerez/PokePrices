@@ -5,21 +5,20 @@ declare(strict_types=1);
 namespace App\Domain\Alerts;
 
 /**
- * The address guard's answer for one URL (plan P5-i1 D6). error is null when the URL may be requested, else one of
- * scheme (not https, and not an allow-listed http host:port), invalid (malformed, user-info, a fragment, a host
- * that is not a plain name or a canonical address), too_long (over 2048 bytes), blocked_address, unresolvable.
+ * The address guard's answer for one URL (plan P5-i1 D6). error is null when the URL may be requested, else the
+ * GuardError that says why it was refused.
  * address is the approved address to pin, or null for an allow-listed host:port (which is never resolved).
  */
 final readonly class GuardResult
 {
     public function __construct(
-        public ?string $error,
+        public ?GuardError $error,
         public string $host = '',
         public int $port = 0,
         public ?string $address = null,
     ) {}
 
-    public static function refused(string $error): self
+    public static function refused(GuardError $error): self
     {
         return new self($error);
     }

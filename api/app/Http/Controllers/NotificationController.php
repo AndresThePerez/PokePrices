@@ -10,13 +10,14 @@ use App\Models\User;
 use Carbon\CarbonImmutable;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 #[Group('Account', 'The signed-in PokéPrices account (cookie session; sign in through the session endpoints first).')]
 final class NotificationController
 {
+    public function __construct(private readonly NotificationSettings $settings) {}
+
     /**
      * Read where alerts go.
      *
@@ -26,7 +27,7 @@ final class NotificationController
      */
     public function show(Request $request): NotificationSettingsResource
     {
-        return new NotificationSettingsResource(NotificationSettings::of(DB::connection(), self::userId($request)));
+        return new NotificationSettingsResource($this->settings->of(self::userId($request)));
     }
 
     /**
@@ -52,12 +53,9 @@ final class NotificationController
         ]);
         $userId = self::userId($request);
 
-        $error = NotificationSettings::save(DB::connection(), $userId, (string) $validated['channel'], $validated['digest'] === true, CarbonImmutable::now());
-        if ($error !== null) {
-            throw ValidationException::withMessages(['channel' => [$error]]);
-        }
+        $this->settings->save($userId, (string) $validated['channel'], $validated['digest'] === true, CarbonImmutable::now());
 
-        return new NotificationSettingsResource(NotificationSettings::of(DB::connection(), $userId));
+        return new NotificationSettingsResource($this->settings->of($userId));
     }
 
     /** auth:sanctum on the account group has already answered 401 to a signed-out request. */

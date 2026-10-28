@@ -126,8 +126,8 @@ it('refuses the first, last and an inside address of every block, as a literal a
         FakeHostResolver::install(['hooks.example.com' => [$address]]);
         $guard = app(UrlGuard::class);
 
-        expect($guard->check("https://{$literal}/hook")->error)->toBe('blocked_address', "literal {$label}")
-            ->and($guard->check('https://hooks.example.com/hook')->error)->toBe('blocked_address', "resolved {$label}");
+        expect($guard->check("https://{$literal}/hook")->error?->value)->toBe('blocked_address', "literal {$label}")
+            ->and($guard->check('https://hooks.example.com/hook')->error?->value)->toBe('blocked_address', "resolved {$label}");
     }
 });
 
@@ -144,7 +144,7 @@ it('allows the IPv4 addresses just outside each block unless another block cover
                 continue;
             }
             $expected = p5Covered($neighbour) ? 'blocked_address' : null;
-            expect($guard->check('https://'.p5Literal($neighbour).'/hook')->error)->toBe($expected, $block.' neighbour '.inet_ntop($neighbour));
+            expect($guard->check('https://'.p5Literal($neighbour).'/hook')->error?->value)->toBe($expected, $block.' neighbour '.inet_ntop($neighbour));
             $checked++;
         }
     }
@@ -178,7 +178,7 @@ it('refuses a host when any one of its addresses is blocked', function (string $
     $answers = $blockedFirst ? [$blocked, '203.0.113.10'] : ['203.0.113.10', $blocked];
     $resolver = FakeHostResolver::install(['hooks.example.com' => $answers]);
 
-    expect(app(UrlGuard::class)->check('https://hooks.example.com/hook')->error)->toBe('blocked_address')
+    expect(app(UrlGuard::class)->check('https://hooks.example.com/hook')->error?->value)->toBe('blocked_address')
         ->and($resolver->asked)->toBe(['hooks.example.com']);
 })->with([
     'loopback second' => ['127/8', false],
@@ -189,13 +189,13 @@ it('refuses a host when any one of its addresses is blocked', function (string $
 it('answers unresolvable when the host has no address', function (): void {
     FakeHostResolver::install([]);
 
-    expect(app(UrlGuard::class)->check('https://nowhere.example.com/hook')->error)->toBe('unresolvable');
+    expect(app(UrlGuard::class)->check('https://nowhere.example.com/hook')->error?->value)->toBe('unresolvable');
 });
 
 it('refuses the IPv6 loopback, mapped, NAT64 and link-local literals', function (string $url): void {
     FakeHostResolver::install([]);
 
-    expect(app(UrlGuard::class)->check($url)->error)->toBe('blocked_address');
+    expect(app(UrlGuard::class)->check($url)->error?->value)->toBe('blocked_address');
 })->with([
     'loopback' => ['https://[::1]/hook'],
     'mapped loopback' => ['https://[::ffff:7f00:1]/hook'],
@@ -207,14 +207,14 @@ it('refuses the IPv4 literal forms that curl would read as loopback, without res
     $resolver = FakeHostResolver::install([$host => ['203.0.113.10']]);
     $result = app(UrlGuard::class)->check("https://{$host}/hook");
 
-    expect($result->error)->toBe('blocked_address')
+    expect($result->error?->value)->toBe('blocked_address')
         ->and($resolver->asked)->toBe([]);
 })->with(['2130706433', '0x7f000001', '017700000001', '127.1', '0177.0.0.1', '127.0.0.1.']);
 
 it('refuses plain http, user-info, a fragment, an overlong URL and malformed URLs', function (string $url, string $error): void {
     p5PublicResolver();
 
-    expect(app(UrlGuard::class)->check($url)->error)->toBe($error);
+    expect(app(UrlGuard::class)->check($url)->error?->value)->toBe($error);
 })->with([
     'http' => ['http://hooks.example.com/hook', 'scheme'],
     'ftp' => ['ftp://hooks.example.com/hook', 'scheme'],
@@ -255,10 +255,10 @@ it('lets an allow-listed host:port through without resolution, over http only on
         ->and($resolver->asked)->toBe([])
         ->and($guard->check('http://API:8096/hook')->error)->toBeNull()
         ->and($guard->check('https://api:8096/hook')->error)->toBeNull()
-        ->and($guard->check('http://api:8097/hook')->error)->toBe('scheme')
-        ->and($guard->check('http://api/hook')->error)->toBe('scheme')
-        ->and($guard->check('https://api:8097/hook')->error)->toBe('unresolvable')
-        ->and($guard->check('http://api:8096@hooks.example.com/hook')->error)->toBe('invalid')
+        ->and($guard->check('http://api:8097/hook')->error?->value)->toBe('scheme')
+        ->and($guard->check('http://api/hook')->error?->value)->toBe('scheme')
+        ->and($guard->check('https://api:8097/hook')->error?->value)->toBe('unresolvable')
+        ->and($guard->check('http://api:8096@hooks.example.com/hook')->error?->value)->toBe('invalid')
         ->and($guard->check('http://api.:8096/hook')->error)->not->toBeNull();
 });
 
@@ -316,8 +316,8 @@ it('refuses the IPv6 addresses outside global unicast or inside the IETF protoco
     FakeHostResolver::install(['hooks.example.com' => [$address]]);
     $guard = app(UrlGuard::class);
 
-    expect($guard->check("https://[{$address}]/hook")->error)->toBe('blocked_address')
-        ->and($guard->check('https://hooks.example.com/hook')->error)->toBe('blocked_address');
+    expect($guard->check("https://[{$address}]/hook")->error?->value)->toBe('blocked_address')
+        ->and($guard->check('https://hooks.example.com/hook')->error?->value)->toBe('blocked_address');
 })->with([
     'local-use NAT64' => ['64:ff9b:1::7f00:1'],
     'SIIT translated' => ['::ffff:0:7f00:1'],
@@ -347,8 +347,8 @@ it('draws the global-unicast and IETF-assignment lines exactly at their prefix e
     $guard = app(UrlGuard::class);
     $expected = $allowed ? null : 'blocked_address';
 
-    expect($guard->check("https://[{$address}]/hook")->error)->toBe($expected, "literal {$address}")
-        ->and($guard->check('https://hooks.example.com/hook')->error)->toBe($expected, "resolved {$address}")
+    expect($guard->check("https://[{$address}]/hook")->error?->value)->toBe($expected, "literal {$address}")
+        ->and($guard->check('https://hooks.example.com/hook')->error?->value)->toBe($expected, "resolved {$address}")
         ->and(UrlGuard::blocked($address))->toBe(! $allowed);
 })->with([
     'first of 2000::/3' => ['2000::', true],
@@ -388,8 +388,8 @@ it('refuses every IPv6 spelling that carries a private IPv4 target, as a literal
     FakeHostResolver::install(['hooks.example.com' => [$address]]);
     $guard = app(UrlGuard::class);
 
-    expect($guard->check("https://[{$address}]/hook")->error)->toBe('blocked_address', "literal {$address}")
-        ->and($guard->check('https://hooks.example.com/hook')->error)->toBe('blocked_address', "resolved {$address}");
+    expect($guard->check("https://[{$address}]/hook")->error?->value)->toBe('blocked_address', "literal {$address}")
+        ->and($guard->check('https://hooks.example.com/hook')->error?->value)->toBe('blocked_address', "resolved {$address}");
 })->with([
     'compatible loopback' => ['::127.0.0.1'],
     'compatible benchmarking' => ['::198.18.0.1'],
@@ -408,7 +408,7 @@ it('refuses every IPv6 spelling that carries a private IPv4 target, as a literal
 it('refuses a host when any one of its IPv6 answers is outside global unicast, wherever it sits in the list', function (array $answers): void {
     FakeHostResolver::install(['hooks.example.com' => $answers]);
 
-    expect(app(UrlGuard::class)->check('https://hooks.example.com/hook')->error)->toBe('blocked_address');
+    expect(app(UrlGuard::class)->check('https://hooks.example.com/hook')->error?->value)->toBe('blocked_address');
 })->with([
     'bad IPv6 last' => [['2606:4700::1111', '2001:db8::1', 'fec0::1']],
     'bad IPv6 first' => [['2001::1', '2606:4700::1111']],

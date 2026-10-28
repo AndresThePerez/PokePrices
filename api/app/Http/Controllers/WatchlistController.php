@@ -57,10 +57,7 @@ final class WatchlistController
         if (! VariantKey::isValid($variantKey)) {
             throw ValidationException::withMessages(['variant_key' => [AccountLimits::UNKNOWN_VARIANT]]);
         }
-        $error = $this->watchlist->add(self::userId($request), $variantKey);
-        if ($error !== null) {
-            throw ValidationException::withMessages(['variant_key' => [$error]]);
-        }
+        $this->watchlist->add(self::userId($request), $variantKey);
 
         return new WatchlistEntryResource($variantKey);
     }

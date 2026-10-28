@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Accounts;
 
 use Illuminate\Database\ConnectionInterface;
+use Illuminate\Validation\ValidationException;
 
 /**
  * A person's watchlist (plan P4-i1 D5, D6): the variants they watch, read with their latest closes in one SQL
@@ -31,30 +32,29 @@ final class Watchlist
     }
 
     /**
-     * Puts the variant on the user's watchlist. Null when it is there afterwards (added now or already there),
-     * otherwise the 422 message: the key names no variant, or the list is full.
+     * Puts the variant on the user's watchlist; nothing changes when it is already there.
+     *
+     * @throws ValidationException errors.variant_key when the key names no variant, or the list is full
      */
-    public function add(int $userId, string $variantKey): ?string
+    public function add(int $userId, string $variantKey): void
     {
         if (! VariantKey::isValid($variantKey)) {
-            return AccountLimits::UNKNOWN_VARIANT;
+            throw self::refused(AccountLimits::UNKNOWN_VARIANT);
         }
 
-        return $this->db->transaction(function () use ($userId, $variantKey): ?string {
+        $this->db->transaction(function () use ($userId, $variantKey): void {
             AccountLock::forUser($this->db, $userId);
             if (! Variants::exist($this->db, $variantKey)) {
-                return AccountLimits::UNKNOWN_VARIANT;
+                throw self::refused(AccountLimits::UNKNOWN_VARIANT);
             }
             $present = $this->db->selectOne('SELECT 1 AS present FROM watchlist_items WHERE user_id = ? AND variant_key = ?', [$userId, $variantKey], false);
             if ($present !== null) {
-                return null;
+                return;
             }
             if (Variants::count($this->db, 'watchlist_items', $userId) >= AccountLimits::watchlist()) {
-                return AccountLimits::watchlistFull();
+                throw self::refused(AccountLimits::watchlistFull());
             }
             $this->db->insert('INSERT INTO watchlist_items (user_id, variant_key) VALUES (?, ?) ON CONFLICT (user_id, variant_key) DO NOTHING', [$userId, $variantKey]);
-
-            return null;
         });
     }
 
@@ -64,5 +64,10 @@ final class Watchlist
         if (VariantKey::isValid($variantKey)) {
             $this->db->delete('DELETE FROM watchlist_items WHERE user_id = ? AND variant_key = ?', [$userId, $variantKey]);
         }
+    }
+
+    private static function refused(string $message): ValidationException
+    {
+        return ValidationException::withMessages(['variant_key' => [$message]]);
     }
 }

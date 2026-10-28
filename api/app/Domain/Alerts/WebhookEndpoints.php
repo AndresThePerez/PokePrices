@@ -5,9 +5,13 @@ declare(strict_types=1);
 namespace App\Domain\Alerts;
 
 use App\Domain\Accounts\AccountLock;
+use App\Domain\Alerts\Models\WebhookEndpoint;
+use App\Http\Problems\WebhookDisabled;
+use App\Http\Problems\WebhookNotFound;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Validation\ValidationException;
 use stdClass;
 
 /**
@@ -34,7 +38,10 @@ final class WebhookEndpoints
 
     public const array KINDS = ['standard', 'discord'];
 
-    public function __construct(private readonly UrlGuard $guard) {}
+    public function __construct(
+        private readonly UrlGuard $guard,
+        private readonly ConnectionInterface $db,
+    ) {}
 
     /**
      * Checks $url for an endpoint of $kind: [null, the url_hint] when it may be registered, else [the errors.url
@@ -51,13 +58,8 @@ final class WebhookEndpoints
             return [self::DISCORD_SHAPE, null];
         }
         $result = $this->guard->check($url);
-        if (! $result->allowed()) {
-            return [match ($result->error) {
-                'too_long' => self::TOO_LONG,
-                'blocked_address' => self::PRIVATE,
-                'unresolvable' => self::UNRESOLVABLE,
-                default => self::HTTPS,
-            }, null];
+        if ($result->error !== null) {
+            return [$result->error->message(), null];
         }
         $scheme = strtolower((string) strstr($url, '://', true));
         $port = ($scheme === 'https' && $result->port === 443) || ($scheme === 'http' && $result->port === 80) ? '' : ':'.$result->port;
@@ -71,9 +73,9 @@ final class WebhookEndpoints
      *
      * @return list<array{id: int, kind: string, url_hint: string, description: string|null, created_at: string, disabled: bool, last_delivery: array{status: string, at: string}|null}>
      */
-    public static function rows(ConnectionInterface $db, int $userId, ?int $id = null): array
+    public function rows(int $userId, ?int $id = null): array
     {
-        $rows = $db->select(<<<'SQL'
+        $rows = $this->db->select(<<<'SQL'
             SELECT w.id, w.kind, w.url_hint, w.description,
                 to_char(w.created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS created_at,
                 (w.disabled_at IS NOT NULL) AS disabled, d.status AS last_status,
@@ -105,24 +107,12 @@ final class WebhookEndpoints
         return $out;
     }
 
-    /** The errors.url message when $userId already holds the most endpoints of $kind, else null. */
-    public static function limitError(ConnectionInterface $db, int $userId, string $kind): ?string
-    {
-        $row = $db->selectOne('SELECT count(*) AS n FROM webhook_endpoints WHERE user_id = ? AND kind = ?', [$userId, $kind], false);
-        $count = $row instanceof stdClass ? (int) $row->n : 0;
-        $limit = $kind === 'discord' ? (int) config('alerts.webhooks.discord_limit', 1) : (int) config('alerts.webhooks.limit', 5);
-        if ($count < $limit) {
-            return null;
-        }
-
-        return $kind === 'discord' ? self::DISCORD_LIMIT : "You can add at most {$limit} signed webhooks.";
-    }
-
     /**
-     * Counts, then inserts, under the per-user lock: the new endpoint's id, or the errors.url limit message.
+     * Counts, then inserts, under the per-user lock: the new endpoint's id.
+     *
+     * @throws ValidationException errors.url when $userId already holds the most endpoints of $kind
      */
-    public static function create(
-        ConnectionInterface $db,
+    public function create(
         int $userId,
         string $kind,
         #[\SensitiveParameter] string $url,
@@ -130,14 +120,16 @@ final class WebhookEndpoints
         ?string $description,
         #[\SensitiveParameter] ?string $secret,
         CarbonImmutable $now,
-    ): int|string {
-        return $db->transaction(function () use ($db, $userId, $kind, $url, $urlHint, $description, $secret, $now): int|string {
-            AccountLock::forUser($db, $userId);
-            $error = self::limitError($db, $userId, $kind);
-            if ($error !== null) {
-                return $error;
+    ): int {
+        return $this->db->transaction(function () use ($userId, $kind, $url, $urlHint, $description, $secret, $now): int {
+            AccountLock::forUser($this->db, $userId);
+            $row = $this->db->selectOne('SELECT count(*) AS n FROM webhook_endpoints WHERE user_id = ? AND kind = ?', [$userId, $kind], false);
+            $count = $row instanceof stdClass ? (int) $row->n : 0;
+            $limit = $kind === 'discord' ? AlertLimits::discordWebhooks() : AlertLimits::webhooks();
+            if ($count >= $limit) {
+                throw ValidationException::withMessages(['url' => [$kind === 'discord' ? self::DISCORD_LIMIT : "You can add at most {$limit} signed webhooks."]]);
             }
-            $row = $db->selectOne(
+            $row = $this->db->selectOne(
                 'INSERT INTO webhook_endpoints (user_id, kind, url, url_hint, secret, description, created_at) VALUES (?, ?, ?, ?, ?, ?, ?::timestamptz) RETURNING id',
                 [$userId, $kind, Crypt::encryptString($url), $urlHint, $secret === null ? null : Crypt::encryptString($secret), $description, $now->utc()->format('Y-m-d H:i:sP')],
                 false,
@@ -148,17 +140,38 @@ final class WebhookEndpoints
     }
 
     /**
+     * The user's endpoint with this id, for a test message. The contract export reads the status of each refusal
+     * from its throws tag's type argument (it cannot see the status inside a called method), so each tag carries the
+     * status the exception answers with.
+     *
+     * @throws WebhookNotFound<404> when the user has no endpoint with this id
+     * @throws WebhookDisabled<409> when the endpoint is turned off
+     */
+    public function testable(int $userId, int $id): WebhookEndpoint
+    {
+        $endpoint = WebhookEndpoint::query()->whereKey($id)->where('user_id', $userId)->first();
+        if (! $endpoint instanceof WebhookEndpoint) {
+            throw new WebhookNotFound;
+        }
+        if ($endpoint->disabled_at !== null) {
+            throw new WebhookDisabled;
+        }
+
+        return $endpoint;
+    }
+
+    /**
      * Deletes the user's endpoint with this id (nothing when the user has none: another user's id changes nothing),
      * its deliveries with it (cascade), and, when it was the Discord webhook, sets the notification channel back to
      * email in the same transaction (D9, T05), under the per-user lock.
      */
-    public static function delete(ConnectionInterface $db, int $userId, int $id): void
+    public function delete(int $userId, int $id): void
     {
-        $db->transaction(function () use ($db, $userId, $id): void {
-            AccountLock::forUser($db, $userId);
-            $deleted = $db->selectOne('DELETE FROM webhook_endpoints WHERE id = ? AND user_id = ? RETURNING kind', [$id, $userId], false);
+        $this->db->transaction(function () use ($userId, $id): void {
+            AccountLock::forUser($this->db, $userId);
+            $deleted = $this->db->selectOne('DELETE FROM webhook_endpoints WHERE id = ? AND user_id = ? RETURNING kind', [$id, $userId], false);
             if ($deleted instanceof stdClass && $deleted->kind === 'discord') {
-                NotificationSettings::resetDiscord($db, $userId);
+                NotificationSettings::resetDiscord($this->db, $userId);
             }
         });
     }

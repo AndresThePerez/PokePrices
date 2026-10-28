@@ -7,6 +7,7 @@ namespace App\Domain\Alerts;
 use App\Domain\Accounts\AccountLock;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\ConnectionInterface;
+use Illuminate\Validation\ValidationException;
 use stdClass;
 
 /**
@@ -26,14 +27,16 @@ final class NotificationSettings
 
     public const string DISCORD_FIRST = 'Add a Discord webhook first.';
 
+    public function __construct(private readonly ConnectionInterface $db) {}
+
     /**
      * The person's settings and whether they have an active Discord webhook, in one statement.
      *
      * @return array{channel: string, digest: bool, discord_available: bool}
      */
-    public static function of(ConnectionInterface $db, int $userId): array
+    public function of(int $userId): array
     {
-        $row = $db->selectOne(<<<'SQL'
+        $row = $this->db->selectOne(<<<'SQL'
             SELECT COALESCE(s.channel, 'email') AS channel,
                    COALESCE(s.digest, false) AS digest,
                    EXISTS (SELECT 1 FROM webhook_endpoints e WHERE e.user_id = u.id AND e.kind = 'discord' AND e.disabled_at IS NULL) AS discord_available
@@ -48,21 +51,23 @@ final class NotificationSettings
         ];
     }
 
-    /** Saves the person's choice under the per-user lock: null when saved, else the errors.channel message. */
-    public static function save(ConnectionInterface $db, int $userId, string $channel, bool $digest, CarbonImmutable $now): ?string
+    /**
+     * Saves the person's choice under the per-user lock.
+     *
+     * @throws ValidationException errors.channel when Discord is chosen without an active Discord webhook
+     */
+    public function save(int $userId, string $channel, bool $digest, CarbonImmutable $now): void
     {
-        return $db->transaction(function () use ($db, $userId, $channel, $digest, $now): ?string {
-            AccountLock::forUser($db, $userId);
-            if ($channel === 'discord' && ! self::of($db, $userId)['discord_available']) {
-                return self::DISCORD_FIRST;
+        $this->db->transaction(function () use ($userId, $channel, $digest, $now): void {
+            AccountLock::forUser($this->db, $userId);
+            if ($channel === 'discord' && ! $this->of($userId)['discord_available']) {
+                throw ValidationException::withMessages(['channel' => [self::DISCORD_FIRST]]);
             }
-            $db->insert(
+            $this->db->insert(
                 'INSERT INTO notification_settings (user_id, channel, digest, updated_at) VALUES (?, ?, ?, ?::timestamptz)
                  ON CONFLICT (user_id) DO UPDATE SET channel = EXCLUDED.channel, digest = EXCLUDED.digest, updated_at = EXCLUDED.updated_at',
                 [$userId, $channel, $digest, $now->utc()->format('Y-m-d H:i:sP')],
             );
-
-            return null;
         });
     }
 

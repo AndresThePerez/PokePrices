@@ -147,7 +147,7 @@ it('resets the channel in the same transaction as the delete: a failing reset le
     DB::statement('CREATE TRIGGER t5_refuse_reset BEFORE UPDATE ON notification_settings FOR EACH ROW EXECUTE FUNCTION t5_refuse_reset()');
 
     // The controller's delete, called directly: an HTTP 500 is not an answer the contract documents (C3).
-    expect(fn () => WebhookEndpoints::delete(DB::connection(), $user->id, $discord))->toThrow(QueryException::class, 't5 refuses the reset');
+    expect(fn () => app(WebhookEndpoints::class)->delete($user->id, $discord))->toThrow(QueryException::class, 't5 refuses the reset');
 
     expect(DB::table('webhook_endpoints')->where('id', $discord)->exists())->toBeTrue()
         ->and(t5nRow($user))->toBe(['discord', false]);

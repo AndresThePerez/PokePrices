@@ -48,56 +48,56 @@ final class UrlGuard
     public function check(#[\SensitiveParameter] string $url): GuardResult
     {
         if (strlen($url) > self::MAX_BYTES) {
-            return GuardResult::refused('too_long');
+            return GuardResult::refused(GuardError::TooLong);
         }
         if (preg_match('/[^\x21-\x7e]|\\\\/', $url) === 1 || preg_match(self::URL, $url, $m) !== 1) {
-            return GuardResult::refused('invalid');
+            return GuardResult::refused(GuardError::Invalid);
         }
         $scheme = strtolower($m['scheme']);
         if ($scheme !== 'https' && $scheme !== 'http') {
-            return GuardResult::refused('scheme');
+            return GuardResult::refused(GuardError::Scheme);
         }
         if (isset($m['fragment'])) {
-            return GuardResult::refused('invalid');
+            return GuardResult::refused(GuardError::Invalid);
         }
         $authority = $m['authority'];
         if ($authority === '' || str_contains($authority, '@')) {
-            return GuardResult::refused('invalid');
+            return GuardResult::refused(GuardError::Invalid);
         }
         if (preg_match('~^(?<host>\[[^\]]*\]|[^:\[\]]+)(?::(?<port>[0-9]{1,5}))?$~D', $authority, $a) !== 1) {
-            return GuardResult::refused('invalid');
+            return GuardResult::refused(GuardError::Invalid);
         }
         $host = strtolower($a['host']);
         $port = isset($a['port']) ? (int) $a['port'] : ($scheme === 'https' ? 443 : 80);
         if ($port < 1 || $port > 65535) {
-            return GuardResult::refused('invalid');
+            return GuardResult::refused(GuardError::Invalid);
         }
 
         if (in_array("{$host}:{$port}", self::allowList(), true)) {
             return new GuardResult(null, $host, $port, null);
         }
         if ($scheme !== 'https') {
-            return GuardResult::refused('scheme');
+            return GuardResult::refused(GuardError::Scheme);
         }
 
         $literal = self::literal($host);
         if ($literal === false) {
-            return GuardResult::refused('invalid');
+            return GuardResult::refused(GuardError::Invalid);
         }
         if ($literal === 'refused') {
-            return GuardResult::refused('blocked_address');
+            return GuardResult::refused(GuardError::BlockedAddress);
         }
         if ($literal !== null) {
-            return self::blocked($literal) ? GuardResult::refused('blocked_address') : new GuardResult(null, $host, $port, $literal);
+            return self::blocked($literal) ? GuardResult::refused(GuardError::BlockedAddress) : new GuardResult(null, $host, $port, $literal);
         }
 
         $addresses = $this->resolver->resolve($host);
         if ($addresses === []) {
-            return GuardResult::refused('unresolvable');
+            return GuardResult::refused(GuardError::Unresolvable);
         }
         foreach ($addresses as $address) {
             if (inet_pton($address) === false || self::blocked($address)) {
-                return GuardResult::refused('blocked_address');
+                return GuardResult::refused(GuardError::BlockedAddress);
             }
         }
 

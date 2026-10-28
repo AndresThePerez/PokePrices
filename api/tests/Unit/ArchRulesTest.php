@@ -103,6 +103,8 @@ test('the deliverable-day predicate, the payload, the models and the dispatch jo
 arch('alert code is strict-typed, final classes in App\Domain\Alerts')
     ->expect('App\Domain\Alerts')
     ->toBeClasses()
+    // ignoring() reaches only the expectation before it: GuardError is an enum, so not a class.
+    ->ignoring('App\Domain\Alerts\GuardError')
     ->toUseStrictTypes()
     ->toBeFinal()
-    ->ignoring('App\Domain\Alerts\HostResolver');
+    ->ignoring(['App\Domain\Alerts\HostResolver', 'App\Domain\Alerts\GuardError']);

@@ -75,10 +75,7 @@ final class PortfolioController
             'quantity' => ['required', 'integer:strict', 'min:1', 'max:9999'],
         ]);
         $quantity = (int) $validated['quantity'];
-        $error = $this->portfolio->set(self::userId($request), $variantKey, $quantity);
-        if ($error !== null) {
-            throw ValidationException::withMessages(['variant_key' => [$error]]);
-        }
+        $this->portfolio->set(self::userId($request), $variantKey, $quantity);
 
         return new HoldingEntryResource($variantKey, $quantity);
     }

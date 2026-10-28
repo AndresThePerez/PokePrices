@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
-use App\Domain\Alerts\Models\WebhookEndpoint;
+use App\Domain\Alerts\AlertLimits;
 use App\Domain\Alerts\TestMessage;
 use App\Domain\Alerts\WebhookEndpoints;
 use App\Domain\Alerts\WebhookSecret;
-use App\Http\Problems\WebhookDisabled;
-use App\Http\Problems\WebhookNotFound;
 use App\Http\Resources\WebhookCreatedResource;
 use App\Http\Resources\WebhookEndpointResource;
 use App\Models\User;
@@ -19,7 +17,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Http\Response;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
@@ -37,12 +34,12 @@ final class WebhookController
      */
     public function index(Request $request): AnonymousResourceCollection
     {
-        $rows = WebhookEndpoints::rows(DB::connection(), self::userId($request));
+        $rows = $this->endpoints->rows(self::userId($request));
 
         return WebhookEndpointResource::collection(array_map(fn (array $row): WebhookEndpointResource => new WebhookEndpointResource($row), $rows))
             ->additional(['meta' => [
                 'count' => count($rows),
-                'limit' => (int) config('alerts.webhooks.limit', 5),
+                'limit' => AlertLimits::webhooks(),
             ]]);
     }
 
@@ -83,11 +80,8 @@ final class WebhookController
 
         $userId = self::userId($request);
         $secret = $kind === 'standard' ? WebhookSecret::generate() : null;
-        $created = WebhookEndpoints::create(DB::connection(), $userId, $kind, $url, $hint, $description, $secret, CarbonImmutable::now());
-        if (is_string($created)) {
-            throw ValidationException::withMessages(['url' => [$created]]);
-        }
-        $rows = WebhookEndpoints::rows(DB::connection(), $userId, $created);
+        $created = $this->endpoints->create($userId, $kind, $url, $hint, $description, $secret, CarbonImmutable::now());
+        $rows = $this->endpoints->rows($userId, $created);
 
         return (new WebhookCreatedResource($rows[0], $secret))->response()->setStatusCode(201);
     }
@@ -101,7 +95,7 @@ final class WebhookController
      */
     public function destroy(Request $request, string $id): Response
     {
-        WebhookEndpoints::delete(DB::connection(), self::userId($request), (int) $id);
+        $this->endpoints->delete(self::userId($request), (int) $id);
 
         return response()->noContent();
     }
@@ -115,13 +109,7 @@ final class WebhookController
      */
     public function test(Request $request, string $id): JsonResponse
     {
-        $endpoint = WebhookEndpoint::query()->whereKey((int) $id)->where('user_id', self::userId($request))->first();
-        if (! $endpoint instanceof WebhookEndpoint) {
-            throw new WebhookNotFound;
-        }
-        if ($endpoint->disabled_at !== null) {
-            throw new WebhookDisabled;
-        }
+        $endpoint = $this->endpoints->testable(self::userId($request), (int) $id);
         $delivery = TestMessage::queue($endpoint);
 
         return response()->json(['data' => ['message_id' => $delivery->message_id]], 202);

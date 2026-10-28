@@ -172,7 +172,7 @@ final class DeliverySender
         $url = $endpoint->url;
         $check = $this->guard->check($url);
         if (! $check->allowed()) {
-            return [null, $check->error === 'unresolvable' ? 'unresolvable' : 'blocked_address', null];
+            return [null, $check->error === GuardError::Unresolvable ? GuardError::Unresolvable->value : GuardError::BlockedAddress->value, null];
         }
         $headers = WebhookSigner::headers((string) $endpoint->secret, $delivery->message_id, CarbonImmutable::now()->getTimestamp(), $delivery->body);
 
@@ -190,11 +190,11 @@ final class DeliverySender
     public function discord(#[\SensitiveParameter] string $url, string $body): array
     {
         if (! DiscordMessage::isWebhookUrl($url)) {
-            return [null, 'blocked_address', null];
+            return [null, GuardError::BlockedAddress->value, null];
         }
         $check = $this->guard->check($url);
         if (! $check->allowed()) {
-            return [null, $check->error === 'unresolvable' ? 'unresolvable' : 'blocked_address', null];
+            return [null, $check->error === GuardError::Unresolvable ? GuardError::Unresolvable->value : GuardError::BlockedAddress->value, null];
         }
 
         return $this->post($url, $check, [], $body);

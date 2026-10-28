@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Accounts;
 
 use Illuminate\Database\ConnectionInterface;
+use Illuminate\Validation\ValidationException;
 
 /**
  * A person's portfolio (plan P4-i1 D5, D6, D9): the variants they hold with a quantity, read with their latest closes
@@ -46,34 +47,33 @@ final class Portfolio
     }
 
     /**
-     * Sets the quantity the user holds of the variant (never adds to it). Null when the holding has that quantity
-     * afterwards, otherwise the 422 message: the key names no variant, or the portfolio is full. The quantity is
-     * validated by the caller (1 to accounts.limits.quantity_max; the database checks 1 to 9999 too).
+     * Sets the quantity the user holds of the variant (never adds to it). The quantity is validated by the caller
+     * (1 to accounts.limits.quantity_max; the database checks 1 to 9999 too).
+     *
+     * @throws ValidationException errors.variant_key when the key names no variant, or the portfolio is full
      */
-    public function set(int $userId, string $variantKey, int $quantity): ?string
+    public function set(int $userId, string $variantKey, int $quantity): void
     {
         if (! VariantKey::isValid($variantKey)) {
-            return AccountLimits::UNKNOWN_VARIANT;
+            throw self::refused(AccountLimits::UNKNOWN_VARIANT);
         }
 
-        return $this->db->transaction(function () use ($userId, $variantKey, $quantity): ?string {
+        $this->db->transaction(function () use ($userId, $variantKey, $quantity): void {
             AccountLock::forUser($this->db, $userId);
             if (! Variants::exist($this->db, $variantKey)) {
-                return AccountLimits::UNKNOWN_VARIANT;
+                throw self::refused(AccountLimits::UNKNOWN_VARIANT);
             }
             $updated = $this->db->update(
                 'UPDATE portfolio_holdings SET quantity = ?, updated_at = now() WHERE user_id = ? AND variant_key = ?',
                 [$quantity, $userId, $variantKey],
             );
             if ($updated > 0) {
-                return null;
+                return;
             }
             if (Variants::count($this->db, 'portfolio_holdings', $userId) >= AccountLimits::portfolio()) {
-                return AccountLimits::portfolioFull();
+                throw self::refused(AccountLimits::portfolioFull());
             }
             $this->db->insert('INSERT INTO portfolio_holdings (user_id, variant_key, quantity) VALUES (?, ?, ?)', [$userId, $variantKey, $quantity]);
-
-            return null;
         });
     }
 
@@ -83,5 +83,10 @@ final class Portfolio
         if (VariantKey::isValid($variantKey)) {
             $this->db->delete('DELETE FROM portfolio_holdings WHERE user_id = ? AND variant_key = ?', [$userId, $variantKey]);
         }
+    }
+
+    private static function refused(string $message): ValidationException
+    {
+        return ValidationException::withMessages(['variant_key' => [$message]]);
     }
 }
