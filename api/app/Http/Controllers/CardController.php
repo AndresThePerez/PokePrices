@@ -8,10 +8,12 @@ use App\Domain\Catalog\CardId;
 use App\Domain\Catalog\CatalogRepository;
 use App\Domain\Catalog\Problems\CardNotFound;
 use App\Domain\Mapping\Models\CardVariant;
+use App\Http\CachePolicy;
 use App\Http\Resources\CardResource;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 
 #[Group('Cards', 'Pokémon cards from the PokéSearch catalog.')]
@@ -27,7 +29,7 @@ final class CardController
      *
      * @operationId getCard
      */
-    public function __invoke(string $id): CardResource
+    public function __invoke(Request $request, string $id): CardResource
     {
         if (! CardId::isValid($id)) {
             throw new CardNotFound;
@@ -37,6 +39,9 @@ final class CardController
         if ($result === null) {
             throw new CardNotFound($this->flagMissing($id));
         }
+
+        // conditional-get reads this, never the body, to answer a degraded copy no-store (Q1-i5 T02).
+        $request->attributes->set(CachePolicy::DEGRADED, $result->degraded);
 
         // Four queries whatever the number of rows (P8): the variants, their sources, the sources' builds and the
         // variants' latest prices (P2-i1 T05).
@@ -55,31 +60,40 @@ final class CardController
 
     /**
      * Flags every variant row of a card PokéSearch does not have as catalog_missing (review-1 rec 11): the rows
-     * stay, with their mappings, until the catalog check (T45) sees the card again. Only rows whose flag or seed
-     * ref would change are written, so a repeated miss under the same seed sends no UPDATE and a new seed
-     * restamps once. Returns whether any row of the card exists.
+     * stay, with their mappings, until the catalog check (T45) sees the card again. One aggregate SELECT counts the
+     * card's rows and the ones whose flag or seed ref would change; only those are written, so a repeated miss under
+     * the same seed sends that one SELECT and no UPDATE, and a new seed restamps once. catalog_checked_at is
+     * therefore the last time a row's flag or seed ref changed (or VerifyCatalog wrote it), not the last miss
+     * (Q1-i5 T02, HG-45 #4). Returns whether any row of the card exists.
      */
     private function flagMissing(string $id): bool
     {
         $seedRef = $this->catalog->seedRef()->ref;
 
-        /** @var Builder<CardVariant> $changing */
-        $changing = CardVariant::query()
+        $counts = CardVariant::query()
             ->where('card_id', $id)
-            ->where(fn (Builder $rows): Builder => $rows
-                ->where('catalog_status', '<>', 'catalog_missing')
-                ->orWhereRaw('catalog_seed_ref IS DISTINCT FROM ?', [$seedRef]));
+            ->selectRaw(
+                "count(*) AS total, count(*) FILTER (WHERE catalog_status <> 'catalog_missing' OR catalog_seed_ref IS DISTINCT FROM ?) AS changing",
+                [$seedRef],
+            )
+            ->toBase()
+            ->first();
+        $total = (int) ($counts->total ?? 0);
+        $changing = (int) ($counts->changing ?? 0);
 
-        if (! $changing->clone()->exists()) {
-            return CardVariant::query()->where('card_id', $id)->exists();
+        if ($changing > 0) {
+            CardVariant::query()
+                ->where('card_id', $id)
+                ->where(fn (Builder $rows): Builder => $rows
+                    ->where('catalog_status', '<>', 'catalog_missing')
+                    ->orWhereRaw('catalog_seed_ref IS DISTINCT FROM ?', [$seedRef]))
+                ->update([
+                    'catalog_status' => 'catalog_missing',
+                    'catalog_seed_ref' => $seedRef,
+                    'catalog_checked_at' => Carbon::now(),
+                ]);
         }
 
-        $changing->update([
-            'catalog_status' => 'catalog_missing',
-            'catalog_seed_ref' => $seedRef,
-            'catalog_checked_at' => Carbon::now(),
-        ]);
-
-        return true;
+        return $total > 0;
     }
 }

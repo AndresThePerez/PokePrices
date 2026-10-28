@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Middleware;
 
+use App\Http\CachePolicy;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -11,7 +12,8 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Account answers are never stored by a cache (plan P4-i1 D1, review F-P4-09): Cache-Control no-store, private and
  * no ETag. On the /v1 account group and appended to the web group, so Fortify's two-factor secret GETs carry it too.
- * Public /v1 reads never pass it.
+ * Public /v1 reads never pass it. FortifyServiceProvider puts it first in the middleware priority, ahead of
+ * ThrottleBeforeSession, so a throttled (429) account or demo-session answer is no-store too (Q1-i5 T02, HG-45 #2).
  */
 final class NoStore
 {
@@ -19,7 +21,7 @@ final class NoStore
     public function handle(Request $request, Closure $next): Response
     {
         $response = $next($request);
-        $response->headers->set('Cache-Control', 'no-store, private');
+        $response->headers->set('Cache-Control', CachePolicy::ACCOUNT);
         $response->headers->remove('ETag');
 
         return $response;

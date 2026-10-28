@@ -225,6 +225,8 @@ it('answers the eleventh demo entry from one IP within a minute with 429; anothe
     expect($eleventh->getStatusCode())->toBe(429)
         ->and($eleventh->json('type'))->toBe(ProblemDetails::BASE.'too-many-requests')
         ->and($eleventh->headers->has('Retry-After'))->toBeTrue()
+        ->and($eleventh->headers->get('Cache-Control'))->toBe('no-store, private')
+        ->and($eleventh->headers->has('ETag'))->toBeFalse()
         ->and($other->getStatusCode())->toBe(204);
 });
 

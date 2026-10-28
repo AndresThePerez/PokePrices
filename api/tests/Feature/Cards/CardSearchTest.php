@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Domain\Catalog\RateLimits;
+use App\Http\CachePolicy;
 use App\Http\Middleware\ConditionalGet;
 use Illuminate\Cache\RateLimiter;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -333,9 +334,13 @@ it('answers 200 with the body when If-None-Match does not match', function (): v
 });
 
 it('sends no-store and no ETag on a degraded body and never answers it 304', function (): void {
-    Route::middleware(ConditionalGet::class)->get('/v1/__t44_degraded', fn (): array => [
-        'data' => [], 'meta' => ['total' => 0, 'page' => 1, 'pages' => 0, 'page_size' => 24, 'degraded' => true, 'cached' => true],
-    ]);
+    // The route marks its answer degraded the way the controllers do (Q1-i5 T02): conditional-get reads the request
+    // attribute, not the body.
+    Route::middleware(ConditionalGet::class)->get('/v1/__t44_degraded', function (Request $request): array {
+        $request->attributes->set(CachePolicy::DEGRADED, true);
+
+        return ['data' => [], 'meta' => ['total' => 0, 'page' => 1, 'pages' => 0, 'page_size' => 24, 'degraded' => true, 'cached' => true]];
+    });
     $first = $this->getJson('/v1/__t44_degraded');
     $hash = '"'.hash('xxh128', (string) $first->getContent()).'"';
 

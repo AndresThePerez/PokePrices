@@ -485,3 +485,27 @@ it('answers 404 with catalog_missing false and writes and creates no row for a c
         ->and(DB::table('card_variants')->count())->toBe(1)
         ->and(DB::table('card_variants')->value('catalog_status'))->toBe('ok');
 });
+
+it('answers a repeated miss of a flagged card under the same seed with one card_variants SELECT and no UPDATE', function (): void {
+    t43eVariant('base1-4', 'holo', 'ok');
+    t43eVariant('base1-4', 'normal', 'ok');
+    t43eFake('base1-4', ['error' => ['code' => 'not_found']], 404);
+    $this->getJson('/v1/cards/base1-4')->assertNotFound();
+    $this->travel(61)->seconds(); // past the 60 s negative-cache window, so PokéSearch is asked again
+    CatalogCache::primeSeedRef(T43E_BASE, T43E_SEED_REF);
+    t43eFake('base1-4', ['error' => ['code' => 'not_found']], 404);
+    $statements = new ArrayObject;
+    DB::listen(function (QueryExecuted $query) use ($statements): void {
+        $sql = strtolower(ltrim($query->sql));
+        if (str_contains($sql, '"card_variants"')) {
+            $statements->append(strtok($sql, ' '));
+        }
+    });
+
+    $repeat = $this->getJson('/v1/cards/base1-4');
+
+    expect($repeat->getStatusCode())->toBe(404)
+        ->and($repeat->json('catalog_missing'))->toBeTrue()
+        ->and($statements->getArrayCopy())->toBe(['select'])
+        ->and(DB::table('card_variants')->where('card_id', 'base1-4')->pluck('catalog_seed_ref')->unique()->all())->toBe([T43E_SEED_REF]);
+});

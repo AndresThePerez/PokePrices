@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Http\CachePolicy;
 use App\Http\Problems\ProblemDetails;
 use App\Support\Readiness;
 use Dedoc\Scramble\Attributes\Group;
@@ -28,9 +29,9 @@ final class ReadinessController
         $checks = $readiness->run();
         if (in_array('fail', $checks, true)) {
             return ProblemDetails::response(503, 'not-ready', 'Service Not Ready', $request, 'One or more dependencies did not answer.', ['checks' => $checks])
-                ->header('Cache-Control', 'no-store');
+                ->header('Cache-Control', CachePolicy::NO_STORE);
         }
 
-        return (new JsonResponse(['status' => 'ok', 'checks' => $checks]))->header('Cache-Control', 'no-store');
+        return (new JsonResponse(['status' => 'ok', 'checks' => $checks]))->header('Cache-Control', CachePolicy::NO_STORE);
     }
 }

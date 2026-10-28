@@ -7,6 +7,7 @@ namespace App\Http\Controllers;
 use App\Domain\Catalog\CatalogRepository;
 use App\Domain\Pricing\Movers;
 use App\Domain\Pricing\PricingConfig;
+use App\Http\CachePolicy;
 use App\Http\Requests\MoversRequest;
 use App\Http\Resources\MoverResource;
 use Dedoc\Scramble\Attributes\Group;
@@ -46,6 +47,10 @@ final class MoversController
         }
         // Compared, not copied, so the exported schema types meta.degraded as a boolean (Amendment 1).
         $degraded = $names['degraded'] === true;
+        // conditional-get reads this, never the body, to answer a degraded copy no-store (Q1-i5 T02). It goes on the
+        // request the middleware holds, request(): the form request is a copy with attributes of its own, and a
+        // second Request parameter would be filled with the form request again.
+        request()->attributes->set(CachePolicy::DEGRADED, $degraded);
 
         return MoverResource::collection($movers)->additional(['meta' => [
             'day' => $day,

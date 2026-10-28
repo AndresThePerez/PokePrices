@@ -12,6 +12,7 @@ use App\Domain\Accounts\AlertEligibility;
 use App\Domain\Accounts\ResetFailedAnswer;
 use App\Domain\Accounts\ResetLinkAnswer;
 use App\Http\Middleware\NormalizeAccountEmail;
+use App\Http\Middleware\NoStore;
 use App\Http\Middleware\ThrottleBeforeSession;
 use App\Models\User;
 use Illuminate\Auth\Notifications\ResetPassword;
@@ -74,10 +75,13 @@ final class FortifyServiceProvider extends ServiceProvider
 
         $this->attachRouteMiddleware();
 
-        // account-guest must count a request before Sanctum's stateful pipeline starts a session (review F-P4-07).
+        // account-guest must count a request before Sanctum's stateful pipeline starts a session (review F-P4-07),
+        // and NoStore sorts ahead of it so a throttled (429) account or demo-session answer is no-store too (Q1-i5
+        // T02, HG-45 #2). Each prepend goes to the front, so NoStore is prepended last.
         $kernel = $this->app->make(KernelContract::class);
         if ($kernel instanceof Kernel) {
             $kernel->prependToMiddlewarePriority(ThrottleBeforeSession::class);
+            $kernel->prependToMiddlewarePriority(NoStore::class);
         }
     }
 

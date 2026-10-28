@@ -25,7 +25,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * @property string $treatment
  * @property string $catalog_status
  * @property string|null $catalog_seed_ref
- * @property CarbonImmutable|null $catalog_checked_at
+ * @property CarbonImmutable|null $catalog_checked_at the last time the row's flag or seed ref changed (or VerifyCatalog wrote it), not the last miss
  * @property-read Collection<int, SourceProductMap> $sources
  * @property-read PriceLatest|null $latestPrice
  */

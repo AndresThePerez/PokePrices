@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Domain\Catalog\CatalogRepository;
+use App\Http\CachePolicy;
 use App\Http\Resources\CardSummaryResource;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\Request;
@@ -49,6 +50,8 @@ final class CardSearchController
         // keep the integers visible to the contract export (Scramble does not read the @var).
         /** @var array{total: int, page: int, pages: int, page_size: int, results: list<array<string, mixed>>} $answer */
         $answer = $result->data;
+        // conditional-get reads this, never the body, to answer a degraded copy no-store (Q1-i5 T02).
+        $request->attributes->set(CachePolicy::DEGRADED, $result->degraded);
 
         return CardSummaryResource::collection($answer['results'])->additional(['meta' => [
             'total' => (int) $answer['total'],

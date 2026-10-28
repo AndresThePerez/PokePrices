@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Http\Middleware\NoStore;
 use App\Http\Middleware\ThrottleBeforeSession;
 use App\Http\Problems\ProblemDetails;
 use Illuminate\Http\Request;
@@ -107,7 +108,9 @@ it('maps a ValidationException with status 429 to the 429 too-many-requests prob
         ->and($response->json('status'))->toBe(429);
 });
 
-it('keeps the account group middleware in order, account-guest first (D6)', function (): void {
+// NoStore sorts ahead of account-guest (Q1-i5 T02, HG-45 #2) so a throttled answer is no-store too; it starts no
+// session, so account-guest still counts before any session starts.
+it('keeps the account group middleware in order, NoStore then account-guest first (D6)', function (): void {
     $route = Route::getRoutes()->getByName('me.show');
 
     expect($route)->not->toBeNull();
@@ -116,5 +119,5 @@ it('keeps the account group middleware in order, account-guest first (D6)', func
     $first = array_search(ThrottleBeforeSession::class, $classes, true);
     $stateful = array_search(EnsureFrontendRequestsAreStateful::class, $classes, true);
 
-    expect($first)->toBe(0)->and($stateful)->toBeGreaterThan($first);
+    expect($classes[0])->toBe(NoStore::class)->and($first)->toBe(1)->and($stateful)->toBeGreaterThan($first);
 });

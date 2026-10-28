@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Domain\Pricing\Freshness;
+use App\Http\CachePolicy;
 use App\Http\Resources\PriceFreshnessResource;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Http\JsonResponse;
@@ -24,6 +25,6 @@ final class PriceFreshnessController
     {
         return (new PriceFreshnessResource(Freshness::measure()))
             ->response($request)
-            ->header('Cache-Control', 'no-store');
+            ->header('Cache-Control', CachePolicy::NO_STORE);
     }
 }
