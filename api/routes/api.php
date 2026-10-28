@@ -25,12 +25,12 @@ use Laravel\Sanctum\Http\Middleware\EnsureFrontendRequestsAreStateful;
 // Readiness is never throttled: probes must always get an answer.
 Route::get('/ready', ReadinessController::class)->name('ready');
 
-// Price freshness (P2-i1 T10, D8): computed from ingest_runs on every request, so no ETag and never cached.
+// Price freshness: computed from ingest_runs on every request, so no ETag and never cached.
 Route::get('/prices/freshness', PriceFreshnessController::class)
     ->middleware('throttle:public-read')
     ->name('prices.freshness');
 
-// Daily price reads (P2-i1 T11, T12): Postgres only, never PokéSearch (R177(8)), so outside its group. Their bodies
+// Daily price reads: Postgres only, never PokéSearch, so outside its group. Their bodies
 // change at most once per ingested day: conditional-get:history.
 Route::get('/cards/{id}/prices', CardPricesController::class)
     ->middleware(['throttle:public-read', 'conditional-get:history'])
@@ -40,10 +40,10 @@ Route::get('/movers', MoversController::class)
     ->middleware(['throttle:public-read', 'conditional-get:history'])
     ->name('movers');
 
-// The account group (plan P4-i1 D6): account-guest counts anonymous traffic before any session starts (review
-// F-P4-07; ThrottleBeforeSession runs first by middleware priority), then Sanctum makes first-party requests
-// stateful, auth:sanctum requires the session, the account tier counts per user (the demo per IP, D7), DemoReadOnly
-// refuses every demo write (D8) and NoStore keeps every answer out of caches (review F-P4-09).
+// The account group: account-guest counts anonymous traffic before any session starts (ThrottleBeforeSession runs
+// first by middleware priority), then Sanctum makes first-party requests stateful, auth:sanctum requires the session,
+// the account tier counts per user (the demo per IP), DemoReadOnly refuses every demo write and NoStore keeps every
+// answer out of caches.
 Route::middleware([
     ThrottleBeforeSession::class.':account-guest',
     EnsureFrontendRequestsAreStateful::class,
@@ -53,15 +53,15 @@ Route::middleware([
     NoStore::class,
 ])->group(function (): void {
     Route::get('/me', MeController::class)->name('me.show');
-    // Your data (plan P4-i1 T08): the export is a read, so the demo may use it; deletion is a POST so the password
-    // travels in the body, never in a URL (review F-P4-03), and its password checks share the password-confirm tier
-    // (5 a minute per user, review F-P4-07).
+    // Your data: the export is a read, so the demo may use it; deletion is a POST so the password
+    // travels in the body, never in a URL, and its password checks share the password-confirm tier
+    // (5 a minute per user).
     Route::get('/me/export', [MeController::class, 'export'])->name('me.export');
     Route::post('/me/deletion', [MeController::class, 'deletion'])->middleware('throttle:password-confirm')->name('me.deletion');
 
     // {variantKey} arrives percent-decoded (ex10-%3F:holo:-:- reaches the controller as ex10-?:holo:-:-). It matches
     // any non-empty text, an encoded slash included, so every malformed key reaches VariantKey::isValid and answers
-    // 422 (PUT) or 204 (DELETE) before any query (D5, review F-P4-05), never a 404.
+    // 422 (PUT) or 204 (DELETE) before any query, never a 404.
     Route::get('/watchlist', [WatchlistController::class, 'index'])->name('watchlist.index');
     Route::put('/watchlist/{variantKey}', [WatchlistController::class, 'put'])->where('variantKey', '.+')->name('watchlist.put');
     Route::delete('/watchlist/{variantKey}', [WatchlistController::class, 'destroy'])->where('variantKey', '.+')->name('watchlist.destroy');
@@ -70,9 +70,9 @@ Route::middleware([
     Route::put('/portfolio/{variantKey}', [PortfolioController::class, 'put'])->where('variantKey', '.+')->name('portfolio.put');
     Route::delete('/portfolio/{variantKey}', [PortfolioController::class, 'destroy'])->where('variantKey', '.+')->name('portfolio.destroy');
 
-    // Webhooks (plan P5-i1 D9, T03). Adding one and sending a test message need a verified, non-demo account
-    // (RequireAlertEligibility, P4 D15 attached; the demo meets DemoReadOnly first). The parameter is {id}, numeric
-    // and at most 18 digits (review A02): anything else is the framework's 404, and the controller looks the id up
+    // Webhooks. Adding one and sending a test message need a verified, non-demo account
+    // (RequireAlertEligibility attached; the demo meets DemoReadOnly first). The parameter is {id}, numeric
+    // and at most 18 digits: anything else is the framework's 404, and the controller looks the id up
     // only among the caller's own webhooks, so another user's id is answered as if it did not exist.
     Route::get('/webhooks', [WebhookController::class, 'index'])->name('webhooks.index');
     Route::post('/webhooks', [WebhookController::class, 'store'])->middleware(RequireAlertEligibility::class)->name('webhooks.store');
@@ -82,7 +82,7 @@ Route::middleware([
         ->middleware([RequireAlertEligibility::class, 'throttle:webhook-test'])
         ->name('webhooks.test');
 
-    // Per-card alerts and where they go (plan P5-i1 D9, T05). Setting a threshold and choosing the channel need a
+    // Per-card alerts and where they go. Setting a threshold and choosing the channel need a
     // verified, non-demo account; clearing a threshold and reading the settings do not. {variantKey} matches any
     // non-empty text, as on the watchlist routes, so a malformed key answers 422 (PUT) or 204 (DELETE) before any query.
     Route::put('/alerts/{variantKey}', [AlertController::class, 'put'])->where('variantKey', '.+')->middleware(RequireAlertEligibility::class)->name('alerts.put');
@@ -91,8 +91,8 @@ Route::middleware([
     Route::put('/me/notifications', [NotificationController::class, 'put'])->middleware(RequireAlertEligibility::class)->name('notifications.put');
 });
 
-// One-click entry to the read-only demo (D6, D8): outside the account group (a visitor is not signed in yet), stateful
-// for first-party requests, counted per IP before any session starts, and never stored by a cache (Q1-i1 T04).
+// One-click entry to the read-only demo: outside the account group (a visitor is not signed in yet), stateful
+// for first-party requests, counted per IP before any session starts, and never stored by a cache.
 Route::post('/demo/session', DemoSessionController::class)
     ->middleware([ThrottleBeforeSession::class.':demo-session', EnsureFrontendRequestsAreStateful::class, NoStore::class])
     ->name('demo.session');
