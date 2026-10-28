@@ -8,7 +8,7 @@ use App\Models\User;
 
 /**
  * Verification before alerts: only a verified, non-demo account may create alerts. The Gate
- * create-alerts delegates here; the alert-creating routes attach it, and no account route uses it.
+ * create-alerts delegates here; RequireAlertEligibility attaches it to the routes that create webhooks, alerts or notification settings.
  */
 final class AlertEligibility
 {
