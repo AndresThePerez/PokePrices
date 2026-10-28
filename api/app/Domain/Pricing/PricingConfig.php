@@ -38,6 +38,12 @@ final class PricingConfig
         return (int) config('pricing.movers.limit');
     }
 
+    /** The default page size of GET /v1/movers: 20, or fewer when the rebuild keeps fewer rows per day and direction. */
+    public static function defaultMoversLimit(): int
+    {
+        return min(self::MOVERS_DEFAULT_LIMIT, self::moversLimit());
+    }
+
     /**
      * The provenance of a price: $source names the row's own source where the row carries one (the price block and the
      * price.moved payload), else the configured source.

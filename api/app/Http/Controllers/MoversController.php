@@ -32,7 +32,7 @@ final class MoversController
             'limit' => ['sometimes', 'required', 'integer', 'min:1', 'max:'.PricingConfig::moversLimit()],
         ]);
         $direction = isset($validated['direction']) ? (string) $validated['direction'] : 'up';
-        $limit = isset($validated['limit']) ? (int) $validated['limit'] : PricingConfig::MOVERS_DEFAULT_LIMIT;
+        $limit = isset($validated['limit']) ? (int) $validated['limit'] : PricingConfig::defaultMoversLimit();
         $source = PricingConfig::source();
 
         // Query 1 of 2: the newest movers day and the snapshot marker stored with its rows (review F9, R181(5), Q1-i3 T04).
