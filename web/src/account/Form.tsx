@@ -1,4 +1,4 @@
-// The account form pieces (D10): a labelled field with its hint and error, the problem block and
+// The account form pieces: a labelled field with its hint and error, the problem block and
 // the status line. Every input has a visible <label>; an error is tied to its field with
 // aria-describedby and aria-invalid; every control is 44 px tall.
 import type { HTMLAttributes, ReactNode } from 'react';
@@ -106,7 +106,7 @@ function firstLine(context: string, failure: ApiFailure): string {
 }
 
 /**
- * The P3 D10 problem block: "<context>: <title>" and the request id; a 422 points at the fields
+ * The problem block: "<context>: <title>" and the request id; a 422 points at the fields
  * (and lists messages of fields the form does not show); a 429 says to wait; a 409
  * already-signed-in says so and links to the account.
  */
@@ -154,7 +154,7 @@ export function ProblemBlock({
   );
 }
 
-/** A status line (P3 D10): announced politely, readable in both themes. */
+/** A status line: announced politely, readable in both themes. */
 export function StatusLine({ children }: { readonly children: ReactNode }) {
   return (
     <Notice tone="info" role="status" as="p" className="mt-6">

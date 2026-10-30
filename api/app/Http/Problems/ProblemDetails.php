@@ -17,7 +17,7 @@ use Symfony\Component\HttpKernel\Exception\MethodNotAllowedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Throwable;
 
-/** RFC 9457 problem details for every PokéPrices API error (R16). */
+/** RFC 9457 problem details for every PokéPrices API error. */
 final class ProblemDetails
 {
     public const string BASE = 'https://pokeprices.andrestheperez.com/problems/';

@@ -54,7 +54,7 @@ final class PriceNormalizer
 
     /**
      * Joins de-duplicated rows to the map. null_market counts the mapped rows whose market is null: they are stored
-     * raw but are no observation (D1).
+     * raw but are no observation.
      *
      * @param  list<array{productId: int, subTypeName: string, market: string|null, low: string|null, mid: string|null, high: string|null, direct_low: string|null}>  $rows
      * @param  array<string, array{variant_key: string, series_epoch: int}>  $map  keyed "<productId>|<subTypeName>"

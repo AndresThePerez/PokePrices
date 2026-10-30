@@ -1,4 +1,4 @@
-// The Notice primitive (D1): an info, warn or problem block on the tokens only. A 1 px border in
+// The Notice primitive: an info, warn or problem block on the tokens only. A 1 px border in
 // the tone at 40 %, a 4 px left rule in the tone, the tone's tint, ink text, 4 px corners, 12/16 px
 // padding. Its text is exactly its children: no prefix, icon or symbol. `role` is rendered only
 // when passed, so each call site keeps the alert, status or no role it had.

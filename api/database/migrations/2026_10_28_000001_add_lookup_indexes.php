@@ -6,7 +6,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
 /*
- * Lookup indexes (plan Q1-i3 T03; findings B4, B5, B7). Additive: indexes only, no constraint, no column.
+ * Lookup indexes. Additive: indexes only, no constraint, no column.
  *
  * price_events (source, day, id): the day's events for one source in id order (the dispatch's deliverable-day read).
  * watchlist_items and portfolio_holdings (variant_key): the dispatch joins from an event's variant to the people who

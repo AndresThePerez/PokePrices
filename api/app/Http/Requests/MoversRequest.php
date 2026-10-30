@@ -9,7 +9,7 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 /**
- * limit stops at the rows price_movers keeps per day and direction (PricingConfig::moversLimit(), D9).
+ * limit stops at the rows price_movers keeps per day and direction (PricingConfig::moversLimit()).
  */
 final class MoversRequest extends FormRequest
 {

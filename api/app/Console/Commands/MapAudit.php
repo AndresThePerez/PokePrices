@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 use RuntimeException;
 
-#[Description('Audit the PokéPrices product map: names, constraints, coverage or ambiguity (T25 dc.py artefact).')]
+#[Description('Audit the PokéPrices product map: names, constraints, coverage or ambiguity.')]
 #[Signature('pokeprices:map:audit
     {--check= : names|constraints|coverage|ambiguity}
     {--json : Print the artefact as JSON}

@@ -484,7 +484,7 @@ const SESSION_PATHS: ReadonlySet<string> = new Set([
 const ACCOUNT_API =
   /^\/v1\/(?:me|watchlist|portfolio|webhooks|alerts)(?:[/?]|$)|^\/v1\/demo\/session$/;
 
-/** D10: a verification link is /email/verify/<id>/<hash>?<query>, nothing else. */
+/** A verification link is /email/verify/<id>/<hash>?<query>, nothing else. */
 const VERIFY_LINK = /^\/email\/verify\/([^/?#]+)\/([^/?#]+)\?/;
 
 /** A path segment that URL resolution would walk with ('.', '..', also percent-encoded). */
@@ -492,7 +492,7 @@ function walksPath(segment: string): boolean {
   return /^(?:\.|%2e){1,2}$/i.test(segment);
 }
 
-/** True for a verification link that matches D10's pattern and stays under /email/verify/. */
+/** True for a verification link that matches that pattern and stays under /email/verify/. */
 export function isVerificationLink(link: string): boolean {
   const match = VERIFY_LINK.exec(link);
   if (match === null) return false;
@@ -689,7 +689,7 @@ function publicRead(path: string, options: RequestOptions): Promise<ApiResult<un
   return core(BASE + path, { side: 'public', method: 'GET', signal: options.signal });
 }
 
-/** An account request (D11) as the raw answer, for a read's decoder. */
+/** An account request as the raw answer, for a read's decoder. */
 function accountAnswer(path: string, init: AccountInit): Promise<ApiResult<unknown>> {
   return core(path, { ...init, side: 'account' });
 }
@@ -747,7 +747,7 @@ export function resetPassword(form: ResetPasswordForm): Promise<ApiResult<Messag
 }
 
 /**
- * GET of a verification link (204 once verified). A link outside D10's pattern never reaches
+ * GET of a verification link (204 once verified). A link outside that pattern never reaches
  * fetch: it resolves as a failure with status 0.
  */
 export function verifyEmail(
@@ -916,7 +916,7 @@ export function startDemo(): Promise<ApiResult<undefined>> {
 // ---- Your data ------------------------------------------------------------------------
 // The export is not fetched here: /account links to GET /v1/me/export and the browser downloads it.
 
-/** The deletion body: the current password, in the JSON body and never in the URL (D4). */
+/** The deletion body: the current password, in the JSON body and never in the URL. */
 type DeleteAccountForm = operations['deleteMe']['requestBody']['content']['application/json'];
 
 /** POST /v1/me/deletion { password }: 204, the account is gone and this browser is signed out. */

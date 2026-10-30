@@ -1,4 +1,4 @@
-// The Field primitive (D1): a visible label, the control, then the hint and the error, both tied
+// The Field primitive: a visible label, the control, then the hint and the error, both tied
 // to the control with aria-describedby; an error also sets aria-invalid. Ids are the control's
 // useId plus -hint and -error, as the account forms built them. A required field shows a
 // "(required)" mark beside its label (outside it, so the label text stays exact) and sets

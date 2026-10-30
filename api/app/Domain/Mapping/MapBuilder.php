@@ -250,7 +250,7 @@ final readonly class MapBuilder
         sort($unlisted);
 
         // Every dataset card no priced item reached (neither matched nor a candidate of an unmapped item) is listed
-        // per build, so the coverage audit sees each card as mapped or listed for review (DC5).
+        // per build, so the coverage audit sees each card as mapped or listed for review.
         $reached = array_flip($matchedCards);
         foreach ($unmapped as $row) {
             foreach ($row['candidates'] as $card) {

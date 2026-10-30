@@ -11,6 +11,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter as RateLimiterFacade;
 use Tests\Support\CatalogCache;
+use Tests\Support\ForbiddenWords;
 
 // The price block of GET /v1/cards/{id} (plan P2-i1 T05 items 3 to 5, D4, D5, honesty rules). The map is built from
 // the P1 fixture day and the synthetic days of tests/Fixtures/tcgcsv-days are ingested with --sync; PokéSearch is
@@ -263,5 +264,5 @@ it('documents a closed, nullable price block on each variant and an honest opera
         ->and($description)->not->toContain('There is no price yet.')
         ->and($description)->toContain('TCGplayer market prices via TCGCSV')
         ->and($description)->toContain('one close per day')
-        ->and(strtolower($description))->not->toMatch('/real-time|realtime|\blive\b|24h|as of today/');
+        ->and(ForbiddenWords::payloadMatches($description))->toBe([]);
 });

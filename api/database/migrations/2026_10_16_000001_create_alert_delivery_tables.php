@@ -6,7 +6,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
 /*
- * Alert delivery tables (plan P5-i1 T01, D1, D2, D3; System Design §2 outbox and deliveries, §8).
+ * Alert delivery tables (System Design §2 outbox and deliveries, §8).
  *
  * webhook_endpoints: a user's signed (standard) webhooks and at most one Discord webhook. url and secret are written
  * through the model's encrypted casts (APP_KEY), so the database never holds them in clear; url_hint is the
@@ -16,9 +16,9 @@ use Illuminate\Support\Facades\DB;
  * keys and break a retry's signature); message_id is the webhook-id and never changes across attempts. event_id is
  * a price_events id WITHOUT a foreign key (MapSchemaTest rolls the price migrations back, and an event is never
  * deleted with a delivery); day is the close day the message is about. The partial unique indexes make fan-out
- * idempotent (D3). Deleted with the user, and with the endpoint.
+ * idempotent. Deleted with the user, and with the endpoint.
  *
- * dispatch_days: system state of the deliverable-day predicate (D2, R192): one row per source and day a dispatch
+ * dispatch_days: system state of the deliverable-day predicate: one row per source and day a dispatch
  * ran for, with the highest price_events id of that day at its first dispatch (null when the day had no event).
  *
  * No table here references price_events, card_variants or any price table.

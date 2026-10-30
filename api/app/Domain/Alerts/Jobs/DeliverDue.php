@@ -97,7 +97,7 @@ final class DeliverDue implements ShouldBeUnique, ShouldQueue
     }
 
     /**
-     * Claims due pending rows on $db (D7): at most $limit, at most per_endpoint per endpoint, ordered by
+     * Claims due pending rows on $db: at most $limit, at most per_endpoint per endpoint, ordered by
      * next_attempt_at then id, skipping rows another session holds. Each claimed row gets claims + 1 and the lease
      * $now + lease_seconds. Run it inside a transaction: the row locks last until that transaction ends.
      *

@@ -54,7 +54,7 @@ function Board({
 }
 
 export default function MoversPage({ direction }: { readonly direction: MoversDirection }) {
-  // Polled every five minutes while the tab is visible (D9); a failed poll keeps the last answer.
+  // Polled every five minutes while the tab is visible; a failed poll keeps the last answer.
   const query = useQuery<MoversPage, ApiFailure>({
     queryKey: moversKey(direction, BOARD_LIMIT),
     queryFn: ({ signal }) => unwrap(getMovers(direction, BOARD_LIMIT, { signal })),

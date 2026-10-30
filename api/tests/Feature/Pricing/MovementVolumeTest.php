@@ -8,6 +8,7 @@ use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
+use Tests\Support\ForbiddenWords;
 
 // movement_volume and pokeprices:prices:movement-volume (plan P2-i1 T13 items 5 and 6, D4, D6). The volume is
 // computed from price_daily, never from price_events, per (day, rule) over the grid draft-v1 (5.00 %, $1.00), tight
@@ -317,5 +318,5 @@ test('--markdown writes the days, the map build and epochs, one table per rule, 
         ->and($md)->toContain('| draft-v1 | 5.00 | 1.00 | 0.50 | 0 | 1 |')
         ->and($md)->toContain('| tight | 3.00 | 0.50 | 2.00 | 1 | 4 |')
         ->and($md)->toContain('260, 225 and 216')
-        ->and(strtolower($md))->not->toMatch('/\b(live|real-time|realtime)\b/');
+        ->and(ForbiddenWords::payloadMatches($md))->toBe([]);
 });

@@ -67,14 +67,14 @@ final class DiscordMessage
         return implode("\n", $kept).self::more($count - count($kept), $moreSuffix);
     }
 
-    /** Whether $url is a Discord webhook URL (D6's shape; the address guard still runs on it). */
+    /** Whether $url is a Discord webhook URL (the Discord shape; the address guard still runs on it). */
     public static function isWebhookUrl(#[\SensitiveParameter] string $url): bool
     {
         return preg_match(self::URL, $url) === 1;
     }
 
     /**
-     * One move as a digest line (D4): "<card label> · <variant label>: $<previous close> → $<close>, <change line>".
+     * One move as a digest line: "<card label> · <variant label>: $<previous close> → $<close>, <change line>".
      * The label (catalog name, else "Card <card_id>") is CatalogName::forEmail's, or forDiscord's when $forDiscord.
      *
      * @param  stdClass  $event  a price_events row selected with PriceMovedPayload::COLUMNS

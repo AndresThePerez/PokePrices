@@ -17,7 +17,7 @@ use stdClass;
  * least MovementRule::pct() and abs(change) at least MovementRule::abs(), and D is the newest
  * finalized day of the source. Only the run's own day is written, one row per variant, with ON CONFLICT DO NOTHING on
  * the outbox key: an event is never updated or deleted, so re-finalizing a day adds nothing. dispatched_at stays null
- * (dispatch is a later step). The run's counts gain:
+ * (the dispatch reads the outbox through dispatch_days and never marks a row). The run's counts gain:
  *
  * - `events`: the rows this finalize inserted;
  * - `epoch_breaks`: real closes on D with no previous close in their own epoch but a real close within the cap in
@@ -29,9 +29,9 @@ use stdClass;
 final class DetectMovement
 {
     /**
-     * The D4 comparisons of the real closes of price_daily between params.from_day and params.to_day, as the CTE
+     * The previous-close comparisons of the real closes of price_daily between params.from_day and params.to_day, as the CTE
      * `comparisons`; it reads a CTE `params` holding source, from_day, to_day and cap. change_pct is null when the
-     * previous close is 0.00 (D4), so such a comparison never crosses a rule.
+     * previous close is 0.00, so such a comparison never crosses a rule.
      */
     public const string COMPARISONS = <<<'SQL'
         comparisons AS (
@@ -78,7 +78,7 @@ final class DetectMovement
 
     /**
      * @param  string  $day  the run's day D, YYYY-MM-DD
-     * @param  array{from: string, to: string}  $window  the run's D3 recompute window
+     * @param  array{from: string, to: string}  $window  the run's recompute window
      * @param  bool  $newest  whether D is the newest finalized day of the source
      * @return array{events: int, epoch_breaks: int, backfill: int}
      */

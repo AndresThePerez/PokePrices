@@ -37,7 +37,7 @@ final class MovementRule
         return str_contains($pct, '.') ? rtrim(rtrim($pct, '0'), '.') : $pct;
     }
 
-    /** The smallest alert threshold: the percentage rounded up, at least 1 (no event exists below it, D9). */
+    /** The smallest alert threshold: the percentage rounded up, at least 1 (no event exists below it). */
     public static function alertFloor(): int
     {
         $pct = self::pct();

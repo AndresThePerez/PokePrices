@@ -29,7 +29,7 @@ const CARD = /^\/card\/([^/]+)$/;
 const ACCOUNT_PATH = '/account';
 
 /**
- * The page to open after signing in (D10): next only when it is an in-app path, i.e. it starts
+ * The page to open after signing in: next only when it is an in-app path, i.e. it starts
  * with exactly one '/' (not '//' or '/\') and names a route; otherwise /account.
  */
 export function safeNext(raw: string | null): string {
@@ -94,7 +94,7 @@ export function cardPath(id: string): string {
 
 /**
  * Pushes a same-origin path onto the history and re-renders every useLocation() reader. A status
- * line for the next page (D10: "Account created. …", "Password saved. …") travels in the history
+ * line for the next page ("Account created. …", "Password saved. …") travels in the history
  * entry's state; the page shows it once (account/session.ts useArrivalStatus).
  */
 export function navigate(to: string, status?: string): void {

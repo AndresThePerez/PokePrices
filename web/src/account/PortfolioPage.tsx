@@ -1,4 +1,4 @@
-// /portfolio (D9, D10): the signed-in account's holdings over GET /v1/portfolio. Each holding's
+// /portfolio: the signed-in account's holdings over GET /v1/portfolio. Each holding's
 // value and the total are the API's numeric strings, printed as they come: the browser never
 // multiplies or adds money. A holding without a price has no value and is named as not counted;
 // the total says which days it rests on. The summary panel leads; each row shows its quantity as an
@@ -136,7 +136,7 @@ function unpricedLine(count: number): string | null {
     : `${String(count)} holdings have no price in the collected snapshots and are not counted.`;
 }
 
-/** The summary panel: the API's total, the days it rests on and what it leaves out (D9). */
+/** The summary panel: the API's total, the days it rests on and what it leaves out. */
 function Total({ meta }: { readonly meta: PortfolioBody['meta'] }) {
   if (meta.total_value === null) {
     return (
@@ -183,7 +183,7 @@ function Loaded({ body, readOnly }: { readonly body: PortfolioBody; readonly rea
 export default function PortfolioPage() {
   const session = useSession();
   const signedIn = session.state === 'signed-in';
-  // Polled like every query (P3 D9); asked for only once the session is known to be signed in.
+  // Polled like every query; asked for only once the session is known to be signed in.
   const query = useQuery<PortfolioBody, ApiFailure>({
     queryKey: PORTFOLIO_KEY,
     queryFn: ({ signal }) => unwrap(getPortfolio({ signal })),

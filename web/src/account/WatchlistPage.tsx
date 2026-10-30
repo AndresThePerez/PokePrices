@@ -42,7 +42,7 @@ const UNVERIFIED_LINE = 'Verify your email address to set alerts.';
 /** Who may do what on this page: remove rows (not the demo), set alerts (verified, not the demo). */
 type Access = 'read-only' | 'unverified' | 'alerts';
 
-/** The D10 thresholds; a stored value that is not one of them is offered too, in order. */
+/** The thresholds; a stored value that is not one of them is offered too, in order. */
 const THRESHOLDS: readonly number[] = [5, 10, 20, 50];
 
 function thresholdsWith(stored: number | null): readonly number[] {

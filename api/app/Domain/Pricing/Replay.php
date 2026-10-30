@@ -140,14 +140,14 @@ final class Replay
         if ($events instanceof stdClass && $events->present === true) {
             $dispatched = $this->db->selectOne('SELECT EXISTS (SELECT 1 FROM price_events WHERE dispatched_at IS NOT NULL) AS any', [], false);
             if ($dispatched instanceof stdClass && $dispatched->any === true) {
-                return 'price_events holds dispatched rows: replay --fresh refuses (R180a)';
+                return 'price_events holds dispatched rows: replay --fresh refuses';
             }
         }
 
         return $pinned;
     }
 
-    /** Marks the source's ok and running runs superseded and truncates the derived tables, in one transaction (D12). */
+    /** Marks the source's ok and running runs superseded and truncates the derived tables, in one transaction. */
     private function wipe(): void
     {
         $this->db->transaction(function (): void {

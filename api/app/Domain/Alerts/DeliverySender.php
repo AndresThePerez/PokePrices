@@ -181,8 +181,8 @@ final class DeliverySender
 
     /**
      * One POST of a Discord envelope through the guard, with no signature headers: [HTTP status or null, last_error
-     * or null, Retry-After seconds or null]. A URL that is not of D6's Discord shape is refused as blocked_address,
-     * without a request. Also the live switch's one send (pokeprices:alerts:discord-test, D13). Exceptions other than
+     * or null, Retry-After seconds or null]. A URL that is not of the Discord webhook shape is refused as blocked_address,
+     * without a request. Also the live switch's one send (pokeprices:alerts:discord-test). Exceptions other than
      * a failed connection propagate; callers contain them.
      *
      * @return array{0: int|null, 1: string|null, 2: int|null}

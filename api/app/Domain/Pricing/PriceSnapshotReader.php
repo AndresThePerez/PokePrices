@@ -90,7 +90,7 @@ final class PriceSnapshotReader
             $groupIds[$row['groupId']] = true;
         }
 
-        // Manifest cross-check (D1): a half-copied folder disagrees with its own manifest.
+        // Manifest cross-check: a half-copied folder disagrees with its own manifest.
         $manifestMarker = is_string($manifest['marker'] ?? null) ? self::parseMarker($manifest['marker']) : null;
         if ($manifestMarker === null || ! $manifestMarker->equalTo($marker)) {
             throw new DayRefused('manifest_mismatch:manifest.json:marker', $marker);

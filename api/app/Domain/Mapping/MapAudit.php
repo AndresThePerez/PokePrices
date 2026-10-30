@@ -17,7 +17,7 @@ use RuntimeException;
  *    name with ProductName + NameAliases (the builder's own rule). A row whose card is not in the dataset counts.
  *  - constraints: the six UNIQUE constraints read from pg_constraint with exactly their columns, plus
  *    duplicate rows over the same columns found by GROUP BY (rows with a NULL in the key are never duplicates,
- *    as in a UNIQUE). The Pest group DC3 is run beside it, not by it.
+ *    as in a UNIQUE). The Pest group for the map checks is run beside it, not by it.
  *  - coverage: dataset cards neither mapped, nor named as a candidate by an unmapped_source_items row of the
  *    build, nor listed in unmapped_cards for the build (a card no priced item reached); unlisted_sets counts dataset sets with neither a set_aliases row nor an explicit `none` row in
  *    database/data/set_aliases.csv (the table the seeder loads; fut20's row cannot be stored).

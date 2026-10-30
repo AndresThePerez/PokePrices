@@ -1,4 +1,4 @@
-// The Panel primitive (D1): the raised surface, the 1 px line border, 6 px corners, the soft panel
+// The Panel primitive: the raised surface, the 1 px line border, 6 px corners, the soft panel
 // shadow and 16/24 px padding. It renders the landmark and heading props it is given and nothing
 // else: no role or label of its own.
 import type { ReactNode } from 'react';

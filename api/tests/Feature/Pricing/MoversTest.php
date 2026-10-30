@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter as RateLimiterFacade;
 use Illuminate\Support\Facades\Route;
 use Tests\Support\CatalogCache;
+use Tests\Support\ForbiddenWords;
 
 // price_movers and GET /v1/movers (plan P2-i1 T12, D7, R177(10), R178, R180b, R181(1)). The map is built from the
 // P1 fixture day and the synthetic days of tests/Fixtures/tcgcsv-days are ingested with --sync; edited days are
@@ -489,7 +490,7 @@ it('routes the movers outside the PokéSearch group and documents no upstream er
         ->and(array_keys($operation['responses']))->toBe([200, 304, 422, 429])
         ->and($parameters['direction']['schema']['enum'])->toBe(['up', 'down'])
         ->and([$parameters['limit']['schema']['minimum'], $parameters['limit']['schema']['maximum']])->toBe([1, 50])
-        ->and(strtolower((string) $operation['description']))->not->toMatch('/real-time|realtime|\blive\b|24h|as of today|\b1d\b/');
+        ->and(ForbiddenWords::payloadMatches((string) $operation['description']))->toBe([]);
 });
 
 it('caps limit at pricing.movers.limit: with 10, limit=10 answers 200 and limit=11 answers 422 errors.limit (Q1-i4 T03)', function (): void {

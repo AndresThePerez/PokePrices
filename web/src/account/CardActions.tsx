@@ -1,4 +1,4 @@
-// The card page's Add to watchlist and Add to portfolio controls (D10), on every variant row of the
+// The card page's Add to watchlist and Add to portfolio controls, on every variant row of the
 // Prices list, as two quiet 44 px buttons under the row's lines (right-aligned from 640 px). Nothing here fetches before a click: the public card page keeps its exact request
 // list. Opening Add to portfolio reads PORTFOLIO_KEY once, to prefill the quantity already held.
 // The two controls are <input type="button">: their words are the input's value, not text in the
@@ -35,7 +35,7 @@ type Outcome =
   | { readonly kind: 'read-only' }
   | { readonly kind: 'failed'; readonly context: string; readonly failure: ApiFailure };
 
-/** A refused write: signed out, the read-only demo, or the Problem block (D10). */
+/** A refused write: signed out, the read-only demo, or the Problem block. */
 function refusal(failure: ApiFailure, context: string): Outcome {
   if (failure.status === 401) return { kind: 'sign-in' };
   if (isDemoReadOnly(failure)) return { kind: 'read-only' };

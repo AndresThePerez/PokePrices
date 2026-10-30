@@ -1,4 +1,4 @@
-// The PokéPrices query client (D9): TanStack Query polling every five minutes while the tab is
+// The PokéPrices query client: TanStack Query polling every five minutes while the tab is
 // visible. No push, no websockets; the browser's HTTP cache revalidates with the API's ETags.
 import { QueryCache, QueryClient, type QueryClientConfig } from '@tanstack/react-query';
 import {
@@ -71,7 +71,7 @@ class SessionQueryClient extends QueryClient {
 }
 
 /**
- * A fresh client with the D9 defaults; App creates one per mount. It keeps one account's data from
+ * A fresh client with the polling defaults; App creates one per mount. It keeps one account's data from
  * showing under another: when ['me'] names a different account than the last one it named (A to B,
  * or A, signed out, then B), every ['account', …] query is forgotten (forgetAccount), and so is
  * everything cached before the first account this client learns of (a public page reads per-user

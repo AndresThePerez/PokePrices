@@ -1,4 +1,4 @@
-// Shared PokéPrices formatting (D2, D3). Every amount and sign is copied from the API's decimal
+// Shared PokéPrices formatting. Every amount and sign is copied from the API's decimal
 // string; nothing here parses money into a number.
 
 /** The naming fields of a variant, as the card answer and the history series both carry them. */

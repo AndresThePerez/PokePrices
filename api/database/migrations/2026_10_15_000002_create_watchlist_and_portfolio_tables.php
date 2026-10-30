@@ -6,7 +6,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
 /*
- * The watchlist and the portfolio (plan P4-i1 T05, D5): one row per (user, variant), deleted with the user. A
+ * The watchlist and the portfolio: one row per (user, variant), deleted with the user. A
  * holding's quantity is 1 to 9999. variant_key has no foreign key to card_variants on purpose: MapSchemaTest drops and
  * re-creates card_variants with only the price migrations rolled back first, and card_variants is append-only, so the
  * write path's existence check is enough. Neither table references any price table.

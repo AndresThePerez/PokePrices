@@ -3,9 +3,9 @@
 declare(strict_types=1);
 
 /*
-| PokéPrices accounts (plan P4-i1 D3, D7).
+| PokéPrices accounts.
 |
-| invite_code: registration is invite-only (R208). The code comes from the INVITE_CODE environment variable and is
+| invite_code: registration is invite-only. The code comes from the INVITE_CODE environment variable and is
 | never committed; with no code configured, registration accepts none. Tests set it with config([...]).
 |
 | rate_limits: the account tiers, in requests per minute (each an integer >= 1; anything else fails the boot),
@@ -13,10 +13,10 @@ declare(strict_types=1);
 | IP-keyed buckets (register, account-guest, account-demo, demo-session) are one global bucket until trustProxies is
 | scoped (the Deploy prompt).
 |
-| limits: the most variants a watchlist and a portfolio hold, and the largest quantity of a holding (D5; the database
+| limits: the most variants a watchlist and a portfolio hold, and the largest quantity of a holding (the database
 | checks quantity BETWEEN 1 AND 9999 too).
 |
-| demo: the read-only demo account (D8, R209), seeded by Database\Seeders\DemoAccountSeeder. DEMO_PASSWORD has no
+| demo: the read-only demo account, seeded by Database\Seeders\DemoAccountSeeder. DEMO_PASSWORD has no
 | committed default: unset, the seeder stores a random 40-character password and the demo is entered only through
 | POST /v1/demo/session; set, the normal sign-in form works too. Keys missing from card_variants are skipped.
 */

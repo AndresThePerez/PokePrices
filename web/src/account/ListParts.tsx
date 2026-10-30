@@ -34,7 +34,7 @@ export function ListMain({
   );
 }
 
-/** The loading line of a list page (D10). */
+/** The loading line of a list page. */
 export function ListLoading({ children }: { readonly children: string }) {
   return (
     <>
@@ -145,7 +145,7 @@ export function PriceLines({
 const QUANTITY_INPUT = `mt-1 w-28 num ${INPUT}`;
 
 /**
- * The quantity form (D10): a labelled whole-number field (1 to 9999) and Save. The browser's own
+ * The quantity form: a labelled whole-number field (1 to 9999) and Save. The browser's own
  * limits are hints only: the form never blocks a submit, so the API's 422 is what the field shows.
  * The field shows the typed draft (null until something is typed) over the quantity the API
  * holds (`initial`): a refetch moves an untouched field and never a typed one. A successful save

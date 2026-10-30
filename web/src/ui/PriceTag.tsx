@@ -1,4 +1,4 @@
-// The PriceTag primitive (D1): a market price, its change vs the previous close and the as-of
+// The PriceTag primitive: a market price, its change vs the previous close and the as-of
 // line. Each line is one element whose own text is the pinned string, verbatim (never split into
 // child spans): the price and the change in the mono stack with tabular figures, the change as a
 // 2 px chip in its tone with a 12 % tint of the same token (flat untinted), as-of 13 px muted.
@@ -19,7 +19,7 @@ const PRICE_SIZE: Readonly<Record<PriceTagSize, string>> = {
   row: 'text-base',
 };
 
-/** The headline price, 36/40 700: the card hero's figure (D2 RULING d). */
+/** The headline price, 36/40 700: the card hero's figure. */
 const HERO_PRICE = 'block num text-4xl font-bold';
 
 /** The chip tint of each tone: 12 % of the tone's own token; flat stays untinted. */

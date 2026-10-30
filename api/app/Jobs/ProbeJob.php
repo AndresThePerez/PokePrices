@@ -12,7 +12,7 @@ use Illuminate\Queue\Attributes\Tries;
 use Illuminate\Support\Facades\Cache;
 
 /**
- * Proves the worker consumes redis-queue and writes to redis-cache (TTL on every key, R13). Timeout 30 s, below the
+ * Proves the worker consumes redis-queue and writes to redis-cache (TTL on every key). Timeout 30 s, below the
  * redis queue's retry_after (90 s); three tries, as the worker's --tries gave it before.
  */
 #[Tries(3)]

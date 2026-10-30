@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 /*
-| PokéPrices rate tiers (plan T44, S8; R160). One named limiter per tier, registered by
+| PokéPrices rate tiers. One named limiter per tier, registered by
 | App\Domain\Catalog\RateLimits; routes opt in with throttle:<tier>. Each tier is
 | ['per_minute' => n >= 1, 'by' => 'ip'], and anything else fails the boot.
 */

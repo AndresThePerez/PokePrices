@@ -36,10 +36,10 @@ const ZERO_ELIGIBLE = 'No daily close is held for this card yet.';
 const CHART_FAILED = 'The chart could not be drawn. Show the data table to read every close.';
 const ATTRIBUTION = 'Chart by TradingView Lightweight Charts';
 
-/** lightweight-charts is loaded with the chart only, never in the entry chunk (D6). */
+/** lightweight-charts is loaded with the chart only, never in the entry chunk. */
 const PriceChart = lazy(() => import('../chart/PriceChart'));
 
-/** Keeps a chart that cannot be drawn from taking the card page down (D6). */
+/** Keeps a chart that cannot be drawn from taking the card page down. */
 class ChartBoundary extends Component<{ readonly children: ReactNode }, { failed: boolean }> {
   override state = { failed: false };
 
@@ -52,7 +52,7 @@ class ChartBoundary extends Component<{ readonly children: ReactNode }, { failed
   }
 }
 
-/** The link the chart library's licence asks for, 12 px under every drawn chart (D6, F16). */
+/** The link the chart library's licence asks for, 12 px under every drawn chart. */
 function Attribution() {
   return (
     <p className="mt-3 text-meta">

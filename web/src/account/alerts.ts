@@ -1,4 +1,4 @@
-// Shared pieces of /alerts (P5 D10) that are not components: the movement rule's figures, the
+// Shared pieces of /alerts that are not components: the movement rule's figures, the
 // query keys and the date part of an API timestamp. The page reads no clock: every date it shows
 // is the date part of a timestamp the API sent.
 import { useQuery } from '@tanstack/react-query';
@@ -20,7 +20,7 @@ export const MOVEMENT_ABS = '1.00';
 export const WEBHOOKS_KEY = accountKey('webhooks');
 export const NOTIFICATIONS_KEY = accountKey('notifications');
 
-/** The loading line of /alerts (D10). */
+/** The loading line of /alerts. */
 export const WEBHOOKS_LOADING = 'Loading your alerts and webhooks…';
 
 /** The YYYY-MM-DD date part of an RFC 3339 timestamp; the time of day is never shown. */
@@ -28,7 +28,7 @@ export function datePart(timestamp: string): string {
   return timestamp.slice(0, 10);
 }
 
-/** The account's webhooks (P3 D9 defaults), asked for only once the session is signed in. */
+/** The account's webhooks (the polling defaults), asked for only once the session is signed in. */
 export function useWebhooks(enabled: boolean) {
   return useQuery<WebhooksBody, ApiFailure>({
     queryKey: WEBHOOKS_KEY,
@@ -37,7 +37,7 @@ export function useWebhooks(enabled: boolean) {
   });
 }
 
-/** The account's alert settings (P3 D9 defaults), asked for only for an account that may change them. */
+/** The account's alert settings (the polling defaults), asked for only for an account that may change them. */
 export function useNotifications(enabled: boolean) {
   return useQuery<NotificationsBody, ApiFailure>({
     queryKey: NOTIFICATIONS_KEY,

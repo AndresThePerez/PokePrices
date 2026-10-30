@@ -35,7 +35,7 @@ return [
             'root' => storage_path('app/private'),
             // PokéPrices serves no files through Laravel (nginx routes no /storage path), so the framework's
             // GET and PUT storage/{path} routes stay unregistered: no write route sits outside the session and the
-            // demo's read-only rule (plan P4-i1 D8).
+            // demo's read-only rule.
             'serve' => false,
             'throw' => false,
             'report' => false,

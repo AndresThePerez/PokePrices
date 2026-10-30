@@ -70,7 +70,7 @@ final class AccountRateLimits
         return $tiers;
     }
 
-    /** The login limiter key (D7): the normalised email, then the IP. */
+    /** The login limiter key: the normalised email, then the IP. */
     public static function loginKey(Request $request): string
     {
         return Str::transliterate(AccountEmail::key($request->input(AccountEmail::FIELD))).'|'.$request->ip();

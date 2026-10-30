@@ -18,7 +18,7 @@ final class AccountEmail
         return is_string($email) ? mb_strtolower(trim($email), 'UTF-8') : $email;
     }
 
-    /** The normalised email for a limiter key: '' for anything that is not a string (D7). */
+    /** The normalised email for a limiter key: '' for anything that is not a string. */
     public static function key(mixed $email): string
     {
         $normalized = self::normalize($email);

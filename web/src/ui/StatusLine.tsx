@@ -1,4 +1,4 @@
-// The loading line (D1): a muted 14 px role=status paragraph that says what is being read. `gap` is
+// The loading line: a muted 14 px role=status paragraph that says what is being read. `gap` is
 // its top margin at the call site; `reserve` is the minimum height a page keeps for the body that
 // replaces it (the price history). It is a loading line only: the search results summary and the
 // outcome lines of a write keep their own shapes.

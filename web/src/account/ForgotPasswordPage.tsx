@@ -1,4 +1,4 @@
-// /password/forgot (D10, D2): POST /forgot-password. The API answers the same message whether or
+// /password/forgot: POST /forgot-password. The API answers the same message whether or
 // not the address has an account; the page shows that message verbatim.
 import { useState, type SubmitEvent } from 'react';
 import { requestPasswordReset, type MessageAnswer } from '../api/client';

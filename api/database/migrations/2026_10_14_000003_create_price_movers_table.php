@@ -7,13 +7,13 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /*
- * price_movers (plan P2-i1 T12, D7; System Design §4): the ranked movers of each collected day, so "top movers" is an
- * index scan. For day D a variant with a real close on D and a D4 previous close of at least
+ * price_movers (System Design §4): the ranked movers of each collected day, so "top movers" is an
+ * index scan. For day D a variant with a real close on D and a previous close of at least
  * config('pricing.movers.min_previous_close') ranks `up` (change > 0) or `down` (change < 0) by abs(change_pct) desc,
  * abs(change) desc, variant_key asc, top config('pricing.movers.limit') per direction. The window is the previous
  * close. It is derived: Movers::rebuild() rewrites the days of each ingest's recompute window inside finalize, so it
- * holds no wall-clock or run column. Money and change_pct are numeric(12,2) (D5). It stays outside PriceDigest
- * (R180b); the replay's movers_check covers it.
+ * holds no wall-clock or run column. Money and change_pct are numeric(12,2). It stays outside PriceDigest;
+ * the replay's movers_check covers it.
  */
 return new class extends Migration
 {

@@ -45,7 +45,7 @@ final readonly class GoldenSet
         'delta_energy', 'pattern_pokeball', 'pattern_masterball', 'pattern_energy', 'cosmos_holo',
     ];
 
-    /** The classes OracleComparison sorts oracle-blind variants into (DC2). */
+    /** The classes OracleComparison sorts oracle-blind variants into. */
     public const array BLIND_CLASSES = ['group_1663', 'trainer_kit', 'basep', 'pattern', 'me_era', 'other'];
 
     /** Mapped cards must stay at or above this many per mille of the baseline's mapped_cards. */
@@ -65,7 +65,7 @@ final readonly class GoldenSet
 
     /**
      * @param  array{id: int, snapshot_day: string, dataset_ref: string, marker: string}  $build
-     * @return array<string, mixed> the DC4 artefact
+     * @return array<string, mixed> the golden-set artefact
      *
      * @throws InvalidArgumentException when the golden file breaks the row shape
      * @throws RuntimeException when the golden file cannot be read

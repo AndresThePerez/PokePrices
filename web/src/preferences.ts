@@ -1,4 +1,4 @@
-// PokéPrices display preferences (D8): the theme and the up/down palette. Stored in localStorage,
+// PokéPrices display preferences: the theme and the up/down palette. Stored in localStorage,
 // written to <html data-theme data-palette>, and exposed to React through usePreferences(). The
 // inline script in index.html applies the same rules before first paint; keep the two in step.
 import { useSyncExternalStore } from 'react';

@@ -1,4 +1,4 @@
-// The PokéPrices session (D11): the ['me'] query and the signed-in, signed-out, loading and
+// The PokéPrices session: the ['me'] query and the signed-in, signed-out, loading and
 // failed states every account page reads. A 401 from GET /v1/me is the signed-out state (null),
 // not a problem. The header reads it passively only (useKnownSession), so public pages keep their
 // exact request lists. Every query key that holds one account's data lives under ['account', …]
@@ -103,7 +103,7 @@ export async function fetchMe(options: RequestOptions = {}): Promise<Me | null> 
   throw failure;
 }
 
-/** The session from ['me'] (P3 D9 defaults: polled, retry off, the last good answer kept). */
+/** The session from ['me'] (defaults: polled, retry off, the last good answer kept). */
 export function useSession(): Session {
   const query = useQuery<Me | null, ApiFailure>({
     queryKey: ME_KEY,

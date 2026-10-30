@@ -1,5 +1,5 @@
-// /account/verify-email?link= (D10, D2): the verification email's link lands here and carries the
-// API's signed path. A link outside D10's pattern is never fetched. Verifying needs the session,
+// /account/verify-email?link=: the verification email's link lands here and carries the
+// API's signed path. A link outside the verification-link pattern is never fetched. Verifying needs the session,
 // so a signed-out visitor is sent to sign in first and comes back here through next.
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';

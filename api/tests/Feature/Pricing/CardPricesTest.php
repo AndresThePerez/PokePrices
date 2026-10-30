@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\RateLimiter as RateLimiterFacade;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Testing\TestResponse;
+use Tests\Support\ForbiddenWords;
 
 // GET /v1/cards/{id}/prices?range= (plan P2-i1 T11, review F9, R177(8)): the daily candles of each variant of a card
 // from price_daily, the window anchored on the newest ok ingest run, never the clock. The map is built from the P1
@@ -346,5 +347,5 @@ it('documents the operation: the range enum, no upstream errors and the data [] 
         ->and($range['schema']['enum'])->toBe(['1W', '1M', '3M', 'YTD', '1Y'])
         ->and($description)->toContain('data: []')
         ->and($description)->toContain('GET /v1/cards/{id}')
-        ->and(strtolower($description))->not->toMatch('/real-time|realtime|\blive\b|24h|as of today|\b1d\b/');
+        ->and(ForbiddenWords::payloadMatches($description))->toBe([]);
 });

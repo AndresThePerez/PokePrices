@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /*
- * unmapped_cards (plan T40, DC5, review T40-1): the dataset cards that no priced item of a map build reached, one row
+ * unmapped_cards: the dataset cards that no priced item of a map build reached, one row
  * per (build, card), so every catalog card is either mapped or listed for review. unmapped_source_items holds
  * source items and keeps its product columns NOT NULL; a card with no product gets a row here instead.
  * Reasons: `no_set_alias` (the card's set has no set_aliases row, e.g. fut20) and `no_priced_product` (its set is

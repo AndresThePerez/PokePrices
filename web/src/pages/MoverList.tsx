@@ -30,7 +30,7 @@ const STRIP_LIMIT = 5;
 const LIST_NAME: Record<MoversDirection, string> = { up: 'Rises', down: 'Falls' };
 
 /**
- * One mover row (D2), the same markup on the home strip and the board: rank in a 28 px mono muted
+ * One mover row, the same markup on the home strip and the board: rank in a 28 px mono muted
  * column, the card link (16 px 600; its 44 px target reaches up into the row's top padding so the
  * set line sits right under the name) with its set line (14 px muted) beneath, then the price and
  * the chip at the right edge, the chip's tint hugging its text and its text left-aligned. A list at least 32 rem wide (the board) puts them in a right column of their
@@ -58,7 +58,7 @@ function MoverRow({ mover }: { readonly mover: Mover }) {
   );
 }
 
-/** The one "as of" line of a list whose rows all share meta.day (D3, D11); none without a day. */
+/** The one "as of" line of a list whose rows all share meta.day; none without a day. */
 export function MoversStamp({
   day,
   className = 'mt-2',
@@ -70,7 +70,7 @@ export function MoversStamp({
   return <AsOf day={day} as="p" className={className} />;
 }
 
-/** What the ranking counts (D11). */
+/** What the ranking counts. */
 export function MoversScope({ body }: { readonly body: MoversPage }) {
   return (
     <p className={`mt-3 text-sm ${MUTED}`}>
@@ -79,7 +79,7 @@ export function MoversScope({ body }: { readonly body: MoversPage }) {
   );
 }
 
-/** The degraded catalog line (D10), shown when an answer's names come from a stale copy. */
+/** The degraded catalog line, shown when an answer's names come from a stale copy. */
 export function MoversDegraded() {
   return <DegradedNotice className="mt-4" />;
 }
@@ -88,7 +88,7 @@ export function MoversFootnote() {
   return <p className={`mt-4 text-meta ${MUTED}`}>{PRICE_FOOTNOTE}</p>;
 }
 
-/** A failure with no answer to show (D10). */
+/** A failure with no answer to show. */
 export function MoversProblem({ failure }: { readonly failure: ApiFailure }) {
   return <ProblemNotice context="Could not load the movers" failure={failure} className="mt-4" />;
 }
@@ -103,7 +103,7 @@ export function MoversLoading() {
 }
 
 /**
- * One direction's ranked rows, or its empty state (D11): "No movers yet" before any movers day,
+ * One direction's ranked rows, or its empty state: "No movers yet" before any movers day,
  * "No rises/falls ranked for <day>" when the day has none in this direction. With `stamped`, the
  * list prints its own "as of" line first.
  */

@@ -4,7 +4,7 @@
 @custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *));
 
 /*
- * The design tokens (D8, D1), at their light green-red values. `static` emits every token on
+ * The design tokens, at their light green-red values. `static` emits every token on
  * :root, including the ones only the chart reads from JavaScript. Dark and palette overrides live
  * only in the three rules below; no other rule declares a custom property.
  */

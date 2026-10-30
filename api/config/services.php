@@ -31,24 +31,24 @@ return [
     'pokesearch' => [
         'url' => env('POKESEARCH_URL', 'http://host.docker.internal:8081'),
         'api_key' => env('POKESEARCH_API_KEY'),
-        // The readiness probe's own client (plan T19): seconds, one attempt, no retry, no breaker.
+        // The readiness probe's own client: seconds, one attempt, no retry, no breaker.
         'timeouts' => [
             'readiness' => ['connect' => 1, 'total' => 1],
         ],
     ],
 
-    // Collected TCGCSV days, only ever read (plan T39). The dev stack mounts the repository at /workspace.
+    // Collected TCGCSV days, only ever read. The dev stack mounts the repository at /workspace.
     'tcgcsv' => [
         'snapshots' => env('TCGCSV_SNAPSHOTS_DIR', '/workspace/.data/snapshots'),
     ],
 
-    // Dataset checkouts by ref, read by the map audits (plan T40).
+    // Dataset checkouts by ref, read by the map audits.
     'dataset' => [
         'root' => env('DATASET_DIR', '/workspace/.data/dataset'),
     ],
 
     // The recorded pokemontcg.io oracle by day: written once by pokeprices:oracle:fetch, read by
-    // pokeprices:map:oracle (plan T41).
+    // pokeprices:map:oracle.
     'oracle' => [
         'root' => env('ORACLE_DIR', '/workspace/.data/oracle'),
     ],

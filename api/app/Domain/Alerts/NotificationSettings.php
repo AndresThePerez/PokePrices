@@ -72,7 +72,7 @@ final class NotificationSettings
     }
 
     /**
-     * Sets the channel back to email when it was discord (D9: the Discord webhook was deleted). Call inside the
+     * Sets the channel back to email when it was discord (the Discord webhook was deleted). Call inside the
      * transaction that deletes the webhook.
      */
     public static function resetDiscord(ConnectionInterface $db, int $userId): void

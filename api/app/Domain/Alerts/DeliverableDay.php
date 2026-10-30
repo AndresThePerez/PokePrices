@@ -115,7 +115,7 @@ final class DeliverableDay
 
     /**
      * The ok days strictly between the watermark and the deliverable day: a catch-up passes over them and they are
-     * never dispatched (D2 (iii)). None without a watermark (a first start is not a catch-up).
+     * never dispatched. None without a watermark (a first start is not a catch-up).
      *
      * @param  array{today: string, newest: string|null, floor: string|null, watermark: string|null, future: list<string>}  $terms
      * @return list<string>
@@ -133,7 +133,7 @@ final class DeliverableDay
         ));
     }
 
-    /** Deletes the source's dispatch_days rows dated after $day (the operator reset, D2); returns how many. */
+    /** Deletes the source's dispatch_days rows dated after $day (the operator reset); returns how many. */
     public static function resetAfter(ConnectionInterface $db, string $source, string $day): int
     {
         return $db->delete('DELETE FROM dispatch_days WHERE source = ? AND day > ?::date', [$source, $day]);

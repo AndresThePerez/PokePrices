@@ -1,4 +1,4 @@
-// /password/reset?token=&email= (D10, D2): the reset link lands here. On mount the token and the
+// /password/reset?token=&email=: the reset link lands here. On mount the token and the
 // email move into component state and leave the address bar (history.replaceState), so the token
 // never stays in the browser history. POST /reset-password, then /sign-in with a status line.
 import { useEffect, useState, type SubmitEvent } from 'react';

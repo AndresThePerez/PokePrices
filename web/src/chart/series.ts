@@ -1,12 +1,12 @@
-// The pure model of the PokéPrices price history (D4–D7): ranges, segments, the History begins
+// The pure model of the PokéPrices price history: ranges, segments, the History begins
 // banner, the hidden summary and the data table rows. Every printed amount is the API's string
-// through grouped(); Number() is used only to choose the high and the low and for axis geometry (D2). Day arithmetic
-// happens only on API day strings, in UTC (D1): nothing here reads the clock.
+// through grouped(); Number() is used only to choose the high and the low and for axis geometry. Day arithmetic
+// happens only on API day strings, in UTC: nothing here reads the clock.
 import type { AutoscaleInfo, PriceRange as AxisRange, Time } from 'lightweight-charts';
 import type { PricePoint, PriceRange, PriceSeries } from '../api/client';
 import { grouped } from '../format';
 
-/** The five ranges in order (D4); there is no 1D. */
+/** The five ranges in order; there is no 1D. */
 export const RANGES = ['1W', '1M', '3M', 'YTD', '1Y'] as const satisfies readonly PriceRange[];
 export const DEFAULT_RANGE: PriceRange = '1M';
 
@@ -21,7 +21,7 @@ function dayMs(day: string): number {
 }
 
 /**
- * The points split where the line must break (D6): a new segment starts at a point whose day is
+ * The points split where the line must break: a new segment starts at a point whose day is
  * not exactly the previous point's day + 1, or whose series_epoch differs from the previous one.
  */
 export function segments(points: readonly PricePoint[]): PricePoint[][] {
@@ -44,7 +44,7 @@ export function segments(points: readonly PricePoint[]): PricePoint[][] {
   return result;
 }
 
-/** D5: shown exactly when history_begins is after the window's first day (string order). */
+/** Shown exactly when history_begins is after the window's first day (string order). */
 export function showsBanner(historyBegins: string | null, from: string | null): boolean {
   return historyBegins !== null && from !== null && historyBegins > from;
 }
@@ -53,7 +53,7 @@ export function bannerText(historyBegins: string): string {
   return `History begins ${historyBegins}. PokéPrices has no daily close for this variant before that day.`;
 }
 
-/** The series a visitor can choose: those PokéPrices holds a close for, in API order (D7). */
+/** The series a visitor can choose: those PokéPrices holds a close for, in API order. */
 export function eligibleSeries(series: readonly PriceSeries[]): PriceSeries[] {
   return series.filter((one) => one.history_begins !== null);
 }
@@ -85,7 +85,7 @@ function money(point: PricePoint): string {
 }
 
 /**
- * The hidden summary (D7) of the given points (ascending by day). Statistics cover the real
+ * The hidden summary of the given points (ascending by day). Statistics cover the real
  * points of the newest series_epoch only, never a comparison across epochs; filled points are
  * counted, never measured.
  */
@@ -131,7 +131,7 @@ interface TableRow {
 
 const MAPPING_NOTE = 'New product mapping from this day: not comparable with earlier closes';
 
-/** One data table row per point, ascending by day, with its D7 note. */
+/** One data table row per point, ascending by day, with its note. */
 export function tableRows(points: readonly PricePoint[]): TableRow[] {
   const ordered = [...points].sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0));
   return ordered.map((point, index) => {
@@ -149,7 +149,7 @@ export function tableRows(points: readonly PricePoint[]): TableRow[] {
   });
 }
 
-// The chart axes (F11). Axis values are geometry, so they are numbers here (D2); no printed
+// The chart axes. Axis values are geometry, so they are numbers here; no printed
 // amount of the page comes from them. Ticks use a fixed English month table: no Intl locale, no
 // clock read. Only types come from lightweight-charts, so this module stays out of its chunk.
 

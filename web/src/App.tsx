@@ -35,7 +35,7 @@ function Routes() {
   useRouteFocus(pathname);
   switch (route.name) {
     case 'home':
-      // The landing (D2): the job in the h1, the source sentence, then the one task (search) and
+      // The landing: the job in the h1, the source sentence, then the one task (search) and
       // the demo entry; the movers follow as supporting content.
       return (
         <Page>
@@ -100,7 +100,7 @@ function Routes() {
 }
 
 export default function App() {
-  // One client per mount (D9): every render(<App />) starts with an empty cache.
+  // One client per mount: every render(<App />) starts with an empty cache.
   const [queryClient] = useState(createQueryClient);
   return (
     <QueryClientProvider client={queryClient}>

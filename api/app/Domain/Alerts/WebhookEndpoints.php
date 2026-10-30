@@ -45,7 +45,7 @@ final class WebhookEndpoints
 
     /**
      * Checks $url for an endpoint of $kind: [null, the url_hint] when it may be registered, else [the errors.url
-     * message, null]. A Discord URL must have D6's Discord shape first; every URL then passes the address guard.
+     * message, null]. A Discord URL must have the Discord webhook shape first; every URL then passes the address guard.
      *
      * @return array{0: string|null, 1: string|null}
      */

@@ -1,4 +1,4 @@
-// /sign-up (D10, D3): invite code, email and password over POST /register. On 201 the account is
+// /sign-up: invite code, email and password over POST /register. On 201 the account is
 // signed in; the page refetches ['me'] and opens /account with its status line.
 import { useState, type SubmitEvent } from 'react';
 import { signUp } from '../api/client';

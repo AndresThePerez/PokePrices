@@ -6,10 +6,10 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
 /*
- * Account columns on users (plan P4-i1 T02, D5). People register with an email and a password only, so name becomes
+ * Account columns on users. People register with an email and a password only, so name becomes
  * nullable. is_demo marks the one read-only demo account (users_one_demo_unique allows a single true row); the three
  * two_factor_* columns hold Fortify's encrypted TOTP secret, its encrypted recovery codes and the confirmation time.
- * users_email_lower_unique (review F-P4-04) makes a path that skips the email normalisation fail closed; the default
+ * users_email_lower_unique makes a path that skips the email normalisation fail closed; the default
  * users_email_unique stays.
  */
 return new class extends Migration

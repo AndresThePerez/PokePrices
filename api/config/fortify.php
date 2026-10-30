@@ -5,13 +5,13 @@ declare(strict_types=1);
 use Laravel\Fortify\Features;
 
 /*
-| Fortify, headless (plan P4-i1 D2). The SPA owns every page, so Fortify registers no view routes and answers JSON.
-| Email and password only; registration is invite-only (D3, App\Actions\Fortify\CreateNewUser).
+| Fortify, headless. The SPA owns every page, so Fortify registers no view routes and answers JSON.
+| Email and password only; registration is invite-only (App\Actions\Fortify\CreateNewUser).
 |
 | lowercase_usernames stays false: App\Http\Middleware\NormalizeAccountEmail trims and lower-cases a string email on
 | every Fortify POST before validation, the broker and the limiter key, and leaves a non-string email to validation.
 | Fortify's own lower-casing runs before validation on /register and /reset-password and would turn an array email
-| into a 500 (review F-P4-05).
+| into a 500.
 */
 
 return [

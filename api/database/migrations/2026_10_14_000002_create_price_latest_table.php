@@ -7,9 +7,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /*
- * price_latest (plan P2-i1 T05, D4, D5): one row per (variant, source), the newest real close with its D4 previous
+ * price_latest: one row per (variant, source), the newest real close with its previous
  * close and change. It is derived: LatestPrices::rebuild() recomputes it from price_daily inside every ingest
- * finalize, so it holds no wall-clock or run column (R177(6)) and identical price_daily gives identical rows. Money
+ * finalize, so it holds no wall-clock or run column and identical price_daily gives identical rows. Money
  * and change_pct are numeric(12,2) (review F8). The previous fields are all null, or the previous close and day are
  * both set (change_pct alone may stay null: a 0.00 previous close).
  */

@@ -39,7 +39,7 @@ use RuntimeException;
  */
 final class FortifyServiceProvider extends ServiceProvider
 {
-    /** Route middleware added to the named package routes, after the packages register them (D1, D3, D7). */
+    /** Route middleware added to the named package routes, after the packages register them. */
     private const array ROUTE_MIDDLEWARE = [
         'register.store' => [NormalizeAccountEmail::class, 'throttle:register'],
         'login.store' => [NormalizeAccountEmail::class],

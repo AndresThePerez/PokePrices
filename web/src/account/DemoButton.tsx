@@ -1,4 +1,4 @@
-// Try the read-only demo (D8, D10): POST /v1/demo/session signs this browser in to the shared,
+// Try the read-only demo: POST /v1/demo/session signs this browser in to the shared,
 // seeded demo account (after the CSRF cookie, like every account write), then the session is read
 // again and the demo's watchlist opens. The server refuses every write of the demo.
 import { useId } from 'react';
@@ -57,7 +57,7 @@ export default function DemoButton({
 }
 
 /**
- * The Just looking? panel under the sign-in and sign-up panels (D0-F09): the same centred 420 px
+ * The Just looking? panel under the sign-in and sign-up panels: the same centred 420 px
  * width, an h2, the demo sentence and the full-width demo button.
  */
 export function DemoPanel() {

@@ -67,8 +67,9 @@ final class ConditionalGet
     /**
      * The representation the ETag covers: the body a GET carries. For HEAD the router has already emptied the
      * content (Response::prepare), so a JSON response is hashed over its data encoded again with the response's own
-     * options, which is byte for byte the GET's body. Any other response with an empty body (every non-JSON HEAD
-     * among them) has nothing to hash and gets no validator (null).
+     * options, which is byte for byte the GET's body. That re-encodes decoded data, so a float `-0.0` would differ
+     * from the GET's body; no public conditional read emits a float today. Any other response with an empty body
+     * (every non-JSON HEAD among them) has nothing to hash and gets no validator (null).
      */
     private static function body(Request $request, Response $response): ?string
     {

@@ -1,4 +1,4 @@
-// The Webhooks section of /alerts (P5 D10): the account's webhooks over GET /v1/webhooks, each with
+// The Webhooks section of /alerts: the account's webhooks over GET /v1/webhooks, each with
 // its last message, a test message and Delete, and the form that adds one. The signing secret of a
 // new signed webhook lives in this component's state only: never in a query or mutation cache entry,
 // gone from the DOM after "I have stored the secret" and when the page is left. Dates are the date
@@ -47,7 +47,7 @@ const TURNED_OFF =
   'Turned off: the receiver said this webhook no longer exists. Delete it and add it again.';
 
 /**
- * The URL field's placeholder (D10): the scheme and its two slashes, as hint text only. It is put
+ * The URL field's placeholder: the scheme and its two slashes, as hint text only. It is put
  * together here so the source holds no absolute-URL literal: client.test.ts scans every production
  * source for one, because the SPA fetches its own origin only.
  */
@@ -60,7 +60,7 @@ const KIND_OPTIONS = [
 
 const SECTION = 'mt-8 border-t border-line-subtle pt-6';
 
-/** The one status line of a webhook (D10); a turned-off webhook says so whatever came before. */
+/** The one status line of a webhook; a turned-off webhook says so whatever came before. */
 function statusLine(endpoint: WebhookEndpoint): { readonly text: string; readonly tone: string } {
   if (endpoint.disabled) {
     return { text: TURNED_OFF, tone: 'font-semibold text-warn' };

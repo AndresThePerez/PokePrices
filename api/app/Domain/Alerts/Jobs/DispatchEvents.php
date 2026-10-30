@@ -83,7 +83,7 @@ final class DispatchEvents implements ShouldBeUnique, ShouldQueue
     }
 
     /**
-     * One dispatch run at $now; returns the summary line (D8).
+     * One dispatch run at $now; returns the summary line.
      *
      * @return array{source: string, deliverable_day: string|null, newest_day: string|null, floor: string|null, watermark: string|null, ceiling: int|null, events: int, measured: int|null, scoped_events: int, created: array{'price.moved': int, 'alert.triggered': int, digest: int}, skipped: string|null, passed_over: list<string>}
      */

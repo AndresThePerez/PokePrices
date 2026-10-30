@@ -7,18 +7,18 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /*
- * price_events and movement_volume (plan P2-i1 T13, D4, D5, D6, R177(4), R180a; System Design §2 outbox, §5).
+ * price_events and movement_volume (System Design §2 outbox, §5).
  *
  * price_events is the movement outbox: one `price.moved` row per variant whose real close on the newest finalized day
- * crosses the movement rule against its D4 previous close. DetectMovement writes it inside a sync or queued finalize
+ * crosses the movement rule against its previous close. DetectMovement writes it inside a sync or queued finalize
  * transaction only; replay never writes, updates, deletes or truncates it, and ingestion only ever inserts (ON CONFLICT
  * DO NOTHING on the outbox key). Identity is the id plus UNIQUE (variant_key, source, day, series_epoch).
  * dispatched_at stays null in P2: dispatch, and any deliveries table, is P5. ingest_run_id records the writing run
  * without a foreign key, because runs may be cleaned up and an event is never deleted with them.
  *
- * movement_volume is derived: per (day, source, rule) the D4 comparisons of price_daily and how many cross each rule
+ * movement_volume is derived: per (day, source, rule) the previous-close comparisons of price_daily and how many cross each rule
  * of the measurement grid. Finalize rewrites the days of its recompute window, and pokeprices:prices:movement-volume
- * rewrites every day; it never reads price_events. Money and change_pct are numeric(12,2) (D5).
+ * rewrites every day; it never reads price_events. Money and change_pct are numeric(12,2).
  */
 return new class extends Migration
 {

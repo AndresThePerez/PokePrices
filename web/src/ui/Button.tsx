@@ -1,4 +1,4 @@
-// The Button primitive (D1): five variants on the design tokens, every one a 44 px target. A
+// The Button primitive: five variants on the design tokens, every one a 44 px target. A
 // segment is a toggle: aria-pressed carries its state and the check glyph is CSS, not text.
 import type { ButtonHTMLAttributes, InputHTMLAttributes } from 'react';
 import {

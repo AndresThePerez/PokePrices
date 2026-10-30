@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /*
- * The PokéPrices product-map tables (plan T36, R131, review-1 rec 14). Every rule is a plain, named constraint so
+ * The PokéPrices product-map tables. Every rule is a plain, named constraint so
  * the data-correctness checks can read it from pg_constraint; partial unique indexes would not show up there.
  * No column holds a price: price tables are P2 (EC-P1-18).
  */

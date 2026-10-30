@@ -164,7 +164,7 @@ final class DayIngest
     }
 
     /**
-     * Normalizes and upserts one chunk in its own transaction, reading the run FOR SHARE (D12). Returns the chunk's
+     * Normalizes and upserts one chunk in its own transaction, reading the run FOR SHARE. Returns the chunk's
      * counts, or null without writing when the run is no longer running (a replay superseded it).
      *
      * @return array<string, int>|null
@@ -302,7 +302,7 @@ final class DayIngest
     /**
      * Re-opens the newest queued run of the day's current marker when it is `running` or `failed`, and re-dispatches
      * only its chunks that are not done (failed chunks go back to pending); done chunks are not re-read, and finalize
-     * sums each chunk's counts once. It holds the `pricing:ingest` lock while it re-opens the run (D12). A newer `ok`
+     * sums each chunk's counts once. It holds the `pricing:ingest` lock while it re-opens the run. A newer `ok`
      * or `superseded` run of the marker, a sync or replay run, or a day without a readable marker leaves nothing to
      * resume. started_at is reset to the resume time, so the pending scan's 2 h stall clock restarts.
      *

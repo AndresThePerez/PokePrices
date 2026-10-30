@@ -417,7 +417,7 @@ function isCardNotFound(failure: ApiFailure): boolean {
 }
 
 export default function CardPage({ id }: { readonly id: string }) {
-  // Polled every five minutes while the tab is visible (D9). A failed poll keeps the last good
+  // Polled every five minutes while the tab is visible. A failed poll keeps the last good
   // answer on screen: the failure only shows when there is no card to show.
   const query = useQuery<CardDetail, ApiFailure>({
     queryKey: cardKey(id),

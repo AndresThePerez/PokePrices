@@ -144,7 +144,7 @@ function Results({ q, body }: { readonly q: string; readonly body: CardSearchPag
 export default function SearchPage({ query }: { readonly query: URLSearchParams }) {
   const q = (query.get('q') ?? '').trim();
   const page = readPage(query.get('page'));
-  // One cache entry per query and page (D9 polling, five minutes while visible): a revisited search
+  // One cache entry per query and page (polling, five minutes while visible): a revisited search
   // answers from the cache, and a failed poll keeps the last good answer on screen.
   const search = useQuery<CardSearchPage, ApiFailure>({
     queryKey: searchKey(q, page),

@@ -7,7 +7,7 @@ use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Laravel\Sanctum\Http\Middleware\AuthenticateSession;
 
 /*
-| Sanctum in cookie mode only (plan P4-i1 D1): the SPA and the API share one hostname, and the account routes are
+| Sanctum in cookie mode only: the SPA and the API share one hostname, and the account routes are
 | stateful for first-party requests from it. No personal access tokens: no token table, no HasApiTokens, and
 | FortifyServiceProvider makes Sanctum ignore any Authorization header. bootstrap/app.php does not call
 | statefulApi(): EnsureFrontendRequestsAreStateful is route middleware on the /v1 account group only, so public

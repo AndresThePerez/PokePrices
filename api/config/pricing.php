@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-// Price ingestion settings (plan P2-i1 D9). The thresholds are the day-close ADR's subject, not deploy knobs, so
+// Price ingestion settings. The thresholds are the day-close ADR's subject, not deploy knobs, so
 // none of them reads the environment.
 return [
     'source' => 'tcgplayer',

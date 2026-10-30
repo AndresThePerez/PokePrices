@@ -10,9 +10,9 @@ use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
 /**
- * Loads database/data/set_aliases.csv into set_aliases (plan T37). The CSV is the whole truth for source
+ * Loads database/data/set_aliases.csv into set_aliases. The CSV is the whole truth for source
  * `tcgplayer`: rows are upserted on (source, set, group) and rows the CSV no longer lists are removed, so running
- * the seeder twice changes nothing. A row with an empty group (fut20, role `none`) cannot satisfy T36's CHECKs
+ * the seeder twice changes nothing. A row with an empty group (fut20, role `none`) cannot satisfy the product-map CHECKs
  * and is skipped; it exists so the table stays total over the dataset's set ids.
  */
 final class SetAliasSeeder extends Seeder

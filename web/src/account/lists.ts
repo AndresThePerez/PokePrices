@@ -1,4 +1,4 @@
-// Shared pieces of the watchlist and portfolio views (D10) that are not components: the strings
+// Shared pieces of the watchlist and portfolio views that are not components: the strings
 // every list view prints, the row naming of the P3 movers row and the answers' refusals.
 import { hasProblemType, type ApiFailure, type WatchlistItem } from '../api/client';
 import { cardPath } from '../router';
@@ -22,7 +22,7 @@ export function cardLabel(row: ListRow): string {
   return row.card === null ? `Card ${row.card_id}` : row.card.name;
 }
 
-/** Where sign-in brings a visitor back to: this card's page (D10). */
+/** Where sign-in brings a visitor back to: this card's page. */
 export function signInPath(cardId: string): string {
   return `/sign-in?next=${encodeURIComponent(cardPath(cardId))}`;
 }

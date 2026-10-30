@@ -1,4 +1,4 @@
-// The PokéPrices header on every route (D1): one 56 px bar with a skip link, the wordmark and the
+// The PokéPrices header on every route: one 56 px bar with a skip link, the wordmark and the
 // main links, the current page marked by aria-current, semibold and a 2 px accent underline. Under
 // 640 px the links fold into a Menu sheet, hidden by CSS only. The display settings live in the
 // footer. The last link is Sign in once the ['me'] cache knows the visitor is signed out, else

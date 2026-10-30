@@ -1,6 +1,6 @@
-// The class strings of the design-system primitives (D1), on the tokens of index.css only. The
-// account pages import FOCUS, MUTED, TEXT_LINK, PRIMARY_BUTTON and SECONDARY_BUTTON through
-// account/fields.ts, so these strings are exactly what Button and Field apply. Every control keeps
+// The class strings of the design-system primitives, on the tokens of index.css only. The
+// account pages import FOCUS, MUTED, TEXT_LINK, PRIMARY_BUTTON and SECONDARY_BUTTON from this file
+// directly, so these strings are exactly what Button and Field apply. Every control keeps
 // the literal min-h-11 (44 px; the shortControls pin) and no transition or animation class.
 
 /** The keyboard focus ring, in the focus token. */

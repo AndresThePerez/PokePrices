@@ -55,7 +55,7 @@ final readonly class OracleComparison
 
     /**
      * @param  array{id: int, snapshot_day: string, dataset_ref: string, marker: string}  $build
-     * @return array<string, mixed> the DC2 artefact
+     * @return array<string, mixed> the oracle artefact
      *
      * @throws RuntimeException when the oracle is missing, incomplete or unreadable, or a price file is unreadable
      */

@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 use RuntimeException;
 
-#[Description('Judge the PokéPrices product map per set against the recorded price oracle (DC2 artefact); reads only.')]
+#[Description('Judge the PokéPrices product map per set against the recorded price oracle; reads only.')]
 #[Signature('pokeprices:map:oracle
     {--day= : The collected day; must be the map build\'s snapshot day (default: that day)}
     {--oracle-dir= : The recorded oracle (default: services.oracle.root/<day>)}
@@ -75,7 +75,7 @@ final class MapOracle extends Command
             return self::FAILURE;
         }
         $this->line($this->option('json') === true ? $json : sprintf(
-            'DC2: %d sets disagree; %d of %d compared variants disagree (%s%%); %d excluded stale; %d blind classes uncovered',
+            'Oracle: %d sets disagree; %d of %d compared variants disagree (%s%%); %d excluded stale; %d blind classes uncovered',
             $artefact['value'], (int) array_sum(array_column($artefact['per_set'], 'disagree')), $artefact['denominator'],
             $artefact['global_disagreement_pct'], $artefact['excluded_stale'], $artefact['blind_classes_uncovered'],
         ));

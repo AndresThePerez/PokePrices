@@ -64,7 +64,7 @@ final class ContractDocument
 
     public function __invoke(OpenApi $openApi): void
     {
-        // The contract's only server is the relative /v1, so the export never depends on APP_URL (R78).
+        // The contract's only server is the relative /v1, so the export never depends on APP_URL.
         $openApi->servers = [new Server('/v1')];
         $openApi->info = ContractInfo::from($openApi->info, 'PokéPrices');
 

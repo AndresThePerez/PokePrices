@@ -6,10 +6,10 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
 /*
- * Alert settings (plan P5-i1 T05, D1; System Design §2 "thresholds per watchlist item").
+ * Alert settings (System Design §2 "thresholds per watchlist item").
  *
  * watchlist_items.alert_pct: the whole-percent threshold of one watchlist row, or null (no alert). The API refuses
- * anything below the movement rule (D9); the CHECK keeps the column inside 1..100 whatever writes it. The threshold
+ * anything below the movement rule; the CHECK keeps the column inside 1..100 whatever writes it. The threshold
  * lives on the watchlist row, so removing the row removes it.
  *
  * notification_settings: where a person's alerts and digest go (email or their Discord webhook) and whether a daily

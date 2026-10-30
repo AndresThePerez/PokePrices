@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 use RuntimeException;
 
-#[Description('Judge the PokéPrices product map against the golden set Andres signs at HG-18 (DC4 artefact); reads only.')]
+#[Description('Judge the PokéPrices product map against the golden set Andres signs at HG-18; reads only.')]
 #[Signature('pokeprices:map:golden
     {--file= : The golden file, relative to the working directory (default: database/data/golden-set.json)}
     {--pushed-ref= : The ref recording the last push (default: refs/remotes/origin/main)}
@@ -57,7 +57,7 @@ final class MapGolden extends Command
             return self::FAILURE;
         }
         $this->line($this->option('json') === true ? $json : sprintf(
-            'DC4: value %d over %d golden rows; approval_ratified %d; classes_missing %d; mapped_cards_regression %d',
+            'Golden set: value %d over %d golden rows; approval_ratified %d; classes_missing %d; mapped_cards_regression %d',
             $artefact['value'], $artefact['denominator'], $artefact['approval_ratified'], $artefact['classes_missing'], $artefact['mapped_cards_regression'],
         ));
 

@@ -1,4 +1,4 @@
-// The PokéPrices shell's route hooks (D2): the tab title of each page and the focus move to the new
+// The PokéPrices shell's route hooks: the tab title of each page and the focus move to the new
 // page's h1 after a pathname change. Nothing is announced: no live region, status or alert.
 import { useEffect, useRef } from 'react';
 

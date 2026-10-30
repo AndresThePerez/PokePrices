@@ -1,4 +1,4 @@
-// Sign out (D10), on the Account page and in the persistent demo strip (D2 RULING e). The strip is
+// Sign out, on the Account page and in the persistent demo strip. The strip is
 // the one place the read-only demo is named on a signed-in page: a neutral sunken strip under the
 // header bar with the demo sentence as one role-less paragraph and a quiet Sign out at the right
 // (omitted on /account, which has its own). It reads the session passively (useKnownSession), so it

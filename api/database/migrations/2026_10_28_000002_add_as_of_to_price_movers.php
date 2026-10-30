@@ -6,10 +6,10 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
 /*
- * price_movers.as_of (plan Q1-i3 T04, finding B10): the snapshot marker of each movers day, max(as_of) of that day's
+ * price_movers.as_of: the snapshot marker of each movers day, max(as_of) of that day's
  * real (never filled) price_daily closes for the source, which GET /v1/movers used to compute from price_daily on every
  * request (review F9). Movers::rebuild() now writes it with the rows; existing rows are backfilled with the same value,
- * then the column becomes NOT NULL. Like the rest of the table it is derived data, outside PriceDigest (R180b).
+ * then the column becomes NOT NULL. Like the rest of the table it is derived data, outside PriceDigest.
  */
 return new class extends Migration
 {

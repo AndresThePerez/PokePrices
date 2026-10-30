@@ -1,9 +1,9 @@
-// A variant's 1M sparkline (D12, F15): an inline 96 x 28 svg, no library, drawn from the same D6
+// A variant's 1M sparkline: an inline 96 x 28 svg, no library, drawn from the same
 // segments as the chart. A piece into a filled point is dashed; a one-point segment is a ring; a
 // filled end dot marks the last real close; a flat series is a dotted baseline at mid height,
 // broken where the segments break.
 // Fewer than 3 points draw nothing (too little to be a trend).
-// Number() is used for geometry only (D2); the svg is hidden from assistive technology because
+// Number() is used for geometry only; the svg is hidden from assistive technology because
 // the price lines beside it already carry every fact.
 import type { ReactElement } from 'react';
 import type { PricePoint } from '../api/client';
@@ -42,7 +42,7 @@ export default function Sparkline({ points }: { readonly points: readonly PriceP
   const shapes: ReactElement[] = [];
   if (max === min) {
     // A flat series: a dotted baseline instead of a line that reads as a strikethrough (F15), one
-    // per segment, so it never bridges a missing day or a series_epoch change (D6).
+    // per segment, so it never bridges a missing day or a series_epoch change.
     let offset = 0;
     for (const segment of segments(points)) {
       const start = offset;

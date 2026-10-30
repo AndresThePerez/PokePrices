@@ -1,5 +1,5 @@
-// The daily-close chart (D6): lightweight-charts v5, one line series per segment, loaded lazily by
-// PriceHistory so the library is its own chunk. Colours come from the D8 tokens on <html>; a token
+// The daily-close chart: lightweight-charts v5, one line series per segment, loaded lazily by
+// PriceHistory so the library is its own chunk. Colours come from the design tokens on <html>; a token
 // that reads empty falls back to its light-theme hex, so the library never receives ''.
 import { useEffect, useRef } from 'react';
 import {
@@ -19,11 +19,11 @@ import { usePreferences } from '../preferences';
 import { axisPrice, dayTick, paddedAutoscale } from './series';
 
 interface PriceChartProps {
-  /** The selected series' points in range, split by segments() (D6). */
+  /** The selected series' points in range, split by segments(). */
   readonly segments: readonly (readonly PricePoint[])[];
   readonly label: string;
   readonly range: PriceRange;
-  /** The id of the hidden summary that describes the chart (D7). */
+  /** The id of the hidden summary that describes the chart. */
   readonly describedBy: string;
 }
 
@@ -34,7 +34,7 @@ interface Colours {
   readonly grid: string;
 }
 
-/** D8's light-theme values: what a token that reads empty or whitespace is replaced by. */
+/** The light-theme values: what a token that reads empty or whitespace is replaced by. */
 const LIGHT: Colours = { line: '#44403c', filled: '#a8a29e', text: '#57534e', grid: '#ebe5dc' };
 
 function readColours(): Colours {
@@ -91,7 +91,7 @@ function seriesOptions(colours: Colours): LineSeriesPartialOptions {
   };
 }
 
-/** One data item per point; Number() is for geometry only (D2). Filled points carry their colour. */
+/** One data item per point; Number() is for geometry only. Filled points carry their colour. */
 function items(segment: readonly PricePoint[], filled: string): LineData[] {
   return segment.map((point) =>
     point.is_filled
@@ -148,7 +148,7 @@ export default function PriceChart({ segments, label, range, describedBy }: Pric
     };
   }, [segments]);
 
-  // A theme or palette choice re-reads the tokens and re-applies whatever changed (D6, D8).
+  // A theme or palette choice re-reads the tokens and re-applies whatever changed.
   useEffect(() => {
     const current = drawn.current;
     if (current === null) return;
