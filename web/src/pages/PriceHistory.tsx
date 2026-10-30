@@ -28,6 +28,7 @@ import { unwrap } from '../query';
 import { cardPricesKey } from '../queryKeys';
 import { Button } from '../ui/Button';
 import { MUTED, TEXT_LINK } from '../ui/classes';
+import StatusLine from '../ui/StatusLine';
 import Panel from '../ui/Panel';
 import ProblemNotice from '../ui/ProblemNotice';
 
@@ -349,9 +350,9 @@ export default function PriceHistory({
     body = (
       <>
         <Controls>{rangeGroup}</Controls>
-        <p role="status" className={`mt-3 text-sm ${MUTED} ${reserve}`}>
+        <StatusLine gap="mt-3" reserve={reserve}>
           Loading price history…
-        </p>
+        </StatusLine>
       </>
     );
   }

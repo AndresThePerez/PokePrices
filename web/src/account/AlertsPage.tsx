@@ -3,15 +3,18 @@
 // sign-up. The demo and an unverified account read the page and are told, in words, why they cannot
 // change it: no form and no button. Requests: GET /v1/me, then GET /v1/webhooks once signed in, and
 // GET /v1/me/notifications only for an account that may change its settings.
-import { Fragment, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import Link from '../Link';
 import { WEBHOOKS_LOADING, useNotifications, useWebhooks } from './alerts';
 import Notice from '../ui/Notice';
 import Page from '../ui/Page';
+import StatusLine from '../ui/StatusLine';
+import AccountScope from './AccountScope';
 import { ProblemBlock } from './Form';
-import { MUTED, TEXT_LINK } from './fields';
+import { TEXT_LINK } from './fields';
 import NotificationSettings, { PerCardAlerts } from './NotificationSettings';
 import { useSession } from './session';
+import SignInPrompt from './SignInPrompt';
 import Webhooks from './Webhooks';
 
 const DEMO_LINE =
@@ -29,27 +32,11 @@ function AlertsMain({ children }: { readonly children: ReactNode }) {
 }
 
 function Loading() {
-  return (
-    <p role="status" className={`mt-6 text-sm ${MUTED}`}>
-      {WEBHOOKS_LOADING}
-    </p>
-  );
+  return <StatusLine gap="mt-6">{WEBHOOKS_LOADING}</StatusLine>;
 }
 
 function SignedOut() {
-  return (
-    <>
-      <p className="mt-6">Sign in to set up alerts and webhooks.</p>
-      <p className="mt-2 flex flex-wrap gap-x-6">
-        <Link to="/sign-in?next=/alerts" className={TEXT_LINK}>
-          Sign in
-        </Link>
-        <Link to="/sign-up" className={TEXT_LINK}>
-          Create an account
-        </Link>
-      </p>
-    </>
-  );
+  return <SignInPrompt sentence="Sign in to set up alerts and webhooks." next="/alerts" signUp />;
 }
 
 function Unverified() {
@@ -85,10 +72,10 @@ export default function AlertsPage() {
     body = <SignedOut />;
   } else {
     const { me } = session;
-    // Keyed by the account: another account remounts it, dropping every secret held in state
+    // Scoped to the account: another account remounts it, dropping every secret held in state
     // (a webhook's one-time signing secret, the settings draft).
     body = (
-      <Fragment key={me.email}>
+      <AccountScope>
         {me.read_only ? (
           <Notice tone="info" as="p" className="mt-6">
             {DEMO_LINE}
@@ -107,7 +94,7 @@ export default function AlertsPage() {
           </>
         )}
         <Webhooks list={webhooks.data} error={webhooks.error} canWrite={canWrite} />
-      </Fragment>
+      </AccountScope>
     );
   }
 

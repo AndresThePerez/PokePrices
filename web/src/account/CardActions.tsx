@@ -16,6 +16,7 @@ import {
 import { variantLabel, type VariantNaming } from '../format';
 import Link from '../Link';
 import { unwrap } from '../query';
+import StatusLine from '../ui/StatusLine';
 import { ProblemBlock } from './Form';
 import { QUIET_BUTTON, TEXT_LINK, firstErrors } from './fields';
 import { QuantityForm } from './ListParts';
@@ -131,11 +132,7 @@ function HoldingForm({
   } else if (portfolio.error !== null) {
     body = <ProblemBlock context="Could not load your portfolio" failure={portfolio.error} />;
   } else {
-    body = (
-      <p role="status" className="mt-2 text-sm text-ink-muted">
-        Loading your portfolio…
-      </p>
-    );
+    body = <StatusLine gap="mt-2">Loading your portfolio…</StatusLine>;
   }
   return (
     <div id={id} className="mt-3">

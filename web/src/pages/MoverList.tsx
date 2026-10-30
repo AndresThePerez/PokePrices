@@ -18,6 +18,7 @@ import { unwrap } from '../query';
 import { moversKey } from '../queryKeys';
 import { cardPath } from '../router';
 import { FOCUS, MUTED, TEXT_LINK } from '../ui/classes';
+import StatusLine from '../ui/StatusLine';
 import DegradedNotice from '../ui/DegradedNotice';
 import { AsOf, ChangeChip, PriceFigure } from '../ui/PriceTag';
 import ProblemNotice from '../ui/ProblemNotice';
@@ -95,9 +96,7 @@ export function MoversProblem({ failure }: { readonly failure: ApiFailure }) {
 export function MoversLoading() {
   return (
     <>
-      <p role="status" className="mt-4 text-sm text-ink-muted">
-        Loading movers…
-      </p>
+      <StatusLine gap="mt-4">Loading movers…</StatusLine>
       <Skeleton className="mt-4" />
     </>
   );

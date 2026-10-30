@@ -19,6 +19,7 @@ import Link from '../Link';
 import { unwrap } from '../query';
 import { SELECT } from '../ui/classes';
 import { MOVEMENT_ABS } from './alerts';
+import AccountScope from './AccountScope';
 import { ProblemBlock } from './Form';
 import { MUTED, SECONDARY_BUTTON, TEXT_LINK, firstErrors } from './fields';
 import {
@@ -208,9 +209,11 @@ function Loaded({ body, access }: { readonly body: WatchlistBody; readonly acces
             aria-label="Watchlist"
             className="mt-6 divide-y divide-line-subtle border-y border-line-subtle"
           >
-            {body.data.map((item) => (
-              <WatchRow key={item.variant_key} item={item} access={access} />
-            ))}
+            <AccountScope>
+              {body.data.map((item) => (
+                <WatchRow key={item.variant_key} item={item} access={access} />
+              ))}
+            </AccountScope>
           </ul>
           {access === 'alerts' && <AlertExplainer />}
           {access === 'unverified' && <p className={`mt-4 text-sm ${MUTED}`}>{UNVERIFIED_LINE}</p>}

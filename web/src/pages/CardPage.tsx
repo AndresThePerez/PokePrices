@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState, type ReactNode } from 'react';
 import CardActions from '../account/CardActions';
+import AccountScope from '../account/AccountScope';
 import Link from '../Link';
 import {
   getCard,
@@ -17,6 +18,7 @@ import { DEFAULT_RANGE } from '../chart/series';
 import Sparkline from '../chart/Sparkline';
 import { PRICE_FOOTNOTE, initialOf, variantLabel } from '../format';
 import { MUTED, TEXT_LINK } from '../ui/classes';
+import StatusLine from '../ui/StatusLine';
 import DegradedNotice from '../ui/DegradedNotice';
 import Page from '../ui/Page';
 import Panel from '../ui/Panel';
@@ -194,7 +196,9 @@ function VariantRow({
           />
         </>
       )}
-      <CardActions cardId={id} variant={variant} />
+      <AccountScope>
+        <CardActions cardId={id} variant={variant} />
+      </AccountScope>
     </li>
   );
 }
@@ -429,9 +433,7 @@ export default function CardPage({ id }: { readonly id: string }) {
     body = (
       <>
         <h1 className="text-2xl font-semibold">{`Card ${id}`}</h1>
-        <p role="status" className="mt-6 text-sm text-ink-muted">
-          {`Loading card ${id}…`}
-        </p>
+        <StatusLine gap="mt-6">{`Loading card ${id}…`}</StatusLine>
         <Skeleton className="mt-6 w-48" />
         <Skeleton className="mt-2 w-64" />
       </>

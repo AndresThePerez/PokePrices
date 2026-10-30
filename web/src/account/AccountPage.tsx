@@ -10,6 +10,7 @@ import { resendVerification, type Me } from '../api/client';
 import { DisplaySettings } from '../Footer';
 import Link from '../Link';
 import Panel from '../ui/Panel';
+import AccountScope from './AccountScope';
 import { AccountMain, LoadingAccount, ProblemBlock, StatusLine } from './Form';
 import { FOCUS, MUTED, SECONDARY_BUTTON, TEXT_LINK } from './fields';
 import { useAccountWrite } from './mutations';
@@ -168,15 +169,16 @@ export default function AccountPage() {
       break;
     case 'signed-in':
       body = (
-        // Keyed by the account: another account remounts it, dropping every secret held in state
+        // Scoped to the account: another account remounts it, dropping every secret held in state
         // (the two-factor QR, setup key and recovery codes, a typed password).
-        <SignedIn
-          key={session.me.email}
-          me={session.me}
-          onDeleted={() => {
-            setDeleted(true);
-          }}
-        />
+        <AccountScope>
+          <SignedIn
+            me={session.me}
+            onDeleted={() => {
+              setDeleted(true);
+            }}
+          />
+        </AccountScope>
       );
       break;
   }

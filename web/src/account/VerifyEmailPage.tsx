@@ -7,6 +7,7 @@ import Link from '../Link';
 import { AccountMain, LoadingAccount, ProblemBlock } from './Form';
 import { TEXT_LINK } from './fields';
 import { ME_KEY, ONE_TIME, accountKey, useSession } from './session';
+import SignInPrompt from './SignInPrompt';
 
 const INVALID =
   'This verification link is not valid or has expired. Send a new one from your account.';
@@ -18,14 +19,10 @@ function Invalid() {
 function SignInFirst({ link }: { readonly link: string }) {
   const here = `/account/verify-email?link=${encodeURIComponent(link)}`;
   return (
-    <>
-      <p className="mt-6">Sign in to verify your email address.</p>
-      <p className="mt-2">
-        <Link to={`/sign-in?next=${encodeURIComponent(here)}`} className={TEXT_LINK}>
-          Sign in
-        </Link>
-      </p>
-    </>
+    <SignInPrompt
+      sentence="Sign in to verify your email address."
+      next={encodeURIComponent(here)}
+    />
   );
 }
 

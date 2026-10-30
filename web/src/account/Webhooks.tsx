@@ -27,6 +27,7 @@ import Notice from '../ui/Notice';
 import Panel from '../ui/Panel';
 import { Field, Input, Select } from '../ui/Field';
 import { ProblemBlock, StatusLine } from './Form';
+import LoadingLine from '../ui/StatusLine';
 import { MUTED, PRIMARY_BUTTON, SECONDARY_BUTTON, firstErrors } from './fields';
 import { useAccountWrite } from './mutations';
 
@@ -352,11 +353,7 @@ export default function Webhooks({
   } else if (error !== null) {
     body = <ProblemBlock context="Could not load your webhooks" failure={error} />;
   } else {
-    body = (
-      <p role="status" className={`mt-4 text-sm ${MUTED}`}>
-        {WEBHOOKS_LOADING}
-      </p>
-    );
+    body = <LoadingLine gap="mt-4">{WEBHOOKS_LOADING}</LoadingLine>;
   }
   return (
     <section aria-labelledby={headingId} className={SECTION}>

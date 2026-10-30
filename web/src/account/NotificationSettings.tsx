@@ -14,6 +14,7 @@ import {
 import Link from '../Link';
 import { MOVEMENT_ABS, MOVEMENT_PCT, NOTIFICATIONS_KEY, WEBHOOKS_LOADING } from './alerts';
 import { ProblemBlock, StatusLine } from './Form';
+import LoadingLine from '../ui/StatusLine';
 import { FOCUS, MUTED, PRIMARY_BUTTON, TEXT_LINK, firstErrors } from './fields';
 import { useAccountWrite } from './mutations';
 
@@ -196,11 +197,7 @@ export default function NotificationSettings({
   } else if (error !== null) {
     body = <ProblemBlock context="Could not load your alert settings" failure={error} />;
   } else {
-    body = (
-      <p role="status" className={`mt-4 text-sm ${MUTED}`}>
-        {WEBHOOKS_LOADING}
-      </p>
-    );
+    body = <LoadingLine gap="mt-4">{WEBHOOKS_LOADING}</LoadingLine>;
   }
   return (
     <section aria-labelledby={headingId} className={SECTION}>

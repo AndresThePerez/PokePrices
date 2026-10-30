@@ -9,7 +9,8 @@ import Notice from '../ui/Notice';
 import Page from '../ui/Page';
 import Panel from '../ui/Panel';
 import ProblemNotice from '../ui/ProblemNotice';
-import { MUTED, QUIET_BUTTON, TEXT_LINK } from './fields';
+import LoadingLine from '../ui/StatusLine';
+import { QUIET_BUTTON, TEXT_LINK } from './fields';
 
 /** A show/hide toggle for a password field: its constant accessible name and its state. */
 export interface Reveal {
@@ -160,11 +161,7 @@ export function StatusLine({ children }: { readonly children: ReactNode }) {
 
 /** The loading line of the account pages. */
 export function LoadingAccount() {
-  return (
-    <p role="status" className={`mt-6 text-sm ${MUTED}`}>
-      Loading your account…
-    </p>
-  );
+  return <LoadingLine gap="mt-6">Loading your account…</LoadingLine>;
 }
 
 /** The centred 420 px panel of the sign-in and sign-up pages (the column width at 390). */

@@ -7,6 +7,7 @@ import { initialOf } from '../format';
 import { unwrap } from '../query';
 import { searchKey } from '../queryKeys';
 import { FOCUS, MUTED, SECONDARY_BUTTON } from '../ui/classes';
+import StatusLine from '../ui/StatusLine';
 import DegradedNotice from '../ui/DegradedNotice';
 import Page from '../ui/Page';
 import ProblemNotice from '../ui/ProblemNotice';
@@ -159,11 +160,7 @@ export default function SearchPage({ query }: { readonly query: URLSearchParams 
   } else if (search.error !== null) {
     body = <Problem failure={search.error} />;
   } else {
-    body = (
-      <p role="status" className={`mt-6 text-sm ${MUTED}`}>
-        Searching for “{q}”…
-      </p>
-    );
+    body = <StatusLine gap="mt-6">Searching for “{q}”…</StatusLine>;
   }
 
   return (

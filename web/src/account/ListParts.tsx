@@ -13,9 +13,11 @@ import DegradedNotice from '../ui/DegradedNotice';
 import Page from '../ui/Page';
 import PriceTag from '../ui/PriceTag';
 import Skeleton from '../ui/Skeleton';
+import StatusLine from '../ui/StatusLine';
 import DemoButton from './DemoButton';
-import { FOCUS, MUTED, SECONDARY_BUTTON, TEXT_LINK } from './fields';
+import { FOCUS, MUTED, SECONDARY_BUTTON } from './fields';
 import { cardLabel, type ListRow } from './lists';
+import SignInPrompt from './SignInPrompt';
 
 /** A list page: one main landmark, one h1, the width of the movers board. */
 export function ListMain({
@@ -37,9 +39,7 @@ export function ListMain({
 export function ListLoading({ children }: { readonly children: string }) {
   return (
     <>
-      <p role="status" className={`mt-6 text-sm ${MUTED}`}>
-        {children}
-      </p>
+      <StatusLine gap="mt-6">{children}</StatusLine>
       <Skeleton className="mt-4" />
     </>
   );
@@ -58,18 +58,9 @@ export function ListFootnote() {
 /** Signed out on /watchlist or /portfolio: sign in (and come back), sign up, or try the demo. */
 export function SignedOutList({ list }: { readonly list: 'watchlist' | 'portfolio' }) {
   return (
-    <>
-      <p className="mt-6 text-base">{`Sign in to keep a ${list}.`}</p>
-      <p className="mt-2 flex flex-wrap gap-x-6">
-        <Link to={`/sign-in?next=/${list}`} className={TEXT_LINK}>
-          Sign in
-        </Link>
-        <Link to="/sign-up" className={TEXT_LINK}>
-          Create an account
-        </Link>
-      </p>
+    <SignInPrompt sentence={`Sign in to keep a ${list}.`} next={`/${list}`} signUp base>
       <DemoButton />
-    </>
+    </SignInPrompt>
   );
 }
 
