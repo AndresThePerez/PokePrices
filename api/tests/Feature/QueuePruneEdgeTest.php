@@ -98,5 +98,5 @@ it('is due once a day at midnight and not on any other minute, beside the minute
         ->and($afterMidnight)->not->toContain('pokeprices-prune-failed')->not->toContain('pokeprices-prune-batches')
         ->and($noon)->not->toContain('pokeprices-prune-failed')->not->toContain('pokeprices-prune-batches')
         ->and($afterMidnight)->toContain('pokeprices-deliveries')->toContain('pokeprices-probe')
-        ->and(array_keys($events))->toHaveCount(7);
+        ->and(array_keys($events))->toHaveCount(8);
 });

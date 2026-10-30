@@ -6,6 +6,7 @@ use App\Domain\Alerts\Jobs\DeliverDue;
 use App\Domain\Alerts\Jobs\DispatchEvents;
 use App\Domain\Pricing\Jobs\IngestPending;
 use App\Domain\Pricing\Jobs\LogFreshness;
+use App\Domain\Pricing\Models\IngestRunChunk;
 use App\Domain\Pricing\PricingConfig;
 use App\Jobs\ProbeJob;
 use Illuminate\Support\Facades\Schedule;
@@ -29,3 +30,6 @@ Schedule::command('queue:prune-failed --hours=720')->daily()->name('pokeprices-p
 
 // Queue bookkeeping: job batches are kept 30 days (720 h), then pruned once a day.
 Schedule::command('queue:prune-batches --hours=720')->daily()->name('pokeprices-prune-batches');
+
+// Ingest bookkeeping: a superseded run's chunks are kept 30 days (720 h) after the run finished, then pruned once a day.
+Schedule::command('model:prune', ['--model' => [IngestRunChunk::class]])->daily()->name('pokeprices-prune-chunks');

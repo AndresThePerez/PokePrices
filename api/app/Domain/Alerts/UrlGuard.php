@@ -10,10 +10,10 @@ namespace App\Domain\Alerts;
  * A URL passes when: its scheme is https (http only for an exact allow-listed host:port); it has no user-info and
  * no fragment; it is at most 2048 printable ASCII bytes; its host is a plain DNS name or a canonical IP literal
  * (decimal, octal, hex and short IPv4 forms are refused unseen, so curl can never read one as loopback); and the
- * literal, or EVERY address the host resolves to, lies outside every block in BLOCKS (IPv4 embedded in a mapped or
- * compatible IPv6 address is checked as IPv4 too). Any other IPv6 address must also be global unicast (2000::/3)
- * outside the IETF protocol assignments (2001::/23), so every IPv6 range that embeds IPv4 in some other way is refused
- * whole. An allow-listed host:port (config alerts.webhooks.private_allow) skips resolution and the block check. The
+ * literal, or EVERY address the host resolves to, lies outside every block in BLOCKS (IPv4 embedded in a mapped IPv6
+ * address is checked as IPv4 too). Any other IPv6 address must also be global unicast (2000::/3) outside the IETF
+ * protocol assignments (2001::/23), so every IPv6 range that embeds IPv4 in some other way, the deprecated
+ * IPv4-compatible ::a.b.c.d included, is refused whole. An allow-listed host:port (config alerts.webhooks.private_allow) skips resolution and the block check. The
  * sender pins the approved address (CURLOPT_RESOLVE) and never follows a redirect, so the address checked is the
  * address used.
  */
@@ -31,7 +31,7 @@ final class UrlGuard
         '::/128', '::1/128', '::ffff:0:0/96', '64:ff9b::/96', '2002::/16', 'fc00::/7', 'fe80::/10', 'ff00::/8',
     ];
 
-    /** IPv6 global unicast: an IPv6 address that is not IPv4-mapped or compatible must lie inside it. */
+    /** IPv6 global unicast: an IPv6 address that is not IPv4-mapped must lie inside it. */
     public const string GLOBAL_UNICAST = '2000::/3';
 
     /** IPv6 IETF protocol assignments (Teredo, benchmarking, ORCHID among them): refused even inside GLOBAL_UNICAST. */
@@ -116,8 +116,9 @@ final class UrlGuard
                 return true;
             }
         }
-        // IPv4 carried in an IPv4-mapped (::ffff:a.b.c.d) or IPv4-compatible (::a.b.c.d) IPv6 address.
-        if (strlen($bytes) === 16 && (str_starts_with($bytes, str_repeat("\0", 10)."\xff\xff") || str_starts_with($bytes, str_repeat("\0", 12)))) {
+        // IPv4 carried in an IPv4-mapped (::ffff:a.b.c.d) IPv6 address. IPv4-compatible (::a.b.c.d) falls to the
+        // global-unicast rule below and is refused.
+        if (strlen($bytes) === 16 && str_starts_with($bytes, str_repeat("\0", 10)."\xff\xff")) {
             $v4 = inet_ntop(substr($bytes, 12));
 
             return $v4 === false || self::blocked($v4);

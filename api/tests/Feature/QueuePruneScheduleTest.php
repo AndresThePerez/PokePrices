@@ -5,8 +5,8 @@ declare(strict_types=1);
 use Illuminate\Console\Scheduling\Event;
 use Illuminate\Console\Scheduling\Schedule;
 
-// Plan Q1-i5 T06 (b5, HG-45 #1): failed_jobs and job_batches are kept 30 days (720 h), then pruned once a day by the
-// framework's own commands; nothing else is pruned by the schedule.
+// failed_jobs and job_batches are kept 30 days (720 h), then pruned once a day by the framework's own commands; the
+// only other scheduled prune is model:prune for superseded runs' chunks (IngestChunkRetentionTest).
 
 /** The one scheduled event named $name. */
 function t06PruneEvent(string $name): Event
@@ -38,5 +38,5 @@ it('schedules no other prune command', function (): void {
         ->map(fn (string $command): string => (string) preg_replace('/^.*\'artisan\' /', '', $command))
         ->sort()->values()->all();
 
-    expect($prunes)->toBe(['queue:prune-batches --hours=720', 'queue:prune-failed --hours=720']);
+    expect($prunes)->toBe(["model:prune --model='App\\Domain\\Pricing\\Models\\IngestRunChunk'", 'queue:prune-batches --hours=720', 'queue:prune-failed --hours=720']);
 });

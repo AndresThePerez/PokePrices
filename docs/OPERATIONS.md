@@ -161,7 +161,9 @@ docker compose -f compose.dev.yml exec -T postgres psql -U pokeprices -d pokepri
   holds the last one.
 - `failed_jobs` holds one row per job that exhausted its tries (`IngestChunk`, `FinalizeDay`). It is the
   record of the failure; the rows are kept 30 days (720 hours), then pruned once a day with `job_batches`
-  (`pokeprices-prune-failed` and `pokeprices-prune-batches` in the schedule).
+  (`pokeprices-prune-failed` and `pokeprices-prune-batches` in the schedule). The `ingest_run_chunks` rows of a
+  `superseded` run are kept 30 days (720 hours) after the run finished, then pruned once a day
+  (`pokeprices-prune-chunks`); the `ingest_runs` row stays, and a superseded run that never finished keeps its chunks.
 
 Fix the cause (a file that was rewritten, a full disk, a stopped database), then resume:
 
