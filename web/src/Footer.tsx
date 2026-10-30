@@ -13,6 +13,7 @@ import {
   type ThemeChoice,
 } from './preferences';
 import { useRoute } from './router';
+import { ROUTES } from './routes';
 import { LABEL } from './ui/classes';
 import { Select, type SelectOption } from './ui/Field';
 
@@ -107,7 +108,7 @@ export default function Footer() {
   const { route } = useRoute();
   return (
     <footer className="mt-10 border-t border-line-subtle bg-surface">
-      {route.name !== 'account' && <DisplaySettings layout="strip" />}
+      {ROUTES[route.name].footerSettings && <DisplaySettings layout="strip" />}
     </footer>
   );
 }

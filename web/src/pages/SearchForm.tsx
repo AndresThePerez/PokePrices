@@ -11,7 +11,7 @@ function firstPagePath(q: string): string {
   return `/search?${new URLSearchParams({ q }).toString()}`;
 }
 
-export type SearchFormSize = 'page' | 'hero';
+type SearchFormSize = 'page' | 'hero';
 
 const FORM: Readonly<Record<SearchFormSize, string>> = {
   page: 'mt-4 flex flex-wrap items-end gap-3',

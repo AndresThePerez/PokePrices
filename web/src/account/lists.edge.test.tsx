@@ -24,7 +24,7 @@ import {
   watchItemOf,
   watchlistBody,
 } from '../test/fixtures';
-import { FOCUS, QUIET_BUTTON } from './fields';
+import { FOCUS, QUIET_BUTTON } from '../ui/classes';
 
 // jsdom has no canvas: the chart library is replaced by its recording fake (T06 helper).
 vi.mock('lightweight-charts', () => import('../test/lightweightChartsFake'));

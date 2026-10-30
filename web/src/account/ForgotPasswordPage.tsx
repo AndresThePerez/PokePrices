@@ -3,7 +3,8 @@
 import { useState, type SubmitEvent } from 'react';
 import { requestPasswordReset, type MessageAnswer } from '../api/client';
 import { AccountMain, Field, ProblemBlock, StatusLine } from './Form';
-import { PRIMARY_BUTTON, firstErrors } from './fields';
+import { PRIMARY_BUTTON } from '../ui/classes';
+import { firstErrors } from './fields';
 import { useAccountWrite } from './mutations';
 
 const FIELDS = ['email'] as const;

@@ -2,7 +2,7 @@
 // the status line. Every input has a visible <label>; an error is tied to its field with
 // aria-describedby and aria-invalid; every control is 44 px tall.
 import type { HTMLAttributes, ReactNode } from 'react';
-import type { ApiFailure } from '../api/client';
+import { hasProblemType, type ApiFailure } from '../api/client';
 import Link from '../Link';
 import { Field as UiField, Input } from '../ui/Field';
 import Notice from '../ui/Notice';
@@ -10,10 +10,10 @@ import Page from '../ui/Page';
 import Panel from '../ui/Panel';
 import ProblemNotice from '../ui/ProblemNotice';
 import LoadingLine from '../ui/StatusLine';
-import { QUIET_BUTTON, TEXT_LINK } from './fields';
+import { QUIET_BUTTON, TEXT_LINK } from '../ui/classes';
 
 /** A show/hide toggle for a password field: its constant accessible name and its state. */
-export interface Reveal {
+interface Reveal {
   readonly label: string;
   readonly shown: boolean;
   readonly onToggle: () => void;
@@ -92,7 +92,7 @@ export function Field({
 }
 
 function isAlreadySignedIn(failure: ApiFailure): boolean {
-  return failure.status === 409 && failure.type.endsWith('/already-signed-in');
+  return hasProblemType(failure, 409, 'already-signed-in');
 }
 
 function firstLine(context: string, failure: ApiFailure): string {

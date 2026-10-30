@@ -123,7 +123,7 @@ export function summaryText(
   return text;
 }
 
-export interface TableRow {
+interface TableRow {
   readonly day: string;
   readonly close: string;
   readonly note: string;

@@ -16,7 +16,7 @@ import {
   unauthenticatedProblem,
 } from '../test/fixtures';
 import DemoButton from './DemoButton';
-import { TEXT_LINK } from './fields';
+import { TEXT_LINK } from '../ui/classes';
 import SignInPrompt from './SignInPrompt';
 
 function visit(path: string): void {

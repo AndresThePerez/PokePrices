@@ -18,7 +18,7 @@ import type { PricePoint, PriceRange } from '../api/client';
 import { usePreferences } from '../preferences';
 import { axisPrice, dayTick, paddedAutoscale } from './series';
 
-export interface PriceChartProps {
+interface PriceChartProps {
   /** The selected series' points in range, split by segments() (D6). */
   readonly segments: readonly (readonly PricePoint[])[];
   readonly label: string;

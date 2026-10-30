@@ -10,9 +10,9 @@ export const PALETTES = ['green-red', 'blue-orange'] as const;
 
 export type ThemeChoice = (typeof THEMES)[number];
 export type Palette = (typeof PALETTES)[number];
-export type ResolvedTheme = 'light' | 'dark';
+type ResolvedTheme = 'light' | 'dark';
 
-export interface Preferences {
+interface Preferences {
   /** What the visitor chose (system follows the operating system). */
   readonly theme: ThemeChoice;
   readonly palette: Palette;

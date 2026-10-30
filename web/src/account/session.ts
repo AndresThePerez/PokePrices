@@ -136,7 +136,7 @@ export function useArrivalStatus(): string | null {
 }
 
 /** What the cache already knows about the session: 'unknown', null (signed out) or the account. */
-export type KnownSession = 'unknown' | Me | null;
+type KnownSession = 'unknown' | Me | null;
 
 const UNKNOWN = 'unknown';
 

@@ -12,7 +12,7 @@ import Link from '../Link';
 import Panel from '../ui/Panel';
 import AccountScope from './AccountScope';
 import { AccountMain, LoadingAccount, ProblemBlock, StatusLine } from './Form';
-import { FOCUS, MUTED, SECONDARY_BUTTON, TEXT_LINK } from './fields';
+import { FOCUS, MUTED, SECONDARY_BUTTON, TEXT_LINK } from '../ui/classes';
 import { useAccountWrite } from './mutations';
 import { useArrivalStatus, useSession } from './session';
 import { SignOutButton } from './SignOut';

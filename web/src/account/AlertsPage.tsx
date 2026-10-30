@@ -11,7 +11,7 @@ import Page from '../ui/Page';
 import StatusLine from '../ui/StatusLine';
 import AccountScope from './AccountScope';
 import { ProblemBlock } from './Form';
-import { TEXT_LINK } from './fields';
+import { TEXT_LINK } from '../ui/classes';
 import NotificationSettings, { PerCardAlerts } from './NotificationSettings';
 import { useSession } from './session';
 import SignInPrompt from './SignInPrompt';

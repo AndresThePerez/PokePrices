@@ -5,7 +5,7 @@
 import type { ReactNode } from 'react';
 import { MUTED } from './classes';
 
-export type StatusGap = 'mt-2' | 'mt-3' | 'mt-4' | 'mt-6';
+type StatusGap = 'mt-2' | 'mt-3' | 'mt-4' | 'mt-6';
 
 export default function StatusLine({
   gap,

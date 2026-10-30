@@ -20,7 +20,8 @@ import {
   type RecoveryCodes,
 } from '../api/client';
 import { Field, ProblemBlock } from './Form';
-import { PRIMARY_BUTTON, SECONDARY_BUTTON, firstErrors } from './fields';
+import { PRIMARY_BUTTON, SECONDARY_BUTTON } from '../ui/classes';
+import { firstErrors } from './fields';
 import { useAccountWrite } from './mutations';
 import { ME_KEY } from './session';
 

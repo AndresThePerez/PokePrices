@@ -5,7 +5,7 @@
 // stays in CardActions.
 import type { ReactNode } from 'react';
 import Link from '../Link';
-import { TEXT_LINK } from './fields';
+import { TEXT_LINK } from '../ui/classes';
 
 export default function SignInPrompt({
   sentence,

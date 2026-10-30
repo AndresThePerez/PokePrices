@@ -15,7 +15,8 @@ import Link from '../Link';
 import { MOVEMENT_ABS, MOVEMENT_PCT, NOTIFICATIONS_KEY, WEBHOOKS_LOADING } from './alerts';
 import { ProblemBlock, StatusLine } from './Form';
 import LoadingLine from '../ui/StatusLine';
-import { FOCUS, MUTED, PRIMARY_BUTTON, TEXT_LINK, firstErrors } from './fields';
+import { FOCUS, MUTED, PRIMARY_BUTTON, TEXT_LINK } from '../ui/classes';
+import { firstErrors } from './fields';
 import { useAccountWrite } from './mutations';
 
 const DIGEST_HINT =

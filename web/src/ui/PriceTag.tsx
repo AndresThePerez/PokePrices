@@ -3,7 +3,7 @@
 // child spans): the price and the change in the mono stack with tabular figures, the change as a
 // 2 px chip in its tone with a 12 % tint of the same token (flat untinted), as-of 13 px muted.
 import type { ReactNode } from 'react';
-import { changeLine, grouped, type ChangeFields } from '../format';
+import { asOfText, changeLine, grouped, type ChangeFields } from '../format';
 
 export type PriceTagSize = 'variant' | 'row';
 
@@ -20,7 +20,7 @@ const PRICE_SIZE: Readonly<Record<PriceTagSize, string>> = {
 };
 
 /** The headline price, 36/40 700: the card hero's figure (D2 RULING d). */
-export const HERO_PRICE = 'block num text-4xl font-bold';
+const HERO_PRICE = 'block num text-4xl font-bold';
 
 /** The chip tint of each tone: 12 % of the tone's own token; flat stays untinted. */
 const TINT: Readonly<Record<string, string>> = {
@@ -78,7 +78,7 @@ export function AsOf({
   readonly as?: 'span' | 'p';
   readonly className?: string;
 }) {
-  const text = `as of ${day} from TCGCSV (daily close)`;
+  const text = asOfText(day);
   const classes = `${as === 'span' ? 'block ' : ''}text-meta text-ink-muted ${className}`.trim();
   return as === 'p' ? <p className={classes}>{text}</p> : <span className={classes}>{text}</span>;
 }

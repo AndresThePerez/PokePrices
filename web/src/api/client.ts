@@ -3,7 +3,7 @@ import type { components, operations } from './schema';
 
 export type Problem = components['schemas']['Problem'];
 export type CardSummary = components['schemas']['CardSummaryResource'];
-export type CardSearchQuery = operations['searchCards']['parameters']['query'];
+type CardSearchQuery = operations['searchCards']['parameters']['query'];
 export type CardSearchPage =
   operations['searchCards']['responses'][200]['content']['application/json'];
 
@@ -40,6 +40,14 @@ export type ApiFailure = {
 };
 
 export type ApiResult<T> = { readonly ok: true; readonly data: T } | ApiFailure;
+
+/**
+ * True when a failure is the given status and its problem type ends in /problems/<slug>. Only the
+ * suffix is read, so the type's base URL does not matter.
+ */
+export function hasProblemType(failure: ApiFailure, status: number, slug: string): boolean {
+  return failure.status === status && failure.type.endsWith(`/problems/${slug}`);
+}
 
 export interface RequestOptions {
   readonly signal?: AbortSignal;
@@ -385,21 +393,21 @@ export interface TwoFactorSecretKey {
 export type RecoveryCodes = readonly string[];
 
 /** The two-factor challenge sends one of the two: an authentication code or a recovery code. */
-export type TwoFactorChallengeForm = { readonly code: string } | { readonly recovery_code: string };
+type TwoFactorChallengeForm = { readonly code: string } | { readonly recovery_code: string };
 
 export interface SignInForm {
   readonly email: string;
   readonly password: string;
 }
 
-export interface SignUpForm {
+interface SignUpForm {
   readonly invite_code: string;
   readonly email: string;
   readonly password: string;
   readonly password_confirmation: string;
 }
 
-export interface ResetPasswordForm {
+interface ResetPasswordForm {
   readonly token: string;
   readonly email: string;
   readonly password: string;
@@ -790,7 +798,7 @@ export function twoFactorChallenge(form: TwoFactorChallengeForm): Promise<ApiRes
 export type WatchlistBody =
   operations['getWatchlist']['responses'][200]['content']['application/json'];
 export type WatchlistItem = components['schemas']['WatchlistItemResource'];
-export type WatchlistEntry =
+type WatchlistEntry =
   operations['putWatchlistItem']['responses'][200]['content']['application/json'];
 export type PortfolioBody =
   operations['getPortfolio']['responses'][200]['content']['application/json'];
@@ -863,8 +871,7 @@ export function startDemo(): Promise<ApiResult<undefined>> {
 // The export is not fetched here: /account links to GET /v1/me/export and the browser downloads it.
 
 /** The deletion body: the current password, in the JSON body and never in the URL (D4). */
-export type DeleteAccountForm =
-  operations['deleteMe']['requestBody']['content']['application/json'];
+type DeleteAccountForm = operations['deleteMe']['requestBody']['content']['application/json'];
 
 /** POST /v1/me/deletion { password }: 204, the account is gone and this browser is signed out. */
 export function deleteAccount(form: DeleteAccountForm): Promise<ApiResult<undefined>> {
@@ -879,10 +886,8 @@ export type WebhooksBody =
   operations['getWebhooks']['responses'][200]['content']['application/json'];
 export type WebhookEndpoint = components['schemas']['WebhookEndpointResource'];
 export type WebhookForm = operations['createWebhook']['requestBody']['content']['application/json'];
-export type WebhookCreated =
-  operations['createWebhook']['responses'][201]['content']['application/json'];
-export type WebhookTestAnswer =
-  operations['testWebhook']['responses'][202]['content']['application/json'];
+type WebhookCreated = operations['createWebhook']['responses'][201]['content']['application/json'];
+type WebhookTestAnswer = operations['testWebhook']['responses'][202]['content']['application/json'];
 
 const INVALID_WEBHOOK: ApiFailure = {
   ok: false,
@@ -930,9 +935,9 @@ export function testWebhook(id: number): Promise<ApiResult<WebhookTestAnswer>> {
 export type NotificationsBody =
   operations['getNotifications']['responses'][200]['content']['application/json'];
 export type NotificationSettings = NotificationsBody['data'];
-export type NotificationsForm =
+type NotificationsForm =
   operations['putNotifications']['requestBody']['content']['application/json'];
-export type AlertEntry = operations['putAlert']['responses'][200]['content']['application/json'];
+type AlertEntry = operations['putAlert']['responses'][200]['content']['application/json'];
 
 /** GET /v1/me/notifications: where alerts and the digest go, and whether Discord can be chosen. */
 export function getNotifications(

@@ -1,6 +1,6 @@
 // Shared pieces of the watchlist and portfolio views (D10) that are not components: the strings
 // every list view prints, the row naming of the P3 movers row and the answers' refusals.
-import type { ApiFailure, WatchlistItem } from '../api/client';
+import { hasProblemType, type ApiFailure, type WatchlistItem } from '../api/client';
 import { cardPath } from '../router';
 import { accountKey } from './session';
 
@@ -29,7 +29,7 @@ export function signInPath(cardId: string): string {
 
 /** True for the 403 every write of the demo account answers. */
 export function isDemoReadOnly(failure: ApiFailure): boolean {
-  return failure.status === 403 && failure.type.endsWith('/demo-read-only');
+  return hasProblemType(failure, 403, 'demo-read-only');
 }
 
 /**

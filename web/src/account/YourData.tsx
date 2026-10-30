@@ -10,7 +10,8 @@ import { deleteAccount, type Me } from '../api/client';
 import { Button } from '../ui/Button';
 import Panel from '../ui/Panel';
 import { Field, ProblemBlock } from './Form';
-import { FOCUS, TEXT_LINK, firstErrors } from './fields';
+import { FOCUS, TEXT_LINK } from '../ui/classes';
+import { firstErrors } from './fields';
 import { useAccountWrite, useSessionTransition } from './mutations';
 
 const EXPORT_PATH = '/v1/me/export';

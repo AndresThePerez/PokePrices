@@ -23,7 +23,7 @@ import {
   summaryText,
   tableRows,
 } from '../chart/series';
-import { variantLabel } from '../format';
+import { asOfText, variantLabel } from '../format';
 import { unwrap } from '../query';
 import { cardPricesKey } from '../queryKeys';
 import { Button } from '../ui/Button';
@@ -71,7 +71,7 @@ function Problem({ failure }: { readonly failure: ApiFailure }) {
 
 function Stamp({ to }: { readonly to: string | null }) {
   if (to === null) return null;
-  return <p className={`mt-2 text-meta ${MUTED}`}>{`as of ${to} from TCGCSV (daily close)`}</p>;
+  return <p className={`mt-2 text-meta ${MUTED}`}>{asOfText(to)}</p>;
 }
 
 function DataTable({

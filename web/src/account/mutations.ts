@@ -16,7 +16,7 @@ export type Send<T> = () => Promise<ApiResult<T>>;
  * The mutationFn converter: the answer's data, or its ApiFailure thrown, so the mutation records
  * the failure as its error (firstErrors(mutation.error) then reads a 422's field messages).
  */
-export function answerOf<T>(result: ApiResult<T>): T {
+function answerOf<T>(result: ApiResult<T>): T {
   if (result.ok) return result.data;
   const failure: unknown = result;
   throw failure;
@@ -30,7 +30,7 @@ interface Ticket<T> {
   send: Send<T> | null;
 }
 
-export type AccountWriteOptions<T> = Omit<
+type AccountWriteOptions<T> = Omit<
   UseMutationOptions<T, ApiFailure, Ticket<T>>,
   'mutationFn' | 'networkMode'
 >;
@@ -39,7 +39,7 @@ export type AccountWriteOptions<T> = Omit<
  * One write at a time: take() is false while a write it admitted has not released. Two hooks that
  * share a guard block each other, even within the tick before isPending reaches the render.
  */
-export interface WriteGuard {
+interface WriteGuard {
   take: () => boolean;
   release: () => void;
 }
@@ -103,7 +103,7 @@ export function useAccountWrite<T>(options: AccountWriteOptions<T> = {}, guard?:
   return { ...mutation, run };
 }
 
-export interface TransitionTo {
+interface TransitionTo {
   /** The status line the next page shows once (router navigate). */
   readonly status?: string;
   /** False when ['me'] was already asked again (a 401 sign-out: the client heard the 401). */

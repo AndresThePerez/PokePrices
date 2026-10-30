@@ -24,7 +24,7 @@ function buttonClass(variant: ButtonVariant, extra?: string): string {
   return extra === undefined || extra === '' ? VARIANT[variant] : `${VARIANT[variant]} ${extra}`;
 }
 
-export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'aria-pressed'> {
+interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'aria-pressed'> {
   readonly variant: ButtonVariant;
   readonly type?: 'button' | 'submit' | 'reset' | undefined;
   /** A segment's state, as aria-pressed; ignored by the other variants. */
@@ -43,7 +43,7 @@ export function Button({ variant, type = 'button', pressed, className, ...rest }
   );
 }
 
-export interface ButtonInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
+interface ButtonInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> {
   readonly variant: ButtonVariant;
   /** The button's words, shown as the input's value. */
   readonly value: string;

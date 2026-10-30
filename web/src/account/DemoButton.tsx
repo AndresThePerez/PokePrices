@@ -5,7 +5,7 @@ import { useId } from 'react';
 import { startDemo } from '../api/client';
 import Panel from '../ui/Panel';
 import { ProblemBlock } from './Form';
-import { SECONDARY_BUTTON, TEXT_LINK } from './fields';
+import { SECONDARY_BUTTON, TEXT_LINK } from '../ui/classes';
 import { useAccountWrite, useSessionTransition } from './mutations';
 
 /**
@@ -14,7 +14,7 @@ import { useAccountWrite, useSessionTransition } from './mutations';
  * on the field's left edge, with a 44 px target and no rule; `block` (the Just looking? panel of
  * sign-in and sign-up) is a full-width outlined button with no rule.
  */
-export type DemoPlacement = 'panel' | 'hero' | 'block';
+type DemoPlacement = 'panel' | 'hero' | 'block';
 
 const WRAPPER: Readonly<Record<DemoPlacement, string>> = {
   panel: 'mt-8 border-t border-line-subtle pt-6',

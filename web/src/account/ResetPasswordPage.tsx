@@ -6,7 +6,8 @@ import { resetPassword } from '../api/client';
 import Link from '../Link';
 import { navigate } from '../router';
 import { AccountMain, Field, ProblemBlock } from './Form';
-import { PRIMARY_BUTTON, TEXT_LINK, firstErrors } from './fields';
+import { PRIMARY_BUTTON, TEXT_LINK } from '../ui/classes';
+import { firstErrors } from './fields';
 import { useAccountWrite } from './mutations';
 
 const FIELDS = ['email', 'password', 'password_confirmation'] as const;

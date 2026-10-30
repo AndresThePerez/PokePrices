@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { isVerificationLink, verifyEmail, type ApiFailure } from '../api/client';
 import Link from '../Link';
 import { AccountMain, LoadingAccount, ProblemBlock } from './Form';
-import { TEXT_LINK } from './fields';
+import { TEXT_LINK } from '../ui/classes';
 import { ME_KEY, ONE_TIME, accountKey, useSession } from './session';
 import SignInPrompt from './SignInPrompt';
 

@@ -1,14 +1,12 @@
 // The PokéPrices SPA router: its routes over the History API, no dependency.
 import { useSyncExternalStore } from 'react';
-
-/** Which list of the movers board: rises (up) or falls (down). */
-export type MoverDirection = 'up' | 'down';
+import type { MoversDirection } from './api/client';
 
 export type Route =
   | { readonly name: 'home' }
   | { readonly name: 'search'; readonly query: URLSearchParams }
   | { readonly name: 'card'; readonly id: string }
-  | { readonly name: 'movers'; readonly direction: MoverDirection }
+  | { readonly name: 'movers'; readonly direction: MoversDirection }
   | { readonly name: 'sign-in'; readonly next: string }
   | { readonly name: 'sign-up' }
   | { readonly name: 'forgot-password' }

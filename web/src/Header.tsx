@@ -8,7 +8,8 @@ import { useEffect, useId, useState } from 'react';
 import { DemoStrip } from './account/SignOut';
 import { useKnownSession } from './account/session';
 import Link from './Link';
-import { useRoute, type Route } from './router';
+import { useRoute } from './router';
+import { ROUTES } from './routes';
 import { Button } from './ui/Button';
 import { FOCUS } from './ui/classes';
 
@@ -21,29 +22,6 @@ const LINKS = [
 
 const ACCOUNT = { to: '/account', label: 'Account' } as const;
 const SIGN_IN = { to: '/sign-in', label: 'Sign in' } as const;
-
-/** The path of the header link that names the current page, or null when none does. */
-function currentPath(route: Route): string | null {
-  switch (route.name) {
-    case 'home':
-      return '/';
-    case 'search':
-      return '/search';
-    case 'movers':
-      return '/movers';
-    case 'watchlist':
-      return '/watchlist';
-    case 'portfolio':
-      return '/portfolio';
-    case 'account':
-    case 'alerts':
-      return '/account';
-    case 'sign-in':
-      return '/sign-in';
-    default:
-      return null;
-  }
-}
 
 const SKIP =
   `absolute -top-24 left-4 z-20 inline-flex min-h-11 items-center rounded-md border border-line ` +
@@ -65,7 +43,7 @@ const LIST_WIDE =
 
 export default function Header() {
   const { pathname, route } = useRoute();
-  const current = currentPath(route);
+  const current = ROUTES[route.name].nav;
   const session = useKnownSession();
   const links = [...LINKS, session === null ? SIGN_IN : ACCOUNT];
   const [open, setOpen] = useState(false);

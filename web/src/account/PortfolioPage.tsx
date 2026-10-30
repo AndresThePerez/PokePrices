@@ -13,11 +13,12 @@ import {
   type Holding,
   type PortfolioBody,
 } from '../api/client';
-import { grouped, variantLabel } from '../format';
+import { asOfText, grouped, variantLabel } from '../format';
 import { unwrap } from '../query';
 import Panel from '../ui/Panel';
 import { ProblemBlock } from './Form';
-import { MUTED, SECONDARY_BUTTON, firstErrors } from './fields';
+import { MUTED, SECONDARY_BUTTON } from '../ui/classes';
+import { firstErrors } from './fields';
 import {
   DegradedLine,
   ListFootnote,
@@ -124,7 +125,7 @@ function HoldingRow({
 function daysLine(meta: PortfolioBody['meta']): string | null {
   if (meta.first_day === null || meta.last_day === null) return null;
   return meta.first_day === meta.last_day
-    ? `as of ${meta.last_day} from TCGCSV (daily close)`
+    ? asOfText(meta.last_day)
     : `Closes from ${meta.first_day} to ${meta.last_day} from TCGCSV (daily close)`;
 }
 

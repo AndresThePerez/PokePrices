@@ -6,8 +6,9 @@
 import type { ReactNode } from 'react';
 import { signOut, type ApiResult } from '../api/client';
 import { useRoute } from '../router';
+import { ROUTES } from '../routes';
 import { ProblemBlock } from './Form';
-import { QUIET_BUTTON, SECONDARY_BUTTON } from './fields';
+import { QUIET_BUTTON, SECONDARY_BUTTON } from '../ui/classes';
 import { DEMO_NOTICE } from './lists';
 import { useAccountWrite, useSessionTransition } from './mutations';
 import { useKnownSession } from './session';
@@ -91,7 +92,7 @@ export function DemoStrip() {
     <div className="border-t border-line-subtle bg-surface-sunken text-ink">
       <div className="mx-auto flex min-h-10 max-w-3xl flex-wrap items-center justify-between gap-x-3 px-4 py-1 sm:flex-nowrap sm:px-6 sm:py-0">
         <p className="min-w-0 py-1.5 text-sm sm:text-meta">{DEMO_NOTICE}</p>
-        {route.name !== 'account' && (
+        {ROUTES[route.name].footerSettings && (
           <SignOutButton
             quiet
             className="ml-auto flex shrink-0 flex-col items-end sm:-my-0.5 sm:[&>button]:px-2"

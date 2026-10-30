@@ -17,11 +17,11 @@ import {
 import { variantLabel } from '../format';
 import Link from '../Link';
 import { unwrap } from '../query';
-import { SELECT } from '../ui/classes';
+import { MUTED, SECONDARY_BUTTON, SELECT, TEXT_LINK } from '../ui/classes';
 import { MOVEMENT_ABS } from './alerts';
 import AccountScope from './AccountScope';
 import { ProblemBlock } from './Form';
-import { MUTED, SECONDARY_BUTTON, TEXT_LINK, firstErrors } from './fields';
+import { firstErrors } from './fields';
 import {
   DegradedLine,
   ListFootnote,

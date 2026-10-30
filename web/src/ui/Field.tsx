@@ -7,7 +7,7 @@ import { useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttribu
 import { ERROR, HINT, INPUT, LABEL, SELECT } from './classes';
 
 /** What Field hands its control: the id the label points at and the describing attributes. */
-export interface ControlProps {
+interface ControlProps {
   readonly id: string;
   readonly 'aria-invalid'?: true | undefined;
   readonly 'aria-describedby'?: string | undefined;
@@ -70,7 +70,7 @@ export interface SelectOption {
   readonly label: string;
 }
 
-export interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'children'> {
+interface SelectProps extends Omit<SelectHTMLAttributes<HTMLSelectElement>, 'children'> {
   readonly options: readonly SelectOption[];
 }
 

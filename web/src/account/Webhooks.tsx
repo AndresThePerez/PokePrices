@@ -28,7 +28,8 @@ import Panel from '../ui/Panel';
 import { Field, Input, Select } from '../ui/Field';
 import { ProblemBlock, StatusLine } from './Form';
 import LoadingLine from '../ui/StatusLine';
-import { MUTED, PRIMARY_BUTTON, SECONDARY_BUTTON, firstErrors } from './fields';
+import { MUTED, PRIMARY_BUTTON, SECONDARY_BUTTON } from '../ui/classes';
+import { firstErrors } from './fields';
 import { useAccountWrite } from './mutations';
 
 const INTRO =

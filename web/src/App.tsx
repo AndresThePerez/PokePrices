@@ -19,54 +19,19 @@ import MoversPage from './pages/MoversPage';
 import SearchForm from './pages/SearchForm';
 import SearchPage from './pages/SearchPage';
 import { createQueryClient } from './query';
-import { useRoute, type Route } from './router';
-import { pageTitle, useDocumentTitle, useRouteFocus, WORDMARK } from './title';
+import { useRoute } from './router';
+import { HOME_H1, ROUTES } from './routes';
+import { useDocumentTitle, useRouteFocus } from './title';
 import { MUTED, TEXT_LINK } from './ui/classes';
 import Page from './ui/Page';
 import RootBoundary from './ui/RootBoundary';
-
-const HOME_H1 = 'Pokémon card prices at the daily close';
-
-/** The tab title of each route: its h1 and the wordmark. The card page titles itself. */
-function routeTitle(route: Route): string | null {
-  switch (route.name) {
-    case 'home':
-      return `${WORDMARK} · ${HOME_H1}`;
-    case 'search':
-      return pageTitle('Search cards');
-    case 'card':
-      return null;
-    case 'movers':
-      return pageTitle('Biggest moves');
-    case 'sign-in':
-      return pageTitle('Sign in');
-    case 'sign-up':
-      return pageTitle('Create an account');
-    case 'forgot-password':
-      return pageTitle('Reset your password');
-    case 'reset-password':
-      return pageTitle('Choose a new password');
-    case 'account':
-      return pageTitle('Account');
-    case 'verify-email':
-      return pageTitle('Verify your email');
-    case 'watchlist':
-      return pageTitle('Watchlist');
-    case 'portfolio':
-      return pageTitle('Portfolio');
-    case 'alerts':
-      return pageTitle('Alerts and webhooks');
-    case 'not-found':
-      return pageTitle('Page not found');
-  }
-}
 
 /** The unknown path as a mono chip: only the pathname, breaking anywhere on a narrow screen. */
 const PATH_CHIP = 'rounded-sm bg-surface-sunken px-1.5 py-0.5 font-mono text-sm break-all';
 
 function Routes() {
   const { pathname, route } = useRoute();
-  useDocumentTitle(routeTitle(route));
+  useDocumentTitle(ROUTES[route.name].title);
   useRouteFocus(pathname);
   switch (route.name) {
     case 'home':

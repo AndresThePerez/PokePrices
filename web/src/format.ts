@@ -24,6 +24,14 @@ export interface ChangeFields {
 export const PRICE_FOOTNOTE = 'TCGplayer market prices via TCGCSV, collected once a day.';
 
 /**
+ * The one "as of" text of a price: "as of <day> from TCGCSV (daily close)". AsOf (ui/PriceTag)
+ * renders it; the price history and the portfolio total print it too.
+ */
+export function asOfText(day: string): string {
+  return `as of ${day} from TCGCSV (daily close)`;
+}
+
+/**
  * The initial a card-back placeholder draws: the first code point of the trimmed name (an astral
  * character is never split), upper-cased; '' for a blank name.
  */
@@ -41,7 +49,7 @@ export function variantLabel(variant: VariantNaming): string {
 }
 
 /** A row that names a variant and, when the catalog named it, its card's set and number. */
-export interface DetailRow extends VariantNaming {
+interface DetailRow extends VariantNaming {
   readonly card: { readonly set_name: string; readonly number: string } | null;
 }
 

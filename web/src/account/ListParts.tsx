@@ -8,14 +8,13 @@ import type { WatchlistItem } from '../api/client';
 import { PRICE_FOOTNOTE, detailLine, initialOf } from '../format';
 import Link from '../Link';
 import { cardPath } from '../router';
-import { INPUT } from '../ui/classes';
+import { FOCUS, INPUT, MUTED, SECONDARY_BUTTON } from '../ui/classes';
 import DegradedNotice from '../ui/DegradedNotice';
 import Page from '../ui/Page';
 import PriceTag from '../ui/PriceTag';
 import Skeleton from '../ui/Skeleton';
 import StatusLine from '../ui/StatusLine';
 import DemoButton from './DemoButton';
-import { FOCUS, MUTED, SECONDARY_BUTTON } from './fields';
 import { cardLabel, type ListRow } from './lists';
 import SignInPrompt from './SignInPrompt';
 
@@ -69,7 +68,7 @@ export function SignedOutList({ list }: { readonly list: 'watchlist' | 'portfoli
  * box with the card's initial drawn by CSS from data-initial, so it holds no DOM text. It is no
  * link, no image and, having no text, needs no aria-hidden.
  */
-export function CardBack({ row }: { readonly row: ListRow }) {
+function CardBack({ row }: { readonly row: ListRow }) {
   return (
     <div
       data-initial={row.card === null ? '' : initialOf(row.card.name)}
@@ -79,7 +78,7 @@ export function CardBack({ row }: { readonly row: ListRow }) {
 }
 
 /** The card link (16 px 600, a 44 px target) and the set line 2 px under it (14 px muted). */
-export function RowName({ row }: { readonly row: ListRow }) {
+function RowName({ row }: { readonly row: ListRow }) {
   return (
     <>
       <Link

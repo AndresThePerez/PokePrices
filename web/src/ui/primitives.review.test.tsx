@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen, within } from '@testing-library/rea
 import { compile } from 'tailwindcss';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { QuantityForm } from '../account/ListParts';
-import { FOCUS, SECONDARY_BUTTON } from '../account/fields';
+import { FOCUS, SECONDARY_BUTTON } from './classes';
 import { Button, ButtonInput, type ButtonVariant } from './Button';
 import * as classes from './classes';
 import { Field, Input, Select } from './Field';

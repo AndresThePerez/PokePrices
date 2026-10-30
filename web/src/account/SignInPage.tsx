@@ -7,7 +7,8 @@ import { signIn, twoFactorChallenge, type SignInAnswer } from '../api/client';
 import Link from '../Link';
 import { DemoPanel } from './DemoButton';
 import { AccountMain, Field, LoadingAccount, ProblemBlock, StatusLine } from './Form';
-import { PRIMARY_BUTTON, TEXT_LINK, firstErrors } from './fields';
+import { PRIMARY_BUTTON, TEXT_LINK } from '../ui/classes';
+import { firstErrors } from './fields';
 import { useAccountWrite, useSessionTransition } from './mutations';
 import { useArrivalStatus, useSession } from './session';
 

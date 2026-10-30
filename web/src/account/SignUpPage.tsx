@@ -6,7 +6,8 @@ import Link from '../Link';
 import Notice from '../ui/Notice';
 import { DemoPanel } from './DemoButton';
 import { AccountMain, Field, ProblemBlock } from './Form';
-import { PRIMARY_BUTTON, TEXT_LINK, firstErrors } from './fields';
+import { PRIMARY_BUTTON, TEXT_LINK } from '../ui/classes';
+import { firstErrors } from './fields';
 import { useAccountWrite, useSessionTransition } from './mutations';
 
 const FIELDS = ['invite_code', 'email', 'password', 'password_confirmation'] as const;

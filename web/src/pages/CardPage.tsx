@@ -8,6 +8,7 @@ import Link from '../Link';
 import {
   getCard,
   getCardPrices,
+  hasProblemType,
   type ApiFailure,
   type Card,
   type CardDetail,
@@ -31,7 +32,6 @@ import { pageTitle, useDocumentTitle } from '../title';
 import PriceHistory from './PriceHistory';
 
 const CATALOG_MISSING_LINE = 'This card is no longer in the PokéSearch catalog';
-const CARD_NOT_FOUND = '/problems/card-not-found';
 
 /** An RFC 3339 timestamp: date, time, optional fraction, then Z or a +hh:mm / -hh:mm offset. */
 const RFC3339 =
@@ -260,9 +260,18 @@ function PricesSection({ children }: { readonly children: ReactNode }) {
   );
 }
 
+/**
+ * The card's image URL: the large one, else the small one, else '' when the API sent neither. A
+ * URL that is only whitespace counts as none (as the search thumbnails read image_small).
+ */
+function imageSrc(card: Card): string {
+  if (card.images.large.trim() !== '') return card.images.large;
+  return card.images.small.trim() !== '' ? card.images.small : '';
+}
+
 /** The card image in a 6 px mat, or the neutral card-back with the name's initial (CSS only). */
 function CardImage({ card }: { readonly card: Card }) {
-  const src = card.images.large !== '' ? card.images.large : card.images.small;
+  const src = imageSrc(card);
   const place = 'col-start-1 row-start-1 self-start sm:sticky sm:top-4';
   if (src === '') {
     return (
@@ -294,7 +303,7 @@ function CardImage({ card }: { readonly card: Card }) {
  * the catalog line and the image credit, every string verbatim and in that order.
  */
 function Sources({ card }: { readonly card: Card }) {
-  const credit = imageHost(card.images.large !== '' ? card.images.large : card.images.small);
+  const credit = imageHost(imageSrc(card));
   return (
     <Panel as="section" aria-labelledby="card-sources" className="mt-10 text-meta">
       <h2 id="card-sources" className="text-sm font-semibold">
@@ -404,7 +413,7 @@ function Failed({ id, failure }: { readonly id: string; readonly failure: ApiFai
 }
 
 function isCardNotFound(failure: ApiFailure): boolean {
-  return failure.status === 404 && failure.type.endsWith(CARD_NOT_FOUND);
+  return hasProblemType(failure, 404, 'card-not-found');
 }
 
 export default function CardPage({ id }: { readonly id: string }) {
