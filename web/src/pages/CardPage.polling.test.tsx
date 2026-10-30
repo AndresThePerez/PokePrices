@@ -2,6 +2,7 @@ import { act, cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../App';
 import {
+  FORBIDDEN_WORDS,
   cardNotFoundPlainProblem,
   cardWithPrices,
   historyFor,
@@ -18,17 +19,6 @@ vi.mock('lightweight-charts', () => import('../test/lightweightChartsFake'));
 
 const CARD_URL = '/v1/cards/ex10-%3F';
 const AS_OF_1012 = 'as of 2026-10-12 from TCGCSV (daily close)';
-
-const FORBIDDEN = [
-  /\blive\b/i,
-  /real-?time/i,
-  /as of today/i,
-  /\btoday\b/i,
-  /\bnow\b/i,
-  /\b1D\b/i,
-  /\b24 ?h/i,
-  /20:05/,
-];
 
 /** The next day's close as the API would serve it after the 2026-10-13 ingest. */
 const nextDayPrice = {
@@ -211,7 +201,7 @@ describe('card page polling (D9, T03)', () => {
     ).toBeTruthy();
     const text = document.body.textContent;
     expect(screen.getByRole('banner').textContent).toContain('PokéPrices');
-    for (const pattern of FORBIDDEN) expect(text).not.toMatch(pattern);
+    for (const pattern of FORBIDDEN_WORDS) expect(text).not.toMatch(pattern);
     expect(text).not.toContain('2031');
   });
 });

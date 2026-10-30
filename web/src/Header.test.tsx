@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from './App';
 import { navigate } from './router';
 import {
+  FORBIDDEN_WORDS,
   answerMovers,
   cardBody,
   cardNotFoundProblem,
@@ -25,17 +26,6 @@ vi.mock('lightweight-charts', () => import('./test/lightweightChartsFake'));
 import type { CardSearchPage } from './api/client';
 
 const ROUTES = ['/', '/search?q=unown', '/card/ex10-%3F', '/nowhere'] as const;
-
-const FORBIDDEN = [
-  /\blive\b/i,
-  /real-?time/i,
-  /as of today/i,
-  /\btoday\b/i,
-  /\bnow\b/i,
-  /\b1D\b/i,
-  /\b24 ?h/i,
-  /20:05/,
-];
 
 function visit(path: string): void {
   window.history.replaceState(null, '', path);
@@ -311,7 +301,7 @@ describe('Header (T02 criterion 1; D1-T03)', () => {
     vi.setSystemTime(new Date('2031-02-03T04:05:06Z'));
     render(<App />);
     const text = `${header().textContent} ${footer().textContent}`;
-    for (const pattern of FORBIDDEN) expect(text).not.toMatch(pattern);
+    for (const pattern of FORBIDDEN_WORDS) expect(text).not.toMatch(pattern);
     expect(text).not.toContain('2031');
   });
 

@@ -2,6 +2,7 @@ import { act, cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../App';
 import {
+  FORBIDDEN_WORDS,
   fallingMover,
   isMoversUrl,
   jsonResponse,
@@ -21,17 +22,6 @@ const STAMP_1012 = 'as of 2026-10-12 from TCGCSV (daily close)';
 const STAMP_1011 = 'as of 2026-10-11 from TCGCSV (daily close)';
 const STAMP_1013 = 'as of 2026-10-13 from TCGCSV (daily close)';
 const DEGRADED = 'Catalog data may be out of date: PokéSearch is unavailable';
-
-const FORBIDDEN = [
-  /\blive\b/i,
-  /real-?time/i,
-  /as of today/i,
-  /\btoday\b/i,
-  /\bnow\b/i,
-  /\b1D\b/i,
-  /\b24 ?h/i,
-  /20:05/,
-];
 
 type Reply = () => Response | Error;
 
@@ -326,7 +316,7 @@ describe('home strip honesty (D1, D14; Both criterion 2)', () => {
     await openHome(up, [() => jsonResponse(moversBody('down', [fallingMover]))]);
     expect(within(strip()).queryByRole('status')).toBeNull();
     const text = document.body.textContent;
-    for (const pattern of FORBIDDEN) expect(text).not.toMatch(pattern);
+    for (const pattern of FORBIDDEN_WORDS) expect(text).not.toMatch(pattern);
     expect(text).not.toContain('2031');
   });
 
@@ -335,7 +325,7 @@ describe('home strip honesty (D1, D14; Both criterion 2)', () => {
     visit('/');
     render(<App />);
     const text = document.body.textContent;
-    for (const pattern of FORBIDDEN) expect(text).not.toMatch(pattern);
+    for (const pattern of FORBIDDEN_WORDS) expect(text).not.toMatch(pattern);
     expect(text).not.toContain('2031');
   });
 });

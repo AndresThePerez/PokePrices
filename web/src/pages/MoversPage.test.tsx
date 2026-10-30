@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../App';
 import {
+  FORBIDDEN_WORDS,
   answerMovers,
   fallingMover,
   jsonResponse,
@@ -21,17 +22,6 @@ const SCOPE =
 const STAMP_1012 = 'as of 2026-10-12 from TCGCSV (daily close)';
 const FOOTNOTE = 'TCGplayer market prices via TCGCSV, collected once a day.';
 const DEGRADED = 'Catalog data may be out of date: PokéSearch is unavailable';
-
-const FORBIDDEN = [
-  /\blive\b/i,
-  /real-?time/i,
-  /as of today/i,
-  /\btoday\b/i,
-  /\bnow\b/i,
-  /\b1D\b/i,
-  /\b24 ?h/i,
-  /20:05/,
-];
 
 function visit(path: string): void {
   window.history.replaceState(null, '', path);
@@ -288,14 +278,14 @@ describe('movers board honesty (D1, D14)', () => {
       expect(screen.queryByRole('status')).toBeNull();
     });
     const text = document.body.textContent;
-    for (const pattern of FORBIDDEN) expect(text).not.toMatch(pattern);
+    for (const pattern of FORBIDDEN_WORDS) expect(text).not.toMatch(pattern);
     expect(text).not.toContain('2031');
   });
 
   it('never shows a forbidden word while loading', () => {
     openBoard('/movers', answer(moversBody('up', [risingMover])));
     const text = document.body.textContent;
-    for (const pattern of FORBIDDEN) expect(text).not.toMatch(pattern);
+    for (const pattern of FORBIDDEN_WORDS) expect(text).not.toMatch(pattern);
     expect(text).not.toContain('2031');
   });
 });

@@ -339,3 +339,42 @@ describe('the Display panel on /account (D2-i2-T07, R297)', () => {
     resetPreferences();
   });
 });
+
+// D2-i2-T07 review: a choice that could not be stored must survive the footer's hand-over to the
+// Display panel (R297; preferences.ts: "the choice holds for this visit only").
+describe('the footer hand-over with blocked storage (D2-i2-T07, R297)', () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+    document.documentElement.removeAttribute('data-theme');
+    document.documentElement.removeAttribute('data-palette');
+  });
+
+  it('keeps a choice that could not be stored (blocked storage) when the visitor opens /account', async () => {
+    vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+      throw new DOMException('blocked', 'SecurityError');
+    });
+    vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('blocked', 'SecurityError');
+    });
+    stubAccountFetch({ 'GET /v1/me': jsonResponse(signedInMe) });
+    window.history.replaceState(null, '', '/nowhere');
+    render(<App />);
+    fireEvent.change(screen.getByRole('combobox', { name: 'Theme' }), {
+      target: { value: 'dark' },
+    });
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+    act(() => {
+      navigate('/account');
+    });
+    await screen.findByText('Signed in as collector@example.com');
+    // "The choice holds for this visit only": the Display panel shows it and the page keeps it.
+    expect(within(main()).getByRole<HTMLSelectElement>('combobox', { name: 'Theme' }).value).toBe(
+      'dark',
+    );
+    expect(document.documentElement.getAttribute('data-theme')).toBe('dark');
+    act(() => {
+      navigate('/nowhere');
+    });
+    expect(screen.getByRole<HTMLSelectElement>('combobox', { name: 'Theme' }).value).toBe('dark');
+  });
+});

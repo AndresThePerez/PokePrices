@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../App';
 import type { CardDetail } from '../api/client';
 import {
+  FORBIDDEN_WORDS,
   cardBody,
   cardNotFoundProblem,
   filledOf,
@@ -31,17 +32,6 @@ const STAMP = 'as of 2026-10-12 from TCGCSV (daily close)';
 const BANNER =
   'History begins 2026-10-09. PokéPrices has no daily close for this variant before that day.';
 const ZERO_ELIGIBLE = 'No daily close is held for this card yet.';
-
-const FORBIDDEN = [
-  /\blive\b/i,
-  /real-?time/i,
-  /as of today/i,
-  /\btoday\b/i,
-  /\bnow\b/i,
-  /\b1D\b/i,
-  /\b24 ?h/i,
-  /20:05/,
-];
 
 const holoPoints = [
   pointOf('2026-10-09', '928.32'),
@@ -300,7 +290,7 @@ describe('Price history section (T05)', () => {
     expect(within(section).getByRole('status').textContent).toBe('Loading price history…');
     expect(rangeButtons(section)).toHaveLength(5);
     expect(pressed(rangeButtons(section))).toEqual(['1M']);
-    for (const pattern of FORBIDDEN) expect(section.textContent).not.toMatch(pattern);
+    for (const pattern of FORBIDDEN_WORDS) expect(section.textContent).not.toMatch(pattern);
     expect(section.textContent).not.toContain('2031');
     vi.unstubAllGlobals();
   });
@@ -357,7 +347,7 @@ describe('Price history section (T05)', () => {
       const toggle = within(section).queryByRole('button', { name: 'Show data table' });
       if (toggle !== null) fireEvent.click(toggle);
       const text = section.textContent;
-      for (const pattern of FORBIDDEN) expect(text).not.toMatch(pattern);
+      for (const pattern of FORBIDDEN_WORDS) expect(text).not.toMatch(pattern);
       expect(text).not.toContain('2031');
       cleanup();
       vi.unstubAllGlobals();

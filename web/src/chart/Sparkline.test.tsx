@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../App';
 import type { CardDetail } from '../api/client';
 import {
+  FORBIDDEN_WORDS,
   filledOf,
   historyBody,
   isHistoryUrl,
@@ -29,17 +30,6 @@ const HOLO_ITEM =
   'holo, unlimitedMarket price $70.81▲ +$1.45 (+2.09%) vs previous close (2026-10-11)as of 2026-10-12 from TCGCSV (daily close)';
 const REVERSE_ITEM = 'reverse, unlimitedNo price in the collected snapshots';
 const ATTRIBUTION = 'Chart by TradingView Lightweight Charts';
-
-const FORBIDDEN = [
-  /\blive\b/i,
-  /real-?time/i,
-  /as of today/i,
-  /\btoday\b/i,
-  /\bnow\b/i,
-  /\b1D\b/i,
-  /\b24 ?h/i,
-  /20:05/,
-];
 
 interface Shape {
   readonly tag: string;
@@ -414,7 +404,7 @@ describe('sparklines in the Prices list (T07)', () => {
     fireEvent.click(within(section).getByRole('button', { name: 'Show data table' }));
     expect(items()[0]?.querySelector('svg')).toBeTruthy();
     const text = screen.getByRole('main').textContent;
-    for (const pattern of FORBIDDEN) expect(text).not.toMatch(pattern);
+    for (const pattern of FORBIDDEN_WORDS) expect(text).not.toMatch(pattern);
     expect(text).not.toContain('2031');
     expect(document.body.innerHTML).not.toContain('2031');
   });
