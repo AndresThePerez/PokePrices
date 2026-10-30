@@ -32,6 +32,8 @@ export interface FieldProps {
   readonly inputMode?: HTMLAttributes<HTMLInputElement>['inputMode'] | undefined;
   readonly required?: boolean | undefined;
   readonly reveal?: Reveal | undefined;
+  /** The server's length limit, for an email field (never a password field: HG-46 #1). */
+  readonly maxLength?: number | undefined;
 }
 
 /**
@@ -52,6 +54,7 @@ export function Field({
   inputMode,
   required,
   reveal,
+  ...limits
 }: FieldProps) {
   return (
     <UiField label={label} hint={hint} error={error} required={required}>
@@ -59,6 +62,7 @@ export function Field({
         const input = (
           <Input
             {...control}
+            {...limits}
             name={name}
             type={reveal?.shown === true ? 'text' : type}
             autoComplete={autoComplete}

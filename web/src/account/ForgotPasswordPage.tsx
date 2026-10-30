@@ -36,6 +36,7 @@ export default function ForgotPasswordPage() {
           label="Email"
           name="email"
           type="email"
+          maxLength={255}
           autoComplete="email"
           value={email}
           onChange={setEmail}

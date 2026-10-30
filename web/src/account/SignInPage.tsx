@@ -135,6 +135,7 @@ function SignInForm({
           label="Email"
           name="email"
           type="email"
+          maxLength={255}
           autoComplete="username"
           value={email}
           onChange={setEmail}

@@ -290,6 +290,7 @@ function AddWebhook() {
               {...props}
               name="description"
               type="text"
+              maxLength={100}
               autoComplete="off"
               value={description}
               onChange={(event) => {

@@ -2,6 +2,7 @@
 // API's signed path. A link outside D10's pattern is never fetched. Verifying needs the session,
 // so a signed-out visitor is sent to sign in first and comes back here through next.
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect, useRef } from 'react';
 import { isVerificationLink, verifyEmail, type ApiFailure } from '../api/client';
 import Link from '../Link';
 import { AccountMain, LoadingAccount, ProblemBlock } from './Form';
@@ -39,7 +40,6 @@ function Verify({ link }: { readonly link: string }) {
         const failure: unknown = result;
         throw failure;
       }
-      void queryClient.invalidateQueries({ queryKey: ME_KEY });
       return true;
     },
     enabled: session.state === 'signed-in',
@@ -48,6 +48,17 @@ function Verify({ link }: { readonly link: string }) {
     refetchOnWindowFocus: false,
     meta: ONE_TIME,
   });
+  // A verification this page asked for refreshes the session once: the answer it was fetched for
+  // (dataUpdatedAt) is remembered, so a re-render or a StrictMode re-run asks nothing more, and a
+  // return to the page that finds the verification already held asks nothing at all.
+  const refreshed = useRef<number | null>(null);
+  const verified = verification.data === true && verification.isFetchedAfterMount;
+  const answeredAt = verification.dataUpdatedAt;
+  useEffect(() => {
+    if (!verified || refreshed.current === answeredAt) return;
+    refreshed.current = answeredAt;
+    void queryClient.invalidateQueries({ queryKey: ME_KEY });
+  }, [verified, answeredAt, queryClient]);
 
   if (session.state === 'loading') return <LoadingAccount />;
   if (session.state === 'failed') {

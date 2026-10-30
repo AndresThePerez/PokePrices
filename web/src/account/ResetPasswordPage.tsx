@@ -57,6 +57,7 @@ function ResetForm({ link }: { readonly link: ResetLink }) {
           label="Email"
           name="email"
           type="email"
+          maxLength={255}
           autoComplete="username"
           value={link.email}
           onChange={() => undefined}

@@ -78,6 +78,7 @@ export default function SignUpPage() {
           label="Email"
           name="email"
           type="email"
+          maxLength={255}
           autoComplete="email"
           value={email}
           onChange={setEmail}

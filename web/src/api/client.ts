@@ -77,6 +77,14 @@ const UNEXPECTED_ANSWER: ApiFailure = {
   problem: null,
 };
 
+function unexpectedAnswer(status: number): ApiFailure {
+  return {
+    ...UNEXPECTED_ANSWER,
+    status,
+    title: `The PokéPrices API sent an unexpected answer (HTTP ${String(status)})`,
+  };
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
@@ -85,8 +93,9 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 // Each read decodes the fields its page reads without a guard. A success whose fields are not the
 // documented ones is the unexpected-answer failure, so the page shows its problem block instead of
 // throwing in render. A decoder checks and never rebuilds: a well-shaped answer passes through as
-// the same value. The writes' answers and Fortify's empty ones stay typed by the contract and
-// unchecked (`trusted`); the Fortify answers that carry fields are checked where they are read.
+// the same value. The writes' answers are checked the same way, on the fields their callers read;
+// only the empty answers (204 and Fortify's '') stay unchecked (`trusted`), and the Fortify answers
+// that carry fields are checked where they are read.
 
 /** One check of an unknown value. */
 type Check = (value: unknown) => boolean;
@@ -259,6 +268,34 @@ const NOTIFICATIONS = fields({
   data: fields({ channel: oneOf('discord', 'email'), digest: flag, discord_available: flag }),
 });
 
+// The write answers: the fields their callers read. Where a caller reads none, the answer's
+// envelope (a data object) is checked and its fields are not.
+
+/** POST /reset-password: Fortify's one message (MessageAnswer, as requestPasswordReset reads it). */
+const MESSAGE = fields({ message: text });
+
+/** PUT /v1/watchlist/{variantKey}: nothing is read (the list is asked again). */
+const WATCHLIST_ENTRY = fields({ data: record });
+
+/** PUT /v1/portfolio/{variantKey}: the quantity now held (the card page's outcome line shows it). */
+const HOLDING_ENTRY = fields({ data: fields({ quantity: whole }) });
+
+/** POST /v1/webhooks: the kind added and its signing secret, null for Discord (the add form). */
+const WEBHOOK_CREATED = fields({
+  data: fields({ kind: oneOf('discord', 'standard'), secret: orNull(text) }),
+});
+
+/** POST /v1/webhooks/{id}/test: nothing is read (the row says the message is queued). */
+const WEBHOOK_TEST = fields({ data: record });
+
+/** PUT /v1/me/notifications: the saved channel and digest (the settings form holds them). */
+const NOTIFICATIONS_SAVED = fields({
+  data: fields({ channel: oneOf('discord', 'email'), digest: flag }),
+});
+
+/** PUT /v1/alerts/{variantKey}: nothing is read (the watchlist is asked again). */
+const ALERT_ENTRY = fields({ data: record });
+
 /*
  * The field decoders, one per read: each states its check as the type it proves, so the answer
  * passes through as the same value (a predicate rather than `T | null`, because the history answer
@@ -273,22 +310,31 @@ const isWatchlistBody = (value: unknown): value is WatchlistBody => WATCHLIST(va
 const isPortfolioBody = (value: unknown): value is PortfolioBody => PORTFOLIO(value);
 const isWebhooksBody = (value: unknown): value is WebhooksBody => WEBHOOKS(value);
 const isNotificationsBody = (value: unknown): value is NotificationsBody => NOTIFICATIONS(value);
+const isMessageAnswer = (value: unknown): value is MessageAnswer => MESSAGE(value);
+const isWatchlistEntry = (value: unknown): value is WatchlistEntry => WATCHLIST_ENTRY(value);
+const isHoldingEntry = (value: unknown): value is HoldingEntry => HOLDING_ENTRY(value);
+const isWebhookCreated = (value: unknown): value is WebhookCreated => WEBHOOK_CREATED(value);
+const isWebhookTestAnswer = (value: unknown): value is WebhookTestAnswer => WEBHOOK_TEST(value);
+const isNotificationsSaved = (value: unknown): value is NotificationsBody =>
+  NOTIFICATIONS_SAVED(value);
+const isAlertEntry = (value: unknown): value is AlertEntry => ALERT_ENTRY(value);
 
 /** The success, or the unexpected-answer failure when its fields do not decode; failures pass. */
 async function decoded<T>(
   pending: Promise<ApiResult<unknown>>,
   decode: (value: unknown) => value is T,
+  status = 200,
 ): Promise<ApiResult<T>> {
   const result = await pending;
   if (!result.ok) return result;
   const data = result.data;
-  return decode(data) ? { ok: true, data } : { ...UNEXPECTED_ANSWER };
+  return decode(data) ? { ok: true, data } : unexpectedAnswer(status);
 }
 
-/** An answer the contract types, passed through unchecked: the writes' and Fortify's answers. */
-async function trusted<T>(pending: Promise<ApiResult<unknown>>): Promise<ApiResult<T>> {
+/** An answer the contract types as empty (204 or Fortify's ''), passed through unchecked. */
+async function trusted(pending: Promise<ApiResult<unknown>>): Promise<ApiResult<undefined>> {
   const result = await pending;
-  return result.ok ? { ok: true, data: result.data as T } : result;
+  return result.ok ? { ok: true, data: result.data as undefined } : result;
 }
 
 /** GET /v1/cards?q=&page=&page_size= (the PokéSearch search, proxied by the API). */
@@ -648,9 +694,9 @@ function accountAnswer(path: string, init: AccountInit): Promise<ApiResult<unkno
   return core(path, { ...init, side: 'account' });
 }
 
-/** An account request whose answer the contract types (see trusted). */
-function accountRequest<T>(path: string, init: AccountInit): Promise<ApiResult<T>> {
-  return trusted<T>(accountAnswer(path, init));
+/** An account request whose answer the contract types as empty (see trusted). */
+function accountRequest(path: string, init: AccountInit): Promise<ApiResult<undefined>> {
+  return trusted(accountAnswer(path, init));
 }
 
 /** GET /v1/me: who is signed in. Signed out, the answer is a 401 failure. */
@@ -667,7 +713,7 @@ function field(data: unknown, key: string): unknown {
 
 /** POST /login: 200 { two_factor } (true when the authenticator-app step comes next). */
 export async function signIn(form: SignInForm): Promise<ApiResult<SignInAnswer>> {
-  const result = await accountRequest<unknown>('/login', { method: 'POST', body: form });
+  const result = await accountAnswer('/login', { method: 'POST', body: form });
   if (!result.ok) return result;
   const twoFactor = field(result.data, 'two_factor');
   return typeof twoFactor === 'boolean'
@@ -677,19 +723,19 @@ export async function signIn(form: SignInForm): Promise<ApiResult<SignInAnswer>>
 
 /** POST /register with the invite code: 201, signed in. */
 export function signUp(form: SignUpForm): Promise<ApiResult<undefined>> {
-  return accountRequest<undefined>('/register', { method: 'POST', body: form });
+  return accountRequest('/register', { method: 'POST', body: form });
 }
 
 /** POST /logout: 204. */
 export function signOut(): Promise<ApiResult<undefined>> {
-  return accountRequest<undefined>('/logout', { method: 'POST' });
+  return accountRequest('/logout', { method: 'POST' });
 }
 
 /** POST /forgot-password: 200 with the same message whether or not the account exists. */
 export async function requestPasswordReset(form: {
   readonly email: string;
 }): Promise<ApiResult<MessageAnswer>> {
-  const result = await accountRequest<unknown>('/forgot-password', { method: 'POST', body: form });
+  const result = await accountAnswer('/forgot-password', { method: 'POST', body: form });
   if (!result.ok) return result;
   const message = field(result.data, 'message');
   return typeof message === 'string' ? { ok: true, data: { message } } : { ...UNEXPECTED_ANSWER };
@@ -697,7 +743,7 @@ export async function requestPasswordReset(form: {
 
 /** POST /reset-password with the link's token: 200. */
 export function resetPassword(form: ResetPasswordForm): Promise<ApiResult<MessageAnswer>> {
-  return accountRequest<MessageAnswer>('/reset-password', { method: 'POST', body: form });
+  return decoded(accountAnswer('/reset-password', { method: 'POST', body: form }), isMessageAnswer);
 }
 
 /**
@@ -709,12 +755,12 @@ export function verifyEmail(
   options: RequestOptions = {},
 ): Promise<ApiResult<undefined>> {
   if (!isVerificationLink(link)) return Promise.resolve({ ...INVALID_PATH });
-  return accountRequest<undefined>(link, { method: 'GET', signal: options.signal });
+  return accountRequest(link, { method: 'GET', signal: options.signal });
 }
 
 /** POST /email/verification-notification: 202 sent, 204 when already verified. */
 export function resendVerification(): Promise<ApiResult<undefined>> {
-  return accountRequest<undefined>('/email/verification-notification', { method: 'POST' });
+  return accountRequest('/email/verification-notification', { method: 'POST' });
 }
 
 // ---- Two-factor -----------------------------------------------------------------------
@@ -727,17 +773,17 @@ export function resendVerification(): Promise<ApiResult<undefined>> {
 export function confirmPassword(form: {
   readonly password: string;
 }): Promise<ApiResult<undefined>> {
-  return accountRequest<undefined>('/user/confirm-password', { method: 'POST', body: form });
+  return accountRequest('/user/confirm-password', { method: 'POST', body: form });
 }
 
 /** POST /user/two-factor-authentication: 200 with an empty body; a new, unconfirmed secret. */
 export function enableTwoFactor(): Promise<ApiResult<undefined>> {
-  return accountRequest<undefined>('/user/two-factor-authentication', { method: 'POST' });
+  return accountRequest('/user/two-factor-authentication', { method: 'POST' });
 }
 
 /** GET /user/two-factor-qr-code: 200 { svg, url } (Fortify answers [] when no secret exists). */
 export async function twoFactorQrCode(): Promise<ApiResult<TwoFactorQrCode>> {
-  const result = await accountRequest<unknown>('/user/two-factor-qr-code', { method: 'GET' });
+  const result = await accountAnswer('/user/two-factor-qr-code', { method: 'GET' });
   if (!result.ok) return result;
   const svg = field(result.data, 'svg');
   const url = field(result.data, 'url');
@@ -748,7 +794,7 @@ export async function twoFactorQrCode(): Promise<ApiResult<TwoFactorQrCode>> {
 
 /** GET /user/two-factor-secret-key: 200 { secretKey } (404 when no secret exists). */
 export async function twoFactorSecretKey(): Promise<ApiResult<TwoFactorSecretKey>> {
-  const result = await accountRequest<unknown>('/user/two-factor-secret-key', { method: 'GET' });
+  const result = await accountAnswer('/user/two-factor-secret-key', { method: 'GET' });
   if (!result.ok) return result;
   const secretKey = field(result.data, 'secretKey');
   return typeof secretKey === 'string'
@@ -758,7 +804,7 @@ export async function twoFactorSecretKey(): Promise<ApiResult<TwoFactorSecretKey
 
 /** POST /user/confirmed-two-factor-authentication { code }: 200 empty; 422 errors.code. */
 export function confirmTwoFactor(form: { readonly code: string }): Promise<ApiResult<undefined>> {
-  return accountRequest<undefined>('/user/confirmed-two-factor-authentication', {
+  return accountRequest('/user/confirmed-two-factor-authentication', {
     method: 'POST',
     body: form,
   });
@@ -766,7 +812,7 @@ export function confirmTwoFactor(form: { readonly code: string }): Promise<ApiRe
 
 /** GET /user/two-factor-recovery-codes: 200, a JSON array of strings. */
 export async function recoveryCodes(): Promise<ApiResult<RecoveryCodes>> {
-  const result = await accountRequest<unknown>('/user/two-factor-recovery-codes', {
+  const result = await accountAnswer('/user/two-factor-recovery-codes', {
     method: 'GET',
   });
   if (!result.ok) return result;
@@ -778,17 +824,17 @@ export async function recoveryCodes(): Promise<ApiResult<RecoveryCodes>> {
 
 /** POST /user/two-factor-recovery-codes: 200 empty; the old codes stop working. */
 export function regenerateRecoveryCodes(): Promise<ApiResult<undefined>> {
-  return accountRequest<undefined>('/user/two-factor-recovery-codes', { method: 'POST' });
+  return accountRequest('/user/two-factor-recovery-codes', { method: 'POST' });
 }
 
 /** DELETE /user/two-factor-authentication: 200 empty; the secret and the codes are removed. */
 export function disableTwoFactor(): Promise<ApiResult<undefined>> {
-  return accountRequest<undefined>('/user/two-factor-authentication', { method: 'DELETE' });
+  return accountRequest('/user/two-factor-authentication', { method: 'DELETE' });
 }
 
 /** POST /two-factor-challenge { code } or { recovery_code }: 204, signed in. */
 export function twoFactorChallenge(form: TwoFactorChallengeForm): Promise<ApiResult<undefined>> {
-  return accountRequest<undefined>('/two-factor-challenge', { method: 'POST', body: form });
+  return accountRequest('/two-factor-challenge', { method: 'POST', body: form });
 }
 
 // ---- Watchlist, portfolio and the demo -------------------------------------------------
@@ -824,14 +870,14 @@ export function getWatchlist(options: RequestOptions = {}): Promise<ApiResult<Wa
 export function putWatchlistItem(variantKey: string): Promise<ApiResult<WatchlistEntry>> {
   const path = variantPath('watchlist', variantKey);
   if (path === null) return Promise.resolve({ ...INVALID_PATH });
-  return accountRequest<WatchlistEntry>(path, { method: 'PUT' });
+  return decoded(accountAnswer(path, { method: 'PUT' }), isWatchlistEntry);
 }
 
 /** DELETE /v1/watchlist/{variantKey}: 204, also when it was not there. */
 export function deleteWatchlistItem(variantKey: string): Promise<ApiResult<undefined>> {
   const path = variantPath('watchlist', variantKey);
   if (path === null) return Promise.resolve({ ...INVALID_PATH });
-  return accountRequest<undefined>(path, { method: 'DELETE' });
+  return accountRequest(path, { method: 'DELETE' });
 }
 
 /** GET /v1/portfolio: the holdings, their values and the total, all computed by the API. */
@@ -852,19 +898,19 @@ export function putHolding(
 ): Promise<ApiResult<HoldingEntry>> {
   const path = variantPath('portfolio', variantKey);
   if (path === null) return Promise.resolve({ ...INVALID_PATH });
-  return accountRequest<HoldingEntry>(path, { method: 'PUT', body: { quantity } });
+  return decoded(accountAnswer(path, { method: 'PUT', body: { quantity } }), isHoldingEntry);
 }
 
 /** DELETE /v1/portfolio/{variantKey}: 204, also when it was not there. */
 export function deleteHolding(variantKey: string): Promise<ApiResult<undefined>> {
   const path = variantPath('portfolio', variantKey);
   if (path === null) return Promise.resolve({ ...INVALID_PATH });
-  return accountRequest<undefined>(path, { method: 'DELETE' });
+  return accountRequest(path, { method: 'DELETE' });
 }
 
 /** POST /v1/demo/session: 204, this browser is signed in to the read-only demo account. */
 export function startDemo(): Promise<ApiResult<undefined>> {
-  return accountRequest<undefined>('/v1/demo/session', { method: 'POST' });
+  return accountRequest('/v1/demo/session', { method: 'POST' });
 }
 
 // ---- Your data ------------------------------------------------------------------------
@@ -875,7 +921,7 @@ type DeleteAccountForm = operations['deleteMe']['requestBody']['content']['appli
 
 /** POST /v1/me/deletion { password }: 204, the account is gone and this browser is signed out. */
 export function deleteAccount(form: DeleteAccountForm): Promise<ApiResult<undefined>> {
-  return accountRequest<undefined>('/v1/me/deletion', { method: 'POST', body: form });
+  return accountRequest('/v1/me/deletion', { method: 'POST', body: form });
 }
 
 // ---- Webhooks -------------------------------------------------------------------------
@@ -913,21 +959,25 @@ export function getWebhooks(options: RequestOptions = {}): Promise<ApiResult<Web
 
 /** POST /v1/webhooks { kind, url, description? }: 201 with the secret of a signed webhook, once. */
 export function createWebhook(form: WebhookForm): Promise<ApiResult<WebhookCreated>> {
-  return accountRequest<WebhookCreated>('/v1/webhooks', { method: 'POST', body: form });
+  return decoded(
+    accountAnswer('/v1/webhooks', { method: 'POST', body: form }),
+    isWebhookCreated,
+    201,
+  );
 }
 
 /** DELETE /v1/webhooks/{id}: 204, also when the account has no webhook with this id. */
 export function deleteWebhook(id: number): Promise<ApiResult<undefined>> {
   const path = webhookPath(id);
   if (path === null) return Promise.resolve({ ...INVALID_WEBHOOK });
-  return accountRequest<undefined>(path, { method: 'DELETE' });
+  return accountRequest(path, { method: 'DELETE' });
 }
 
 /** POST /v1/webhooks/{id}/test: 202 { message_id }; the message is sent by the next sweep. */
 export function testWebhook(id: number): Promise<ApiResult<WebhookTestAnswer>> {
   const path = webhookPath(id);
   if (path === null) return Promise.resolve({ ...INVALID_WEBHOOK });
-  return accountRequest<WebhookTestAnswer>(`${path}/test`, { method: 'POST' });
+  return decoded(accountAnswer(`${path}/test`, { method: 'POST' }), isWebhookTestAnswer, 202);
 }
 
 // ---- Alert settings and per-card alerts -----------------------------------------------
@@ -951,10 +1001,13 @@ export function getNotifications(
 
 /** PUT /v1/me/notifications { channel, digest }: 200 with the saved settings. */
 export function putNotifications(form: NotificationsForm): Promise<ApiResult<NotificationsBody>> {
-  return accountRequest<NotificationsBody>('/v1/me/notifications', {
-    method: 'PUT',
-    body: { channel: form.channel, digest: form.digest },
-  });
+  return decoded(
+    accountAnswer('/v1/me/notifications', {
+      method: 'PUT',
+      body: { channel: form.channel, digest: form.digest },
+    }),
+    isNotificationsSaved,
+  );
 }
 
 /** /v1/alerts/{variantKey}: the key as one segment, encoded once; null when it would collapse. */
@@ -967,12 +1020,12 @@ function alertPath(variantKey: string): string | null {
 export function putAlert(variantKey: string, pct: number): Promise<ApiResult<AlertEntry>> {
   const path = alertPath(variantKey);
   if (path === null) return Promise.resolve({ ...INVALID_PATH });
-  return accountRequest<AlertEntry>(path, { method: 'PUT', body: { pct } });
+  return decoded(accountAnswer(path, { method: 'PUT', body: { pct } }), isAlertEntry);
 }
 
 /** DELETE /v1/alerts/{variantKey}: 204, the item has no threshold (also when it had none). */
 export function deleteAlert(variantKey: string): Promise<ApiResult<undefined>> {
   const path = alertPath(variantKey);
   if (path === null) return Promise.resolve({ ...INVALID_PATH });
-  return accountRequest<undefined>(path, { method: 'DELETE' });
+  return accountRequest(path, { method: 'DELETE' });
 }
