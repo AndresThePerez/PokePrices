@@ -170,4 +170,15 @@ else
 fi
 check "14 no home path, LAN or tailnet address in the runbook" sh -c '! grep -Eq "/home/|/Users/|~/|(^|[^0-9.])(10|192\.168|172\.(1[6-9]|2[0-9]|3[01]))\.[0-9]+\.[0-9]+(\.[0-9]+)?" docs/DEPLOY.md'
 
+# 15. Review checks (round 1): untested risks
+check "15 every public https curl carries a browser user agent (Cloudflare answers 403 to bare tool agents)" sh -c '! grep -E "curl .*https://" .gates/tmp/p6-T02-code.txt | grep -Ev "curl .*-A .?Mozilla" | grep -q .'
+check "15 step 0 server block runs git rev-parse --short HEAD after the ff-only merge (its Expected line relies on it)" sh -c '
+  awk "/^## / { f = (\$0 ~ /^## Step 0[.]/) } f" docs/DEPLOY.md | awk "/^\`\`\`/ { c = !c; next } c" | awk "/git merge --ff-only/ { m = 1; next } m && /git rev-parse --short HEAD/ { ok = 1 } END { exit !ok }"'
+check "15 step 8 says the golden judgement cannot ratify on the server (no git checkout in the image)" sh -c 'awk "/^## / { f = (\$0 ~ /^## Step 8[.]/) } f" docs/DEPLOY.md | grep -Eqi "approval_ratified|not_in_git_checkout|no git checkout"'
+check "15 no docker compose -f outside step 0 (PokéSearch) and the step 2 workstation config check" sh -c '! grep -E "docker compose( [^ ]+)* -f " .gates/tmp/p6-T02-code.txt | grep -Fv "deploy/stack.server.yml" | grep -Fv "docker-compose.yml -f docker-compose.server.yml" | grep -q .'
+check "15 APP_KEY is base64: plus the base64 of exactly 32 random bytes" sh -c 'grep -F "APP_KEY=base64:\$(" docs/DEPLOY.md | grep -Eq "head -c 32 /dev/urandom \| base64\)|openssl rand -base64 32\)"'
+check "15 both host matrices name the apex and www besides the apps" sh -c 'test "$(grep -E "^for h in " .gates/tmp/p6-T02-code.txt | grep -E " andrestheperez[.]com " | grep -Fc "www.andrestheperez.com")" -ge 2'
+check "15 every psql statement in the runbook is a read-only select" sh -c '! grep -F "psql " .gates/tmp/p6-T02-code.txt | grep -Eiv "psql [^\"]*-c \"select " | grep -q .'
+check "15 rollback says migrations are not reverted" sh -c 'awk "/^## / { f = (\$0 ~ /^## Step 13[.]/) } f" docs/DEPLOY.md | tr "\n" " " | grep -Eqi "migrations are not +reverted|no automatic down"'
+
 finish
