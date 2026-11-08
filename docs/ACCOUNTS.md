@@ -20,9 +20,11 @@ described in [`WEB.md`](WEB.md).
   `/account/verify-email`, none of which nginx sends to Laravel.
 - **Sanctum in cookie mode.** A signed-in browser holds one session cookie, `pokeprices-session` (`HttpOnly`,
   `SameSite=Lax`, no `Domain`), stored in the Postgres `sessions` table on the dev stack (`SESSION_DRIVER`), with
-  Laravel's default lifetime of 120 minutes (`SESSION_LIFETIME`). The cookie has no `Secure` flag yet, because the
-  dev site is plain `http`; that waits for the Deploy prompt. There are no API tokens: an `Authorization: Bearer`
-  header is never read.
+  Laravel's default lifetime of 120 minutes (`SESSION_LIFETIME`). The `Secure` flag comes from
+  `SESSION_SECURE_COOKIE=true`, which production sets behind the tunnel (`deploy/stack.server.yml`), where
+  `TRUSTED_PROXIES=REMOTE_ADDR` also makes Laravel trust the forwarded `https`, so the request and its URLs are
+  `https` too. The dev site is plain `http` and leaves both unset, so its cookies carry no `Secure` flag. There are no
+  API tokens: an `Authorization: Bearer` header is never read.
 - **CSRF cookie.** Before its first write the app calls `GET /sanctum/csrf-cookie`, which sets an `XSRF-TOKEN`
   cookie. The app sends that cookie's decoded value as `X-XSRF-TOKEN` on every non-GET request. A missing or wrong
   token answers `419` with the problem type `csrf-token-mismatch`; the app refreshes the cookie once and retries
@@ -95,9 +97,9 @@ Fortify's profile-update, password-update and passkey routes are not enabled, an
   valid code learns nothing about which addresses already have accounts.
 - **When `INVITE_CODE` is unset, no code can match, so every registration is refused.** The sign-up page and every
   test still work; only a person's own registration on the dev site waits for HG-03.
-- Choose at least 16 random characters. Registration is throttled at 5 a minute per IP, and until `trustProxies`
-  lands with the Deploy prompt that IP is shared by everyone behind nginx (see [Rate limits](#rate-limits)), so the
-  code, not the throttle, is the defence.
+- Choose at least 16 random characters. Registration is throttled at 5 a minute per IP. On the dev stack that IP is
+  nginx's, one address shared by everyone; in production each client keys its own bucket (see
+  [Rate limits](#rate-limits)). Either way the code, not the throttle, is the defence.
 - Public signup is a later phase (P7); Turnstile on signup belongs to the Deploy prompt.
 
 ## Demo account
@@ -230,10 +232,15 @@ from before accounts; the account tiers are defined in `api/config/accounts.php`
 
 Fortify's two verification routes also carry its own `6` a minute.
 
-- **Topology caveat.** nginx hands the API its own address as the client address, and `trustProxies` waits for the
-  Deploy prompt. Until then every IP-keyed bucket (`register`, `account-guest`, `account-demo`, `demo-session`, and
-  the two anonymous tiers) is in practice one global bucket for all visitors. The tests prove the per-IP keying; they
-  cannot prove it on this topology.
+- **Topology caveat.** The client address comes from `TRUSTED_PROXIES` (`api/config/trustedproxy.php`); a trusted
+  proxy is believed for `X-Forwarded-For`, `-Proto` and `-Port` only, never `X-Forwarded-Host`. Dev leaves it unset,
+  so nothing is trusted and the API sees one shared client address for everyone behind nginx: every IP-keyed bucket
+  (`register`, `account-guest`, `account-demo`, `demo-session`, and the two anonymous tiers) is one global bucket on
+  the dev stack. Production sets `TRUSTED_PROXIES=REMOTE_ADDR`, which trusts only the immediate peer: php-fpm admits
+  only nginx (its allow-list) and nginx is published on loopback only, so that peer is the tunnel, which appends the
+  real client to `X-Forwarded-For`; Laravel takes the rightmost entry and each client keys its own bucket. `*` is
+  never for production: it trusts every hop, so the leftmost, client-chosen `X-Forwarded-For` entry becomes the IP and
+  a client could pick a fresh bucket per request. `api/tests/Feature/TrustedProxiesTest.php` proves both.
 - **`account-guest` also counts signed-in traffic.** It runs before the session starts, so a signed-in request spends
   it too. On a one-IP topology all account traffic from everyone shares the 60 a minute, and the per-user 120 is
   reachable only from several addresses. A busy account page can therefore meet a `429` earlier than the per-user
