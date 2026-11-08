@@ -189,4 +189,64 @@ else
   printf 'skip - local hygiene patterns (no .git/info/hygiene.local here)\n'
 fi
 
+# 9. Review round 1: leading-zero KEEP, an interrupted run, prune precision, directory modes, unit shape
+for k in 00 000; do
+  reset
+  seed 3
+  run ok "$k"
+  check "9 KEEP=$k never deletes the older dumps and never ends half done (refused, or a clean run)" sh -c 'test "$(cd '"$BK"' && ls pokeprices-*.dump | wc -l)" -ge 3 && { test "$(cat '"$RC"')" = 0 || test "$(cd '"$BK"' && ls pokeprices-*.dump | wc -l)" = 3; } && test -e '"$BK"'/pokeprices-20200101T000000Z.dump'
+done
+
+S2=$W/shim-slow
+mkdir -p "$S2"
+cat > "$S2/docker" <<'SHIM'
+#!/bin/sh
+case " $* " in
+  *" pg_dump "*) printf 'PGDMP partial\n'; sleep 2; printf 'more\n' ;;
+  *) cat > /dev/null ;;
+esac
+exit 0
+SHIM
+chmod 755 "$S2/docker"
+reset
+seed 2
+env PATH="$S2:$PATH" DEPLOY_DIR="$DEPLOY" BACKUP_DIR="$BK" sh "$SCRIPT" > "$OUT" 2>&1 &
+pid=$!
+sleep 1
+kill -TERM "$pid" 2>/dev/null
+wait "$pid"
+echo $? > "$RC"
+check "9 SIGTERM during the dump leaves no .part and no new .dump, exits non-zero, keeps old dumps" test "$(parts)" = 0 -a "$(dumps)" = 2 -a "$(rc)" != 0
+
+reset
+printf 'x\n' > "$BK/pokeprices-20200101T000000Z.dump.part"
+printf 'x\n' > "$BK/pokeprices-20200101T000000Z.dump.bak"
+printf 'x\n' > "$BK/pokeprices-20200101T000000Z.dump.old"
+printf 'x\n' > "$BK/otherapp-20200101T000000Z.dump"
+printf 'x\n' > "$BK/pokeprices-latest.dump"
+seed 3
+run ok 1
+check "9 KEEP=1 leaves only the new dump among pokeprices dumps" test "$(rc)" = 0 -a "$(dumps)" = 1
+check "9 prune touches only pokeprices-<stamp>.dump: .part, .bak, .old, another app's dump and an unstamped name survive" sh -c 'cd '"$BK"' && test -e pokeprices-20200101T000000Z.dump.part && test -e pokeprices-20200101T000000Z.dump.bak && test -e pokeprices-20200101T000000Z.dump.old && test -e otherapp-20200101T000000Z.dump && test -e pokeprices-latest.dump && test -e keep-me.txt'
+
+reset
+seed 13
+run ok
+check "9 exactly KEEP dumps after the run (13 old + new = 14) deletes nothing" test "$(rc)" = 0 -a "$(dumps)" = 14 -a -e "$BK/pokeprices-20200101T000000Z.dump"
+
+NEWBK=$W/fresh-$$/nested/backups
+env PATH="$SHIMDIR:$PATH" SHIM_LOG="$LOG" DEPLOY_DIR="$DEPLOY" BACKUP_DIR="$NEWBK" sh "$SCRIPT" > "$OUT" 2>&1; echo $? > "$RC"
+check "9 a BACKUP_DIR that does not exist is created and is not readable by group or others (mode 700)" test "$(rc)" = 0 -a "$(stat -c %a "$NEWBK")" = 700
+
+reset
+env PATH="$SHIMDIR:$PATH" SHIM_LOG="$LOG" DEPLOY_DIR="$DEPLOY" BACKUP_DIR="relative/backups" sh "$SCRIPT" > "$OUT" 2>&1; echo $? > "$RC"
+check "9 a relative BACKUP_DIR is refused before any docker call" test "$(rc)" != 0 -a ! -s "$LOG"
+
+SPACEBK="$W/dir with space $$/backups"
+reset
+env PATH="$SHIMDIR:$PATH" SHIM_LOG="$LOG" DEPLOY_DIR="$DEPLOY" BACKUP_DIR="$SPACEBK" sh "$SCRIPT" > "$OUT" 2>&1; echo $? > "$RC"
+check "9 a BACKUP_DIR with a space in its path works and prints the one line" sh -c 'test "$(cat '"$RC"')" = 0 && test "$(ls "'"$SPACEBK"'" | grep -Ec "^pokeprices-[0-9]{8}T[0-9]{6}Z[.]dump$")" = 1 && test "$(wc -l < '"$OUT"')" = 1'
+
+check "9 the service has no [Install] section (a oneshot the timer starts is never enabled itself)" sh -c '! grep -q "^\[Install\]" '"$SVC"
+
 finish
