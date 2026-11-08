@@ -33,9 +33,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias(['conditional-get' => ConditionalGet::class, 'guest' => JsonGuest::class]);
         $middleware->redirectGuestsTo(null);
         $middleware->appendToGroup('web', [NoStore::class, DemoReadOnly::class]);
-        // P6 (plan P6-DEPLOY-i1 T03): which proxies are trusted comes from config/trustedproxy.php (TRUSTED_PROXIES;
-        // unset = nobody), so no `at:` here (a static list would beat the config). Only X-Forwarded-For, -Proto and
-        // -Port are read from a trusted proxy; X-Forwarded-Host is never trusted.
+        // Which proxies are trusted comes from config/trustedproxy.php (TRUSTED_PROXIES; unset = nobody), so no `at:` here (a
+        // static list would beat the config). Only X-Forwarded-For, -Proto and -Port are read from a trusted proxy;
+        // X-Forwarded-Host is never trusted.
         $middleware->trustProxies(
             headers: Request::HEADER_X_FORWARDED_FOR | Request::HEADER_X_FORWARDED_PROTO | Request::HEADER_X_FORWARDED_PORT,
         );
