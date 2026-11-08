@@ -93,6 +93,29 @@ if [ "${LIVE:-}" = 1 ]; then
     v=$(printf '%s' "$value" | sed 's/^"//; s/"$//')
     check "LIVE 413 from @payload_too_large sends $name: $v" live_has "$f" "$name" "$v"
   done < "$LIST"
+  # Review additions: every other response class, not only the ones curled above.
+  # live_all FILE CODE: status line is CODE and all six headers are present exactly once with the exact value.
+  live_all() { head -n 1 "$1" | grep -q " $2" || return 1; while IFS='|' read -r name value; do v=$(printf '%s' "$value" | sed 's/^"//; s/"$//'); live_has "$1" "$name" "$v" || return 1; done < "$LIST"; }
+  f=$TMP/p6-T04-live-r1.txt; curl -sS -D - -o /dev/null "$BASE/v1/nope-xyz" > "$f" 2>/dev/null
+  check "LIVE API 404 problem response carries all six headers exactly once" live_all "$f" 404
+  f=$TMP/p6-T04-live-r2.txt; curl -sS -D - -o /dev/null -X DELETE "$BASE/v1/cards" > "$f" 2>/dev/null
+  check "LIVE API 405 problem response carries all six headers exactly once" live_all "$f" 405
+  f=$TMP/p6-T04-live-r3.txt; curl -sS -D - -o /dev/null "$BASE/up" > "$f" 2>/dev/null
+  check "LIVE /up (php-fpm 200) carries all six headers exactly once, Laravel adds no copy" live_all "$f" 200
+  asset=$(curl -sS "$BASE/" | grep -oE '/assets/[^"]+' | head -1)
+  f=$TMP/p6-T04-live-r4.txt; curl -sS -D - -o /dev/null "$BASE$asset" > "$f" 2>/dev/null
+  check "LIVE hashed static asset carries all six headers exactly once" live_all "$f" 200
+  f=$TMP/p6-T04-live-r5.txt; curl -sS -D - -o /dev/null "$BASE/assets/nope.js" > "$f" 2>/dev/null
+  check "LIVE missing asset falls back to index.html (200) with all six headers exactly once" live_all "$f" 200
+  f=$TMP/p6-T04-live-r6.txt; curl -sS -I "$BASE/" > "$f" 2>/dev/null
+  check "LIVE HEAD / carries all six headers exactly once" live_all "$f" 200
+  f=$TMP/p6-T04-live-r7.txt; curl -sS -D - -o /dev/null -H 'Host: evil.example' "$BASE/v1/nope-xyz" > "$f" 2>/dev/null
+  check "LIVE unknown Host (default_server) API 404 carries all six headers exactly once" live_all "$f" 404
+  f=$TMP/p6-T04-live-r8.txt; head -c 1100000 /dev/zero | curl -sS -D - -o /dev/null -X POST --data-binary @- "$BASE/login" > "$f" 2>/dev/null
+  check "LIVE >1 MB POST /login answers 413 with all six headers exactly once" live_all "$f" 413
+  f=$TMP/p6-T04-live-r9.txt; curl -sS -D - -o /dev/null -H 'Accept: application/json' -H 'Referer: http://pokeprices.localhost:8095/' "$BASE/v1/me" > "$f" 2>/dev/null
+  check "LIVE same-origin-Referer GET /v1/me as a guest is a plain 401 problem (no 419, no redirect)" sh -c "head -n 1 $f | grep -q ' 401' && grep -qi '^content-type: application/problem+json' $f"
+  check "LIVE no response advertises includeSubDomains or preload" sh -c "! cat $TMP/p6-T04-live-*.txt | grep -i '^strict-transport-security:' | grep -Eqi 'includeSubDomains|preload'"
 else
   printf '# LIVE section skipped: set LIVE=1 after the dev web container is rebuilt from this conf\n'
 fi
