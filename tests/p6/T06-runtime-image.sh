@@ -52,4 +52,15 @@ check "php display_errors is Off" probe "php -i | grep -E '^display_errors => Of
 check "php expose_php is Off" probe "php -i | grep -E '^expose_php => Off'"
 check "php log_errors is On" probe "php -i | grep -E '^log_errors => On'"
 
+
+# Review round 1: distinct risks the checks above leave open.
+check "root master starts the www-data pool without -R (php-fpm -t as root)" probe "php-fpm -t"
+check "non-root master (image default user) still passes php-fpm -t" probe "su www-data -s /bin/sh -c 'php-fpm -t 2>/tmp/e'"
+check "fpm SAPI, as www-data, has display_errors Off, expose_php Off, log_errors On" probe "su www-data -s /bin/sh -c 'php-fpm -i 2>&1' | grep -E '^display_errors => Off' && su www-data -s /bin/sh -c 'php-fpm -i 2>&1' | grep -E '^expose_php => Off' && su www-data -s /bin/sh -c 'php-fpm -i 2>&1' | grep -E '^log_errors => On'"
+check "php-fpm.conf includes php-fpm.d/*.conf and zz-runtime.conf sorts last in that glob" probe "grep -Fx 'include=/usr/local/etc/php-fpm.d/*.conf' /usr/local/etc/php-fpm.conf && [ \"\$(ls /usr/local/etc/php-fpm.d/*.conf | tail -n 1)\" = /usr/local/etc/php-fpm.d/zz-runtime.conf ]"
+check "zz-runtime.ini is the last ini PHP scans" probe "[ \"\$(php --ini | grep -o '/usr/local/etc/php/conf.d/[^,]*' | tail -n 1)\" = /usr/local/etc/php/conf.d/zz-runtime.ini ]"
+check "dev stage does not copy the runtime pool or ini" sh -c "! awk '/^FROM base AS dev/ {on=1; next} /^FROM / {on=0} on {print}' $DF | grep -q 'deploy/php'"
+check "the allow-list's web address is the nginx static address in the server stack" sh -c "grep -Fq 'ipv4_address: 198.18.40.10' deploy/stack.server.yml && grep -Fq 'listen.allowed_clients = 127.0.0.1,198.18.40.10' $CONF"
+check "api healthcheck connects from loopback, which the allow-list admits" sh -c "grep -F 'cgi-fcgi -bind -connect 127.0.0.1:9000' deploy/stack.server.yml | grep -q ping"
+
 finish
