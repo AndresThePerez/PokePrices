@@ -1,0 +1,236 @@
+# PokéPrices production stack. Copied to the server as compose.yml next to a 600-mode .env made from
+# deploy/.env.example. Images are built on the workstation and loaded on the server; nothing here builds.
+# The file name keeps it out of the compose*.yml discovery glob on purpose (see docs/DEPLOY.md).
+name: pokeprices
+
+x-app-env: &app-env
+  APP_NAME: PokéPrices
+  APP_ENV: production
+  APP_DEBUG: "false"
+  APP_URL: https://pokeprices.andrestheperez.com
+  APP_KEY: ${APP_KEY:?set APP_KEY in .env}
+  DB_CONNECTION: pgsql
+  DB_HOST: pokeprices-postgres
+  DB_PORT: "5432"
+  DB_DATABASE: pokeprices
+  DB_USERNAME: pokeprices
+  DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+  REDIS_CLIENT: phpredis
+  REDIS_HOST: pokeprices-redis-queue
+  REDIS_CACHE_HOST: pokeprices-redis-cache
+  REDIS_PORT: "6379"
+  QUEUE_CONNECTION: redis
+  CACHE_STORE: redis
+  SESSION_DRIVER: database
+  SESSION_LIFETIME: ${SESSION_LIFETIME:-120}
+  SESSION_SECURE_COOKIE: "true"
+  SANCTUM_STATEFUL_DOMAINS: pokeprices.andrestheperez.com
+  LOG_CHANNEL: stderr_json
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  MAIL_MAILER: ${MAIL_MAILER:-log}
+  INVITE_CODE: ${INVITE_CODE:?set INVITE_CODE in .env}
+  DEMO_PASSWORD: ${DEMO_PASSWORD:-}
+  # PokéSearch joins the shared network named by SHARED_NET with the alias pokesearch and listens on 8080 inside.
+  POKESEARCH_URL: http://pokesearch:8080
+  POKESEARCH_API_KEY: ${POKESEARCH_API_KEY:-}
+  # The collector's day directories, mounted read-only; the :40 scan ingests each new day in place.
+  TCGCSV_SNAPSHOTS_DIR: /snapshots
+  # REMOTE_ADDR trusts only the immediate peer (nginx), never a client-sent X-Forwarded-For.
+  TRUSTED_PROXIES: REMOTE_ADDR
+
+services:
+  postgres:
+    image: postgres:17-alpine@sha256:b0f9560a2de083e2cc7382e75f808c7381a32852a7ec49117deedb300e552b24
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pokeprices
+      POSTGRES_DB: pokeprices
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env}
+    shm_size: 256m
+    mem_limit: 1g
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      default:
+        aliases:
+          - pokeprices-postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pokeprices -d pokeprices"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    logging: &log
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
+
+  redis-queue:
+    image: redis:8-alpine@sha256:3811787313eba226a2ef38658c6ccb91cd5e110edc89c37767de373120a0e5a0
+    restart: unless-stopped
+    # Queue, locks, unique jobs and the rate limiter (R13): never evict, persist the queue.
+    command: ["redis-server", "--maxmemory", "48mb", "--maxmemory-policy", "noeviction", "--appendonly", "yes", "--save", ""]
+    mem_limit: 64m
+    volumes:
+      - redisqueue:/data
+    networks:
+      default:
+        aliases:
+          - pokeprices-redis-queue
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    logging: *log
+
+  redis-cache:
+    image: redis:8-alpine@sha256:3811787313eba226a2ef38658c6ccb91cd5e110edc89c37767de373120a0e5a0
+    restart: unless-stopped
+    # Cache only (R13): evict least recently used at 75% of the cap, no persistence.
+    command: ["redis-server", "--maxmemory", "96mb", "--maxmemory-policy", "allkeys-lru", "--appendonly", "no", "--save", ""]
+    mem_limit: 128m
+    networks:
+      default:
+        aliases:
+          - pokeprices-redis-cache
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep -q PONG"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    logging: *log
+
+  api:
+    image: pokeprices-api:${IMAGE_TAG:?set IMAGE_TAG in .env}
+    restart: unless-stopped
+    # Root for the php-fpm master only: its pool runs as www-data (deploy/php/zz-runtime.conf). Under
+    # rootless Docker container root is the unprivileged host user.
+    user: "0:0"
+    command: ["php-fpm", "-F"]
+    environment:
+      <<: *app-env
+      DATASET_DIR: /dataset
+    volumes:
+      - type: bind
+        source: ${SNAPSHOTS_HOST_DIR:?set SNAPSHOTS_HOST_DIR in .env}
+        target: /snapshots
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ${DATASET_HOST_DIR:?set DATASET_HOST_DIR in .env}
+        target: /dataset
+        read_only: true
+        bind:
+          create_host_path: false
+    networks:
+      - default
+      - shared
+    mem_limit: 384m
+    dns_opt: ["timeout:1", "attempts:1"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis-queue:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "SCRIPT_NAME=/ping SCRIPT_FILENAME=/ping REQUEST_METHOD=GET cgi-fcgi -bind -connect 127.0.0.1:9000 | grep -q pong"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    logging: *log
+
+  worker:
+    image: pokeprices-api:${IMAGE_TAG:?set IMAGE_TAG in .env}
+    restart: unless-stopped
+    user: www-data
+    environment: *app-env
+    command: ["php", "artisan", "queue:work", "redis", "--queue=default", "--sleep=1", "--tries=3", "--max-time=3600", "--memory=256"]
+    volumes:
+      - type: bind
+        source: ${SNAPSHOTS_HOST_DIR:?set SNAPSHOTS_HOST_DIR in .env}
+        target: /snapshots
+        read_only: true
+        bind:
+          create_host_path: false
+    networks:
+      - default
+      - shared
+    mem_limit: 384m
+    dns_opt: ["timeout:1", "attempts:1"]
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'artisan queue:work' >/dev/null"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+    logging: *log
+
+  scheduler:
+    image: pokeprices-api:${IMAGE_TAG:?set IMAGE_TAG in .env}
+    restart: unless-stopped
+    user: www-data
+    environment: *app-env
+    command: ["php", "artisan", "schedule:work"]
+    volumes:
+      - type: bind
+        source: ${SNAPSHOTS_HOST_DIR:?set SNAPSHOTS_HOST_DIR in .env}
+        target: /snapshots
+        read_only: true
+        bind:
+          create_host_path: false
+    networks:
+      - default
+      - shared
+    mem_limit: 128m
+    dns_opt: ["timeout:1", "attempts:1"]
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f 'artisan schedule:work' >/dev/null"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+    logging: *log
+
+  web:
+    image: pokeprices-web:${IMAGE_TAG:?set IMAGE_TAG in .env}
+    restart: unless-stopped
+    ports:
+      - target: 8095
+        host_ip: ${APP_BIND:-127.0.0.1}
+        published: ${APP_PORT:?set APP_PORT in .env}
+        protocol: tcp
+    networks:
+      default:
+        # The only address the api's php-fpm pool admits besides loopback (deploy/php/zz-runtime.conf).
+        ipv4_address: 198.18.40.10
+    mem_limit: 64m
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8095/"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    logging: *log
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: 198.18.40.0/24
+  shared:
+    external: true
+    name: ${SHARED_NET:?set SHARED_NET to the existing shared Docker network the catalog service joins}
+
+volumes:
+  pgdata:
+  redisqueue:
