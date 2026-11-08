@@ -25,5 +25,7 @@ RUN composer install --no-dev --no-interaction --prefer-dist --no-scripts --opti
 
 FROM base AS runtime
 COPY --from=vendor --chown=www-data:www-data /workspace/api /workspace/api
+COPY deploy/php/zz-runtime.conf /usr/local/etc/php-fpm.d/zz-runtime.conf
+COPY deploy/php/zz-runtime.ini /usr/local/etc/php/conf.d/zz-runtime.ini
 USER www-data
 CMD ["php-fpm", "-F"]
