@@ -109,18 +109,26 @@ check "9 secrets are change-me, each preceded by a how-to-generate comment" sh -
 check "9 DEMO_PASSWORD and POKESEARCH_API_KEY are empty in the template" sh -c 'grep -Fxq "DEMO_PASSWORD=" deploy/.env.example && grep -Fxq "POKESEARCH_API_KEY=" deploy/.env.example'
 check "9 TRUSTED_PROXIES comment explains REMOTE_ADDR versus *" sh -c 'grep -E "^#.*TRUSTED_PROXIES" deploy/.env.example | grep -q "REMOTE_ADDR" && grep -E "^#" deploy/.env.example | grep -Fq "X-Forwarded-For" && grep -E "^#" deploy/.env.example | grep -Fq "never in production"'
 check "9 template is not git-ignored" sh -c '! git check-ignore -q --no-index deploy/.env.example'
-check "9 hygiene patterns find nothing in the new files" sh -c '! grep -nP -f gates/hygiene.patterns deploy/stack.server.yml deploy/.env.example tests/p6/T01-server-compose.sh'
+check "9 hygiene patterns find nothing in the new files" sh -c 'p=$(sed -e "s/\r\$//" -e "/^[[:space:]]*#/d" -e "/^[[:space:]]*\$/d" gates/hygiene.patterns | sed "s/.*/(?:&)/" | paste -sd"|" -); test -n "$p"; grep -nIP -e "$p" deploy/stack.server.yml deploy/.env.example tests/p6/T01-server-compose.sh; test $? -eq 1'
 check "9 the server port is not written in the stack file" sh -c '! grep -Eq "8099|:808[7-9]|:809[0-46-9]" deploy/stack.server.yml'
 
 # Machine-specific names: no tracked file under deploy/ or tests/p6/ may match the untracked local patterns.
 # The patterns are read at run time and never written here; CI has no such file, so the check is skipped there.
 LOCALPAT=$(git rev-parse --git-path info/hygiene.local 2>/dev/null)
 if [ -n "$LOCALPAT" ] && [ -s "$LOCALPAT" ]; then
-  grep -v '^#' "$LOCALPAT" | grep -v '^[[:space:]]*$' > "$TMP/p6-T01-localpat.txt"
-  check "local hygiene patterns find nothing under deploy/ or tests/p6/" sh -c '! git ls-files deploy tests/p6 | xargs grep -nIP -f .gates/tmp/p6-T01-localpat.txt'
+  sed -e 's/\r$//' -e '/^[[:space:]]*#/d' -e '/^[[:space:]]*$/d' "$LOCALPAT" | sed 's/.*/(?:&)/' | paste -sd'|' - > "$TMP/p6-T01-localpat.txt"
+  check "local hygiene pattern compiles as one grep -P program and the scanned set is not empty" sh -c 'grep -P -f .gates/tmp/p6-T01-localpat.txt /dev/null; test $? -le 1 && test -n "$(git ls-files deploy tests/p6)"'
+  check "local hygiene patterns find nothing under deploy/ or tests/p6/" sh -c 'grep -nIP -f .gates/tmp/p6-T01-localpat.txt $(git ls-files deploy tests/p6); test $? -eq 1'
 else
   printf 'skip - local hygiene patterns (no .git/info/hygiene.local here)\n'
 fi
+
+# 11. Review additions (R355-R360 angles the checks above only grep for)
+check "11 render fails when any required variable is missing" sh -c 'for v in APP_KEY DB_PASSWORD INVITE_CODE IMAGE_TAG APP_PORT SNAPSHOTS_HOST_DIR DATASET_HOST_DIR SHARED_NET; do grep -v "^$v=" deploy/.env.example > .gates/tmp/p6-T01-missing.env; if env -u "$v" docker compose -f deploy/stack.server.yml --env-file .gates/tmp/p6-T01-missing.env config -q; then echo "rendered without $v"; exit 1; fi; done'
+check "11 render fails when a secret is present but empty" sh -c 'for v in APP_KEY DB_PASSWORD INVITE_CODE; do sed "s/^$v=.*/$v=/" deploy/.env.example > .gates/tmp/p6-T01-empty.env; if env -u "$v" docker compose -f deploy/stack.server.yml --env-file .gates/tmp/p6-T01-empty.env config -q; then echo "rendered with empty $v"; exit 1; fi; done'
+check "11 secrets stay out of postgres-adjacent, redis and web environments" pq 'all(not any(k in s[x].get("environment", {}) for k in ("APP_KEY","INVITE_CODE","DB_PASSWORD","DEMO_PASSWORD","POKESEARCH_API_KEY")) for x in ("redis-queue","redis-cache","web")) and "APP_KEY" not in s["postgres"]["environment"] and "INVITE_CODE" not in s["postgres"]["environment"]'
+check "11 template values: no quotes, spaces or $, numeric port and lifetime, absolute home-free paths" sh -c 'v() { grep -E "^$1=" deploy/.env.example | cut -d= -f2-; }; ! grep -E "^[A-Z_][A-Z0-9_]*=.*[[:space:]\"$]" deploy/.env.example && v APP_PORT | grep -Eq "^[0-9]+$" && v SESSION_LIFETIME | grep -Eq "^[0-9]+$" && for k in SNAPSHOTS_HOST_DIR DATASET_HOST_DIR; do v $k | grep -Eq "^/" && ! v $k | grep -Eq "^(/home|/Users|/root|~)" || exit 1; done'
+check "11 web is the only service reachable from the host and only on loopback by default" pq 'all(not v.get("ports") for k, v in s.items() if k != "web") and s["web"]["ports"][0]["host_ip"] == "127.0.0.1"'
 
 # 10. Discovery globs
 check "10 no deploy/*.yml basename starts with compose or docker-compose" sh -c 'test -z "$(git ls-files deploy | grep -E "^deploy/(docker-)?compose[^/]*\.ya?ml$")" && test -z "$(ls deploy | grep -E "^(docker-)?compose")"'
