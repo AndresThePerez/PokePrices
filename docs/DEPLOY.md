@@ -1,12 +1,12 @@
-# Deploy runbook (first pass)
+# Deploy runbook
 
 PokéPrices goes public at `https://pokeprices.andrestheperez.com` on Andres's home server, behind the existing
 cloudflared tunnel, as one added service beside the ones already there (PokéSearch, Courier, the portfolio site).
 Nothing on the server builds an image: the server has no registry access, so images are built on the workstation and
 shipped with `docker save | ssh … docker load`.
 
-This is the first pass. A later task appends the backup-timer step and a "what runs where" table at the end
-(see the reserved heading).
+The last step installs the nightly backup timer, and the "What runs where" table after it lists everything that runs
+once the stack is up.
 
 Every step below has a number, exactly one tag in its heading and a "Who runs it" line.
 
@@ -27,7 +27,8 @@ vault; they never enter this repository):
 | Placeholder | Meaning |
 |---|---|
 | `<deploy-user>`, `<deploy-host>` | the ssh account and host name of the server |
-| `<deploy-dir>` | the PokéPrices directory on the server: holds `compose.yml`, `.env.example` and the 600-mode `.env` only |
+| `<deploy-dir>` | the PokéPrices directory on the server: holds `compose.yml`, `.env.example`, the 600-mode `.env` and, from step 15, the backup script and its two unit templates |
+| `<backup-dir>` | the directory for the nightly database dumps: an absolute path outside `<deploy-dir>`, created at step 15 |
 | `<shared-net>` | the existing external Docker network the catalog service (PokéSearch, alias `pokesearch`) is attached to |
 | `<snapshots-dir>` | the collector's day directories on the server; mounted read-only at `/snapshots` |
 | `<dataset-dir>` | the dataset checkouts on the server; mounted read-only at `/dataset` |
@@ -223,7 +224,7 @@ ssh <deploy-user>@<deploy-host> 'docker images --format "{{.Repository}}:{{.Tag}
 ```
 
 Expected: the load prints `Loaded image: pokeprices-api:<tag>` and `Loaded image: pokeprices-web:<tag>`; the last command
-lists both with the IDs written down in step 2. `compose.yml` and `.env.example` are the only files in `<deploy-dir>`.
+lists both with the IDs written down in step 2. At this point `compose.yml` and `.env.example` are the only files in `<deploy-dir>`.
 
 ## Step 4. Copy the dataset checkout [workstation]
 
@@ -256,7 +257,10 @@ no spaces, nothing appended:
 - `APP_PORT`: the port picked at step 1. `SHARED_NET`: `<shared-net>`.
 - `SNAPSHOTS_HOST_DIR`: `<snapshots-dir>`. `DATASET_HOST_DIR`: `<dataset-dir>`. Both must be absolute and must exist
   (the stack never creates them).
-- `SESSION_LIFETIME` (minutes) and `LOG_LEVEL`: the template's values are fine.
+- `SESSION_LIFETIME` (the idle lifetime, in minutes) and `LOG_LEVEL`: the template's values are fine.
+- `TRUSTED_PROXIES` is not in the `.env`: the stack file fixes it to `TRUSTED_PROXIES=REMOTE_ADDR` (only the immediate peer, nginx,
+  is trusted, so the rightmost `X-Forwarded-For` entry is the client). Never add `TRUSTED_PROXIES=*`: it would make a
+  client-sent header the client address.
 - `MAIL_MAILER`: leave `log`. A real mail provider and Turnstile are human gates, not part of this runbook;
   invite-only registration keeps sign-up closed meanwhile.
 - `DEMO_PASSWORD`: leave empty, so the demo is reachable only through its button.
@@ -300,11 +304,12 @@ docker compose up -d --wait postgres redis-queue redis-cache api web
 docker compose ps
 docker compose top api
 docker compose exec -T -u www-data api php-fpm -tt 2>&1 | grep allowed_clients
+docker compose exec -T -u www-data api printenv TRUSTED_PROXIES
 ```
 
 Expected: five services healthy; in `top`, the php-fpm master runs as root (the unprivileged host user under rootless
 Docker) and its pool workers as `www-data`; the last line shows `listen.allowed_clients = 127.0.0.1,198.18.40.10` (only
-loopback and the web container may speak FastCGI to the api).
+loopback and the web container may speak FastCGI to the api); `printenv` prints `REMOTE_ADDR`.
 
 ## Step 7. Migrate, seed the set aliases, start the worker [server]
 
@@ -476,10 +481,12 @@ existing host: restore the backup at once (step 13).
 curl -sS -A 'Mozilla/5.0' https://pokeprices.andrestheperez.com/v1/ready
 curl -sSI -A 'Mozilla/5.0' https://pokeprices.andrestheperez.com/
 curl -sS -A 'Mozilla/5.0' -D - -o /dev/null https://pokeprices.andrestheperez.com/sanctum/csrf-cookie
+curl -sSI -A 'Mozilla/5.0' https://pokeprices.andrestheperez.com/ | grep -iE '^(x-content-type-options|strict-transport-security|x-frame-options|content-security-policy|referrer-policy|permissions-policy):'
 ```
 
 Expected: ready reports every component ok; the root answers 200; every `Set-Cookie` of the csrf-cookie response carries
-`Secure`. In a browser: the single-page app loads, the `Try the read-only demo` button signs in the demo account, and a
+`Secure`; the last command prints exactly six header lines (`X-Content-Type-Options`, `Strict-Transport-Security`,
+`X-Frame-Options`, `Content-Security-Policy`, `Referrer-Policy`, `Permissions-Policy`). In a browser: the single-page app loads, the `Try the read-only demo` button signs in the demo account, and a
 price shows its source and its "as of" date.
 
 ## Step 13. Rollback [server, sudo]
@@ -496,7 +503,7 @@ docker inspect --format '{{.Config.Image}} {{.Image}}' $(docker compose ps -q ap
 
 Expected: the images are the `<old>` ones and the image IDs equal the IDs recorded before the update. Migrations are not
 reverted: go back only to a tag whose code works with the migrated schema; otherwise restore the database from a backup
-instead.
+instead (the nightly dumps of step 15; the restore itself is not drilled yet, see "Restore drill" below).
 
 Tunnel. Restore the backup config, restart, and run the same matrix as step 11b:
 
@@ -513,10 +520,12 @@ Expected: the four existing hosts answer 200; the PokéPrices host no longer ans
 **Who runs it:** Andres, or the orchestrator after his go. The build and ship legs are steps 2 and 3, on the workstation.
 
 1. Build and ship the new tag (steps 2 and 3). Keep the old tag on the server: do not remove it.
-2. Record what runs now (the IDs the roll-back compares against):
+2. Record what runs now (the IDs the roll-back compares against) and, once step 15 is done, take a fresh backup before
+   anything migrates:
 
    ```sh
    docker inspect --format '{{.Config.Image}} {{.Image}}' $(docker compose ps -q api web)
+   systemctl --user start pokeprices-backup.service
    ```
 
 3. Pending-migration check, on the workstation, between the two commits: read every migration the new commit adds. If
@@ -541,4 +550,74 @@ Expected: the four existing hosts answer 200; the PokéPrices host no longer ans
 Expected: the image IDs differ from the recorded ones and match the new build, `migrate` ends without an error, every host
 answers 200. Anything else: roll back (step 13).
 
-## Reserved for T05: the backup timer step and the "what runs where" table (placeholder, nothing here yet)
+## Step 15. Backup timer [server]
+
+**Who runs it:** Andres, or the orchestrator after his go. The copy leg runs from the workstation (like step 3); the rest
+runs on the server. Run it after step 6, when `postgres` is up.
+
+A user timer dumps the database every night at 05:17 UTC with `pg_dump -Fc` inside the `postgres` container (socket
+authentication there: the script handles no password and reads no environment file), checks that the dump is not empty
+and that `pg_restore --list` can read it, and only then names it `pokeprices-<UTC stamp>.dump`. The 14 newest dumps are
+kept. Files are mode 600. A failed dump leaves nothing behind and the unit fails. The three files are
+`deploy/backup/pokeprices-backup.sh`, `deploy/backup/pokeprices-backup.service` and `deploy/backup/pokeprices-backup.timer`.
+
+Lingering: the user timer only fires while the user's services outlive the ssh session. That is the `Linger=yes` check
+of step 1, so nothing is repeated here; if it was not `yes` then, this step is a STOP too.
+
+Copy leg, on the workstation, from the repository root:
+
+```sh
+scp deploy/backup/pokeprices-backup.sh deploy/backup/pokeprices-backup.service deploy/backup/pokeprices-backup.timer <deploy-user>@<deploy-host>:<deploy-dir>/
+```
+
+On the server. `DEPLOY_DIR` must be the absolute `<deploy-dir>` (the unit's paths are copied from it) and `<backup-dir>`
+an absolute path outside it. The service file is a template whose two `@…@` tokens are filled in with `sed`, using `|`
+as the delimiter because the values are paths; the timer needs no edit:
+
+```sh
+cd "$DEPLOY_DIR"
+BACKUP_DIR=<backup-dir>
+UNIT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
+chmod 755 pokeprices-backup.sh
+mkdir -p "$BACKUP_DIR" "$UNIT_DIR"
+sed "s|@DEPLOY_DIR@|$DEPLOY_DIR|g; s|@BACKUP_DIR@|$BACKUP_DIR|g" pokeprices-backup.service > "$UNIT_DIR/pokeprices-backup.service"
+cp pokeprices-backup.timer "$UNIT_DIR/pokeprices-backup.timer"
+grep -c '@' "$UNIT_DIR/pokeprices-backup.service"
+systemctl --user daemon-reload
+systemctl --user enable --now pokeprices-backup.timer
+systemctl --user start pokeprices-backup.service
+journalctl --user -u pokeprices-backup.service -n 5 --no-pager
+ls -l "$BACKUP_DIR"
+systemctl --user list-timers
+```
+
+Expected: the `grep -c` prints `0` (its exit status is 1 when nothing matches, which is the good case: no token is left);
+the manual `start` returns without an error after the dump ran (the unit is a one-shot); the journal shows one line, the
+dump's file name and its size in bytes; `ls -l` shows exactly one `-rw-------` file `pokeprices-<stamp>.dump`; and
+`list-timers` shows `pokeprices-backup.timer` with a next run at 05:17 UTC. A failed `start` means read the journal and STOP:
+the usual causes are a Docker socket that is not at the user runtime directory (`DOCKER_HOST` in the unit points there) or
+a `postgres` service that is not up.
+
+## What runs where
+
+Once the stack is up, nothing needs a person except the updates of step 14.
+
+| What | Where | When | Does |
+|---|---|---|---|
+| `pokeprices-probe` | `scheduler` container (the job runs in `worker`) | every minute | queue liveness probe |
+| `pokeprices-ingest-pending` | `scheduler` container (the job runs in `worker`) | hourly at :40 | ingests each collected day that holds `SUCCESS` and needs a run, in place from `/snapshots` |
+| `pokeprices-freshness` | `scheduler` container (the job runs in `worker`) | hourly | logs the freshness of the newest day against the 26 h SLO |
+| `pokeprices-alerts-dispatch` | `scheduler` container (the job runs in `worker`) | every five minutes | creates the deliveries of the day's price moves |
+| `pokeprices-deliveries` | `scheduler` container (the job runs in `worker`) | every minute | sends the deliveries that are due |
+| `pokeprices-prune-failed` | `scheduler` container | daily at 00:00 UTC | prunes failed queue jobs older than 30 days |
+| `pokeprices-prune-batches` | `scheduler` container | daily at 00:00 UTC | prunes job batches older than 30 days |
+| `pokeprices-prune-chunks` | `scheduler` container | daily at 00:00 UTC | prunes the chunks of superseded ingest runs, 30 days after they finished |
+| the queue worker | `worker` container | always | runs the queued jobs above |
+| the collector timer | the server's host, a user timer | a few times a day (UTC) | writes the day folders to `<snapshots-dir>`; the containers only read them |
+| the backup timer | the server's host, a user timer (step 15) | daily at 05:17 UTC | dumps the database to `<backup-dir>` |
+| Prerequisite: PokéSearch v1 (HG-48, step 0) | the server, on `<shared-net>` as `pokesearch` | always | the catalog the API reads; `/v1/ready` fails without it |
+
+## Restore drill: deferred to the next deploy iteration
+
+Restoring a dump into a scratch database is not rehearsed yet. The backup check proves the dump is readable (`pg_restore
+--list`), not that a restore works.

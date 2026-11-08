@@ -28,12 +28,12 @@ before() { a=$(first "$1"); b=$(first "$2"); test -n "$a" && test -n "$b" && tes
 # body N: the lines of step N (heading to the next ## heading).
 body() { awk -v n="$1" '/^## / { f = ($0 ~ ("^## Step " n "[.]")) } f' "$DOC"; }
 
-# 2. Steps 0..N without a gap, in order, N >= 14
+# 2. Steps 0..N without a gap, in order, N >= 15
 nums=$(sed -E 's/^## Step ([0-9]+)\..*/\1/' "$HEADS" | paste -sd' ' -)
 last=$(sed -E 's/^## Step ([0-9]+)\..*/\1/' "$HEADS" | tail -n 1)
 want=$(seq 0 "${last:-0}" | paste -sd' ' -)
 check "2 steps are numbered 0..N in order with no gap" test -n "$nums" -a "$nums" = "$want"
-check "2 there are at least steps 0..14" test "${last:-0}" -ge 14
+check "2 there are at least steps 0..15" test "${last:-0}" -ge 15
 
 # 3. Exactly one tag per step heading, from the three allowed
 check "3 every step heading ends in exactly one of [workstation] [server] [server, sudo]" sh -c '
@@ -45,7 +45,7 @@ check "3 every step heading ends in exactly one of [workstation] [server] [serve
 check "3 no other heading carries a tag" sh -c '! grep -E "^#+ " docs/DEPLOY.md | grep -Ev "^## Step [0-9]+\." | grep -Eq "\[(workstation|server)"'
 # R354: who runs each step
 check "3 every step names who runs it" sh -c '
-  for n in $(seq 0 14); do
+  for n in $(seq 0 15); do
     awk -v n="$n" "/^## / { f = (\$0 ~ (\"^## Step \" n \"[.]\")) } f" docs/DEPLOY.md | grep -Eq "^\*\*Who runs it:\*\* " || { echo "step $n"; exit 1; }
   done'
 check "3 step 11 is tagged [server, sudo] and step 0 names the HG-48 gate" sh -c 'grep -E "^## Step 11\." docs/DEPLOY.md | grep -Fq "[server, sudo]" && grep -E "^## Step 0\." docs/DEPLOY.md | grep -Fq "HG-48"'
@@ -132,10 +132,7 @@ check "10 the matrix names every host that must answer 200 and the backup suffix
 check "11 image tags are deploy-YYYYMMDD-<short sha>" sh -c 'grep -Fq "deploy-YYYYMMDD-<sha>" docs/DEPLOY.md'
 check "11 rollback uses the sed with | delimiter on IMAGE_TAG" sh -c 'grep -Fq "sed -i \"s|^IMAGE_TAG=.*|IMAGE_TAG=<old>|\" .env" docs/DEPLOY.md'
 check "11 steps 13 and 14 exist as rollback and update" sh -c 'grep -E "^## Step 13\." docs/DEPLOY.md | grep -Fqi "rollback" && grep -E "^## Step 14\." docs/DEPLOY.md | grep -Fqi "update"'
-check "11 a marked placeholder heading for T05 follows step 14 and is not a step" sh -c '
-  p=$(grep -n "^## Reserved for T05" docs/DEPLOY.md | head -n 1 | cut -d: -f1)
-  s=$(grep -n "^## Step 14\." docs/DEPLOY.md | head -n 1 | cut -d: -f1)
-  test -n "$p" -a -n "$s" && test "$s" -lt "$p"'
+check "11 the placeholder heading is gone and the runbook is no longer a first pass" sh -c '! grep -Eq "^## Reserved|first pass" docs/DEPLOY.md && head -n 1 docs/DEPLOY.md | grep -Fqx "# Deploy runbook"'
 check "11 server steps run in the deploy directory" sh -c 'grep -Fq "cd \"\$DEPLOY_DIR\"" docs/DEPLOY.md'
 
 # 12. Placeholders present; the shared network and hosts are named only by placeholder
@@ -148,7 +145,7 @@ for k in IMAGE_TAG APP_BIND APP_PORT SHARED_NET SNAPSHOTS_HOST_DIR DATASET_HOST_
 done
 check "13 every variable named in the runbook exists in deploy/.env.example" sh -c '
   for k in $(grep -Eo "\b[A-Z][A-Z0-9]*(_[A-Z0-9]+)+=" docs/DEPLOY.md | tr -d "=" | sort -u); do
-    case $k in DEPLOY_DIR|BACKUP_DIR|APP_PORT_UNUSED) continue ;; esac
+    case $k in DEPLOY_DIR|BACKUP_DIR|UNIT_DIR|TRUSTED_PROXIES|APP_PORT_UNUSED) continue ;; esac
     grep -Eq "^$k=" deploy/.env.example || { echo "unknown $k"; exit 1; }
   done'
 check "13 no secret-bearing key is assigned a value in the runbook (only change-me, the guarded sed or an empty value)" sh -c '
@@ -180,5 +177,42 @@ check "15 APP_KEY is base64: plus the base64 of exactly 32 random bytes" sh -c '
 check "15 both host matrices name the apex and www besides the apps" sh -c 'test "$(grep -E "^for h in " .gates/tmp/p6-T02-code.txt | grep -E " andrestheperez[.]com " | grep -Fc "www.andrestheperez.com")" -ge 2'
 check "15 every psql statement in the runbook is a read-only select" sh -c '! grep -F "psql " .gates/tmp/p6-T02-code.txt | grep -Eiv "psql [^\"]*-c \"select " | grep -q .'
 check "15 rollback says migrations are not reverted" sh -c 'awk "/^## / { f = (\$0 ~ /^## Step 13[.]/) } f" docs/DEPLOY.md | tr "\n" " " | grep -Eqi "migrations are not +reverted|no automatic down"'
+
+# 16. Step 15 (backup timer), the "What runs where" table, the restore-drill line
+check "16 step 15 is the backup timer, tagged [server], after step 14" sh -c '
+  grep -Eq "^## Step 15\. Backup timer \[server\]$" docs/DEPLOY.md &&
+  s=$(grep -n "^## Step 14\." docs/DEPLOY.md | cut -d: -f1) && t=$(grep -n "^## Step 15\." docs/DEPLOY.md | cut -d: -f1) && test "$s" -lt "$t"'
+check "16 step 15 refers to the lingering check of step 1 and does not repeat it" sh -c '
+  awk "/^## / { f = (\$0 ~ /^## Step 15[.]/) } f" docs/DEPLOY.md | grep -Fq "step 1" &&
+  ! awk "/^## / { f = (\$0 ~ /^## Step 15[.]/) } f" docs/DEPLOY.md | grep -Fq "loginctl"'
+check "16 step 15 copies the script and both units, fills the two tokens with sed and | delimiters, chmod 755" sh -c '
+  b=$(awk "/^## / { f = (\$0 ~ /^## Step 15[.]/) } f" docs/DEPLOY.md)
+  for p in "deploy/backup/pokeprices-backup.sh" "deploy/backup/pokeprices-backup.service" "deploy/backup/pokeprices-backup.timer" "chmod 755 pokeprices-backup.sh" "s|@DEPLOY_DIR@|" "s|@BACKUP_DIR@|" "systemctl --user daemon-reload" "systemctl --user enable --now pokeprices-backup.timer" "systemctl --user start pokeprices-backup.service" "list-timers"; do
+    printf "%s\n" "$b" | grep -Fq -e "$p" || { echo "missing $p"; exit 1; }
+  done'
+check "16 step 15 uses no s/ delimiter and no home path literal" sh -c '! awk "/^## / { f = (\$0 ~ /^## Step 15[.]/) } f" docs/DEPLOY.md | grep -E "sed " | grep -Eq "s/" && ! awk "/^## / { f = (\$0 ~ /^## Step 15[.]/) } f" docs/DEPLOY.md | grep -Eq "~/|/home/"'
+check "16 step 15 shows one 600 dump and the next timer run" sh -c 'awk "/^## / { f = (\$0 ~ /^## Step 15[.]/) } f" docs/DEPLOY.md | grep -Fq -e "-rw-------" && awk "/^## / { f = (\$0 ~ /^## Step 15[.]/) } f" docs/DEPLOY.md | grep -Fq "05:17 UTC"'
+check "16 the what-runs-where table lists all eight schedule names, the worker, both timers and HG-48" sh -c '
+  b=$(awk "/^## / { f = (\$0 ~ /^## What runs where/) } f" docs/DEPLOY.md)
+  test -n "$b" || exit 1
+  for n in probe ingest-pending freshness alerts-dispatch deliveries prune-failed prune-batches prune-chunks; do
+    printf "%s\n" "$b" | grep -Fq "\`pokeprices-$n\`" || { echo "missing $n"; exit 1; }
+  done
+  for p in "queue worker" "collector timer" "backup timer" "HG-48"; do
+    printf "%s\n" "$b" | grep -Fq -e "$p" || { echo "missing $p"; exit 1; }
+  done'
+check "16 the table names exactly the entries routes/console.php registers" sh -c '
+  a=$(grep -o "name(.pokeprices-[a-z-]*.)" api/routes/console.php | sed "s/name(.//; s/.)//" | sort | paste -sd" " -)
+  b=$(awk "/^## / { f = (\$0 ~ /^## What runs where/) } f" docs/DEPLOY.md | grep -o "\`pokeprices-[a-z-]*\`" | tr -d "\`" | sort -u | paste -sd" " -)
+  test -n "$a" -a "$a" = "$b"'
+check "16 the restore drill is named as deferred" sh -c 'grep -Eq "^## Restore drill: deferred" docs/DEPLOY.md'
+check "16 step 5 states TRUSTED_PROXIES=REMOTE_ADDR and forbids *" sh -c 'b=$(awk "/^## / { f = (\$0 ~ /^## Step 5[.]/) } f" docs/DEPLOY.md); printf "%s\n" "$b" | grep -Fq "TRUSTED_PROXIES=REMOTE_ADDR" && printf "%s\n" "$b" | grep -Fq "TRUSTED_PROXIES=*"'
+check "16 step 6 reads TRUSTED_PROXIES back from the api container" sh -c 'awk "/^## / { f = (\$0 ~ /^## Step 6[.]/) } f" docs/DEPLOY.md | grep -Fq "exec -T -u www-data api printenv TRUSTED_PROXIES"'
+check "16 step 12 checks all six security headers from the public URL" sh -c '
+  b=$(awk "/^## / { f = (\$0 ~ /^## Step 12[.]/) } f" docs/DEPLOY.md)
+  for h in x-content-type-options strict-transport-security x-frame-options content-security-policy referrer-policy permissions-policy; do
+    printf "%s\n" "$b" | grep -Fiq -e "$h" || { echo "missing $h"; exit 1; }
+  done'
+check "16 database execs name the postgres service and the pokeprices user and database" sh -c 'grep -E "docker compose exec -T postgres " docs/DEPLOY.md | grep -Fq -e "-U pokeprices -d pokeprices"'
 
 finish

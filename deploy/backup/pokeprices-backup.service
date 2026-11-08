@@ -1,0 +1,9 @@
+[Unit]
+Description=PokéPrices nightly database backup
+
+[Service]
+Type=oneshot
+Environment=DOCKER_HOST=unix://%t/docker.sock
+Environment=DEPLOY_DIR=@DEPLOY_DIR@
+Environment=BACKUP_DIR=@BACKUP_DIR@
+ExecStart=@DEPLOY_DIR@/pokeprices-backup.sh

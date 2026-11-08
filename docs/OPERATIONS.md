@@ -33,6 +33,10 @@ A new day arrives in four steps, and only the third is this repository's code.
 2. **Pull.** A separate read-only pull step copies the finished folder to the workstation's
    `.data/snapshots/<day>/`. It is not part of the pricing code, runs at a time the collector does not
    control, and nothing in PokéPrices fetches from the server or the network.
+
+   In production there is no pull step: the collector's day folders on the server are mounted read-only
+   into the api, worker and scheduler containers, so the :40 scan ingests each new day in place. The
+   server commands are in [DEPLOY.md](DEPLOY.md).
 3. **The :40 scan.** The scheduler runs `pokeprices-ingest-pending` hourly at minute 40. It lists the day
    folders that hold `SUCCESS`, oldest first, and starts an ingest for each day that needs one. Most scans
    find nothing to do and exit. The rules of one scan:
