@@ -33,7 +33,7 @@ nums=$(sed -E 's/^## Step ([0-9]+)\..*/\1/' "$HEADS" | paste -sd' ' -)
 last=$(sed -E 's/^## Step ([0-9]+)\..*/\1/' "$HEADS" | tail -n 1)
 want=$(seq 0 "${last:-0}" | paste -sd' ' -)
 check "2 steps are numbered 0..N in order with no gap" test -n "$nums" -a "$nums" = "$want"
-check "2 there are at least steps 0..15" test "${last:-0}" -ge 15
+check "2 there are at least steps 0..16" test "${last:-0}" -ge 16
 
 # 3. Exactly one tag per step heading, from the three allowed
 check "3 every step heading ends in exactly one of [workstation] [server] [server, sudo]" sh -c '
@@ -45,7 +45,7 @@ check "3 every step heading ends in exactly one of [workstation] [server] [serve
 check "3 no other heading carries a tag" sh -c '! grep -E "^#+ " docs/DEPLOY.md | grep -Ev "^## Step [0-9]+\." | grep -Eq "\[(workstation|server)"'
 # R354: who runs each step
 check "3 every step names who runs it" sh -c '
-  for n in $(seq 0 15); do
+  for n in $(seq 0 16); do
     awk -v n="$n" "/^## / { f = (\$0 ~ (\"^## Step \" n \"[.]\")) } f" docs/DEPLOY.md | grep -Eq "^\*\*Who runs it:\*\* " || { echo "step $n"; exit 1; }
   done'
 check "3 step 11 is tagged [server, sudo] and step 0 names the HG-48 gate" sh -c 'grep -E "^## Step 11\." docs/DEPLOY.md | grep -Fq "[server, sudo]" && grep -E "^## Step 0\." docs/DEPLOY.md | grep -Fq "HG-48"'
@@ -211,7 +211,54 @@ check "16 the table names exactly the entries routes/console.php registers" sh -
   a=$(grep -o "name(.pokeprices-[a-z-]*.)" api/routes/console.php | sed "s/name(.//; s/.)//" | sort | paste -sd" " -)
   b=$(awk "/^## / { f = (\$0 ~ /^## What runs where/) } f" docs/DEPLOY.md | grep -o "\`pokeprices-[a-z-]*\`" | tr -d "\`" | sort -u | paste -sd" " -)
   test -n "$a" -a "$a" = "$b"'
-check "16 the restore drill is named as deferred" sh -c 'grep -Eq "^## Restore drill: deferred" docs/DEPLOY.md'
+check "16 the restore drill is step 16, tagged [server], after step 15, and no section calls it deferred" sh -c '
+  grep -Eq "^## Step 16\. Restore drill \[server\]$" docs/DEPLOY.md &&
+  s=$(grep -n "^## Step 15\." docs/DEPLOY.md | cut -d: -f1) && t=$(grep -n "^## Step 16\." docs/DEPLOY.md | cut -d: -f1) && test "$s" -lt "$t" &&
+  ! grep -Eqi "^## Restore drill|deferred|not drilled yet|not rehearsed" docs/DEPLOY.md'
+check "16 step 15 ships the restore drill script with the backup files" sh -c 'awk "/^## / { f = (\$0 ~ /^## Step 15[.]/) } f" docs/DEPLOY.md | grep -E "^scp " | grep -Fq "deploy/backup/pokeprices-restore-drill.sh"'
+check "16 step 16 has the two parts: 16a the drill, 16b the real restore, 16b after 16a" sh -c '
+  a=$(grep -n "^16a[.]" docs/DEPLOY.md | head -n 1 | cut -d: -f1); b=$(grep -n "^16b[.]" docs/DEPLOY.md | head -n 1 | cut -d: -f1)
+  s=$(grep -n "^## Step 16[.]" docs/DEPLOY.md | cut -d: -f1)
+  test -n "$a" -a -n "$b" -a -n "$s" && test "$s" -lt "$a" && test "$a" -lt "$b"'
+check "16 16a runs the drill script on the newest dump, as a drill that writes only a scratch database, with the cadence" sh -c '
+  b=$(awk "/^## / { f = (\$0 ~ /^## Step 16[.]/) } f" docs/DEPLOY.md | awk "/^16b[.]/ { exit } { print }" | tr "\n" " ")
+  for p in "chmod 755 pokeprices-restore-drill.sh" "./pokeprices-restore-drill.sh" "pokeprices_restore_drill" "--replace" "every update that adds a migration" "after this redeploy"; do
+    printf "%s\n" "$b" | grep -Fq -e "$p" || { echo "missing $p"; exit 1; }
+  done'
+check "16 16b needs Andres, takes a fresh dump, stops the writers, then dropdb, createdb, pg_restore in that order, then starts, migrates, checks ready and freshness" sh -c '
+  b=$(awk "/^## / { f = (\$0 ~ /^## Step 16[.]/) } f" docs/DEPLOY.md | awk "/^16b[.]/ { f = 1 } f")
+  printf "%s\n" "$b" | grep -Fqi "Andres" || exit 1
+  c=$(printf "%s\n" "$b" | awk "/^ *\`\`\`/ { c = !c; next } c" | sed "s/^ *//")
+  k=$(printf "%s\n" "$c" | grep -n "^systemctl --user start pokeprices-backup.service" | head -n 1 | cut -d: -f1)
+  w=$(printf "%s\n" "$c" | grep -n "^docker compose stop scheduler worker api web" | head -n 1 | cut -d: -f1)
+  d=$(printf "%s\n" "$c" | grep -n -e "^docker compose exec -T postgres dropdb -U pokeprices --force pokeprices$" | head -n 1 | cut -d: -f1)
+  e=$(printf "%s\n" "$c" | grep -n -e "^docker compose exec -T postgres createdb -U pokeprices pokeprices$" | head -n 1 | cut -d: -f1)
+  r=$(printf "%s\n" "$c" | grep -n -e "^docker compose exec -T postgres pg_restore -U pokeprices --no-owner --exit-on-error --single-transaction -d pokeprices < " | head -n 1 | cut -d: -f1)
+  u=$(printf "%s\n" "$c" | grep -n "^docker compose up -d --wait" | head -n 1 | cut -d: -f1)
+  m=$(printf "%s\n" "$c" | grep -n "php artisan migrate --force" | head -n 1 | cut -d: -f1)
+  y=$(printf "%s\n" "$c" | grep -n "/v1/ready" | head -n 1 | cut -d: -f1)
+  f=$(printf "%s\n" "$c" | grep -n "pokeprices:prices:freshness" | head -n 1 | cut -d: -f1)
+  test -n "$k" -a -n "$w" -a -n "$d" -a -n "$e" -a -n "$r" -a -n "$u" -a -n "$m" -a -n "$y" -a -n "$f" && test "$k" -lt "$w" && test "$w" -lt "$d" && test "$d" -lt "$e" && test "$e" -lt "$r" && test "$r" -lt "$u" && test "$u" -lt "$m" && test "$m" -lt "$y" && test "$y" -lt "$f"'
+check "16 no --clean anywhere in the runbook (a --clean restore fails on the partitioned price_points table)" sh -c '! grep -Fq -e "--clean" docs/DEPLOY.md'
+check "16 the dropdb of the application database sits only in 16b, after the fresh dump and the writers' stop" sh -c '
+  b=$(grep -n "^16b[.]" docs/DEPLOY.md | head -n 1 | cut -d: -f1)
+  for n in $(grep -n -E "^docker compose exec -T postgres (dropdb|createdb) .* pokeprices$" docs/DEPLOY.md | cut -d: -f1); do test "$n" -gt "$b" || exit 1; done
+  test -n "$b"'
+check "16 16b names the three destructive lines as needing Andres go and says to stop when the restore line fails" sh -c '
+  b=$(awk "/^## / { f = (\$0 ~ /^## Step 16[.]/) } f" docs/DEPLOY.md | awk "/^16b[.]/ { f = 1 } f" | tr "\n" " " | tr -s " ")
+  printf "%s\n" "$b" | grep -Fq "none of them runs without Andres" && printf "%s\n" "$b" | grep -Fqi "Stop here if the restore line fails" && printf "%s\n" "$b" | grep -Fq "the database is empty" && printf "%s\n" "$b" | grep -Fq "restores the older schema"'
+check "16 16b says the redis queue is neither dumped nor restored and to check it before the up, with no invented command" sh -c '
+  b=$(awk "/^## / { f = (\$0 ~ /^## Step 16[.]/) } f" docs/DEPLOY.md | awk "/^16b[.]/ { f = 1 } f" | tr "\n" " " | tr -s " ")
+  printf "%s\n" "$b" | grep -Fq "neither dumped nor restored" && printf "%s\n" "$b" | grep -Fq "jobs queued before the restore may still be there" && printf "%s\n" "$b" | grep -Fq "check the queue before the \`up\` below" && ! printf "%s\n" "$b" | grep -Eq "redis-cli|llen"'
+check "16 16a says to drill a dump taken after the migration, and to keep away from the :40 scan and repeat a price-table count difference once" sh -c '
+  a=$(awk "/^## / { f = (\$0 ~ /^## Step 16[.]/) } f" docs/DEPLOY.md | awk "/^16b[.]/ { exit } { print }" | tr "\n" " " | tr -s " ")
+  printf "%s\n" "$a" | grep -Fq "take a dump after the migration first" && printf "%s\n" "$a" | grep -Fq "the hourly :40 scan (\`pokeprices-ingest-pending\`, step 9)" && printf "%s\n" "$a" | grep -Fq "Start it away from minute :40" && printf "%s\n" "$a" | grep -Fq "run the drill once more before treating it as a STOP"'
+check "16 the scan minute the runbook names is the one routes/console.php schedules" sh -c 'grep -F "pokeprices-ingest-pending" api/routes/console.php | grep -Fq "hourlyAt(40)"'
+check "14 item 6: a held ingest lock is not a STOP (wait, run again, scheduler stays stopped); the dispatched-rows refusal is a STOP with the scheduler stopped" sh -c '
+  b=$(awk "/^## / { f = (\$0 ~ /^## Step 14[.]/) } f" docs/DEPLOY.md | tr "\n" " " | tr -s " ")
+  printf "%s\n" "$b" | grep -Fq "wait for that ingest to end and run the replay again, and keep the scheduler stopped meanwhile" && printf "%s\n" "$b" | grep -Fq "that is a STOP, because alerts have already been dispatched from the current events: the scheduler stays stopped" && printf "%s\n" "$b" | grep -Fq "Start the scheduler only after a replay that ran to the end"'
+check "16 16b says what happens to days collected after the dump: the scan ingests them in place" sh -c 'awk "/^## / { f = (\$0 ~ /^## Step 16[.]/) } f" docs/DEPLOY.md | tr "\n" " " | grep -Eqi "collected after the dump" && awk "/^## / { f = (\$0 ~ /^## Step 16[.]/) } f" docs/DEPLOY.md | tr "\n" " " | grep -Fq ":40 scan"'
+check "16 step 13 points at step 16 for a database restore and no longer says it is not drilled" sh -c 'b=$(awk "/^## / { f = (\$0 ~ /^## Step 13[.]/) } f" docs/DEPLOY.md | tr "\n" " "); printf "%s\n" "$b" | grep -Fq "step 16" && ! printf "%s\n" "$b" | grep -Fqi "not drilled"'
 check "16 step 5 states TRUSTED_PROXIES=REMOTE_ADDR and forbids *" sh -c 'b=$(awk "/^## / { f = (\$0 ~ /^## Step 5[.]/) } f" docs/DEPLOY.md); printf "%s\n" "$b" | grep -Fq "TRUSTED_PROXIES=REMOTE_ADDR" && printf "%s\n" "$b" | grep -Fq "TRUSTED_PROXIES=*"'
 check "16 step 6 reads TRUSTED_PROXIES back from the api container" sh -c 'awk "/^## / { f = (\$0 ~ /^## Step 6[.]/) } f" docs/DEPLOY.md | grep -Fq "exec -T -u www-data api printenv TRUSTED_PROXIES"'
 check "16 step 12 checks all six security headers from the public URL" sh -c '
@@ -283,5 +330,22 @@ check "18 the detached replay line, run as written against a stub docker, logs o
   while [ "$i" -lt 50 ] && ! grep -q "^REPLAY_EXIT" "$w/replay.log" 2>/dev/null; do sleep 0.1; i=$((i + 1)); done
   test "$(cat "$w/replay.log")" = "STUBJSON
 REPLAY_EXIT 3"'
+
+# 19. Step 14 notes from the review of the map-fix sub-step
+check "19 step 14 item 4: with item 6 pending, the scheduler is stopped straight after the up, because the up started it on the new image" sh -c '
+  b=$(awk "/^## / { f = (\$0 ~ /^## Step 14[.]/) } f" docs/DEPLOY.md | awk "/^4[.] Switch/ { f = 1 } /^5[.] Run/ { f = 0 } f" | tr "\n" " ")
+  for p in "item 6" "docker compose stop scheduler" "straight away" "old map"; do
+    printf "%s\n" "$b" | grep -Fq -e "$p" || { echo "missing $p"; exit 1; }
+  done'
+check "19 step 14 item 6: a replay that refuses leaves the scheduler stopped, and the operator tells Andres instead of starting it" sh -c '
+  b=$(awk "/^## / { f = (\$0 ~ /^## Step 14[.]/) } f" docs/DEPLOY.md | awk "/^6[.] After a map fix/ { f = 1 } f" | tr "\n" " " | tr -s " ")
+  for p in "the scheduler stays stopped" "tells Andres" "do not start it to get past the refusal"; do
+    printf "%s\n" "$b" | grep -Fq -e "$p" || { echo "missing $p"; exit 1; }
+  done'
+check "19 step 14 item 6 names the second refusal: the replay stops while the pricing ingest lock is held (OPERATIONS), wait and run it again" sh -c '
+  b=$(awk "/^## / { f = (\$0 ~ /^## Step 14[.]/) } f" docs/DEPLOY.md | awk "/^6[.] After a map fix/ { f = 1 } f" | tr "\n" " ")
+  for p in "pricing ingest lock held" "OPERATIONS" "run the replay again"; do
+    printf "%s\n" "$b" | grep -Fq -e "$p" || { echo "missing $p"; exit 1; }
+  done'
 
 finish

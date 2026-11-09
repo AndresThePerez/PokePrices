@@ -533,7 +533,7 @@ docker inspect --format '{{.Config.Image}} {{.Image}}' $(docker compose ps -q ap
 
 Expected: the images are the `<old>` ones and the image IDs equal the IDs recorded before the update. Migrations are not
 reverted: go back only to a tag whose code works with the migrated schema; otherwise restore the database from a backup
-instead (the nightly dumps of step 15; the restore itself is not drilled yet, see "Restore drill" below).
+instead (the nightly dumps of step 15, restored as step 16 says: drill it first, the real restore only on Andres's go).
 
 Tunnel. Restore the backup config, restart, and run the same matrix as step 11b:
 
@@ -578,6 +578,10 @@ Expected: the four existing hosts answer 200; the PokéPrices host no longer ans
    docker inspect --format '{{.Config.Image}} {{.Image}}' $(docker compose ps -q api web)
    ```
 
+   When item 6 ("after a map fix") applies, run `docker compose stop scheduler` straight away after the `up -d --wait`
+   above, before the `migrate`: the `up` has just started the scheduler on the new image, and an hourly scan in that gap
+   would ingest against the old map. Item 6 repeats the stop.
+
 5. Run the public matrix of step 11b and the checks of step 12.
 
 Expected: the image IDs differ from the recorded ones and match the new build, `migrate` ends without an error, every host
@@ -608,9 +612,14 @@ answers 200. Anything else: roll back (step 13).
 
    Poll it with `tail -n 5 replay.log` and step 8's `ingest_runs` query from a second session. It takes about 35 minutes
    for 31 collected days on the server, because it runs three passes. The replay truncates the price tables at the start of pass 1 and of
-   pass 2 and refills them, so the public site shows missing or partial prices until it ends: tell Andres first. A
-   replay that refuses with "price_events holds dispatched rows" has written nothing; that is a STOP, because alerts
-   have already been dispatched from the current events. When `replay.log` ends with `REPLAY_EXIT 0` and `"identical":true`,
+   pass 2 and refills them, so the public site shows missing or partial prices until it ends: tell Andres first.
+   A replay that stops with `replay locked: pricing ingest lock held` has written nothing: another writer of the
+   price tables holds the ingest lock, a running ingest (see [OPERATIONS.md](OPERATIONS.md#the-lock-is-held-or-stuck)).
+   That is not a STOP: wait for that ingest to end and run the replay again, and keep the scheduler stopped meanwhile. A
+   replay that stops with `replay refused: price_events holds dispatched rows` has written nothing either, and that is
+   a STOP, because alerts have already been dispatched from the current events: the scheduler stays stopped (do not
+   start it to get past the refusal) and the operator tells Andres. Start the scheduler only after a replay that ran to
+   the end. When `replay.log` ends with `REPLAY_EXIT 0` and `"identical":true`,
    start the scheduler:
 
    ```sh
@@ -631,7 +640,8 @@ A user timer dumps the database every night at 05:17 UTC with `pg_dump -Fc` insi
 authentication there: the script handles no password and reads no environment file), checks that the dump is not empty
 and that `pg_restore --list` can read it, and only then names it `pokeprices-<UTC stamp>.dump`. The 14 newest dumps are
 kept. Files are mode 600. A failed dump leaves nothing behind and the unit fails. The three files are
-`deploy/backup/pokeprices-backup.sh`, `deploy/backup/pokeprices-backup.service` and `deploy/backup/pokeprices-backup.timer`.
+`deploy/backup/pokeprices-backup.sh`, `deploy/backup/pokeprices-backup.service` and `deploy/backup/pokeprices-backup.timer`;
+the `scp` also carries the restore drill script of step 16, which this step does not run.
 
 Lingering: the user timer only fires while the user's services outlive the ssh session. That is the `Linger=yes` check
 of step 1, so nothing is repeated here; if it was not `yes` then, this step is a STOP too.
@@ -639,7 +649,7 @@ of step 1, so nothing is repeated here; if it was not `yes` then, this step is a
 Copy leg, on the workstation, from the repository root:
 
 ```sh
-scp deploy/backup/pokeprices-backup.sh deploy/backup/pokeprices-backup.service deploy/backup/pokeprices-backup.timer <deploy-user>@<deploy-host>:<deploy-dir>/
+scp deploy/backup/pokeprices-backup.sh deploy/backup/pokeprices-backup.service deploy/backup/pokeprices-backup.timer deploy/backup/pokeprices-restore-drill.sh <deploy-user>@<deploy-host>:<deploy-dir>/
 ```
 
 On the server. `DEPLOY_DIR` must be the absolute `<deploy-dir>` (the unit's paths are copied from it) and `<backup-dir>`
@@ -670,6 +680,102 @@ dump's file name and its size in bytes; `ls -l` shows exactly one `-rw-------` f
 the usual causes are a Docker socket that is not at the user runtime directory (`DOCKER_HOST` in the unit points there) or
 a `postgres` service that is not up.
 
+## Step 16. Restore drill [server]
+
+**Who runs it:** 16a: Andres, or the orchestrator after his go; it only creates and drops a scratch database. 16b, the real
+restore: Andres only, on his explicit go. Run it after step 15 has made at least one dump.
+
+A dump that `pg_restore --list` can read (the check of step 15) is not yet a dump that restores. The drill restores it into
+a scratch database named `pokeprices_restore_drill` and compares what came back with the live database. The script cannot
+touch the live database: it creates, fills, checks and drops only that one name (it takes no database name, and refuses one
+in its environment), every query it runs is a read-only session, and it only reads the dump file. It refuses to start while
+a database of that name already exists unless it is given `--replace`, and it drops the scratch database on every exit,
+an interrupted one included. While it runs, the `postgres` volume holds a second copy of the database.
+
+16a. The drill. The script is already in `<deploy-dir>` (step 15's `scp` carried it). On the server, on the newest dump:
+
+```sh
+cd "$DEPLOY_DIR"
+BACKUP_DIR=<backup-dir>
+chmod 755 pokeprices-restore-drill.sh
+DEPLOY_DIR="$DEPLOY_DIR" ./pokeprices-restore-drill.sh "$(ls -1 "$BACKUP_DIR"/pokeprices-*.dump | sort | tail -n 1)"
+echo "EXIT $?"
+```
+
+Expected: `EXIT 0`, and this shape of output (the numbers are the database's own):
+
+```
+restoring pokeprices-<stamp>.dump into the scratch database pokeprices_restore_drill
+table drill_rows live_rows
+card_variants <n> <n>
+...
+migrations <n> <n>
+...
+dump as of (newest ingest day): <day>
+restore drill ok: <n> tables, the same set as the live database (live counts have moved on since the dump)
+scratch database pokeprices_restore_drill dropped
+```
+
+One line per table with the exact row count in the restored copy and in the live database. The counts need not match: the
+live database kept moving after the dump (sessions, ingest runs, the days collected since), so a live count above the
+restored one is normal; a table missing on either side is not, and fails the drill. The `migrations` counts match when no
+migration ran since the dump. The "as of" line is the newest `ingest_runs.day` inside the dump: the day the restored
+database would be back at. A non-zero exit means the dump did not restore; read the last lines, they say whether the
+scratch database was dropped or left behind (then remove it with the `dropdb` line the message prints, or run the drill
+again with `--replace` before the dump path). Nothing in the live database changed either way. A failed drill is a STOP: the
+backups cannot be relied on until the cause is found.
+
+Cadence: once after this redeploy, then after every update that adds a migration (the `git diff --name-status` of step 14,
+item 3, shows it), so a dump of the new schema has been proven restorable. For that run take a dump after the migration
+first (`systemctl --user start pokeprices-backup.service`) and drill that one: the newest dump from before the update lacks
+the new tables, so the drill would fail the table comparison for a reason that is not a bad backup.
+
+When to run it on a live site: the count comparison reads the live tables, and the hourly :40 scan
+(`pokeprices-ingest-pending`, step 9) writes to them, so a drill that overlaps an ingest can report a count difference that
+is not a bad backup. Start it away from minute :40 (an ingest of a day can run past it, so check the worker is idle first
+with step 8's `ingest_runs` query), and when the only thing that looks wrong is a count in the price tables, run the drill
+once more before treating it as a STOP.
+
+16b. The real restore, on Andres's go only. It replaces the live database with the chosen dump: everything written after
+that dump is lost from the database (accounts, watchlists, holdings and settings created since, the sessions, the alert
+delivery records), and the site is down while it runs. The database is dropped and rebuilt from the dump, so a dump
+older than a migration restores the older schema and the `migrate` below runs the later migrations again. Take a fresh
+dump first, so the state that is being replaced can be restored again; its pruning removes the oldest dump beyond the 14
+kept, so copy the chosen dump aside first when it is the oldest. The `dropdb`, `createdb` and `pg_restore` lines below
+are the destructive ones: none of them runs without Andres's go.
+
+```sh
+cd "$DEPLOY_DIR"
+BACKUP_DIR=<backup-dir>
+systemctl --user start pokeprices-backup.service
+ls -l "$BACKUP_DIR"
+docker compose stop scheduler worker api web
+# the next three lines destroy the live database: Andres's go first; stop here if any of them fails
+docker compose exec -T postgres dropdb -U pokeprices --force pokeprices
+docker compose exec -T postgres createdb -U pokeprices pokeprices
+docker compose exec -T postgres pg_restore -U pokeprices --no-owner --exit-on-error --single-transaction -d pokeprices < "$BACKUP_DIR"/pokeprices-<stamp>.dump
+docker compose up -d --wait
+docker compose exec -T -u www-data api php artisan migrate --force
+curl -sS http://127.0.0.1:${APP_PORT}/v1/ready
+docker compose exec -T -u www-data api php artisan pokeprices:prices:freshness
+```
+
+The writers are stopped first so nothing writes while the database is replaced; `postgres` and the two redis stay up.
+Stop here if the restore line fails: the drop is not undone by a failed restore, so then the database is empty. Restore the
+fresh dump taken first the same way (the `createdb` and `pg_restore` lines on that file; `dropdb` first if a half-filled
+database was left), and tell Andres; do not run the lines after it. The queue lives in redis and is neither dumped nor
+restored, so jobs queued before the restore may still be there and the worker takes them once it is up: check the queue
+before the `up` below. The project documents no read-only command for the redis queue itself (OPERATIONS.md covers only
+`failed_jobs`), so none is given here: if you cannot look at it, ask Andres before the `up`. Expected: `up` ends healthy,
+`migrate` has nothing to run (or only the migrations the dump predates), `/v1/ready` reports every component ok, and
+`prices:freshness` reports the newest day the restored database holds, which at first is the day of the dump's own "as of"
+line.
+
+Days collected after the dump: the restored `ingest_runs` knows nothing about them, so the hourly :40 scan sees a
+collector day with a `SUCCESS` marker and no `ok` run and ingests it again, in place from `<snapshots-dir>`, oldest first;
+no replay is needed; the freshness climbs back as those scans finish. One thing the scan does not rebuild: the alert delivery records go back to the dump too, so alerts sent for
+a day after the dump can be created and sent again. Tell Andres before the restore.
+
 ## What runs where
 
 Once the stack is up, nothing needs a person except the updates of step 14.
@@ -688,8 +794,3 @@ Once the stack is up, nothing needs a person except the updates of step 14.
 | the collector timer | the server's host, a user timer | a few times a day (UTC) | writes the day folders to `<snapshots-dir>`; the containers only read them |
 | the backup timer | the server's host, a user timer (step 15) | daily at 05:17 UTC | dumps the database to `<backup-dir>` |
 | Prerequisite: PokéSearch v1 (HG-48, step 0) | the server, on `<shared-net>` as `pokesearch` | always | the catalog the API reads; `/v1/ready` fails without it |
-
-## Restore drill: deferred to the next deploy iteration
-
-Restoring a dump into a scratch database is not rehearsed yet. The backup check proves the dump is readable (`pg_restore
---list`), not that a restore works.
