@@ -10,7 +10,10 @@ use Normalizer;
  * Card-name agreement between a PokéSearch card and a TCGplayer product base name. Both names are folded the same way: accents dropped, case ignored, `★` read as `Star`, `♂`/`♀` as
  * `M`/`F`, the Impostor/Imposter and Drowzee/Drowsee spellings merged, and the type letters before `Energy`
  * (R W G L P F D M) read as the type name. Delta is one-directional: a card marked `δ` may meet a product without
- * the tag (Eevee - 068/113 against Eevee δ), but a `(Delta Species)` product never stands for a plain card.
+ * the tag (Eevee - 068/113 against Eevee δ), but a `(Delta Species)` product never stands for a plain card. For energy
+ * names only, a leading `Delta ` word is the same marker: the product `Delta Rainbow Energy` is the card `δ Rainbow
+ * Energy` and never the plain `Rainbow Energy`. A name must read `Delta <name> Energy` as a whole for this, so sealed
+ * products (`Delta Species Booster Pack`) and a bare `Delta Energy` keep the word.
  */
 final class NameAliases
 {
@@ -43,8 +46,8 @@ final class NameAliases
     }
 
     /**
-     * The folded name without its delta marker, and whether a delta marker (`δ` or a `(Delta Species…)` tag) was
-     * present.
+     * The folded name without its delta marker, and whether a delta marker (`δ`, a `(Delta Species…)` tag, or a
+     * leading `Delta` on a `Delta <name> Energy` name) was present.
      *
      * @return array{string, bool}
      */
@@ -63,6 +66,10 @@ final class NameAliases
         }
 
         $s = trim((string) preg_replace('/\s+/u', ' ', $s));
+        if (preg_match('/\Adelta (.+ energy)\z/u', $s, $m) === 1) {
+            $delta = true;
+            $s = $m[1];
+        }
         foreach (self::SPELLINGS as $pattern => $canonical) {
             $s = (string) preg_replace($pattern, $canonical, $s);
         }

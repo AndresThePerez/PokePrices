@@ -18,7 +18,7 @@ use RuntimeException;
  *     number_rule, is `no_set_alias`; a product without a Number is `non_card`.
  *  2. the normalised number (CardNumber) within the sets those rows name (`no_number_match` when none). A product
  *     with an unknown tag is `unknown_tag`.
- *  3. the trainer-kit deck tag must equal the kit's deck, then the name (NameAliases, one-way delta) must agree.
+ *  3. the trainer-kit deck tag must equal the kit's deck, then the name (NameAliases, one-way delta, `Delta <name> Energy` included) must agree.
  *     One agreeing card is the match: method `number+name` when the number had one candidate, `name_tiebreak` when
  *     it had several. None agreeing is `name_disagreement`, several is `ambiguous`.
  *

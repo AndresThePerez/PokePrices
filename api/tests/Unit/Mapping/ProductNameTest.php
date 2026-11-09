@@ -261,6 +261,33 @@ test('NameAliases does not let a Delta Species product stand for a plain card', 
     expect(NameAliases::equal('Starmie', 'Starmie (Delta Species)'))->toBeFalse();
 });
 
+test('NameAliases reads a leading Delta on an energy product as the δ marker', function (string $card, string $product): void {
+    expect(NameAliases::equal($card, $product))->toBeTrue();
+})->with([
+    'δ Rainbow Energy ↔ Delta Rainbow Energy' => ['δ Rainbow Energy', 'Delta Rainbow Energy'],
+    'the base ProductName gives the builder' => ['δ Rainbow Energy', ProductName::parse('Delta Rainbow Energy')->base],
+    'the marker comes before the letter fold' => ['δ Fire Energy', 'Delta R Energy'],
+]);
+
+test('NameAliases keeps the energy Delta rule one-way and scoped to energy names', function (string $card, string $product): void {
+    expect(NameAliases::equal($card, $product))->toBeFalse();
+})->with([
+    'a plain card is not a Delta product' => ['Rainbow Energy', 'Delta Rainbow Energy'],
+    'a sealed Delta Reign product' => ['Reign Booster Box', 'Delta Reign Booster Box'],
+    'a sealed Delta Species product' => ['Species Booster Pack', 'Delta Species Booster Pack'],
+    'a bare Delta Energy is not a marker' => ['δ Energy', 'Delta Energy'],
+    'Deltas is not the marker' => ['δ Rainbow Energy', 'Deltas Rainbow Energy'],
+    'Delta- is not the marker' => ['δ Rainbow Energy', 'Delta-Rainbow Energy'],
+    'a non-energy Delta Pokémon name' => ['Delta Pikachu', 'Pikachu'],
+    'a non-energy product with a Delta prefix' => ['Pikachu δ', 'Delta Pikachu'],
+    'another energy name' => ['δ Rainbow Energy', 'Delta Holon Energy'],
+]);
+
+test('NameAliases keeps Delta inside sealed product names', function (): void {
+    expect(NameAliases::equal('Delta Reign Booster Box', 'Delta Reign Booster Box'))->toBeTrue();
+    expect(NameAliases::equal('δ Species Booster Pack', 'Delta Species Booster Pack'))->toBeFalse();
+});
+
 test('NameAliases matches the remaining planned aliases', function (string $card, string $product): void {
     expect(NameAliases::equal($card, $product))->toBeTrue();
 })->with([

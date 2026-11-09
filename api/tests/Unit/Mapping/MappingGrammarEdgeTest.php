@@ -216,6 +216,8 @@ test('name folding does not conflate different cards and still joins the spellin
     expect(NameAliases::equal('Umbreon ★', 'Umbreon Star'))->toBeTrue();
     expect(NameAliases::equal('Gardevoir ex δ', 'Gardevoir ex (Delta Species)'))->toBeTrue();
     expect(NameAliases::equal('Gardevoir ex', 'Gardevoir ex (Delta Species)'))->toBeFalse();
+    expect(NameAliases::equal('δ Rainbow Energy', 'Delta Rainbow Energy'))->toBeTrue();
+    expect(NameAliases::equal('Rainbow Energy', 'Delta Rainbow Energy'))->toBeFalse();
     expect(NameAliases::equal('Imposter Professor Oak', 'Impostor Professor Oak'))->toBeTrue();
     expect(NameAliases::equal('Nitro Fire Energy', 'Nitro R Energy'))->toBeTrue();
     expect(NameAliases::equal('Nitro Fire Energy', 'Nitro W Energy'))->toBeFalse();
