@@ -261,4 +261,27 @@ check "17 steps 11b and 13 let the orchestrator run the sudo leg only on an orde
     awk -v n="$n" "/^## / { f = (\$0 ~ (\"^## Step \" n \"[.]\")) } f" docs/DEPLOY.md | grep -A2 -E "^\*\*Who runs it:\*\*" | tr "\n" " " | grep -Fq "orchestrator when Andres orders" || { echo "step $n"; exit 1; }
   done'
 
+# 18. Review: the order that keeps the scheduler away from a half-built state, and the detached line as written
+check "18 step 14 map fix: the scheduler stops before map:build and starts again only after the replay" sh -c '
+  c=$(awk "/^## / { f = (\$0 ~ /^## Step 14[.]/) } f" docs/DEPLOY.md | awk "/^ *\`\`\`/ { c = !c; next } c" | sed "s/^ *//")
+  a=$(printf "%s\n" "$c" | grep -n "^docker compose stop scheduler" | head -n 1 | cut -d: -f1)
+  b=$(printf "%s\n" "$c" | grep -n "pokeprices:map:build" | head -n 1 | cut -d: -f1)
+  r=$(printf "%s\n" "$c" | grep -n "^nohup setsid" | head -n 1 | cut -d: -f1)
+  s=$(printf "%s\n" "$c" | grep -n "^docker compose up -d --wait scheduler" | head -n 1 | cut -d: -f1)
+  test -n "$a" && test -n "$b" && test -n "$r" && test -n "$s" && test "$a" -lt "$b" && test "$b" -lt "$r" && test "$r" -lt "$s"'
+check "18 the detached replay line, run as written against a stub docker, logs output then the exit status and leaves the terminal quiet" sh -c '
+  w=$(mktemp -d) || exit 1
+  trap "rm -rf \"$w\"" EXIT
+  mkdir "$w/bin"
+  printf "#!/bin/sh\necho STUBJSON\nexit 3\n" > "$w/bin/docker"
+  chmod +x "$w/bin/docker"
+  line=$(awk "/^## / { f = (\$0 ~ /^## Step 8[.]/) } f" docs/DEPLOY.md | grep -E "^nohup setsid" | head -n 1 | sed "s/<full-sha>/0123abc/")
+  test -n "$line" || exit 1
+  out=$(cd "$w" && PATH="$w/bin:$PATH" sh -c "$line" 2>&1)
+  test -z "$out" || { echo "terminal output: $out"; exit 1; }
+  i=0
+  while [ "$i" -lt 50 ] && ! grep -q "^REPLAY_EXIT" "$w/replay.log" 2>/dev/null; do sleep 0.1; i=$((i + 1)); done
+  test "$(cat "$w/replay.log")" = "STUBJSON
+REPLAY_EXIT 3"'
+
 finish
