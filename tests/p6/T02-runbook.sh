@@ -111,7 +111,13 @@ check "8 at least one exec into api exists" sh -c 'grep -Eq "docker compose exec
 check "8 no docker run" sh -c '! grep -Fq "docker run" docs/DEPLOY.md'
 
 # 9. Scheduler step
-check "9 schedule:list expects exactly the eight pokeprices-* entries" sh -c 'grep -F "schedule:list" docs/DEPLOY.md | grep -q . && grep -Fq "pokeprices-probe" docs/DEPLOY.md && grep -Fqi "eight" docs/DEPLOY.md'
+check "9 step 9 shows the five named entries and the three prune commands as schedule:list prints them" sh -c '
+  b=$(awk "/^## / { f = (\$0 ~ /^## Step 9[.]/) } f" docs/DEPLOY.md)
+  printf "%s\n" "$b" | grep -Fq "schedule:list" || exit 1
+  for p in "pokeprices-probe" "pokeprices-ingest-pending" "pokeprices-freshness" "pokeprices-alerts-dispatch" "pokeprices-deliveries" "queue:prune-failed --hours=720" "queue:prune-batches --hours=720" "model:prune --model=" "IngestRunChunk"; do
+    printf "%s\n" "$b" | grep -Fq -e "$p" || { echo "missing $p"; exit 1; }
+  done
+  ! printf "%s\n" "$b" | grep -Fq "pokeprices-prune"'
 check "9 the snapshot find is in step 1 and re-run in step 9" sh -c '
   for n in 1 9; do
     awk -v n="$n" "/^## / { f = (\$0 ~ (\"^## Step \" n \"[.]\")) } f" docs/DEPLOY.md | grep -Fq "\\( -type d ! -perm -o=rx \\) -o \\( -type f ! -perm -o=r \\)" || exit 1
@@ -214,5 +220,45 @@ check "16 step 12 checks all six security headers from the public URL" sh -c '
     printf "%s\n" "$b" | grep -Fiq -e "$h" || { echo "missing $h"; exit 1; }
   done'
 check "16 database execs name the postgres service and the pokeprices user and database" sh -c 'grep -E "docker compose exec -T postgres " docs/DEPLOY.md | grep -Fq -e "-U pokeprices -d pokeprices"'
+
+# 17. Corrections from the first real deploy
+check "17 step 0 seed line is run --rm seed without --no-build; the two up lines keep --no-build" sh -c '
+  b=$(awk "/^## / { f = (\$0 ~ /^## Step 0[.]/) } f" docs/DEPLOY.md | awk "/^\`\`\`/ { c = !c; next } c")
+  s=$(printf "%s\n" "$b" | grep -F -e "--profile seed")
+  test "$(printf "%s\n" "$s" | wc -l)" -eq 1 || exit 1
+  printf "%s\n" "$s" | grep -Fq "run --rm seed" || exit 1
+  ! printf "%s\n" "$s" | grep -Fq -e "--no-build" || exit 1
+  test "$(printf "%s\n" "$b" | grep -Fc -e "up -d --no-build")" -eq 2'
+check "17 step 0 says run does not build here" sh -c 'awk "/^## / { f = (\$0 ~ /^## Step 0[.]/) } f" docs/DEPLOY.md | tr "\n" " " | grep -Eqi "run. does not build"'
+check "17 tmux and screen are never recommended (only the statement that the server has neither)" sh -c '
+  ! grep -Eiw "tmux|screen" docs/DEPLOY.md | grep -Fvi "no tmux or screen" | grep -q . &&
+  test "$(grep -Eiwc "tmux|screen" docs/DEPLOY.md)" -ge 1'
+check "17 steps 8 and 14 run the replay under nohup setsid, with a log and a way to poll it" sh -c '
+  for n in 8 14; do
+    b=$(awk -v n="$n" "/^## / { f = (\$0 ~ (\"^## Step \" n \"[.]\")) } f" docs/DEPLOY.md)
+    printf "%s\n" "$b" | grep -F "nohup setsid" | grep -Fq "replay --fresh" || { echo "step $n: no nohup setsid replay"; exit 1; }
+    printf "%s\n" "$b" | grep -Fq "tail -n 5 replay.log" || { echo "step $n: no poll"; exit 1; }
+  done
+  awk "/^## / { f = (\$0 ~ /^## Step 8[.]/) } f" docs/DEPLOY.md | grep -Fq "from ingest_runs"'
+check "17 the detached replay line stays a docker compose exec -T -u www-data" sh -c '! grep -F "nohup setsid" docs/DEPLOY.md | grep -F "replay --fresh" | grep -Fv "exec -T -u www-data api " | grep -q .'
+check "17 step 8 keeps the no-git golden caveat, names rows 35 and 36 and stops on any other mismatch" sh -c '
+  b=$(awk "/^## / { f = (\$0 ~ /^## Step 8[.]/) } f" docs/DEPLOY.md | tr "\n" " ")
+  for p in "approval_ratified 0" "mapped_cards_regression 1" "mismatches\` and \`forbidden_hits\` must both be 0" "rows 35 and 36" "step 14"; do
+    printf "%s\n" "$b" | grep -Fq -e "$p" || { echo "missing $p"; exit 1; }
+  done
+  printf "%s\n" "$b" | grep -Eqi "any other mismatch[^.]*STOP"'
+check "17 step 14 has the after-a-map-fix sub-step: mapping diff, map:build, golden, replay --fresh, scheduler stopped then started" sh -c '
+  b=$(awk "/^## / { f = (\$0 ~ /^## Step 14[.]/) } f" docs/DEPLOY.md)
+  for p in "api/app/Domain/Mapping" "map:build" "map:audit" "map:golden" "replay --fresh" "stop scheduler" "up -d --wait scheduler" "35 minutes"; do
+    printf "%s\n" "$b" | grep -Fq -e "$p" || { echo "missing $p"; exit 1; }
+  done'
+check "17 step 14 says what the demo seeder needs after a replay" sh -c 'awk "/^## / { f = (\$0 ~ /^## Step 14[.]/) } f" docs/DEPLOY.md | tr "\n" " " | grep -Fq "DemoAccountSeeder"'
+check "17 step 14 says a stack file change recreates every container once, data stays in the volumes" sh -c '
+  b=$(awk "/^## / { f = (\$0 ~ /^## Step 14[.]/) } f" docs/DEPLOY.md | tr "\n" " ")
+  printf "%s\n" "$b" | grep -Eqi "recreates? every container" && printf "%s\n" "$b" | grep -Fqi "postgres" && printf "%s\n" "$b" | grep -Fqi "volumes"'
+check "17 steps 11b and 13 let the orchestrator run the sudo leg only on an order from Andres, with no technique detail" sh -c '
+  for n in 11 13; do
+    awk -v n="$n" "/^## / { f = (\$0 ~ (\"^## Step \" n \"[.]\")) } f" docs/DEPLOY.md | grep -A2 -E "^\*\*Who runs it:\*\*" | tr "\n" " " | grep -Fq "orchestrator when Andres orders" || { echo "step $n"; exit 1; }
+  done'
 
 finish

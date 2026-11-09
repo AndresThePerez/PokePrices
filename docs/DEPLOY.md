@@ -14,7 +14,7 @@ Every step below has a number, exactly one tag in its heading and a "Who runs it
 |---|---|---|
 | `[workstation]` | Andres's workstation, from the repository root | the orchestrator, or Andres |
 | `[server]` | the server, in `<deploy-dir>`, over ssh | Andres, or the orchestrator for a step Andres approved |
-| `[server, sudo]` | the server, with `sudo` | Andres only (sudo is his) |
+| `[server, sudo]` | the server, with `sudo` | Andres, or the orchestrator when Andres orders that run (sudo is his) |
 
 Nothing here is run by an agent on its own: every server step is a human gate or an approved step, and every secret
 value is Andres's.
@@ -119,8 +119,12 @@ Reseed with PokéSearch's compose `seed` profile at the pinned ref (the one in t
 the seed takes. The seed downloads the pinned data tarball: if the server cannot fetch it, STOP and tell Andres.
 
 ```sh
-docker compose -f docker-compose.yml -f docker-compose.server.yml --profile seed run --rm --no-build seed -es http://es:9200 -ref <seed-ref> -force
+docker compose -f docker-compose.yml -f docker-compose.server.yml --profile seed run --rm seed -es http://es:9200 -ref <seed-ref> -force
 ```
+
+`run` does not build here: the `seed` image was tagged just before from the loaded one, so the command only starts it.
+`run` has no `--no-build` flag in this Compose version (it answers `unknown flag: --no-build`), which is why the flag
+stays on the two `up` lines only.
 
 Verify (public URLs, from anywhere):
 
@@ -341,8 +345,8 @@ discovered packages, and `worker` is healthy. The scheduler stays down until ste
 ## Step 8. Bootstrap the price data [server]
 
 **Who runs it:** Andres, or the orchestrator; run it after step 0, because the map build and the catalog checks need
-PokéSearch v1. The replay takes minutes per collected day: run it in `tmux` or `screen` on the server so a dropped ssh
-does not interrupt it.
+PokéSearch v1. The replay takes minutes per collected day, and the server has no tmux or screen: it runs detached
+with `nohup setsid` (below), so a dropped ssh does not interrupt it.
 
 Pick the newest collected day that has its `SUCCESS` marker, and the dataset checkout copied in step 4. These two
 commands read through the containers, so they also prove the mounts and the `www-data` access:
@@ -362,20 +366,43 @@ docker compose exec -T -u www-data api php artisan pokeprices:map:audit --check 
 docker compose exec -T -u www-data api php artisan pokeprices:map:audit --check ambiguity
 docker compose exec -T -u www-data api php artisan pokeprices:map:audit --check names
 docker compose exec -T -u www-data api php artisan pokeprices:map:golden
-docker compose exec -T -u www-data api php artisan pokeprices:prices:replay --fresh --code-sha <full-sha>
+```
+
+Read the audit and golden values before the replay, as OPERATIONS says: a worse `coverage` or a new `ambiguity` is a
+STOP. Then start the replay detached. `<full-sha>` is the full commit from step 2. The `echo` writes the exit status
+into the log, and nothing is read from the terminal:
+
+```sh
+nohup setsid sh -c 'docker compose exec -T -u www-data api php artisan pokeprices:prices:replay --fresh --code-sha <full-sha>; echo REPLAY_EXIT $?' > replay.log 2>&1 < /dev/null &
+```
+
+From a second ssh session, poll it. The command's own output is buffered until it ends, so `replay.log` stays empty
+while it runs and the progress is read from the `ingest_runs` table (the newest `replay` runs show which day is being ingested):
+
+```sh
+tail -n 5 replay.log
+docker compose exec -T postgres psql -U pokeprices -d pokeprices -c "select id, day, mode, status from ingest_runs order by id desc limit 5"
+```
+
+It is finished when `replay.log` ends with `REPLAY_EXIT 0`; the line before it is the JSON summary and must hold
+`"identical":true`. A different exit status, or `"identical":false`, is a STOP. Three passes over 31 collected days took
+about 35 minutes on the server (roughly 9, 8 and 19 minutes). Then:
+
+```sh
 docker compose exec -T -u www-data api php artisan db:seed --class=DemoAccountSeeder --force --no-interaction
 curl -sS -o /dev/null -w '%{http_code}\n' -X POST http://127.0.0.1:${APP_PORT}/v1/demo/session
 docker compose exec -T -u www-data api php artisan pokeprices:prices:freshness
 ```
 
-`<full-sha>` is the full commit from step 2. Read the audit values before the replay, as OPERATIONS says: a worse
-`coverage` or a new `ambiguity` is a STOP. The oracle comparison (`pokeprices:map:oracle`) is skipped on purpose: its
+The oracle comparison (`pokeprices:map:oracle`) is skipped on purpose: its
 input, the recorded oracle files, is not on the server and nothing mounts it; the other checks still gate the replay.
 
 `pokeprices:map:golden` runs in an image that holds no git checkout, so its approval and baseline parts cannot be judged
 there: expect `approval_ratified 0` and `mapped_cards_regression 1`, and a `value` of the mismatches plus the forbidden hits
-plus 1. That is not a STOP. What gates the replay is the `summary` part of its `--json` artefact: `mismatches` and
-`forbidden_hits` must both be 0.
+plus 1, so `1` when nothing else is wrong. That is not a STOP. What gates the replay is the `summary` part of its
+`--json` artefact: `mismatches` and `forbidden_hits` must both be 0. An image built before the δ Rainbow Energy mapping
+fix reports rows 35 and 36 as its only two mismatches (`value` 3); the map rebuild of step 14 clears them. Any other
+mismatch, and any forbidden hit, is a STOP.
 
 The demo account is seeded after the replay (it points at price variants the replay's map defines), and the seeder
 must print no "skipped" line: a skipped variant means the map lacks it, so STOP. The `POST` is only a presence probe:
@@ -395,10 +422,12 @@ docker compose exec -T -u www-data scheduler php artisan schedule:list
 docker compose logs --since 2m worker
 ```
 
-Expected: `schedule:list` shows exactly the eight `pokeprices-*` entries (`pokeprices-probe`,
-`pokeprices-ingest-pending`, `pokeprices-freshness`, `pokeprices-alerts-dispatch`, `pokeprices-deliveries`,
-`pokeprices-prune-failed`, `pokeprices-prune-batches`, `pokeprices-prune-chunks`), and within two minutes the worker log
-shows `pokeprices-probe` running.
+Expected: `schedule:list` shows exactly eight entries, each with its cron expression. Five show by name:
+`pokeprices-probe`, `pokeprices-ingest-pending`, `pokeprices-freshness`, `pokeprices-alerts-dispatch` and
+`pokeprices-deliveries`. The three daily prunes show as the commands they run, not by name (the "What runs where"
+table names them): `php artisan queue:prune-failed --hours=720`, `php artisan queue:prune-batches --hours=720` and
+`php artisan model:prune --model='App\Domain\Pricing\Models\IngestRunChunk'`. Within two minutes the worker log shows
+`pokeprices-probe` running.
 
 After the collector timer next adds a day (the :40 scan ingests it in place), check that the real collector's files
 are readable and the run is `ok`:
@@ -431,8 +460,8 @@ FastCGI port must not be answered (the pool's allow-list drops it). Nobody touch
 
 ## Step 11. Add the tunnel rule [server, sudo]
 
-**Who runs it:** 11a (staging, no sudo): Andres, or the orchestrator. 11b (sudo): Andres only. The rule is one added
-ingress entry; every existing hostname must still answer 200 afterwards.
+**Who runs it:** 11a (staging, no sudo): Andres, or the orchestrator. 11b (sudo): Andres, or the orchestrator when
+Andres orders that run. The rule is one added ingress entry; every existing hostname must still answer 200 afterwards.
 
 11a. Stage a copy and validate it (no sudo; the file is world-readable):
 
@@ -491,7 +520,8 @@ price shows its source and its "as of" date.
 
 ## Step 13. Rollback [server, sudo]
 
-**Who runs it:** the image roll-back: Andres, or the orchestrator. The tunnel roll-back needs sudo: Andres only.
+**Who runs it:** the image roll-back: Andres, or the orchestrator. The tunnel roll-back needs sudo: Andres, or the
+orchestrator when Andres orders that run.
 
 Images. Put the previous tag back in the `.env` (the tag is not a secret) and restart the stack on it:
 
@@ -519,7 +549,10 @@ Expected: the four existing hosts answer 200; the PokéPrices host no longer ans
 
 **Who runs it:** Andres, or the orchestrator after his go. The build and ship legs are steps 2 and 3, on the workstation.
 
-1. Build and ship the new tag (steps 2 and 3). Keep the old tag on the server: do not remove it.
+1. Build and ship the new tag (steps 2 and 3). Keep the old tag on the server: do not remove it. Step 3 also ships the
+   current stack file. When it differs from the one running, the `up -d` of item 4 recreates every container once,
+   postgres and both redis included (their data stays in the named volumes), because a changed service definition
+   (a label, say) recreates the service. That is expected the first time after such a change, not a fault.
 2. Record what runs now (the IDs the roll-back compares against) and, once step 15 is done, take a fresh backup before
    anything migrates:
 
@@ -549,6 +582,45 @@ Expected: the four existing hosts answer 200; the PokéPrices host no longer ans
 
 Expected: the image IDs differ from the recorded ones and match the new build, `migrate` ends without an error, every host
 answers 200. Anything else: roll back (step 13).
+
+6. After a map fix. On the workstation, when this is not empty, the new commit changes how products map to cards:
+
+   ```sh
+   git diff <old-sha> <sha> -- api/app/Domain/Mapping
+   ```
+
+   Then the product map is stale until it is rebuilt and the prices are replayed through it. On the server, in the new
+   image: stop the scheduler first (item 4 started it), so nothing ingests in between (the replay holds the ingest lock too), and run step 8's
+   map sequence again, with `<day>` and `<ref>` as there: `map:build`, the four `map:audit` checks and `map:golden`, read
+   with the same STOP rules (the rows 35 and 36 mismatches are gone once the fixed code has rebuilt the map).
+
+   ```sh
+   docker compose stop scheduler
+   docker compose exec -T -u www-data api php artisan pokeprices:map:build --day <day> --dataset /dataset/<ref>
+   ```
+
+   Then the four audits and the golden command of step 8, and the replay detached, as there:
+
+   ```sh
+   nohup setsid sh -c 'docker compose exec -T -u www-data api php artisan pokeprices:prices:replay --fresh --code-sha <full-sha>; echo REPLAY_EXIT $?' > replay.log 2>&1 < /dev/null &
+   tail -n 5 replay.log
+   ```
+
+   Poll it with `tail -n 5 replay.log` and step 8's `ingest_runs` query from a second session. It takes about 35 minutes
+   for 31 collected days on the server, because it runs three passes. The replay truncates the price tables at the start of pass 1 and of
+   pass 2 and refills them, so the public site shows missing or partial prices until it ends: tell Andres first. A
+   replay that refuses with "price_events holds dispatched rows" has written nothing; that is a STOP, because alerts
+   have already been dispatched from the current events. When `replay.log` ends with `REPLAY_EXIT 0` and `"identical":true`,
+   start the scheduler:
+
+   ```sh
+   docker compose up -d --wait scheduler
+   docker compose exec -T -u www-data api php artisan pokeprices:prices:freshness
+   ```
+
+   `DemoAccountSeeder --force` does not have to run again: the replay truncates only the price tables, the demo account,
+   its watchlist and portfolio rows live in other tables, and the map build only adds to `card_variants`. Run it again
+   (it is idempotent) only if the first run printed a "skipped" line, since a rebuilt map may now hold that variant.
 
 ## Step 15. Backup timer [server]
 

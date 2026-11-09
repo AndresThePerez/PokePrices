@@ -10,8 +10,9 @@ declare(strict_types=1);
 |
 | rate_limits: the account tiers, in requests per minute (each an integer >= 1; anything else fails the boot),
 | registered by App\Domain\Accounts\AccountRateLimits. The anonymous tiers stay in config/rate_limits.php.
-| IP-keyed buckets (register, account-guest, account-demo, demo-session) are one global bucket until trustProxies is
-| scoped (the Deploy prompt).
+| IP-keyed buckets (register, account-guest, account-demo, demo-session) are keyed by the client address Laravel
+| resolves under TRUSTED_PROXIES (config/trustedproxy.php). With TRUSTED_PROXIES unset, every request that arrives
+| through the proxy comes from the proxy's own address and shares one bucket.
 |
 | limits: the most variants a watchlist and a portfolio hold, and the largest quantity of a holding (the database
 | checks quantity BETWEEN 1 AND 9999 too).

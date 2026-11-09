@@ -42,6 +42,7 @@ check "1 every service has image, no build, restart unless-stopped" pq 'all("ima
 check "1 mem_limit caps" pq 'all(mem(s[k]["mem_limit"]) == mem(v) for k, v in {"postgres":"1g","redis-queue":"64m","redis-cache":"128m","api":"384m","worker":"384m","scheduler":"128m","web":"64m"}.items())'
 check "1 postgres shm_size 256m" pq 'mem(s["postgres"]["shm_size"]) == mem("256m")'
 check "1 logging json-file 10m x 3 on every service" pq 'all(v.get("logging") == {"driver":"json-file","options":{"max-size":"10m","max-file":"3"}} for v in s.values())'
+check "1 every service opts out of the host's container auto-updater (watchtower.enable is the string false)" pq 'all(v.get("labels", {}).get("com.centurylinklabs.watchtower.enable") == "false" for v in s.values())'
 check "1 no extra_hosts anywhere" pq 'all("extra_hosts" not in v for v in s.values())'
 check "1 no node or tools service" pq '"node" not in s and "tools" not in s'
 check "1 postgres and redis images are the dev digest-pinned refs" pq 's["postgres"]["image"] == dev["postgres"]["image"] and s["redis-queue"]["image"] == dev["redis-queue"]["image"] and s["redis-cache"]["image"] == dev["redis-cache"]["image"] and "@sha256:" in s["postgres"]["image"] and "@sha256:" in s["redis-queue"]["image"]'
