@@ -3,10 +3,10 @@ import { useQuery } from '@tanstack/react-query';
 import Link from '../Link';
 import { cardPath } from '../router';
 import { searchCards, type ApiFailure, type CardSearchPage } from '../api/client';
-import { initialOf } from '../format';
 import { unwrap } from '../query';
 import { searchKey } from '../queryKeys';
 import { FOCUS, MUTED, SECONDARY_BUTTON } from '../ui/classes';
+import CardThumbnail from '../ui/CardThumbnail';
 import StatusLine from '../ui/StatusLine';
 import DegradedNotice from '../ui/DegradedNotice';
 import Page from '../ui/Page';
@@ -68,36 +68,6 @@ function Pager({
   );
 }
 
-type SearchResult = CardSearchPage['data'][number];
-
-const THUMB = 'aspect-[63/88] w-12 shrink-0 rounded-sm border border-line-subtle bg-surface-sunken';
-
-/**
- * A result's 48 px thumbnail from the search answer's own image_small, or, when the API sent none,
- * a card-back placeholder whose initial CSS draws from data-initial (no DOM text, no request).
- */
-function Thumbnail({ card }: { readonly card: SearchResult }) {
-  if (card.image_small.trim() === '') {
-    return (
-      <span
-        data-initial={initialOf(card.name)}
-        className={`${THUMB} flex items-center justify-center text-base font-semibold ${MUTED} before:content-[attr(data-initial)]`}
-      />
-    );
-  }
-  return (
-    <img
-      src={card.image_small}
-      alt=""
-      width={63}
-      height={88}
-      loading="lazy"
-      decoding="async"
-      className={`${THUMB} h-auto object-cover`}
-    />
-  );
-}
-
 function Results({ q, body }: { readonly q: string; readonly body: CardSearchPage }) {
   const { data, meta } = body;
   let summary = `${String(meta.total)} ${meta.total === 1 ? 'card matches' : 'cards match'} “${q}”`;
@@ -121,7 +91,7 @@ function Results({ q, body }: { readonly q: string; readonly body: CardSearchPag
                 to={cardPath(card.id)}
                 className={`flex min-h-18 items-center gap-3 px-2 py-2 hover:bg-surface-sunken after:ml-auto after:shrink-0 after:pl-1 after:text-lg after:text-ink-muted after:[content:'›'_/_''] ${FOCUS}`}
               >
-                <Thumbnail card={card} />
+                <CardThumbnail src={card.image_small} name={card.name} />
                 <span className="min-w-0 flex-1 wrap-anywhere">
                   <span className="block text-base font-semibold">{card.name}</span>
                   <span className={`block text-sm ${MUTED}`}>{card.set_name}</span>

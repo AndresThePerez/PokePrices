@@ -147,7 +147,10 @@ describe('movers board (T09 criteria 2 and 3)', () => {
     expect(within(first).getByText('Hidden Legends No. 17 · Reverse')).toBeTruthy();
     expect(within(first).getByText('Market price $26.34')).toBeTruthy();
     const change = within(first).getByText('▲ +$20.63 (+361.30%) vs previous close (2026-10-11)');
-    expect(change.className.split(/\s+/)).toContain('text-up');
+    // The full line is read by assistive technology; the short chip shows the tone.
+    expect(change.className.split(/\s+/)).toContain('sr-only');
+    const chip = within(first).getByText('▲ +361.30%');
+    expect(chip.className.split(/\s+/)).toContain('text-up');
     expect(within(other).getByText('Arceus No. 82 · Holo, 1st-edition')).toBeTruthy();
     expect(
       within(other).getByText('▲ +$7.41 (+308.75%) vs previous close (2026-10-11)'),
@@ -158,7 +161,10 @@ describe('movers board (T09 criteria 2 and 3)', () => {
 
   it('prints a fall with the down arrow, the minus sign and the down tone', async () => {
     openBoard('/movers?direction=down', answer(moversBody('down', [fallingMover])));
-    const change = await screen.findByText('▼ -$99.89 (-60.54%) vs previous close (2026-10-11)');
+    expect(
+      await screen.findByText('▼ -$99.89 (-60.54%) vs previous close (2026-10-11)'),
+    ).toBeTruthy();
+    const change = screen.getByText('▼ -60.54%');
     expect(change.className.split(/\s+/)).toContain('text-down');
     expect(change.className).not.toMatch(/emerald|red-/);
     expect(screen.getByText('Emerald No. 91 · Holo')).toBeTruthy();
@@ -180,8 +186,10 @@ describe('movers board carry-forward cases (T09 criterion 5)', () => {
         ]),
       ),
     );
-    const change = await screen.findByText('▲ +$0.01 (+0.00%) vs previous close (2026-10-11)');
-    expect(change.className.split(/\s+/)).toContain('text-up');
+    expect(
+      await screen.findByText('▲ +$0.01 (+0.00%) vs previous close (2026-10-11)'),
+    ).toBeTruthy();
+    expect(screen.getByText('▲ +0.00%').className.split(/\s+/)).toContain('text-up');
     expect(screen.getByText('Market price $214,398.51')).toBeTruthy();
     expect(main().textContent).not.toContain('No change');
   });

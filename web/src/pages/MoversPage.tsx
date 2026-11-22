@@ -1,6 +1,8 @@
 // The PokéPrices movers board: /movers over GET /v1/movers?direction=&limit=50. It shows the
-// newest movers day only, with one scope line and one "as of" line for the whole list: the
-// stamp is the caption of the sticky Direction bar, so it stays beside the rows as they scroll.
+// newest movers day only, with one scope line and one "as of" line for the whole list (short rows,
+// each named with that line): the stamp is the caption of the sticky Direction bar, so it stays
+// beside the rows as they scroll.
+import { useId } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getMovers, type ApiFailure, type MoversDirection, type MoversPage } from '../api/client';
 import { unwrap } from '../query';
@@ -29,18 +31,23 @@ const DIRECTIONS: readonly {
   { direction: 'down', label: 'Falls', path: '/movers?direction=down' },
 ];
 
-/** The rows (or the day's empty line), then the footnote and Back to top when there are rows. */
+/**
+ * The rows (or the day's empty line), each named with the sticky bar's stamp (`stampId`), then the
+ * footnote and Back to top when there are rows.
+ */
 function Board({
   body,
   direction,
+  stampId,
 }: {
   readonly body: MoversPage;
   readonly direction: MoversDirection;
+  readonly stampId: string;
 }) {
   const hasRows = body.data.length > 0;
   return (
     <>
-      <MoverList body={body} direction={direction} stamped={false} />
+      <MoverList body={body} direction={direction} stampId={stampId} />
       {hasRows && <MoversFootnote />}
       {hasRows && (
         <p className="mt-6">
@@ -60,10 +67,11 @@ export default function MoversPage({ direction }: { readonly direction: MoversDi
     queryFn: ({ signal }) => unwrap(getMovers(direction, BOARD_LIMIT, { signal })),
   });
   const answer = query.data;
+  const stampId = useId();
 
   let body;
   if (answer !== undefined) {
-    body = <Board body={answer} direction={direction} />;
+    body = <Board body={answer} direction={direction} stampId={stampId} />;
   } else if (query.error !== null) {
     body = <MoversProblem failure={query.error} />;
   } else {
@@ -94,7 +102,7 @@ export default function MoversPage({ direction }: { readonly direction: MoversDi
             </Button>
           ))}
         </div>
-        <MoversStamp day={answer?.meta.day ?? null} className="sm:ml-auto" />
+        <MoversStamp day={answer?.meta.day ?? null} id={stampId} className="sm:ml-auto" />
       </div>
       {body}
     </Page>

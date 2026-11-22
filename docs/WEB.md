@@ -8,10 +8,10 @@ prices get into the database is in [`OPERATIONS.md`](OPERATIONS.md).
 ## Pages
 
 - **`/` (home).** The entry page: a one-line description and the "Biggest moves vs previous close" strip.
-  The strip is static (no scrolling, no animation), each row is a ticker (see the next section), and it
+  The strip is static (no scrolling, no animation), each row is a short row (see the next section), and it
   links to `/movers`.
-- **`/search`.** Card search over the PokéSearch catalogue. Results are catalogue entries; the page shows no
-  price. Opening a result goes to its card page.
+- **`/search`.** Card search over the PokéSearch catalogue. Results are catalogue entries, each with the card's
+  picture (see Card pictures); the page shows no price. Opening a result goes to its card page.
 - **`/card/{id}`.** One card, for example `/card/base1-4`.
   - The catalogue details come from PokéSearch through the API. When PokéSearch is unavailable the page
     says `Catalog data may be out of date: PokéSearch is unavailable`.
@@ -19,8 +19,9 @@ prices get into the database is in [`OPERATIONS.md`](OPERATIONS.md).
   - **Price history:** a chart of daily closes per variant (see Charts).
   - A card with no priced variant makes no history request and shows no history.
 - **`/movers`.** The movers board, titled "Biggest moves". It shows one list at a time, chosen with the
-  **Rises** and **Falls** buttons (`/movers` is Rises; `/movers?direction=down` is Falls). Each row names
-  the card (or `Card <id>` while PokéSearch is unavailable) and prints the ticker change line. One
+  **Rises** and **Falls** buttons (`/movers` is Rises; `/movers?direction=down` is Falls). Each row is a
+  short row: the rank, the card's picture, the card name (or `Card <id>` while PokéSearch is unavailable),
+  the set line, and the price with the short change. One
   `as of <day> from TCGCSV (daily close)` line stamps the list, and a scope line states the ranking rule:
   `Ranked by change vs previous close among variants whose previous close was at least $<amount>.`
   Before any day is ingested the board says `No movers yet`; a day with no ranked rows in the shown
@@ -39,16 +40,19 @@ prices get into the database is in [`OPERATIONS.md`](OPERATIONS.md).
   `Delete my account`, a link to `Alerts and webhooks` and `Sign out`. Signed out, it offers sign-in and sign-up. As
   the demo, it says the demo is read-only.
 - **`/account/verify-email`.** Where the verification link in the email lands. It needs a signed-in person.
-- **`/watchlist`.** The variants a person watches, each row a ticker with its own `as of <day> from TCGCSV (daily
-  close)` line, a `Remove` button, and the card name from PokéSearch (`Card <id>` while it is unavailable). For a
+- **`/watchlist`.** The variants a person watches, each a short row with the card's picture, the card name from
+  PokéSearch (`Card <id>` while it is unavailable) and a `Remove` button. One line above the list stamps it:
+  `as of <day> from TCGCSV (daily close)`, or `Closes from <first day> to <last day> from TCGCSV (daily close)`
+  when the rows' closes are of different days, and then each row also shows `Close of <day>`. For a
   signed-in, verified account each row also shows `Alert: at <n>%` or `Alert: off`, a select `Alert threshold`
   (`Off`, `5%`, `10%`, `20%`, `50%`, plus the stored value when it is another number) and a `Save alert` button; `Off`
   removes the threshold. Below the list a line explains that an alert is sent when a card's daily close moves by at
   least its threshold and at least $1.00 against the previous close, with a link to `/alerts`. An unverified account
   sees `Verify your email address to set alerts.` instead of the control, and the demo sees no control.
-- **`/portfolio`.** The variants a person holds with a quantity, each with its value and its own `as of` line, and a
-  total computed by the API that names the days it rests on. A holding without a price is not valued and is named
-  as not counted.
+- **`/portfolio`.** The variants a person holds with a quantity, each a short row with the card's picture and its
+  value, and a total computed by the API that names the days it rests on; that line is the list's one stamp (each
+  row also shows `Close of <day>` when the days differ). A holding without a price is not valued and is named as
+  not counted.
 - **`/alerts`.** `Alerts and webhooks`, linked from `/account` (the header is unchanged). It needs a signed-in
   account: signed out it offers `Sign in` and `Create an account`; as the demo it says the read-only demo cannot set
   alerts or add webhooks and shows no form; an unverified account is asked to verify its email address and sees its
@@ -84,9 +88,23 @@ home-strip row. Every ticker shows, from the API only:
    window is always called "previous close": the previous day can be more than one day back, and the line
    prints it. It is never called 1D, 24h or yesterday, and there is no 1D range anywhere.
 3. **The as-of stamp and the source:** `as of <day> from TCGCSV (daily close)`, once per variant on a card
-   page, or once per list on the movers board and home strip, where every row shares one day.
+   page, or once per list on the movers board, the home strip, the watchlist and the portfolio (a list whose
+   closes are of several days says `Closes from <first day> to <last day> from TCGCSV (daily close)`).
 4. **Colour only in addition.** Up and down are always carried by the arrow and the sign. Colour repeats
    them (see Display settings), so the meaning survives for readers who cannot tell the colours apart.
+
+A list stamped once uses a **short row**, so a phone shows more of it: the price as `$<close>` and the change
+as the arrow with the signed percentage (`▲ +<pct>%`, `▼ -<pct>%`; the signed amount when the API sent no
+percentage; `No change`; `No previous close yet`). The full ticker lines above, `Market price $<close>`, the
+change line with its previous day and the row's own `as of` line, stay in each row's accessible name, so a
+screen reader reads them in full; the card page always prints them in full.
+
+## Card pictures
+
+Search results and the rows of the movers board, the home strip, the watchlist and the portfolio show the
+card's small picture, 48 px wide, loaded lazily from the catalogue's own image address (the API passes the
+address PokéSearch gives; PokéPrices stores and resizes no image). When the catalogue gives no picture, or the
+picture fails to load, the row shows a plain card back with the card's first letter in its place.
 
 Money is the API's decimal string with thousands separators (`1234.50` shows as `$1,234.50`), never
 re-rounded. The browser reads no clock: every date is a `YYYY-MM-DD` day string from the API. A ticker never

@@ -22,6 +22,16 @@ export function cardLabel(row: ListRow): string {
   return row.card === null ? `Card ${row.card_id}` : row.card.name;
 }
 
+/** The days a list's prices rest on, first and last, or null when no row has a price. */
+export function priceDays(
+  rows: readonly ListRow[],
+): { readonly first: string; readonly last: string } | null {
+  const days = rows.flatMap((row) => (row.price === null ? [] : [row.price.day])).sort();
+  const first = days[0];
+  const last = days[days.length - 1];
+  return first === undefined || last === undefined ? null : { first, last };
+}
+
 /** Where sign-in brings a visitor back to: this card's page. */
 export function signInPath(cardId: string): string {
   return `/sign-in?next=${encodeURIComponent(cardPath(cardId))}`;

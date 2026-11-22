@@ -17,10 +17,12 @@ import { PRICE_FOOTNOTE, detailLine, grouped } from '../format';
 import { unwrap } from '../query';
 import { moversKey } from '../queryKeys';
 import { cardPath } from '../router';
+import CardThumbnail from '../ui/CardThumbnail';
 import { FOCUS, MUTED, TEXT_LINK } from '../ui/classes';
 import StatusLine from '../ui/StatusLine';
 import DegradedNotice from '../ui/DegradedNotice';
-import { AsOf, ChangeChip, PriceFigure } from '../ui/PriceTag';
+import { AsOf, RowPrice } from '../ui/PriceTag';
+import { rowPriceIds } from '../ui/rowPriceIds';
 import ProblemNotice from '../ui/ProblemNotice';
 import Skeleton from '../ui/Skeleton';
 
@@ -30,29 +32,38 @@ const STRIP_LIMIT = 5;
 const LIST_NAME: Record<MoversDirection, string> = { up: 'Rises', down: 'Falls' };
 
 /**
- * One mover row, the same markup on the home strip and the board: rank in a 28 px mono muted
- * column, the card link (16 px 600; its 44 px target reaches up into the row's top padding so the
- * set line sits right under the name) with its set line (14 px muted) beneath, then the price and
- * the chip at the right edge, the chip's tint hugging its text and its text left-aligned. A list at least 32 rem wide (the board) puts them in a right column of their
- * own; a narrower one (a home sub-list, 390 px) puts them under the name. No thumbnail: the movers
- * API carries no image URL.
+ * One mover row, the same markup on the home strip and the board, short because the list prints
+ * its source and "as of" once: rank in a 28 px mono muted column, the card's 48 px picture, then
+ * the card link (16 px 600; its 44 px target reaches 10 px up into the row's top padding and 10 px
+ * down over the set line, so the name takes one 24 px line), its set line (14 px muted) and one
+ * 20 px line with the price and the short change chip: about 86 px a row at 390 px, about 106 px
+ * when the set line wraps. The row's accessible name (aria-labelledby) is the name, the set line,
+ * the full "Market price" and change lines and the list's stamp (`stampId`).
  */
-function MoverRow({ mover }: { readonly mover: Mover }) {
+function MoverRow({ mover, stampId }: { readonly mover: Mover; readonly stampId: string }) {
+  const id = useId();
+  const name = mover.card === null ? `Card ${mover.card_id}` : mover.card.name;
   return (
-    <li className="grid min-h-16 grid-cols-[1.75rem_minmax(0,1fr)] gap-x-3 py-2 @lg:grid-cols-[1.75rem_minmax(0,1fr)_minmax(0,20rem)]">
-      <span className={`pt-3 num text-sm ${MUTED}`}>{`#${String(mover.rank)}`}</span>
+    <li
+      aria-labelledby={`${id}-name ${id}-detail ${rowPriceIds(id, false)} ${stampId}`}
+      className="grid grid-cols-[1.75rem_3rem_minmax(0,1fr)] items-start gap-x-3 py-2"
+    >
+      <span className={`pt-1 num text-sm ${MUTED}`}>{`#${String(mover.rank)}`}</span>
+      <CardThumbnail src={mover.card?.image_small} name={mover.card?.name ?? ''} />
       <div className="min-w-0 wrap-anywhere">
         <Link
+          id={`${id}-name`}
           to={cardPath(mover.card_id)}
-          className={`-mt-3 inline-flex min-h-11 items-end text-base font-semibold underline-offset-4 hover:underline ${FOCUS}`}
+          className={`-my-2.5 inline-flex min-h-11 items-center text-base font-semibold underline-offset-4 hover:underline ${FOCUS}`}
         >
-          {mover.card === null ? `Card ${mover.card_id}` : mover.card.name}
+          {name}
         </Link>
-        <span className={`block text-sm ${MUTED}`}>{detailLine(mover)}</span>
-      </div>
-      <div className="col-start-2 flex min-w-0 flex-col items-end @lg:col-start-3 @lg:pt-1.5">
-        <PriceFigure close={mover.close} size="row" />
-        <ChangeChip price={mover} />
+        <span id={`${id}-detail`} className={`block text-sm ${MUTED}`}>
+          {detailLine(mover)}
+        </span>
+        <div className="mt-1">
+          <RowPrice price={mover} id={id} />
+        </div>
       </div>
     </li>
   );
@@ -61,13 +72,15 @@ function MoverRow({ mover }: { readonly mover: Mover }) {
 /** The one "as of" line of a list whose rows all share meta.day; none without a day. */
 export function MoversStamp({
   day,
+  id,
   className = 'mt-2',
 }: {
   readonly day: string | null;
+  readonly id?: string;
   readonly className?: string;
 }) {
   if (day === null) return null;
-  return <AsOf day={day} as="p" className={className} />;
+  return <AsOf day={day} as="p" id={id} className={className} />;
 }
 
 /** What the ranking counts. */
@@ -104,33 +117,35 @@ export function MoversLoading() {
 
 /**
  * One direction's ranked rows, or its empty state: "No movers yet" before any movers day,
- * "No rises/falls ranked for <day>" when the day has none in this direction. With `stamped`, the
- * list prints its own "as of" line first.
+ * "No rises/falls ranked for <day>" when the day has none in this direction. `stampId` is the id
+ * of the "as of" line the caller printed for this list; without it the list prints its own first.
+ * Either way each row's accessible name ends with that one stamp.
  */
 export default function MoverList({
   body,
   direction,
-  stamped,
+  stampId,
 }: {
   readonly body: MoversPage;
   readonly direction: MoversDirection;
-  readonly stamped: boolean;
+  readonly stampId?: string | undefined;
 }) {
+  const ownStamp = useId();
   const day = body.meta.day;
   if (day === null) return <p className="mt-3">No movers yet</p>;
   const name = LIST_NAME[direction];
   return (
     <>
-      {stamped && <MoversStamp day={day} />}
+      {stampId === undefined && <MoversStamp day={day} id={ownStamp} />}
       {body.data.length === 0 ? (
         <p className="mt-3">{`No ${name.toLowerCase()} ranked for ${day}`}</p>
       ) : (
         <ol
           aria-label={name}
-          className="@container mt-3 divide-y divide-line-subtle border-y border-line-subtle"
+          className="mt-3 divide-y divide-line-subtle border-y border-line-subtle"
         >
           {body.data.map((mover) => (
-            <MoverRow key={mover.variant_key} mover={mover} />
+            <MoverRow key={mover.variant_key} mover={mover} stampId={stampId ?? ownStamp} />
           ))}
         </ol>
       )}
@@ -143,11 +158,12 @@ function StripLoaded({ up, down }: { readonly up: MoversPage; readonly down: Mov
   // while both answers carry the same day, else one per sub-list.
   const sameDay = up.meta.day === down.meta.day;
   const hasRows = up.data.length > 0 || down.data.length > 0;
+  const stampId = useId();
   return (
     <>
       {(up.meta.degraded || down.meta.degraded) && <MoversDegraded />}
       <MoversScope body={up} />
-      {sameDay && <MoversStamp day={up.meta.day} />}
+      {sameDay && <MoversStamp day={up.meta.day} id={stampId} />}
       <div className="mt-2 grid gap-x-8 gap-y-4 sm:grid-cols-2">
         {[
           { direction: 'up' as const, body: up },
@@ -155,7 +171,11 @@ function StripLoaded({ up, down }: { readonly up: MoversPage; readonly down: Mov
         ].map((list) => (
           <div key={list.direction} className="min-w-0">
             <h3 className="mt-4 text-base font-semibold">{LIST_NAME[list.direction]}</h3>
-            <MoverList body={list.body} direction={list.direction} stamped={!sameDay} />
+            <MoverList
+              body={list.body}
+              direction={list.direction}
+              stampId={sameDay ? stampId : undefined}
+            />
           </div>
         ))}
       </div>

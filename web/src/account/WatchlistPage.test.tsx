@@ -89,11 +89,13 @@ describe('the watchlist page (T07 criterion 1, D10)', () => {
     expect(within(rising).getByText('Base No. 4 · Holo, unlimited')).toBeTruthy();
     expect(within(rising).getByText('Market price $968.91')).toBeTruthy();
     const up = within(rising).getByText('▲ +$18.91 (+1.99%) vs previous close (2026-10-11)');
-    expect(up.className).toContain('text-up');
+    expect(up.className).toContain('sr-only');
+    expect(within(rising).getByText('▲ +1.99%').className).toContain('text-up');
     expect(within(rising).getByText('as of 2026-10-12 from TCGCSV (daily close)')).toBeTruthy();
 
     const down = within(falling).getByText('▼ -$0.66 (-2.44%) vs previous close (2026-10-10)');
-    expect(down.className).toContain('text-down');
+    expect(down.className).toContain('sr-only');
+    expect(within(falling).getByText('▼ -2.44%').className).toContain('text-down');
     expect(within(falling).getByText('Hidden Legends No. 17 · Reverse')).toBeTruthy();
     expect(within(falling).getByText('as of 2026-10-11 from TCGCSV (daily close)')).toBeTruthy();
 

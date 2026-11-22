@@ -3,7 +3,7 @@
 // child spans): the price and the change in the mono stack with tabular figures, the change as a
 // 2 px chip in its tone with a 12 % tint of the same token (flat untinted), as-of 13 px muted.
 import type { ReactNode } from 'react';
-import { asOfText, changeLine, grouped, type ChangeFields } from '../format';
+import { asOfText, changeLine, grouped, shortChangeLine, type ChangeFields } from '../format';
 
 export type PriceTagSize = 'variant' | 'row';
 
@@ -52,19 +52,67 @@ export function HeroPrice({ close }: { readonly close: string }) {
 }
 
 /**
+ * The chip classes of a tone: the tone plus its tint, a flat chip untinted and without inset;
+ * `pad` is its vertical padding (none on a short row, which keeps the row to one 20 px line).
+ */
+function chipClass(tone: string, pad = 'py-0.5'): string {
+  const tint = TINT[tone];
+  const box = tint === undefined ? 'px-0' : `px-1 ${tint}`;
+  return `inline-block rounded-sm ${pad} num text-sm font-semibold ${tone} ${box}`;
+}
+
+/**
  * The change line of changeLine() as one chip span: its tone class plus the tone's tint. A flat
  * chip has no tint and no inset, so its text starts on the price figure's left edge.
  */
 export function ChangeChip({ price }: { readonly price: ChangeFields }) {
   const change = changeLine(price);
-  const tint = TINT[change.tone];
-  const box = tint === undefined ? 'px-0' : `px-1 ${tint}`;
+  return <span className={`mt-1 ${chipClass(change.tone)}`}>{change.text}</span>;
+}
+
+/**
+ * The short price of a list row whose list prints its source and "as of" once: "$X" and the
+ * change chip of shortChangeLine() on one line, hidden from assistive technology, which reads the
+ * full lines instead from screen-reader-only spans: "Market price $X", the change line of
+ * changeLine() and, with `day`, the row's own "as of" line. `id` prefixes their ids
+ * (rowPriceIds). `showDay` prints "Close of <day>" under the price, for a list whose rows span
+ * several days.
+ */
+export function RowPrice({
+  price,
+  id,
+  day,
+  showDay = false,
+}: {
+  readonly price: ChangeFields & { readonly close: string };
+  readonly id: string;
+  readonly day?: string;
+  readonly showDay?: boolean;
+}) {
+  const short = shortChangeLine(price);
   return (
-    <span
-      className={`mt-1 inline-block rounded-sm py-0.5 num text-sm font-semibold ${change.tone} ${box}`}
-    >
-      {change.text}
-    </span>
+    <>
+      <span aria-hidden="true" className="flex flex-wrap items-baseline gap-x-2">
+        <span className="num text-base leading-5 font-semibold">{`$${grouped(price.close)}`}</span>
+        <span className={chipClass(short.tone, 'py-0')}>{short.text}</span>
+      </span>
+      {showDay && day !== undefined && (
+        <span aria-hidden="true" className="block text-meta text-ink-muted">
+          {`Close of ${day}`}
+        </span>
+      )}
+      <span id={`${id}-price`} className="sr-only">
+        {`Market price $${grouped(price.close)}`}
+      </span>
+      <span id={`${id}-change`} className="sr-only">
+        {changeLine(price).text}
+      </span>
+      {day !== undefined && (
+        <span id={`${id}-as-of`} className="sr-only">
+          {asOfText(day)}
+        </span>
+      )}
+    </>
   );
 }
 
@@ -72,15 +120,25 @@ export function ChangeChip({ price }: { readonly price: ChangeFields }) {
 export function AsOf({
   day,
   as = 'span',
+  id,
   className = '',
 }: {
   readonly day: string;
   readonly as?: 'span' | 'p';
+  readonly id?: string | undefined;
   readonly className?: string;
 }) {
   const text = asOfText(day);
   const classes = `${as === 'span' ? 'block ' : ''}text-meta text-ink-muted ${className}`.trim();
-  return as === 'p' ? <p className={classes}>{text}</p> : <span className={classes}>{text}</span>;
+  return as === 'p' ? (
+    <p id={id} className={classes}>
+      {text}
+    </p>
+  ) : (
+    <span id={id} className={classes}>
+      {text}
+    </span>
+  );
 }
 
 /**

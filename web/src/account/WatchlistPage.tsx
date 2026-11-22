@@ -1,8 +1,9 @@
-// /watchlist: the signed-in account's variants over GET /v1/watchlist, each row the movers
-// row with its own "as of" line (rows can carry different days). Signed out, it offers
-// sign-in, sign-up and the demo; the demo sees its rows without a Remove button. A verified account
-// that is not the demo also sets each row's alert threshold here; an unverified one is told
-// to verify first. The page asks for nothing beyond the session and the list.
+// /watchlist: the signed-in account's variants over GET /v1/watchlist, each row the short movers
+// row under the list's one source-and-"as of" line (a row shows its own day only when the rows'
+// days differ). Signed out, it offers sign-in, sign-up and the demo; the demo sees its rows
+// without a Remove button. A verified account that is not the demo also sets each row's alert
+// threshold here; an unverified one is told to verify first. The page asks for nothing beyond
+// the session and the list.
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useId, useState } from 'react';
 import {
@@ -28,10 +29,10 @@ import {
   ListItem,
   ListLoading,
   ListMain,
-  PriceLines,
+  ListStamp,
   SignedOutList,
 } from './ListParts';
-import { NO_PRICE, WATCHLIST_KEY, cardLabel } from './lists';
+import { NO_PRICE, WATCHLIST_KEY, cardLabel, priceDays } from './lists';
 import { useAccountWrite } from './mutations';
 import { useSession } from './session';
 
@@ -157,7 +158,15 @@ function AlertExplainer() {
   );
 }
 
-function WatchRow({ item, access }: { readonly item: WatchlistItem; readonly access: Access }) {
+function WatchRow({
+  item,
+  access,
+  showDay,
+}: {
+  readonly item: WatchlistItem;
+  readonly access: Access;
+  readonly showDay: boolean;
+}) {
   const queryClient = useQueryClient();
   // A failure leaves the last good list on screen and shows beside the row.
   const remove = useAccountWrite({
@@ -167,7 +176,7 @@ function WatchRow({ item, access }: { readonly item: WatchlistItem; readonly acc
   const failure = remove.error;
 
   return (
-    <ListItem row={item} price={<PriceLines price={item.price} missing={NO_PRICE} />}>
+    <ListItem row={item} missing={NO_PRICE} showDay={showDay}>
       {access !== 'read-only' && (
         <div className="mt-3 flex flex-wrap items-end gap-x-6 gap-y-3 sm:col-span-2">
           {access === 'alerts' && (
@@ -198,6 +207,7 @@ function WatchRow({ item, access }: { readonly item: WatchlistItem; readonly acc
 }
 
 function Loaded({ body, access }: { readonly body: WatchlistBody; readonly access: Access }) {
+  const days = priceDays(body.data);
   return (
     <>
       {body.meta.degraded && <DegradedLine />}
@@ -205,13 +215,19 @@ function Loaded({ body, access }: { readonly body: WatchlistBody; readonly acces
         <p className="mt-6">{EMPTY}</p>
       ) : (
         <>
+          <ListStamp rows={body.data} />
           <ul
             aria-label="Watchlist"
             className="mt-6 divide-y divide-line-subtle border-y border-line-subtle"
           >
             <AccountScope>
               {body.data.map((item) => (
-                <WatchRow key={item.variant_key} item={item} access={access} />
+                <WatchRow
+                  key={item.variant_key}
+                  item={item}
+                  access={access}
+                  showDay={days !== null && days.first !== days.last}
+                />
               ))}
             </AccountScope>
           </ul>

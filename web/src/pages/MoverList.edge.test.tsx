@@ -83,6 +83,14 @@ function strip(): HTMLElement {
   return screen.getByRole('region', { name: 'Biggest moves vs previous close' });
 }
 
+/**
+ * Row markup with React's generated ids (the row's accessible-name parts and the stamp it names)
+ * replaced by one placeholder: they differ per render, the markup around them must not.
+ */
+function withoutIds(html: string): string {
+  return html.replace(/_r_[0-9a-z]+_/g, '_id_');
+}
+
 function sublist(name: 'Rises' | 'Falls'): HTMLElement {
   const heading = within(strip()).getByRole('heading', { level: 3, name });
   const block = heading.parentElement;
@@ -248,7 +256,7 @@ describe('shared MoverList purity and board polling (T09 criteria 3, 4; D9)', ()
     );
     const boardRows = within(screen.getByRole('list', { name: 'Rises' }))
       .getAllByRole('listitem')
-      .map((row) => row.outerHTML);
+      .map((row) => withoutIds(row.outerHTML));
     cleanup();
     await open(
       '/',
@@ -257,7 +265,7 @@ describe('shared MoverList purity and board polling (T09 criteria 3, 4; D9)', ()
     );
     const stripRows = within(within(strip()).getByRole('list', { name: 'Rises' }))
       .getAllByRole('listitem')
-      .map((row) => row.outerHTML);
+      .map((row) => withoutIds(row.outerHTML));
     expect(boardRows).toHaveLength(2);
     expect(stripRows).toEqual(boardRows);
     expect(stripRows[0]).toContain('▲ +$0.01 (+0.00%) vs previous close (2026-10-11)');

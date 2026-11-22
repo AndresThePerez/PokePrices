@@ -216,17 +216,33 @@ describe('PriceTag tones and silence (review)', () => {
 describe('PriceLines on watchlist and portfolio rows (review)', () => {
   it('prints a missing price as one span with exactly the given line and nothing else', () => {
     const line = 'No price in the collected snapshots; not counted in the total.';
-    const { container } = render(<PriceLines price={null} missing={line} />);
+    const { container } = render(<PriceLines price={null} missing={line} id="row" />);
     expect(container.children).toHaveLength(1);
     expect(container.firstElementChild?.tagName).toBe('SPAN');
     expect(container.firstElementChild?.childNodes).toHaveLength(1);
     expect(container.textContent).toBe(line);
   });
 
-  it('prints a price as the same three lines as PriceTag, with no extra text', () => {
-    const rows = render(<PriceLines price={UP_FULL} missing="unused" />);
-    const tag = render(<PriceTag price={UP} size="row" />);
-    expect(rows.container.innerHTML).toBe(tag.container.innerHTML);
-    expect(rows.container.textContent).toBe(`${PRICE_LINE}${UP_LINE}${AS_OF}`);
+  // The row is short since its list prints the source and "as of" once: PriceTag's three lines are
+  // read by assistive technology only, each one element with the pinned string, and the visible
+  // price and short chip are hidden from it.
+  it("prints a price short, with PriceTag's three lines for assistive technology only", () => {
+    const { container } = render(<PriceLines price={UP_FULL} missing="unused" id="row" />);
+    const spoken = Array.from(container.querySelectorAll('.sr-only')).map((node) => [
+      node.id,
+      node.textContent,
+    ]);
+    expect(spoken).toEqual([
+      ['row-price', PRICE_LINE],
+      ['row-change', UP_LINE],
+      ['row-as-of', AS_OF],
+    ]);
+    const shown = Array.from(container.querySelectorAll('[aria-hidden="true"]'));
+    expect(shown.map((node) => node.textContent)).toEqual(['$2,257.87▲ +0.99%']);
+    expect(container.textContent).toBe(`$2,257.87▲ +0.99%${PRICE_LINE}${UP_LINE}${AS_OF}`);
+    // PriceTag itself, as the card page prints it, is unchanged.
+    expect(render(<PriceTag price={UP} size="row" />).container.textContent).toBe(
+      `${PRICE_LINE}${UP_LINE}${AS_OF}`,
+    );
   });
 });

@@ -1,21 +1,24 @@
-// The pieces the watchlist and the portfolio share: the row (a CSS-only card-back
-// placeholder, the card link and set line, a fixed right-aligned price column with its own "as of"
-// line, the controls under them), the quantity form, and the signed-out, degraded and footnote
-// lines. The demo is named once, by the header's strip. Every amount is the API's decimal string
-// printed through grouped(); nothing here reads the clock.
+// The pieces the watchlist and the portfolio share: the short row (the card's 48 px picture or
+// its card-back tile, the card link and set line, a fixed right-aligned price column with the
+// price and the short change, the controls under them), the list's one source-and-"as of" stamp,
+// the quantity form, and the signed-out, degraded and footnote lines. The demo is named once, by
+// the header's strip. Every amount is the API's decimal string printed through grouped(); nothing
+// here reads the clock.
 import { useId, useState, type ReactNode, type SubmitEvent } from 'react';
 import type { WatchlistItem } from '../api/client';
-import { PRICE_FOOTNOTE, detailLine, initialOf } from '../format';
+import { PRICE_FOOTNOTE, daysText, detailLine } from '../format';
 import Link from '../Link';
 import { cardPath } from '../router';
+import CardThumbnail from '../ui/CardThumbnail';
 import { FOCUS, INPUT, MUTED, SECONDARY_BUTTON } from '../ui/classes';
 import DegradedNotice from '../ui/DegradedNotice';
 import Page from '../ui/Page';
-import PriceTag from '../ui/PriceTag';
+import { RowPrice } from '../ui/PriceTag';
+import { rowPriceIds } from '../ui/rowPriceIds';
 import Skeleton from '../ui/Skeleton';
 import StatusLine from '../ui/StatusLine';
 import DemoButton from './DemoButton';
-import { cardLabel, type ListRow } from './lists';
+import { cardLabel, priceDays, type ListRow } from './lists';
 import SignInPrompt from './SignInPrompt';
 
 /** A list page: one main landmark, one h1, the width of the movers board. */
@@ -64,82 +67,109 @@ export function SignedOutList({ list }: { readonly list: 'watchlist' | 'portfoli
 }
 
 /**
- * The card-back placeholder of a row (the list APIs carry no image URL): a 56 × 78 (2:3) sunken
- * box with the card's initial drawn by CSS from data-initial, so it holds no DOM text. It is no
- * link, no image and, having no text, needs no aria-hidden.
+ * The list's one source-and-"as of" line (daysText): one day as its "as of" line, several as
+ * their first and last; nothing when no row has a price.
  */
-function CardBack({ row }: { readonly row: ListRow }) {
-  return (
-    <div
-      data-initial={row.card === null ? '' : initialOf(row.card.name)}
-      className={`flex h-19.5 w-14 shrink-0 items-center justify-center rounded-md border border-line-subtle bg-surface-sunken text-lg font-semibold ${MUTED} before:content-[attr(data-initial)]`}
-    />
-  );
+export function ListStamp({ rows }: { readonly rows: readonly ListRow[] }) {
+  const days = priceDays(rows);
+  if (days === null) return null;
+  return <p className={`mt-6 text-meta ${MUTED}`}>{daysText(days.first, days.last)}</p>;
 }
 
-/** The card link (16 px 600, a 44 px target) and the set line 2 px under it (14 px muted). */
-function RowName({ row }: { readonly row: ListRow }) {
+/**
+ * The card link (16 px 600, a 44 px target) and the set line 2 px under it (14 px muted), with
+ * the ids the row's accessible name reads them by.
+ */
+function RowName({ row, id }: { readonly row: ListRow; readonly id: string }) {
   return (
     <>
       <Link
+        id={`${id}-name`}
         to={cardPath(row.card_id)}
         className={`-mt-3 inline-flex min-h-11 items-end text-base font-semibold underline-offset-4 hover:underline ${FOCUS}`}
       >
         {cardLabel(row)}
       </Link>
-      <span className={`mt-0.5 block text-sm ${MUTED}`}>{detailLine(row)}</span>
+      <span id={`${id}-detail`} className={`mt-0.5 block text-sm ${MUTED}`}>
+        {detailLine(row)}
+      </span>
     </>
   );
 }
 
 /**
- * One list row: the placeholder left, then the name block and a fixed right-aligned price column
- * (stacked under the name below 640 px), then the row's controls and its failure across both.
+ * One short list row: the card's 48 px picture left, then the name block and a fixed
+ * right-aligned price column (stacked under the name below 640 px) with the price and the short
+ * change, or `missing`, then `extra` (the holding's value), then the row's controls and its failure
+ * across both. The row's accessible name (aria-labelledby) is the name, the set line and the full
+ * price lines with the row's own "as of" line, or the missing line. `showDay` prints the row's day
+ * under its price, for a list whose rows span several days.
  */
 export function ListItem({
   row,
   details,
-  price,
+  missing,
+  showDay,
+  extra,
   children,
 }: {
   readonly row: ListRow;
   readonly details?: ReactNode;
-  readonly price: ReactNode;
+  readonly missing: string;
+  readonly showDay: boolean;
+  readonly extra?: ReactNode;
   readonly children?: ReactNode;
 }) {
+  const id = useId();
+  const price = row.price === null ? `${id}-missing` : rowPriceIds(id, true);
   return (
-    <li className="flex gap-4 py-3">
-      <CardBack row={row} />
+    <li aria-labelledby={`${id}-name ${id}-detail ${price}`} className="flex gap-4 py-3">
+      <CardThumbnail src={row.card?.image_small} name={row.card?.name ?? ''} />
       <div className="grid min-w-0 flex-1 content-start gap-x-6 sm:grid-cols-[minmax(0,1fr)_minmax(12rem,18rem)]">
         <div className="min-w-0 wrap-anywhere">
-          <RowName row={row} />
+          <RowName row={row} id={id} />
           {details}
         </div>
-        <div className="min-w-0 wrap-anywhere sm:pt-1.5 sm:text-right">{price}</div>
+        <div className="mt-1 min-w-0 wrap-anywhere sm:pt-1.5 sm:text-right">
+          <PriceLines price={row.price} missing={missing} id={id} showDay={showDay} />
+          {extra}
+        </div>
         {children}
       </div>
     </li>
   );
 }
 
-/** Market price, the change vs the previous close and the row's own "as of" line, or `missing`. */
+/**
+ * A row's short price (RowPrice: the price and the short change, the full lines and the row's own
+ * "as of" line for assistive technology only), or `missing` as one span.
+ */
 export function PriceLines({
   price,
   missing,
+  id,
+  showDay = false,
 }: {
   readonly price: WatchlistItem['price'];
   readonly missing: string;
+  readonly id: string;
+  readonly showDay?: boolean;
 }) {
   if (price === null) {
     return (
       <span
-        className={`mt-1 block rounded-md border border-dashed border-line px-3 py-2 text-left text-meta ${MUTED}`}
+        id={`${id}-missing`}
+        className={`block rounded-md border border-dashed border-line px-3 py-2 text-left text-meta ${MUTED}`}
       >
         {missing}
       </span>
     );
   }
-  return <PriceTag price={price} size="row" />;
+  return (
+    <span className="flex flex-col sm:items-end">
+      <RowPrice price={price} id={id} day={price.day} showDay={showDay} />
+    </span>
+  );
 }
 
 const QUANTITY_INPUT = `mt-1 w-28 num ${INPUT}`;

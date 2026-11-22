@@ -1,8 +1,9 @@
 // /portfolio: the signed-in account's holdings over GET /v1/portfolio. Each holding's
 // value and the total are the API's numeric strings, printed as they come: the browser never
 // multiplies or adds money. A holding without a price has no value and is named as not counted;
-// the total says which days it rests on. The summary panel leads; each row shows its quantity as an
-// "×n" chip beside the visually hidden "Quantity n" line (RULING f).
+// the total says which days it rests on, the list's one source-and-"as of" line, so each row is
+// short (its own day only when the days differ). The summary panel leads; each row shows its
+// quantity as an "×n" chip beside the visually hidden "Quantity n" line.
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import {
@@ -13,7 +14,7 @@ import {
   type Holding,
   type PortfolioBody,
 } from '../api/client';
-import { asOfText, grouped, variantLabel } from '../format';
+import { daysText, grouped, variantLabel } from '../format';
 import { unwrap } from '../query';
 import Panel from '../ui/Panel';
 import { ProblemBlock } from './Form';
@@ -25,7 +26,6 @@ import {
   ListItem,
   ListLoading,
   ListMain,
-  PriceLines,
   QuantityForm,
   SignedOutList,
 } from './ListParts';
@@ -47,9 +47,11 @@ function valueLine(holding: Holding): string | null {
 function HoldingRow({
   holding,
   readOnly,
+  showDay,
 }: {
   readonly holding: Holding;
   readonly readOnly: boolean;
+  readonly showDay: boolean;
 }) {
   const queryClient = useQueryClient();
   // Successful saves: a new one (and nothing else, not a refetch) drops the quantity form's typed
@@ -81,11 +83,10 @@ function HoldingRow({
           <span className="sr-only">{`Quantity ${quantity}`}</span>
         </span>
       }
-      price={
-        <>
-          <PriceLines price={holding.price} missing={NOT_COUNTED} />
-          {value !== null && <span className="mt-1 block num text-sm font-semibold">{value}</span>}
-        </>
+      missing={NOT_COUNTED}
+      showDay={showDay}
+      extra={
+        value !== null && <span className="mt-1 block num text-sm font-semibold">{value}</span>
       }
     >
       {!readOnly && (
@@ -124,9 +125,7 @@ function HoldingRow({
 /** The days a total rests on: one day as its "as of" line, several as their first and last. */
 function daysLine(meta: PortfolioBody['meta']): string | null {
   if (meta.first_day === null || meta.last_day === null) return null;
-  return meta.first_day === meta.last_day
-    ? asOfText(meta.last_day)
-    : `Closes from ${meta.first_day} to ${meta.last_day} from TCGCSV (daily close)`;
+  return daysText(meta.first_day, meta.last_day);
 }
 
 function unpricedLine(count: number): string | null {
@@ -170,7 +169,12 @@ function Loaded({ body, readOnly }: { readonly body: PortfolioBody; readonly rea
             className="mt-6 divide-y divide-line-subtle border-y border-line-subtle"
           >
             {body.data.map((holding) => (
-              <HoldingRow key={holding.variant_key} holding={holding} readOnly={readOnly} />
+              <HoldingRow
+                key={holding.variant_key}
+                holding={holding}
+                readOnly={readOnly}
+                showDay={body.meta.first_day !== body.meta.last_day}
+              />
             ))}
           </ul>
           <ListFootnote />

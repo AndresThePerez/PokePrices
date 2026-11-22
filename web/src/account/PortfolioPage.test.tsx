@@ -122,7 +122,8 @@ describe('the portfolio page (T07 criterion 1, D9, D10)', () => {
     expect(within(chimecho).getByText('Quantity 3')).toBeTruthy();
     expect(within(chimecho).getByText('Value $79.02 (3 × $26.34)')).toBeTruthy();
     const down = within(chimecho).getByText('▼ -$0.66 (-2.44%) vs previous close (2026-10-10)');
-    expect(down.className).toContain('text-down');
+    expect(down.className).toContain('sr-only');
+    expect(within(chimecho).getByText('▼ -2.44%').className).toContain('text-down');
     expect(within(chimecho).getByText('as of 2026-10-11 from TCGCSV (daily close)')).toBeTruthy();
 
     expect(

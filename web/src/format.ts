@@ -32,6 +32,16 @@ export function asOfText(day: string): string {
 }
 
 /**
+ * The one source-and-"as of" line of a list whose prices rest on the days `first` to `last`: the
+ * "as of" text of one day, or "Closes from <first> to <last> from TCGCSV (daily close)".
+ */
+export function daysText(first: string, last: string): string {
+  return first === last
+    ? asOfText(last)
+    : `Closes from ${first} to ${last} from TCGCSV (daily close)`;
+}
+
+/**
  * The initial a card-back placeholder draws: the first code point of the trimmed name (an astral
  * character is never split), upper-cased; '' for a blank name.
  */
@@ -105,4 +115,31 @@ export function changeLine(price: ChangeFields): { readonly text: string; readon
     text: `${arrow}$${grouped(change.digits)}${percent} ${versus}`,
     tone: change.negative ? 'text-down' : 'text-up',
   };
+}
+
+/**
+ * The change chip of a short list row, in the tone of changeLine(): the arrow and the signed
+ * percent ("▲ +361.30%"), or the signed amount when the API sent no change_pct, without
+ * "vs previous close (<day>)"; "No change" and "No previous close yet" as they are. The full line
+ * stays in the row's accessible name.
+ */
+export function shortChangeLine(price: ChangeFields): {
+  readonly text: string;
+  readonly tone: string;
+} {
+  const full = changeLine(price);
+  if (price.previous_close === null || price.previous_day === null || price.change === null) {
+    return full;
+  }
+  if (full.tone === NEUTRAL) return { text: 'No change', tone: NEUTRAL };
+  const arrow = signed(price.change).negative ? '▼ ' : '▲ ';
+  if (price.change_pct === null) {
+    const change = signed(price.change);
+    return {
+      text: `${arrow}${change.negative ? '-' : '+'}$${grouped(change.digits)}`,
+      tone: full.tone,
+    };
+  }
+  const pct = signed(price.change_pct);
+  return { text: `${arrow}${pct.negative ? '-' : '+'}${pct.digits}%`, tone: full.tone };
 }
