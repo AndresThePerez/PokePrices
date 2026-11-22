@@ -264,6 +264,7 @@ docker compose -f compose.dev.yml exec -T -w /workspace/api api php artisan poke
 docker compose -f compose.dev.yml exec -T -w /workspace/api api php artisan pokeprices:map:audit --check coverage
 docker compose -f compose.dev.yml exec -T -w /workspace/api api php artisan pokeprices:map:audit --check ambiguity
 docker compose -f compose.dev.yml exec -T -w /workspace/api api php artisan pokeprices:map:audit --check names
+docker compose -f compose.dev.yml exec -T -w /workspace/api api php artisan pokeprices:map:audit --check priced --json
 docker compose -f compose.dev.yml exec -T -w /workspace/api api php artisan pokeprices:map:golden
 docker compose -f compose.dev.yml exec -T -w /workspace/api api php artisan pokeprices:map:oracle
 docker compose -f compose.dev.yml exec -T -w /workspace/api api php artisan pokeprices:prices:replay --fresh --code-sha "$(git rev-parse HEAD)"
@@ -273,11 +274,26 @@ docker compose -f compose.dev.yml exec -T -w /workspace/api api php artisan poke
 1. **Build.** `pokeprices:map:build` reads the collected day and the dataset checkout and writes a new
    `map_builds` row (its id is the `map_build_id` in every later digest). The snapshot is only read. It
    exits 1 with `map build refused` when the day or the dataset is unusable.
-2. **Check before replaying.** The four audit checks (`names`, `constraints`, `coverage`, `ambiguity`),
-   the golden-set judgement (`pokeprices:map:golden`) and the oracle comparison (`pokeprices:map:oracle`,
-   which needs the oracle recorded for the build's day) each print an artefact line (`--json` and
-   `--out` write it out) and exit 0; they exit 1 only when they refuse to run. Read the values: a worse
-   `coverage` or a new `ambiguity` is a reason to stop and not replay.
+2. **Check before replaying.** The five audit checks (`names`, `constraints`, `coverage`, `ambiguity`,
+   `priced`), the golden-set judgement (`pokeprices:map:golden`) and the oracle comparison
+   (`pokeprices:map:oracle`, which needs the oracle recorded for the build's day) each print an artefact line
+   (`--json` and `--out` write it out) and exit 0; they exit 1 only when they refuse to run. Read the values:
+   a worse `coverage`, a new `ambiguity` or a `priced` value above 0 is a reason to stop and not replay.
+   - **The priced-card share (`priced`, DC7).** Of the dataset's cards, the share that has at least one
+     current `source_product_map` row, overall and per era (the set's `series`). A card whose only products
+     were rejected (`unknown_tag`, `name_disagreement`, …) counts for `coverage`, because it is listed for
+     review, but not here: it has no price. The share is held to a floor: 96.00 % overall, a floor per era
+     (for example Sun & Moon 95.00 %, XY 94.00 %, Sword & Shield 97.50 %, HeartGold & SoulSilver 93.50 %;
+     the table is `ERA_FLOORS_BP` in `api/app/Domain/Mapping/MapAudit.php`) and 90.00 % for an era without
+     its own. The value is the number of floors missed (0 is a pass) out of one plus the number of eras. The
+     2026-10-11 build measured 97.86 % overall; before the hyphenated `-EX`/`-GX`, Prism Star, Unown and
+     rarity-tag rules it was 89.46 %, which this check would have failed.
+   - **The unmapped-products list.** The same artefact lists the build's unmapped card products, at most
+     25, the dearest first by the collected day's market price (a product without one last); sealed products
+     (`non_card`) and groups with no catalogue set (`no_set_alias`) are left out. It reads the build's
+     collected day from `services.tcgcsv.snapshots` (`--snapshots` to point elsewhere) and refuses with
+     `map audit refused` when that day is missing. The share is computed from the map rows, not from the
+     price tables, so it is already right after a rebuild and before its replay.
 3. **Replay.** Only then run `pokeprices:prices:replay --fresh`. Do not ingest new days between a rebuild
    and its replay if you can avoid it.
 
@@ -415,8 +431,8 @@ run goes `ok`.
 - **Symptom.** A run is `ok` but `counts.mapped` is 0 or far below its usual 33,000 and `counts.unmapped`
   is high. The run writes no price row and leaves `price_latest` alone, so a map regression cannot blank
   the prices.
-- **What to run.** `pokeprices:map:audit --check coverage`; if the map is wrong, follow "Map rebuild then
-  replay".
+- **What to run.** `pokeprices:map:audit --check coverage` and `--check priced` (its list names the dearest
+  products the map rejected); if the map is wrong, follow "Map rebuild then replay".
 
 ### Duplicate rows, a late day
 

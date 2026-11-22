@@ -58,7 +58,7 @@ $products = [
         [610370, 'Glaceon ex - 006/131', '006/131', ['Holofoil']],
         [610380, 'Eevee - 007/131', '007/131', ['Normal']],
         [610381, 'Eevee - 007/131', '007/131', ['Normal']],
-        [610390, 'Vaporeon - 008/131 (Secret)', '008/131', ['Holofoil']],
+        [610390, 'Vaporeon - 008/131 (Jumbo)', '008/131', ['Holofoil']],
         [610399, 'Mystery - 999/131', '999/131', ['Normal']],
         [610900, 'Prismatic Evolutions Booster Bundle', null, ['Normal?']],
     ],

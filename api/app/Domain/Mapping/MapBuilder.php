@@ -331,7 +331,7 @@ final readonly class MapBuilder
         }
 
         $deck = $parsed->deck();
-        $compareAs = $parsed->base.($parsed->isDelta() ? ' (Delta Species)' : '');
+        $compareAs = $parsed->compareName();
         $agreeing = array_values(array_filter($candidates, fn (array $c): bool => ($deck === null || ! isset(self::KIT_DECKS[$c['row']['set']]) || self::KIT_DECKS[$c['row']['set']] === $deck)
             && NameAliases::equal($c['name'], $compareAs)));
         if ($agreeing === []) {

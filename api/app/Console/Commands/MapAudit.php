@@ -12,14 +12,15 @@ use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 use RuntimeException;
 
-#[Description('Audit the PokéPrices product map: names, constraints, coverage or ambiguity.')]
+#[Description('Audit the PokéPrices product map: names, constraints, coverage, ambiguity or the priced-card share.')]
 #[Signature('pokeprices:map:audit
-    {--check= : names|constraints|coverage|ambiguity}
+    {--check= : names|constraints|coverage|ambiguity|priced}
     {--json : Print the artefact as JSON}
     {--out= : Also write the artefact to this file}
     {--connection= : The database connection holding the map (default: the default connection)}
     {--build= : The map build id (default: the newest build)}
-    {--dataset= : The dataset checkout (default: services.dataset.root/<the build\'s dataset_ref>)}')]
+    {--dataset= : The dataset checkout (default: services.dataset.root/<the build\'s dataset_ref>)}
+    {--snapshots= : The snapshots root holding the build\'s collected day, read by priced (default: services.tcgcsv.snapshots)}')]
 final class MapAudit extends Command
 {
     public function handle(): int
@@ -46,7 +47,12 @@ final class MapAudit extends Command
                 $root = config('services.dataset.root');
                 $dataset = (is_string($root) ? rtrim($root, '/') : '').'/'.$build['dataset_ref'];
             }
-            $artefact = $audit->run($check, $build, $dataset, database_path('data/set_aliases.csv'));
+            $snapshots = $this->stringOption('snapshots');
+            if ($snapshots === '') {
+                $configured = config('services.tcgcsv.snapshots');
+                $snapshots = is_string($configured) ? $configured : '';
+            }
+            $artefact = $audit->run($check, $build, $dataset, database_path('data/set_aliases.csv'), $snapshots);
         } catch (InvalidArgumentException|RuntimeException $e) {
             $this->error('map audit refused: '.$e->getMessage());
 

@@ -13,6 +13,11 @@ use Normalizer;
  * Classes: `deck` (the trainer-kit decks), `delta`, `treatment` (ball and energy patterns, Cosmos, Cracked Ice,
  * error, misprint, glossy, stamps), `number_echo`, `neutral` and `unknown`. A product with an unknown tag has no
  * treatment and no finish: it goes to review, never to treatment `-`.
+ *
+ * Rarity and art descriptors (`Secret`, `Alternate Art Secret`, `Prime`, `Team Plasma`, `98 Full Art`, …) are
+ * neutral: they describe the one card the number already names. A tag that stands for another print or product of
+ * that number (a pattern such as `Team Rocket`, a stamp, a promo source, a LEGEND half, an error print) is not a
+ * descriptor and stays meaningful or unknown.
  */
 final readonly class ProductName
 {
@@ -54,6 +59,19 @@ final readonly class ProductName
     private const array STAMPS = ['prerelease', 'staff', 'winner', 'e-league', 'pokemon center ny', 'jr east stamp rally'];
 
     private const array NEUTRALS = ['special', 'full art', 'non-holo'];
+
+    /** Rarity and art descriptors, as TCGplayer writes them. */
+    private const array DESCRIPTORS = [
+        'secret', 'secret rare', 'secret full art', 'full art secret rare', 'secret shining', 'alternate art secret',
+        'alternate full art', 'shiny', 'shiny full art', 'texture full art', 'full art promo', 'holo common', 'gold',
+        'prime', 'team plasma',
+    ];
+
+    /** A descriptor led by the card's number, as in `(98 Full Art)` or `(120 Secret Rare)`. */
+    private const string NUMBERED_DESCRIPTOR = '/\A\d+ (?:full art|secret rare|secret full art|full art secret rare)\z/';
+
+    /** An echo of an Unown's letter (`Unown [A]`, `Unown (!)`), which tells the Unown cards of one set apart. */
+    private const string UNOWN_LETTER = '/\A[A-Z!?]\z/';
 
     /** The Pokémon a Ditto printing is disguised as (EX Delta Species); a look-alike tag, not a deck. */
     private const array DITTO_LOOKALIKES = ['bulbasaur', 'charmander', 'geodude', 'mr. mime', 'pikachu', 'squirtle'];
@@ -157,6 +175,24 @@ final readonly class ProductName
         return null;
     }
 
+    /**
+     * The name to compare with the catalogue card: the base, the Unown letter when the product names exactly one
+     * (`Unown [A] (14)` is `Unown [A]`), and ` (Delta Species)` for a delta product.
+     */
+    public function compareName(): string
+    {
+        $name = $this->base;
+        if (self::key($this->base) === 'unown') {
+            $letters = array_values(array_filter($this->tags, fn (array $t): bool => $t['class'] === self::NUMBER_ECHO
+                && preg_match(self::UNOWN_LETTER, $t['tag']) === 1));
+            if (count($letters) === 1) {
+                $name .= ' ['.$letters[0]['tag'].']';
+            }
+        }
+
+        return $name.($this->isDelta() ? ' (Delta Species)' : '');
+    }
+
     public function isDelta(): bool
     {
         return in_array(self::DELTA, array_column($this->tags, 'class'), true);
@@ -232,6 +268,8 @@ final readonly class ProductName
             in_array($key, self::STAMPS, true) => [self::TREATMENT, 'stamp-'.self::slug($key)],
             preg_match(self::ECHO, $tag) === 1 => [self::NUMBER_ECHO, $tag],
             in_array($key, self::NEUTRALS, true),
+            in_array($key, self::DESCRIPTORS, true),
+            preg_match(self::NUMBERED_DESCRIPTOR, $key) === 1,
             preg_match(self::FORME, $key) === 1,
             self::key($base) === 'ditto' && in_array($key, self::DITTO_LOOKALIKES, true) => [self::NEUTRAL, null],
             default => [self::UNKNOWN, null],

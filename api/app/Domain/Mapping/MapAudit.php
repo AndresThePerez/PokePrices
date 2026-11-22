@@ -24,13 +24,20 @@ use RuntimeException;
  *  - ambiguity: the number join is recomputed from set_aliases and the dataset; a card is ambiguous when it
  *    is one of two or more candidates of a source item of the build. It fails when the mapped item that chose it
  *    records a method outside name_tiebreak, alias, golden; an item left in unmapped_source_items is `unmapped`.
+ *  - priced: of the dataset's cards, the share with at least one current source_product_map row, overall and per
+ *    era (the set's `series`). A card whose only products were rejected (left in unmapped_source_items) is reviewed,
+ *    so coverage accounts for it, but it is not priced here. Each share is held to a floor: the overall floor, the
+ *    era's own floor, or the default era floor for an era without one. The value is the number of floors missed out
+ *    of 1 + the number of eras. The details also list the build's unmapped card products (every reason except
+ *    `non_card` and `no_set_alias`), the dearest first by the collected day's market price, at most UNMAPPED_LIST.
+ *    The share comes from the map rows, never from the price tables, so it is right before a replay too.
  *
- * The audit only reads: the database, the dataset and the CSV.
+ * The audit only reads: the database, the dataset, the CSV and, for priced, the build's collected day.
  */
 final readonly class MapAudit
 {
     /** check name => gate id */
-    public const array CHECKS = ['names' => 'DC1', 'constraints' => 'DC3', 'coverage' => 'DC5', 'ambiguity' => 'DC6'];
+    public const array CHECKS = ['names' => 'DC1', 'constraints' => 'DC3', 'coverage' => 'DC5', 'ambiguity' => 'DC6', 'priced' => 'DC7'];
 
     /** The UNIQUE constraints the epoch rules require, as [table, columns]. */
     private const array REQUIRED_UNIQUE = [
@@ -41,6 +48,50 @@ final readonly class MapAudit
         ['unmapped_source_items', ['map_build_id', 'source', 'source_product_id', 'source_subtype']],
         ['unmapped_cards', ['map_build_id', 'source', 'card_id']],
     ];
+
+    /**
+     * The overall priced-card floor, in basis points of the dataset's cards (9600 is 96.00 %). Measured on the
+     * 2026-10-11 day with dataset 39a26a1: 89.46 % before the hyphen, Prism Star, Unown and descriptor rules, 97.86 %
+     * with them. The floor sits about two points under today's share and well above the old one.
+     */
+    public const int PRICED_FLOOR_BP = 9600;
+
+    /** The floor of an era that has none of its own in ERA_FLOORS_BP (a new series), in basis points. */
+    public const int DEFAULT_ERA_FLOOR_BP = 9000;
+
+    /**
+     * The priced-card floor of each era (the dataset set's `series`), in basis points: the era's share on the
+     * 2026-10-11 day (shown, then the share before the name and tag rules) rounded down about two points. E-Card
+     * (H-numbered holos) and NP (Nintendo promo tags) are known gaps held where they are.
+     */
+    public const array ERA_FLOORS_BP = [
+        'Base' => 9600,                    // 97.98, was 97.77
+        'Black & White' => 9650,           // 98.54, was 82.95
+        'Diamond & Pearl' => 9700,         // 99.22, was 95.78
+        'E-Card' => 8300,                  // 85.44, was 85.44
+        'EX' => 9700,                      // 98.98, was 98.81
+        'Gym' => 9800,                     // 100.00
+        'HeartGold & SoulSilver' => 9350,  // 95.60, was 88.26
+        'Mega Evolution' => 9500,          // 99.23, was 98.63; the current era, so new sets get room
+        'NP' => 1500,                      // 20.00, was 20.00
+        'Neo' => 9650,                     // 98.90, was 92.05
+        'Other' => 9600,                   // 98.30, was 98.30
+        'POP' => 9500,                     // 97.39, was 96.73
+        'Platinum' => 9600,                // 97.87, was 96.13
+        'Scarlet & Violet' => 9700,        // 99.08, was 99.08
+        'Sun & Moon' => 9500,              // 97.17, was 73.02
+        'Sword & Shield' => 9750,          // 99.35, was 89.88
+        'XY' => 9400,                      // 95.90, was 78.92
+    ];
+
+    /** The most unmapped products the priced check lists. */
+    public const int UNMAPPED_LIST = 25;
+
+    /** The era name of a set without a `series`. */
+    private const string NO_SERIES = '(no series)';
+
+    /** Unmapped reasons that are not card products of a catalogue set: sealed products and unaliased groups. */
+    private const array NOT_CARD_PRODUCTS = ['non_card', 'no_set_alias'];
 
     private const array ALLOWED_AMBIGUOUS = ['name_tiebreak', 'alias', 'golden', 'unmapped'];
 
@@ -75,9 +126,9 @@ final readonly class MapAudit
      * @param  array{id: int, snapshot_day: string, dataset_ref: string, marker: string}  $build
      * @return array<string, mixed>
      *
-     * @throws RuntimeException on an unknown check or an unreadable dataset
+     * @throws RuntimeException on an unknown check, an unreadable dataset or, for priced, an unreadable collected day
      */
-    public function run(string $check, array $build, string $datasetDir, string $aliasCsv): array
+    public function run(string $check, array $build, string $datasetDir, string $aliasCsv, string $snapshotsRoot = ''): array
     {
         $id = self::CHECKS[$check] ?? throw new RuntimeException("unknown check {$check}; use one of ".implode(', ', array_keys(self::CHECKS)));
         $inputs = ['snapshot_day' => $build['snapshot_day'], 'dataset_ref' => $build['dataset_ref'], 'marker' => $build['marker'], 'map_build_id' => $build['id']];
@@ -86,6 +137,7 @@ final readonly class MapAudit
             'names' => $this->names(self::readDataset($datasetDir)),
             'constraints' => $this->constraints(),
             'coverage' => $this->coverage(self::readDataset($datasetDir), $build['id'], $aliasCsv),
+            'priced' => $this->priced(self::readDataset($datasetDir), $build, $snapshotsRoot),
             default => $this->ambiguity(self::readDataset($datasetDir), $build['id']),
         };
 
@@ -94,7 +146,7 @@ final readonly class MapAudit
     }
 
     /**
-     * @param  array{sets: list<string>, cards: array<string, array{set: string, name: string, number: string}>}  $dataset
+     * @param  array{sets: list<string>, series: array<string, string>, cards: array<string, array{set: string, name: string, number: string}>}  $dataset
      * @return array{value: int, denominator: int, details: list<array<string, mixed>>}
      */
     private function names(array $dataset): array
@@ -105,7 +157,7 @@ final readonly class MapAudit
             $rows++;
             $card = $dataset['cards'][$row['card_id']] ?? null;
             $parsed = ProductName::parse($row['product_name']);
-            $compareAs = $parsed->base.($parsed->isDelta() ? ' (Delta Species)' : '');
+            $compareAs = $parsed->compareName();
             if ($card !== null && NameAliases::equal($card['name'], $compareAs)) {
                 continue;
             }
@@ -182,7 +234,7 @@ final readonly class MapAudit
     }
 
     /**
-     * @param  array{sets: list<string>, cards: array<string, array{set: string, name: string, number: string}>}  $dataset
+     * @param  array{sets: list<string>, series: array<string, string>, cards: array<string, array{set: string, name: string, number: string}>}  $dataset
      * @return array{value: int, denominator: int, details: list<array<string, mixed>>, coverage_pct: float, unlisted_sets: int}
      */
     private function coverage(array $dataset, int $buildId, string $aliasCsv): array
@@ -238,7 +290,148 @@ final readonly class MapAudit
     }
 
     /**
-     * @param  array{sets: list<string>, cards: array<string, array{set: string, name: string, number: string}>}  $dataset
+     * @param  array{sets: list<string>, series: array<string, string>, cards: array<string, array{set: string, name: string, number: string}>}  $dataset
+     * @param  array{id: int, snapshot_day: string, dataset_ref: string, marker: string}  $build
+     * @return array{value: int, denominator: int, details: list<array<string, mixed>>, priced_pct: float, floor_pct: float}
+     *
+     * @throws RuntimeException when the build's collected day is missing or a prices file is unreadable
+     */
+    private function priced(array $dataset, array $build, string $snapshotsRoot): array
+    {
+        $snapshot = SnapshotReader::open($snapshotsRoot, $build['snapshot_day']);
+        $mapped = [];
+        foreach ($this->mappedRows() as $row) {
+            $mapped[$row['card_id']] = true;
+        }
+
+        $total = 0;
+        $priced = 0;
+        /** @var array<string, array{cards: int, priced: int}> $eras */
+        $eras = [];
+        foreach ($dataset['cards'] as $id => $card) {
+            $era = $dataset['series'][$card['set']] ?? self::NO_SERIES;
+            $eras[$era] ??= ['cards' => 0, 'priced' => 0];
+            $eras[$era]['cards']++;
+            $total++;
+            if (isset($mapped[$id])) {
+                $eras[$era]['priced']++;
+                $priced++;
+            }
+        }
+        ksort($eras, SORT_STRING);
+
+        $shares = [self::share('overall', null, $total, $priced, self::PRICED_FLOOR_BP)];
+        foreach ($eras as $era => $n) {
+            $era = (string) $era;
+            $shares[] = self::share('era', $era, $n['cards'], $n['priced'], self::ERA_FLOORS_BP[$era] ?? self::DEFAULT_ERA_FLOOR_BP);
+        }
+        $missed = count(array_filter($shares, fn (array $s): bool => $s['met'] === false));
+
+        return [
+            'value' => $missed,
+            'denominator' => count($shares),
+            'details' => [...$shares, ...$this->unmappedProducts($build['id'], $snapshot)],
+            'priced_pct' => $shares[0]['share_pct'],
+            'floor_pct' => self::PRICED_FLOOR_BP / 100.0,
+        ];
+    }
+
+    /**
+     * @return array{kind: string, scope: string, series: string|null, cards: int, priced: int, share_pct: float, floor_pct: float, met: bool}
+     */
+    private static function share(string $scope, ?string $series, int $cards, int $priced, int $floorBp): array
+    {
+        return [
+            'kind' => 'priced_share',
+            'scope' => $scope,
+            'series' => $series,
+            'cards' => $cards,
+            'priced' => $priced,
+            'share_pct' => $cards === 0 ? 0.0 : round($priced / $cards * 100, 2),
+            'floor_pct' => $floorBp / 100.0,
+            'met' => $priced * 10000 >= $floorBp * $cards,
+        ];
+    }
+
+    /**
+     * The build's unmapped card products, the dearest first by the collected day's market price (a product without
+     * one last), then by product id and subtype; at most UNMAPPED_LIST. Prices are held in memory only.
+     *
+     * @return list<array<string, mixed>>
+     */
+    private function unmappedProducts(int $buildId, SnapshotReader $snapshot): array
+    {
+        $rows = $this->db->table('unmapped_source_items')->where('map_build_id', $buildId)->where('source', MapBuilder::SOURCE)
+            ->whereNotIn('reason', self::NOT_CARD_PRODUCTS)->orderBy('id')
+            ->get(['source_group_id', 'source_product_id', 'source_subtype', 'product_name', 'number', 'reason', 'candidates']);
+        $items = [];
+        $prices = [];
+        foreach ($rows as $row) {
+            $r = (array) $row;
+            $group = (int) $r['source_group_id'];
+            $prices[$group] ??= self::marketPrices($snapshot, $group);
+            $candidates = json_decode((string) $r['candidates'], true);
+            $items[] = [
+                'kind' => 'unmapped_product',
+                'rank' => 0,
+                'group_id' => $group,
+                'product_id' => (int) $r['source_product_id'],
+                'subtype' => (string) $r['source_subtype'],
+                'product_name' => (string) $r['product_name'],
+                'number' => is_string($r['number']) ? $r['number'] : null,
+                'reason' => (string) $r['reason'],
+                'candidates' => is_array($candidates) ? array_values(array_map('strval', $candidates)) : [],
+                'market_price' => $prices[$group][$r['source_product_id'].'|'.$r['source_subtype']] ?? null,
+            ];
+        }
+        usort($items, fn (array $a, array $b): int => [$a['market_price'] === null, -($a['market_price'] ?? 0.0), $a['product_id'], $a['subtype']]
+            <=> [$b['market_price'] === null, -($b['market_price'] ?? 0.0), $b['product_id'], $b['subtype']]);
+        $items = array_slice($items, 0, self::UNMAPPED_LIST);
+        foreach ($items as $i => $item) {
+            $items[$i]['rank'] = $i + 1;
+        }
+
+        return $items;
+    }
+
+    /**
+     * The market price per "productId|subTypeName" of one group of the collected day (first row wins, as in
+     * SnapshotReader); empty for a group the day has no prices file for.
+     *
+     * @return array<string, float|null>
+     *
+     * @throws RuntimeException when the prices file does not decode
+     */
+    private static function marketPrices(SnapshotReader $snapshot, int $group): array
+    {
+        $path = "{$snapshot->dir}/prices/{$group}.json.zst";
+        if (! is_file($path)) {
+            return [];
+        }
+        $bytes = @file_get_contents($path);
+        $plain = is_string($bytes) && $bytes !== '' ? @zstd_uncompress($bytes) : false;
+        $document = is_string($plain) && $plain !== '' ? json_decode($plain, true) : null;
+        if (! is_array($document) || ($document['success'] ?? null) !== true || ! is_array($document['results'] ?? null)) {
+            throw new RuntimeException("{$path} is not a readable TCGCSV prices document");
+        }
+
+        $out = [];
+        foreach ($document['results'] as $row) {
+            if (! is_array($row) || ! is_int($row['productId'] ?? null) || ! is_string($row['subTypeName'] ?? null)) {
+                throw new RuntimeException("{$path} has a price row without an integer productId and a subTypeName");
+            }
+            $key = $row['productId'].'|'.$row['subTypeName'];
+            if (! array_key_exists($key, $out)) {
+                $market = $row['marketPrice'] ?? null;
+                $out[$key] = is_int($market) || is_float($market) ? (float) $market : null;
+            }
+        }
+
+        return $out;
+    }
+
+    /**
+     * @param  array{sets: list<string>, series: array<string, string>, cards: array<string, array{set: string, name: string, number: string}>}  $dataset
      * @return array{value: int, denominator: int, details: list<array<string, mixed>>}
      */
     private function ambiguity(array $dataset, int $buildId): array
@@ -338,18 +531,20 @@ final readonly class MapAudit
     /**
      * The dataset's set ids and its cards by id.
      *
-     * @return array{sets: list<string>, cards: array<string, array{set: string, name: string, number: string}>}
+     * @return array{sets: list<string>, series: array<string, string>, cards: array<string, array{set: string, name: string, number: string}>}
      */
     private static function readDataset(string $dir): array
     {
         $dir = rtrim($dir, '/');
         $sets = [];
+        $series = [];
         $cards = [];
         foreach (self::readJsonList($dir.'/sets/en.json') as $set) {
             if (! is_array($set) || ! is_string($set['id'] ?? null)) {
                 throw new RuntimeException("{$dir}/sets/en.json has a set without an id");
             }
             $sets[] = $set['id'];
+            $series[$set['id']] = is_string($set['series'] ?? null) && trim($set['series']) !== '' ? $set['series'] : self::NO_SERIES;
             foreach (self::readJsonList("{$dir}/cards/en/{$set['id']}.json") as $card) {
                 if (! is_array($card) || ! is_string($card['id'] ?? null) || ! is_string($card['name'] ?? null) || ! is_string($card['number'] ?? null)) {
                     throw new RuntimeException("{$dir}/cards/en/{$set['id']}.json has a card without an id, a name and a number");
@@ -358,7 +553,7 @@ final readonly class MapAudit
             }
         }
 
-        return ['sets' => $sets, 'cards' => $cards];
+        return ['sets' => $sets, 'series' => $series, 'cards' => $cards];
     }
 
     /** @return list<mixed> */

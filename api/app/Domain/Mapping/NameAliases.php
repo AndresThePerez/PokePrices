@@ -14,6 +14,12 @@ use Normalizer;
  * names only, a leading `Delta ` word is the same marker: the product `Delta Rainbow Energy` is the card `δ Rainbow
  * Energy` and never the plain `Rainbow Energy`. A name must read `Delta <name> Energy` as a whole for this, so sealed
  * products (`Delta Species Booster Pack`) and a bare `Delta Energy` keep the word.
+ *
+ * Three catalogue spellings meet the product's: the hyphen of an upper-case `-EX` or `-GX` suffix is a space
+ * (`Charizard-GX` is `Charizard GX`, `Ash-Greninja-EX` is `Ash-Greninja EX`; `Porygon-Z` keeps its hyphen), the Prism
+ * Star diamond `◇` reads as `Prism Star`, and an Unown letter in either bracket (`Unown [J]`, `Unown (J)`) is one
+ * form. Unown letters stay apart; a plain `Unown` card, whose letter is its number (EX Unseen Forces), meets a
+ * product that names a letter, but a lettered card never meets a product without one.
  */
 final class NameAliases
 {
@@ -28,6 +34,11 @@ final class NameAliases
         'm' => 'metal',
     ];
 
+    /** The catalogue's hyphenated suffixes; only these two, upper case, at the end of a word. */
+    private const string HYPHEN_SUFFIX = '/-(EX|GX)(?=\s|\z)/u';
+
+    private const string UNOWN_LETTER = '/\Aunown [\[(]([a-z!?])[\])]\z/u';
+
     private const array SPELLINGS = [
         '/\bimposter\b/u' => 'impostor',
         '/\bdrowsee\b/u' => 'drowzee',
@@ -41,8 +52,11 @@ final class NameAliases
         if ($productDelta && ! $cardDelta) {
             return false;
         }
+        if ($card === $product) {
+            return true;
+        }
 
-        return $card === $product;
+        return $card === 'unown' && preg_match('/\Aunown \[[a-z!?]\]\z/u', $product) === 1;
     }
 
     /**
@@ -53,9 +67,10 @@ final class NameAliases
      */
     private static function canonical(string $name): array
     {
+        $name = (string) preg_replace(self::HYPHEN_SUFFIX, ' $1', $name);
         $folded = Normalizer::normalize($name, Normalizer::FORM_KD);
         $s = (string) preg_replace('/\p{Mn}+/u', '', $folded === false ? $name : $folded);
-        $s = str_replace(['’', '‘', '★', '♂', '♀'], ["'", "'", ' star ', ' m ', ' f '], $s);
+        $s = str_replace(['’', '‘', '★', '◇', '♂', '♀'], ["'", "'", ' star ', ' prism star ', ' m ', ' f '], $s);
         $s = mb_strtolower($s);
 
         $delta = false;
@@ -73,6 +88,7 @@ final class NameAliases
         foreach (self::SPELLINGS as $pattern => $canonical) {
             $s = (string) preg_replace($pattern, $canonical, $s);
         }
+        $s = (string) preg_replace(self::UNOWN_LETTER, 'unown [$1]', $s);
         $s = (string) preg_replace_callback(
             '/\b([rwglpfdm]) energy\b/u',
             fn (array $m): string => self::ENERGY_LETTERS[$m[1]].' energy',
