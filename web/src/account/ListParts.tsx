@@ -68,12 +68,25 @@ export function SignedOutList({ list }: { readonly list: 'watchlist' | 'portfoli
 
 /**
  * The list's one source-and-"as of" line (daysText): one day as its "as of" line, several as
- * their first and last; nothing when no row has a price.
+ * their first and last, followed by `base`, the line that names what each row's change is
+ * measured against (the short rows show only an arrow and a percent); nothing when no row has a
+ * price.
  */
-export function ListStamp({ rows }: { readonly rows: readonly ListRow[] }) {
+export function ListStamp({
+  rows,
+  base,
+}: {
+  readonly rows: readonly ListRow[];
+  readonly base: string;
+}) {
   const days = priceDays(rows);
   if (days === null) return null;
-  return <p className={`mt-6 text-meta ${MUTED}`}>{daysText(days.first, days.last)}</p>;
+  return (
+    <>
+      <p className={`mt-6 text-meta ${MUTED}`}>{daysText(days.first, days.last)}</p>
+      <p className={`text-meta ${MUTED}`}>{base}</p>
+    </>
+  );
 }
 
 /**

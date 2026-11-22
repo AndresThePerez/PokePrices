@@ -34,6 +34,11 @@ import { useAccountWrite } from './mutations';
 import { useSession } from './session';
 
 const EMPTY = 'Your portfolio is empty. Open a card from Search and choose Add to portfolio.';
+/**
+ * What each short row's change is measured against, printed once under the total's days line: the
+ * card's daily close against its previous close, never a gain or loss on the holding.
+ */
+const BASE = "Change is each card's close vs its previous close, not a gain on your holding.";
 const LOADING = 'Loading your portfolio…';
 const NOT_COUNTED = 'No price in the collected snapshots; not counted in the total.';
 const CONTEXT = 'Could not change your portfolio';
@@ -135,7 +140,10 @@ function unpricedLine(count: number): string | null {
     : `${String(count)} holdings have no price in the collected snapshots and are not counted.`;
 }
 
-/** The summary panel: the API's total, the days it rests on and what it leaves out. */
+/**
+ * The summary panel: the API's total, the days it rests on (the list's one stamp), what it leaves
+ * out, and what each row's change is measured against.
+ */
 function Total({ meta }: { readonly meta: PortfolioBody['meta'] }) {
   if (meta.total_value === null) {
     return (
@@ -151,6 +159,7 @@ function Total({ meta }: { readonly meta: PortfolioBody['meta'] }) {
       <p className="num text-2xl font-semibold wrap-anywhere sm:text-4xl">{`Total value $${grouped(meta.total_value)}`}</p>
       {days !== null && <p className={`mt-1 text-meta ${MUTED}`}>{days}</p>}
       {unpriced !== null && <p className="mt-3 text-sm">{unpriced}</p>}
+      {days !== null && <p className={`mt-3 text-meta ${MUTED}`}>{BASE}</p>}
     </Panel>
   );
 }

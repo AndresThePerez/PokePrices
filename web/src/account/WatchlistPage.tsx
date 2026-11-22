@@ -37,6 +37,8 @@ import { useAccountWrite } from './mutations';
 import { useSession } from './session';
 
 const EMPTY = 'Your watchlist is empty. Open a card from Search and choose Add to watchlist.';
+/** What each short row's change is measured against, printed once under the list's stamp. */
+const BASE = 'Change vs previous close.';
 const LOADING = 'Loading your watchlist…';
 const UNVERIFIED_LINE = 'Verify your email address to set alerts.';
 
@@ -215,7 +217,7 @@ function Loaded({ body, access }: { readonly body: WatchlistBody; readonly acces
         <p className="mt-6">{EMPTY}</p>
       ) : (
         <>
-          <ListStamp rows={body.data} />
+          <ListStamp rows={body.data} base={BASE} />
           <ul
             aria-label="Watchlist"
             className="mt-6 divide-y divide-line-subtle border-y border-line-subtle"

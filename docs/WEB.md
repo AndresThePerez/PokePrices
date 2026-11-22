@@ -43,7 +43,8 @@ prices get into the database is in [`OPERATIONS.md`](OPERATIONS.md).
 - **`/watchlist`.** The variants a person watches, each a short row with the card's picture, the card name from
   PokéSearch (`Card <id>` while it is unavailable) and a `Remove` button. One line above the list stamps it:
   `as of <day> from TCGCSV (daily close)`, or `Closes from <first day> to <last day> from TCGCSV (daily close)`
-  when the rows' closes are of different days, and then each row also shows `Close of <day>`. For a
+  when the rows' closes are of different days, and then each row also shows `Close of <day>`. Right under the
+  stamp, `Change vs previous close.` names what each row's change is measured against, for every session. For a
   signed-in, verified account each row also shows `Alert: at <n>%` or `Alert: off`, a select `Alert threshold`
   (`Off`, `5%`, `10%`, `20%`, `50%`, plus the stored value when it is another number) and a `Save alert` button; `Off`
   removes the threshold. Below the list a line explains that an alert is sent when a card's daily close moves by at
@@ -52,7 +53,9 @@ prices get into the database is in [`OPERATIONS.md`](OPERATIONS.md).
 - **`/portfolio`.** The variants a person holds with a quantity, each a short row with the card's picture and its
   value, and a total computed by the API that names the days it rests on; that line is the list's one stamp (each
   row also shows `Close of <day>` when the days differ). A holding without a price is not valued and is named as
-  not counted.
+  not counted. The total's panel ends with `Change is each card's close vs its previous close, not a gain on your
+  holding.`, which names what each row's change is measured against: it is the card's daily-close change, not a
+  return on the holding.
 - **`/alerts`.** `Alerts and webhooks`, linked from `/account` (the header is unchanged). It needs a signed-in
   account: signed out it offers `Sign in` and `Create an account`; as the demo it says the read-only demo cannot set
   alerts or add webhooks and shows no form; an unverified account is asked to verify its email address and sees its
@@ -95,7 +98,9 @@ home-strip row. Every ticker shows, from the API only:
 
 A list stamped once uses a **short row**, so a phone shows more of it: the price as `$<close>` and the change
 as the arrow with the signed percentage (`▲ +<pct>%`, `▼ -<pct>%`; the signed amount when the API sent no
-percentage; `No change`; `No previous close yet`). The full ticker lines above, `Market price $<close>`, the
+percentage; `No change`; `No previous close yet`). Each such list says once, in visible text, that the change is
+against the previous close: the movers board and the home strip in their scope line (`Ranked by change vs
+previous close …`), the watchlist under its stamp and the portfolio at the end of its total's panel. The full ticker lines above, `Market price $<close>`, the
 change line with its previous day and the row's own `as of` line, stay in each row's accessible name, so a
 screen reader reads them in full; the card page always prints them in full.
 
