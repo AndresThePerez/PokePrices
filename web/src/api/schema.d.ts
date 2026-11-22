@@ -578,6 +578,7 @@ export interface components {
                 name: string;
                 set_name: string;
                 number: string;
+                image_small?: string;
             } | null;
             price: {
                 source: string;
@@ -612,6 +613,7 @@ export interface components {
                 name: string;
                 set_name: string;
                 number: string;
+                image_small?: string;
             } | null;
             variant_key: string;
             finish: string;
@@ -683,6 +685,7 @@ export interface components {
                 name: string;
                 set_name: string;
                 number: string;
+                image_small?: string;
             } | null;
             price: {
                 source: string;

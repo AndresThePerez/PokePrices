@@ -59,7 +59,7 @@ it('values D9\'s worked example exactly: 968.91, 79.02, total 1047.93, the unpri
         ->and($data[0]['price'])->toBeNull()
         ->and($data[2])->toBe([
             'variant_key' => 'ex5-17:reverse:-:-', 'card_id' => 'ex5-17', 'finish' => 'reverse', 'edition' => '-', 'treatment' => '-',
-            'card' => ['name' => 'Name of ex5-17', 'set_name' => 'Set of ex5-17', 'number' => '4'],
+            'card' => ['name' => 'Name of ex5-17', 'set_name' => 'Set of ex5-17', 'number' => '4', 'image_small' => 'https://images.example.com/card.png'],
             'price' => [
                 'source' => 'tcgplayer', 'feed' => 'tcgcsv', 'basis' => 'market', 'currency' => 'USD', 'cadence' => 'daily',
                 'close' => '26.34', 'day' => '2026-10-12', 'as_of' => '2026-10-12T20:05:45Z', 'previous_close' => '25.00',

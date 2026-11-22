@@ -10,7 +10,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * One ranked mover as GET /v1/movers answers it: the variant with its card id, the card's name, set
- * name and number from the PokéSearch catalog or null, finish, edition and treatment, its close, the
+ * name and number from the PokéSearch catalog or null (with image_small, the catalog's small image URL, when the
+ * catalog gives one), finish, edition and treatment, its close, the
  * previous close it is compared with, and the change.
  * Money and change_pct are decimal strings with two decimals as Postgres numeric(12,2) gives them.
  *
@@ -19,7 +20,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
 final class MoverResource extends JsonResource
 {
     /**
-     * @return array{rank: int, card_id: string, card: array{name: string, set_name: string, number: string}|null, variant_key: string, finish: string, edition: string, treatment: string, close: string, previous_close: string, previous_day: string, change: string, change_pct: string, series_epoch: int}
+     * @return array{rank: int, card_id: string, card: array{name: string, set_name: string, number: string, image_small?: string}|null, variant_key: string, finish: string, edition: string, treatment: string, close: string, previous_close: string, previous_day: string, change: string, change_pct: string, series_epoch: int}
      */
     public function toArray(Request $request): array
     {
@@ -43,9 +44,10 @@ final class MoverResource extends JsonResource
     }
 
     /**
-     * The name the controller attached from the catalog, re-checked so the closed shape always holds.
+     * The name the controller attached from the catalog, re-checked so the closed shape always holds: image_small
+     * only when it is a string that is not blank.
      *
-     * @return array{name: string, set_name: string, number: string}|null
+     * @return array{name: string, set_name: string, number: string, image_small?: string}|null
      */
     private static function card(mixed $card): ?array
     {
@@ -53,6 +55,9 @@ final class MoverResource extends JsonResource
             return null;
         }
 
-        return ['name' => $card['name'], 'set_name' => $card['set_name'], 'number' => $card['number']];
+        $named = ['name' => $card['name'], 'set_name' => $card['set_name'], 'number' => $card['number']];
+        $image = $card['image_small'] ?? null;
+
+        return is_string($image) && trim($image) !== '' ? $named + ['image_small' => $image] : $named;
     }
 }

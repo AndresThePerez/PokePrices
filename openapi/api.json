@@ -3102,6 +3102,9 @@
                             },
                             "number": {
                                 "type": "string"
+                            },
+                            "image_small": {
+                                "type": "string"
                             }
                         },
                         "required": [
@@ -3257,6 +3260,9 @@
                                 "type": "string"
                             },
                             "number": {
+                                "type": "string"
+                            },
+                            "image_small": {
                                 "type": "string"
                             }
                         },
@@ -3518,6 +3524,9 @@
                                 "type": "string"
                             },
                             "number": {
+                                "type": "string"
+                            },
+                            "image_small": {
                                 "type": "string"
                             }
                         },

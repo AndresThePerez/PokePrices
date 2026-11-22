@@ -310,7 +310,9 @@ it('documents the named rows and a required boolean meta.degraded', function ():
         ->and(array_slice(array_keys($mover['properties']), 0, 3))->toBe(['rank', 'card_id', 'card'])
         ->and($mover['properties']['card'])->toBe([
             'type' => ['object', 'null'],
-            'properties' => ['name' => ['type' => 'string'], 'set_name' => ['type' => 'string'], 'number' => ['type' => 'string']],
+            'properties' => ['name' => ['type' => 'string'], 'set_name' => ['type' => 'string'], 'number' => ['type' => 'string'],
+                'image_small' => ['type' => 'string']],
+            // image_small is optional: a cached name written before it was kept has none.
             'required' => ['name', 'set_name', 'number'],
             'additionalProperties' => false,
         ])

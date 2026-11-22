@@ -146,8 +146,13 @@ const PRICE = fields({
   change_pct: orNull(text),
 });
 
-/** The catalog naming of a list row (movers, watchlist, portfolio); null when not in the catalog. */
-const ROW_CARD = orNull(fields({ name: text, set_name: text, number: text }));
+/**
+ * The catalog naming of a list row (movers, watchlist, portfolio), with the card's small image URL
+ * when the catalog gives one (CardThumbnail); null when not in the catalog.
+ */
+const ROW_CARD = orNull(
+  fields({ name: text, set_name: text, number: text, image_small: ifPresent(text) }),
+);
 
 const SEARCH = fields({
   data: listOf(

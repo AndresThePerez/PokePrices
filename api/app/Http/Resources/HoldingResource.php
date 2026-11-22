@@ -21,7 +21,7 @@ final class HoldingResource extends JsonResource
     }
 
     /**
-     * @return array{variant_key: string, card_id: string, finish: string, edition: string, treatment: string, card: array{name: string, set_name: string, number: string}|null, price: array{source: string, feed: string, basis: string, currency: string, cadence: string, close: string, day: string, as_of: string, previous_close: string|null, previous_day: string|null, change: string|null, change_pct: string|null, series_epoch: int}|null, quantity: int, value: string|null}
+     * @return array{variant_key: string, card_id: string, finish: string, edition: string, treatment: string, card: array{name: string, set_name: string, number: string, image_small?: string}|null, price: array{source: string, feed: string, basis: string, currency: string, cadence: string, close: string, day: string, as_of: string, previous_close: string|null, previous_day: string|null, change: string|null, change_pct: string|null, series_epoch: int}|null, quantity: int, value: string|null}
      */
     public function toArray(Request $request): array
     {

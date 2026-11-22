@@ -9,8 +9,8 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 /**
  * One variant on the watchlist as GET /v1/watchlist lists it: the variant, its card's name, set name
- * and number from the PokéSearch catalog (null when PokéSearch does not have the id or is unavailable without a last
- * good copy), the card page's price block from price_latest (null without a close in the collected snapshots) and,
+ * and number from the PokéSearch catalog, with image_small (the catalog's small image URL) when the catalog gives one
+ * (null when PokéSearch does not have the id or is unavailable without a last good copy), the card page's price block from price_latest (null without a close in the collected snapshots) and,
  * last, its alert threshold in whole percent (null when no alert is set). Holdings share fields(),
  * which has no alert_pct.
  */
@@ -23,7 +23,7 @@ final class WatchlistItemResource extends JsonResource
     }
 
     /**
-     * @return array{variant_key: string, card_id: string, finish: string, edition: string, treatment: string, card: array{name: string, set_name: string, number: string}|null, price: array{source: string, feed: string, basis: string, currency: string, cadence: string, close: string, day: string, as_of: string, previous_close: string|null, previous_day: string|null, change: string|null, change_pct: string|null, series_epoch: int}|null, alert_pct: int|null}
+     * @return array{variant_key: string, card_id: string, finish: string, edition: string, treatment: string, card: array{name: string, set_name: string, number: string, image_small?: string}|null, price: array{source: string, feed: string, basis: string, currency: string, cadence: string, close: string, day: string, as_of: string, previous_close: string|null, previous_day: string|null, change: string|null, change_pct: string|null, series_epoch: int}|null, alert_pct: int|null}
      */
     public function toArray(Request $request): array
     {
@@ -41,7 +41,7 @@ final class WatchlistItemResource extends JsonResource
      * The item fields, shared with HoldingResource.
      *
      * @param  array<string, mixed>  $row
-     * @return array{variant_key: string, card_id: string, finish: string, edition: string, treatment: string, card: array{name: string, set_name: string, number: string}|null, price: array{source: string, feed: string, basis: string, currency: string, cadence: string, close: string, day: string, as_of: string, previous_close: string|null, previous_day: string|null, change: string|null, change_pct: string|null, series_epoch: int}|null}
+     * @return array{variant_key: string, card_id: string, finish: string, edition: string, treatment: string, card: array{name: string, set_name: string, number: string, image_small?: string}|null, price: array{source: string, feed: string, basis: string, currency: string, cadence: string, close: string, day: string, as_of: string, previous_close: string|null, previous_day: string|null, change: string|null, change_pct: string|null, series_epoch: int}|null}
      */
     public static function fields(array $row): array
     {
@@ -51,7 +51,7 @@ final class WatchlistItemResource extends JsonResource
             'finish' => self::text($row['finish'] ?? null),
             'edition' => self::text($row['edition'] ?? null),
             'treatment' => self::text($row['treatment'] ?? null),
-            /** @var array{name: string, set_name: string, number: string}|null */
+            /** @var array{name: string, set_name: string, number: string, image_small?: string}|null */
             'card' => self::card($row['card'] ?? null),
             /** @var array{source: string, feed: string, basis: string, currency: string, cadence: string, close: string, day: string, as_of: string, previous_close: string|null, previous_day: string|null, change: string|null, change_pct: string|null, series_epoch: int}|null */
             'price' => PriceBlock::fromRow($row),
@@ -64,9 +64,10 @@ final class WatchlistItemResource extends JsonResource
     }
 
     /**
-     * The name the controller attached from the catalog, re-checked so the closed shape always holds.
+     * The name the controller attached from the catalog, re-checked so the closed shape always holds: image_small
+     * only when it is a string that is not blank.
      *
-     * @return array{name: string, set_name: string, number: string}|null
+     * @return array{name: string, set_name: string, number: string, image_small?: string}|null
      */
     private static function card(mixed $card): ?array
     {
@@ -74,6 +75,9 @@ final class WatchlistItemResource extends JsonResource
             return null;
         }
 
-        return ['name' => $card['name'], 'set_name' => $card['set_name'], 'number' => $card['number']];
+        $named = ['name' => $card['name'], 'set_name' => $card['set_name'], 'number' => $card['number']];
+        $image = $card['image_small'] ?? null;
+
+        return is_string($image) && trim($image) !== '' ? $named + ['image_small' => $image] : $named;
     }
 }

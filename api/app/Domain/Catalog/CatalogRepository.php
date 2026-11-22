@@ -24,7 +24,8 @@ use LogicException;
  *   writes catalog:v1:seed_ref:last on redis-queue (30 days), the copy used while PokéSearch is down. A read
  *   whose ref differs from that copy queues VerifyCatalog.
  * - Card: catalog:v1:card:{seedRef}:{id}, flexible [3600, 86400]; a 404 is remembered 60 s under …:none.
- * - Card names (the movers): catalog:v1:cardname:{seedRef}:{id}, judged against [3600, 86400] by
+ * - Card names (the movers, the watchlist, the portfolio): catalog:v1:cardname:{seedRef}:{id}, each value
+ *   {name, set_name, number} plus image_small when the catalog gave one, judged against [3600, 86400] by
  *   fetched_at and filled in one batch (cardNames()); …:none for 60 s, last-good catalog:v1:lastgood:cardname:{id}.
  * - Search: catalog:v1:search:{seedRef}:{sha1(normalised q|page|page_size)}, flexible [300, 900].
  * - Every upstream success also writes a last-good copy, catalog:v1:lastgood:{card|search}:…, for 7 days.
@@ -172,7 +173,8 @@ final class CatalogRepository
     /**
      * The name, set name and number of each card id, read in one batch.
      *
-     * Every distinct id maps to {name, set_name, number} or null; it never throws. An id failing CardId maps to
+     * Every distinct id maps to {name, set_name, number, and image_small when the catalog gives one} or null;
+     * it never throws. An id failing CardId maps to
      * null and is never sent. Each valid id is read from its own key catalog:v1:cardname:{seedRef}:{id} and judged
      * against CARD_TTL by its fetched_at: fresh, stale-but-live, or absent (none, or past the hard window). Ids
      * under a live 60 s …:none marker are null. When any id is absent, the absent ids and every stale-but-live
@@ -184,7 +186,7 @@ final class CatalogRepository
      * (7 days), else its stale-but-live name, else null. The card page's catalog:v1:card:* keys are never touched.
      *
      * @param  list<string>  $ids
-     * @return array{cards: array<string, array{name: string, set_name: string, number: string}|null>, degraded: bool}
+     * @return array{cards: array<string, array{name: string, set_name: string, number: string, image_small?: string}|null>, degraded: bool}
      */
     public function cardNames(array $ids): array
     {
@@ -265,7 +267,7 @@ final class CatalogRepository
      * fresh or under a negative marker; the cached names are then answered without a request.
      *
      * @param  list<string>  $batch  sorted
-     * @return array<string, array{name: string, set_name: string, number: string}|null>
+     * @return array<string, array{name: string, set_name: string, number: string, image_small?: string}|null>
      *
      * @throws UpstreamUnavailable when PokéSearch failed or another filler held the lock for 2 s
      * @throws UpstreamContract when the answer's data or missing is not a list
@@ -278,7 +280,7 @@ final class CatalogRepository
         }
 
         try {
-            /** @var array<string, array{name: string, set_name: string, number: string}|null> $names */
+            /** @var array<string, array{name: string, set_name: string, number: string, image_small?: string}|null> $names */
             $names = $locks->lock('catalog:v1:fill:cardnames:'.sha1(implode(',', $batch)), self::FILL_LOCK_SECONDS)->block(
                 self::FILL_WAIT_SECONDS,
                 fn (): array => $this->settledNames($segment, $batch) ?? $this->fetchNames($segment, $batch),
@@ -294,7 +296,7 @@ final class CatalogRepository
      * Every id's fresh name or negative answer, or null as soon as one id has neither.
      *
      * @param  list<string>  $ids
-     * @return array<string, array{name: string, set_name: string, number: string}|null>|null
+     * @return array<string, array{name: string, set_name: string, number: string, image_small?: string}|null>|null
      */
     private function settledNames(string $segment, array $ids): ?array
     {
@@ -323,7 +325,7 @@ final class CatalogRepository
      * copy; a missing id gets the 60 s negative marker; a malformed card is logged by id and cached nowhere.
      *
      * @param  list<string>  $batch
-     * @return array<string, array{name: string, set_name: string, number: string}|null>
+     * @return array<string, array{name: string, set_name: string, number: string, image_small?: string}|null>
      *
      * @throws UpstreamUnavailable when PokéSearch cannot be reached or answers 5xx
      * @throws UpstreamContract when the answer is not a JSON object or its data or missing is not a list
@@ -372,7 +374,7 @@ final class CatalogRepository
         return $names;
     }
 
-    /** @return array{name: string, set_name: string, number: string}|null */
+    /** @return array{name: string, set_name: string, number: string, image_small?: string}|null */
     private function lastGoodName(string $id): ?array
     {
         $envelope = self::live($this->store->get(self::lastGoodNameKey($id)), self::LAST_GOOD_SECONDS);
@@ -381,9 +383,11 @@ final class CatalogRepository
     }
 
     /**
-     * The name, set_name and number of a PokéSearch card or a cached name, each a string, else null.
+     * The name, set_name and number of a PokéSearch card or a cached name, each a string, else null; with
+     * image_small when it is a string that is not blank. image_small is optional, so a cached name written
+     * before it was kept still reads, without it.
      *
-     * @return array{name: string, set_name: string, number: string}|null
+     * @return array{name: string, set_name: string, number: string, image_small?: string}|null
      */
     private static function cardName(mixed $card): ?array
     {
@@ -396,8 +400,10 @@ final class CatalogRepository
         if (! is_string($name) || ! is_string($setName) || ! is_string($number)) {
             return null;
         }
+        $named = ['name' => $name, 'set_name' => $setName, 'number' => $number];
+        $image = $card['image_small'] ?? null;
 
-        return ['name' => $name, 'set_name' => $setName, 'number' => $number];
+        return is_string($image) && trim($image) !== '' ? $named + ['image_small' => $image] : $named;
     }
 
     private static function nameKey(string $segment, string $id): string
