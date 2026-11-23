@@ -62,7 +62,9 @@ describe('the sign-up page (T03 criterion 3, D10)', () => {
     visit('/sign-up');
     render(<App />);
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Create an account');
-    expect(within(main()).getByText('PokéPrices accounts are invite-only.')).toBeTruthy();
+    expect(
+      within(main()).getByText('Accounts are invite-only for the moment. Try the read-only demo.'),
+    ).toBeTruthy();
     expect(field('Invite code').getAttribute('autocomplete')).toBe('off');
     expect(field('Email').getAttribute('autocomplete')).toBe('email');
     expect(field('Email').getAttribute('type')).toBe('email');
@@ -290,14 +292,17 @@ describe('the sign-up panel (D2-i2-T06, D0-F09)', () => {
     expect(
       submitButton.compareDocumentPosition(signIn) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
-    const heading = within(main()).getByRole('heading', { level: 2, name: 'Just looking?' });
     const demo = within(main()).getByRole<HTMLButtonElement>('button', {
       name: 'Try the read-only demo',
     });
     expect(demo.type).toBe('button');
     expect(demo.closest('form')).toBeNull();
-    expect(signIn.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
-    expect(within(main()).getByText(DEMO_SENTENCE)).toBeTruthy();
+    // The demo sits beside the invite-only sentence, above the form: no Just looking? panel here.
+    expect(within(main()).queryByRole('heading', { level: 2, name: 'Just looking?' })).toBeNull();
+    expect(
+      demo.compareDocumentPosition(submitButton) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(within(main()).queryByText(DEMO_SENTENCE)).toBeNull();
     expect(calls).toHaveLength(0);
   });
 });

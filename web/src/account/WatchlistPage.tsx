@@ -1,7 +1,8 @@
 // /watchlist: the signed-in account's variants over GET /v1/watchlist, each row the short movers
 // row under the list's one source-and-"as of" line (a row shows its own day only when the rows'
-// days differ). Signed out, it offers sign-in, sign-up and the demo; the demo sees its rows
-// without a Remove button. A verified account that is not the demo also sets each row's alert
+// days differ). Signed out, it offers sign-in, sign-up and the demo; the demo (useReadOnly) sees
+// its rows without a Remove button, and its seeded alert as a sample line. A verified account
+// that is not the demo also sets each row's alert
 // threshold here; an unverified one is told to verify first. The page asks for nothing beyond
 // the session and the list.
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -34,7 +35,7 @@ import {
 } from './ListParts';
 import { NO_PRICE, WATCHLIST_KEY, cardLabel, priceDays } from './lists';
 import { useAccountWrite } from './mutations';
-import { useSession } from './session';
+import { useReadOnly, useSession } from './session';
 
 const EMPTY = 'Your watchlist is empty. Open a card from Search and choose Add to watchlist.';
 /** What each short row's change is measured against, printed once under the list's stamp. */
@@ -179,6 +180,11 @@ function WatchRow({
 
   return (
     <ListItem row={item} missing={NO_PRICE} showDay={showDay}>
+      {access === 'read-only' && item.alert_pct !== null && (
+        <p className="mt-2 text-sm font-semibold sm:col-span-2">
+          {`Sample alert: at ${String(item.alert_pct)}%`}
+        </p>
+      )}
       {access !== 'read-only' && (
         <div className="mt-3 flex flex-wrap items-end gap-x-6 gap-y-3 sm:col-span-2">
           {access === 'alerts' && (
@@ -251,7 +257,7 @@ export default function WatchlistPage() {
     queryFn: ({ signal }) => unwrap(getWatchlist({ signal })),
     enabled: signedIn,
   });
-  const readOnly = session.state === 'signed-in' && session.me.read_only;
+  const readOnly = useReadOnly();
   let access: Access = 'read-only';
   if (session.state === 'signed-in' && !readOnly) {
     access = session.me.email_verified ? 'alerts' : 'unverified';

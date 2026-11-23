@@ -104,17 +104,28 @@ Fortify's profile-update, password-update and passkey routes are not enabled, an
 
 ## Demo account
 
-- **What it is.** One shared, seeded account that can look at a watchlist and a portfolio but cannot change
-  anything. A visitor enters it with the `Try the read-only demo` button, which calls `POST /v1/demo/session`
-  (`204`; the session id is regenerated and the visitor is signed in as the demo). It answers `404` with the problem
-  type `demo-unavailable` when the demo is disabled or has not been seeded.
+- **What it is.** One shared, seeded account that can look at a watchlist, a portfolio, an alert and sample messages
+  but cannot change anything. A visitor enters it with the `Try the read-only demo` button, which calls
+  `POST /v1/demo/session` (`204`; the session id is regenerated and the visitor is signed in as the demo). It answers
+  `404` with the problem type `demo-unavailable` when the demo is disabled or has not been seeded.
 - **Seeding.** `docker compose -f compose.dev.yml exec -T -w /workspace/api api php artisan db:seed --class=DemoAccountSeeder --no-interaction`.
-  The seeder is idempotent: it creates or repairs one verified demo user without two-factor, and sets a watchlist of
-  `base1-4:holo:unlimited:-`, `base1-4:holo:1st:-` and `ex5-17:reverse:-:-` and a portfolio of one
-  `base1-4:holo:unlimited:-` and three `ex5-17:reverse:-:-`. A variant missing from the database is skipped with one
-  console line each, so it runs on an empty database. It refuses to touch a non-demo account that holds the demo
-  address. `DatabaseSeeder` seeds nothing (there is no default user); the demo account comes only
-  from `DemoAccountSeeder`.
+  The seeder is idempotent (a second run leaves the same rows) and sends, queues and fetches nothing. It creates or
+  repairs one verified demo user without two-factor and sets:
+  - a watchlist of 14 well-known cards, one variant each, no card twice (`DemoAccount::WATCHLIST`): Charizard
+    `base1-4:holo:1st:-` (kept as the example of a variant with no close), Blastoise `base1-2`, Venusaur `base1-15`,
+    Mewtwo `base1-10`, Zapdos `base1-16`, Pikachu `base1-58`, Snorlax `base2-11`, Dragonite `base3-4`, Lugia `neo1-9`,
+    Chimecho `ex5-17` (reverse holo), Umbreon VMAX `swsh7-95`, Magikarp `sv2-203`, Mew ex `sv4pt5-232` and Umbreon ex
+    `sv8pt5-161`;
+  - a portfolio drawn from the same variants (`DemoAccount::PORTFOLIO`): one Blastoise, two Pikachu, one Lugia, three
+    Chimecho and one Magikarp;
+  - the alert samples described in [`ALERTS.md`](ALERTS.md#the-demos-samples): one alert, one sample signed webhook and
+    two delivered sample messages.
+
+  A variant missing from the database is skipped with one console line each, so it runs on an empty database. The
+  lists live in `api/app/Domain/Accounts/DemoAccount.php`; the `watchlist` and `portfolio` keys of
+  `api/config/accounts.php` are no longer read. It refuses to touch a non-demo account that holds the demo address.
+  `DatabaseSeeder` seeds nothing (there is no default user); the demo account comes only from `DemoAccountSeeder`.
+  After a deploy that changes these lists, run the same seeder once on the server.
 - **Configuration** (names only; values are set in `api/.env` or the defaults in `api/config/accounts.php`):
   - `DEMO_ENABLED`: default on; off makes the entry answer `404`.
   - `DEMO_EMAIL`: the demo's address; the default is an `example.com` address.
@@ -124,9 +135,12 @@ Fortify's profile-update, password-update and passkey routes are not enabled, an
   method is not GET, HEAD or OPTIONS, except signing out, on the whole account group and on every Fortify write
   (the two-factor routes, `/email/verification-notification`, `/register` and `/login` while signed in). The
   enumeration test walks every registered write route. A password reset can never change the demo's password (`422`).
-  The demo may download its data (a read) but cannot delete itself. The pages also hide write controls for the demo
-  and say it is the read-only demo, but no test relies on the pages for enforcement. The account page still shows the
-  two-factor button to the demo; the server answers it with `403`.
+  The demo may download its data (a read) but cannot delete itself. It may read its alert, its sample messages
+  (`GET /v1/demo/samples`), its webhooks list and where its alerts go; creating, changing or deleting an alert, a
+  webhook or the notification settings, and the webhook test send, are refused like every other write. The pages
+  also hide the write controls a read-only session cannot use (the two-factor buttons, the card page's Add buttons,
+  the list and alert controls) and say it is the read-only demo, but no test relies on the pages for enforcement; a
+  write that can still be attempted shows the calm sentence `The demo account is read-only.`
 - **Limits.** The entry is 10 a minute per IP; the demo's account API is 30 a minute keyed by IP, so one visitor
   cannot spend it for everyone. Both are global on the dev topology (see [Rate limits](#rate-limits)).
 

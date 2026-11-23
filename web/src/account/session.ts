@@ -135,6 +135,29 @@ export function useArrivalStatus(): string | null {
   return status;
 }
 
+/**
+ * Whether this tab's session is the read-only demo: the one shared way a component asks. It reads
+ * the ['me'] cache passively (no observer, no request), so a public page such as the card page may
+ * ask too and keeps its exact request list. True once an ['me'] answer named the read-only demo,
+ * also while that answer is stale; false signed out, before any answer, and for every other
+ * account. A control a read-only session cannot use is hidden when this is true; a write that can
+ * still be attempted is answered by the calm demo sentence (ProblemBlock).
+ *
+ * @example
+ *   const readOnly = useReadOnly();
+ *   return readOnly ? null : <button type="button">Remove</button>;
+ */
+export function useReadOnly(): boolean {
+  const cache = useQueryClient().getQueryCache();
+  const subscribe = useCallback((onChange: () => void) => cache.subscribe(onChange), [cache]);
+  return useSyncExternalStore(subscribe, () => {
+    const data: unknown = cache.find({ queryKey: ME_KEY, exact: true })?.state.data;
+    return (
+      typeof data === 'object' && data !== null && 'read_only' in data && data.read_only === true
+    );
+  });
+}
+
 /** What the cache already knows about the session: 'unknown', null (signed out) or the account. */
 type KnownSession = 'unknown' | Me | null;
 

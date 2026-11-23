@@ -11,6 +11,7 @@ import Panel from '../ui/Panel';
 import ProblemNotice from '../ui/ProblemNotice';
 import LoadingLine from '../ui/StatusLine';
 import { QUIET_BUTTON, TEXT_LINK } from '../ui/classes';
+import { DEMO_READ_ONLY_LINE, isDemoReadOnly } from './lists';
 
 /** A show/hide toggle for a password field: its constant accessible name and its state. */
 interface Reveal {
@@ -108,7 +109,8 @@ function firstLine(context: string, failure: ApiFailure): string {
 /**
  * The problem block: "<context>: <title>" and the request id; a 422 points at the fields
  * (and lists messages of fields the form does not show); a 429 says to wait; a 409
- * already-signed-in says so and links to the account.
+ * already-signed-in says so and links to the account; the read-only demo's 403 is the calm
+ * sentence alone, in the info tone, with no request id.
  */
 export function ProblemBlock({
   context,
@@ -128,6 +130,13 @@ export function ProblemBlock({
             Go to your account
           </Link>
         </p>
+      </Notice>
+    );
+  }
+  if (isDemoReadOnly(failure)) {
+    return (
+      <Notice tone="info" role="alert" as="p" className="mt-6">
+        {DEMO_READ_ONLY_LINE}
       </Notice>
     );
   }

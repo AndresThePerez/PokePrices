@@ -1240,6 +1240,84 @@ export const demoMe = {
   data: { email: 'demo@example.com', email_verified: true, two_factor: false, read_only: true },
 } satisfies MeBody;
 
+type DemoSamplesBody =
+  operations['getDemoSamples']['responses'][200]['content']['application/json'];
+
+/**
+ * The demo's published sample signing secret, built at run time: whsec_ and the base64 of the 32
+ * ASCII bytes the API's DemoSamples::KEY holds (a sample that belongs to no account).
+ */
+export const DEMO_SAMPLE_SECRET = `whsec_${btoa('pokeprices-demo-sample-secret-01')}`;
+
+/** The exact price.moved body of the demo's sample webhook delivery (the dev data's event). */
+export const DEMO_SAMPLE_BODY =
+  '{"type":"price.moved","timestamp":"2026-10-12T20:05:44Z","data":{"event_id":"evt_85",' +
+  '"variant_key":"ex5-17:reverse:-:-","card_id":"ex5-17","card":{"name":"Chimecho",' +
+  '"set_name":"Hidden Legends","number":"17"},"direction":"up","close":"26.34",' +
+  '"previous_close":"5.71","change":"20.63","change_pct":"361.30","day":"2026-10-12",' +
+  '"as_of":"2026-10-12T20:05:44Z","previous_day":"2026-10-11",' +
+  '"previous_as_of":"2026-10-11T20:05:45Z","series_epoch":1,"rule":"draft-v1",' +
+  '"source":"tcgplayer","feed":"tcgcsv","basis":"market","currency":"USD","cadence":"daily"}}';
+
+/** GET /v1/demo/samples for the demo: its alert, the sample alert email and the signed sample. */
+export function demoSamplesBody(data: Partial<DemoSamplesBody['data']> = {}): DemoSamplesBody {
+  return {
+    data: {
+      sample_secret: DEMO_SAMPLE_SECRET,
+      alert: {
+        variant_key: 'ex5-17:reverse:-:-',
+        card_id: 'ex5-17',
+        finish: 'reverse',
+        edition: '-',
+        treatment: '-',
+        card: { name: 'Chimecho', set_name: 'Hidden Legends', number: '17' },
+        alert_pct: 10,
+      },
+      message: {
+        message_id: 'msg_01K7DEM0A1ERTSAMP1E0000000',
+        kind: 'alert.triggered',
+        channel: 'email',
+        status: 'delivered',
+        delivered_at: '2026-10-12T20:05:44Z',
+        subject: 'PokéPrices alert: Chimecho moved +361.30% (2026-10-12)',
+        text: [
+          'Chimecho · reverse holo',
+          'Market price $26.34',
+          '▲ +$20.63 (+361.30%) vs previous close (2026-10-11)',
+          'as of 2026-10-12 from TCGCSV (daily close)',
+          'Your alert threshold: 10% (and at least $1.00).',
+          'https://pokeprices.andrestheperez.com/card/ex5-17',
+        ].join('\n'),
+      },
+      webhook: {
+        message_id: 'msg_01K7DEM0WEBH00KSAMP1E00000',
+        kind: 'price.moved',
+        url_hint: 'https://example.test/…',
+        status: 'delivered',
+        delivered_at: '2026-10-12T20:05:44Z',
+        headers: {
+          'webhook-id': 'msg_01K7DEM0WEBH00KSAMP1E00000',
+          'webhook-timestamp': '1791835544',
+          'webhook-signature': 'v1,c2FtcGxlLXNpZ25hdHVyZS1mb3ItdGhlLWRlbW8tMDA=',
+        },
+        body: DEMO_SAMPLE_BODY,
+      },
+      ...data,
+    },
+  } satisfies DemoSamplesBody;
+}
+
+/** The demo's sample webhook as GET /v1/webhooks lists it. */
+export const demoSampleWebhook = {
+  id: 7,
+  kind: 'standard',
+  url_hint: 'https://example.test/…',
+  description: 'Sample signed webhook',
+  created_at: '2026-10-12T20:05:44Z',
+  disabled: false,
+  last_delivery: { status: 'delivered', at: '2026-10-12T20:05:44Z' },
+} satisfies Schemas['WebhookEndpointResource'];
+
 /** The 403 every write of the demo account answers (DemoReadOnly). */
 export function demoReadOnlyProblem(instance: string): Schemas['Problem'] {
   return {

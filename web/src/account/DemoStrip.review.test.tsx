@@ -10,6 +10,7 @@ import {
   pricedCardBody,
   clearXsrfCookie,
   demoMe,
+  demoSamplesBody,
   emptyPortfolioBody,
   freshnessBody,
   historyFor,
@@ -320,6 +321,7 @@ describe('the demo notice is said once on every demo page, and /alerts keeps its
         'GET /v1/watchlist': jsonResponse(watchlistBody()),
         'GET /v1/portfolio': jsonResponse(portfolioBody()),
         'GET /v1/webhooks': jsonResponse({ data: [], meta: { count: 0, limit: 25 } }),
+        'GET /v1/demo/samples': jsonResponse(demoSamplesBody()),
       });
       visit(path);
       render(<App />);

@@ -12,6 +12,7 @@ import {
   FAKE_SIGNING_SECRET,
   clearXsrfCookie,
   demoMe,
+  demoSamplesBody,
   domHolds,
   emailNotVerifiedProblem,
   jsonResponse,
@@ -224,6 +225,7 @@ describe('nothing of one account shows under the next one (P4 pattern, P5 data r
       'GET /v1/webhooks': () => list,
       'POST /logout': rawResponse(204, null),
       'POST /v1/demo/session': rawResponse(204, null),
+      'GET /v1/demo/samples': jsonResponse(demoSamplesBody()),
     });
     visit('/alerts');
     render(<App />);

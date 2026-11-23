@@ -37,6 +37,9 @@ export function signInPath(cardId: string): string {
   return `/sign-in?next=${encodeURIComponent(cardPath(cardId))}`;
 }
 
+/** The calm sentence every refused write of the read-only demo shows (ProblemBlock), no request id. */
+export const DEMO_READ_ONLY_LINE = 'The demo account is read-only.';
+
 /** True for the 403 every write of the demo account answers. */
 export function isDemoReadOnly(failure: ApiFailure): boolean {
   return hasProblemType(failure, 403, 'demo-read-only');

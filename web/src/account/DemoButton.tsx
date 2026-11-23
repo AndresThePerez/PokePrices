@@ -5,26 +5,27 @@ import { useId } from 'react';
 import { startDemo } from '../api/client';
 import Panel from '../ui/Panel';
 import { ProblemBlock } from './Form';
-import { SECONDARY_BUTTON, TEXT_LINK } from '../ui/classes';
+import { SECONDARY_BUTTON } from '../ui/classes';
 import { useAccountWrite, useSessionTransition } from './mutations';
 
 /**
  * Where the button sits: `panel` (sign-in and the signed-out lists) is an outlined button under a
- * hairline; `hero` (the home landing, under the search form) is an underlined 16 px accent link
- * on the field's left edge, with a 44 px target and no rule; `block` (the Just looking? panel of
- * sign-in and sign-up) is a full-width outlined button with no rule.
+ * hairline; `hero` (the home landing, under the search form) is an outlined button on the field's
+ * left edge, the same 44 px button as the page's other actions, with no rule; `block` (the Just
+ * looking? panel of sign-in, and beside the invite-only sentence of sign-up) is a full-width
+ * outlined button with no rule.
  */
 type DemoPlacement = 'panel' | 'hero' | 'block';
 
 const WRAPPER: Readonly<Record<DemoPlacement, string>> = {
   panel: 'mt-8 border-t border-line-subtle pt-6',
-  hero: 'mt-2',
+  hero: 'mt-3',
   block: 'mt-4',
 };
 
 const LOOK: Readonly<Record<DemoPlacement, string>> = {
   panel: SECONDARY_BUTTON,
-  hero: `${TEXT_LINK} text-base font-semibold text-accent disabled:opacity-60`,
+  hero: SECONDARY_BUTTON,
   block: `${SECONDARY_BUTTON} w-full`,
 };
 

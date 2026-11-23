@@ -31,7 +31,7 @@ import {
 } from './ListParts';
 import { PORTFOLIO_KEY, cardLabel, quantityOf } from './lists';
 import { useAccountWrite } from './mutations';
-import { useSession } from './session';
+import { useReadOnly, useSession } from './session';
 
 const EMPTY = 'Your portfolio is empty. Open a card from Search and choose Add to portfolio.';
 /**
@@ -202,7 +202,7 @@ export default function PortfolioPage() {
     queryFn: ({ signal }) => unwrap(getPortfolio({ signal })),
     enabled: signedIn,
   });
-  const readOnly = session.state === 'signed-in' && session.me.read_only;
+  const readOnly = useReadOnly();
 
   let body;
   if (session.state === 'loading') {

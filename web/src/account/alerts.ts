@@ -3,9 +3,11 @@
 // is the date part of a timestamp the API sent.
 import { useQuery } from '@tanstack/react-query';
 import {
+  getDemoSamples,
   getNotifications,
   getWebhooks,
   type ApiFailure,
+  type DemoSamplesBody,
   type NotificationsBody,
   type WebhooksBody,
 } from '../api/client';
@@ -42,6 +44,17 @@ export function useNotifications(enabled: boolean) {
   return useQuery<NotificationsBody, ApiFailure>({
     queryKey: NOTIFICATIONS_KEY,
     queryFn: ({ signal }) => unwrap(getNotifications({ signal })),
+    enabled,
+  });
+}
+
+export const DEMO_SAMPLES_KEY = accountKey('demo-samples');
+
+/** The read-only demo's samples (the polling defaults), asked for only by the demo. */
+export function useDemoSamples(enabled: boolean) {
+  return useQuery<DemoSamplesBody, ApiFailure>({
+    queryKey: DEMO_SAMPLES_KEY,
+    queryFn: ({ signal }) => unwrap(getDemoSamples({ signal })),
     enabled,
   });
 }

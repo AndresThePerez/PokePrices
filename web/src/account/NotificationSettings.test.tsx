@@ -9,6 +9,7 @@ import {
   accountValidationProblem,
   clearXsrfCookie,
   demoMe,
+  demoSamplesBody,
   discordWebhook,
   jsonResponse,
   lightOnlyClasses,
@@ -271,6 +272,7 @@ describe('Per-card alerts and the states without a settings form (P5 T07 criteri
     const { calls } = open({
       'GET /v1/me': jsonResponse(me),
       'GET /v1/webhooks': jsonResponse(webhooksBody()),
+      'GET /v1/demo/samples': jsonResponse(demoSamplesBody()),
     });
     expect(await screen.findByText(new RegExp(line))).toBeTruthy();
     await screen.findByText('No webhooks yet.');
@@ -279,7 +281,11 @@ describe('Per-card alerts and the states without a settings form (P5 T07 criteri
     expect(screen.queryByRole('checkbox')).toBeNull();
     expect(screen.queryByRole('radio')).toBeNull();
     expect(within(main()).queryByRole('button')).toBeNull();
-    expect(calls.map((call) => call.key)).toEqual(['GET /v1/me', 'GET /v1/webhooks']);
+    expect(calls.map((call) => call.key)).toEqual(
+      me === demoMe
+        ? ['GET /v1/me', 'GET /v1/webhooks', 'GET /v1/demo/samples']
+        : ['GET /v1/me', 'GET /v1/webhooks'],
+    );
   });
 });
 

@@ -7,6 +7,7 @@ import {
   degradedCardBody,
   degradedSearchPage,
   demoMe,
+  demoSamplesBody,
   isHistoryUrl,
   jsonResponse,
   lightOnlyClasses,
@@ -233,6 +234,7 @@ describe('account notices keep their role, element and text (review)', () => {
     stubAccountFetch({
       'GET /v1/me': jsonResponse(demoMe),
       'GET /v1/webhooks': jsonResponse(webhooksBody()),
+      'GET /v1/demo/samples': jsonResponse(demoSamplesBody()),
     });
     visit('/alerts');
     const demo = render(<App />);

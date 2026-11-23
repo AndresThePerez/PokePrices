@@ -9,7 +9,8 @@ prices get into the database is in [`OPERATIONS.md`](OPERATIONS.md).
 
 - **`/` (home).** The entry page, in this order: the heading, one sentence under it (`Each price is a
   TCGplayer market price collected once a day through TCGCSV, shown with its source and the day it is as
-  of.`), the search box, the demo entry, then:
+  of.`), the search box, the demo entry (a `Try the read-only demo` button, outlined like the page's other
+  buttons), then:
   - **Example searches**: `lugia neo genesis`, `umbreon vmax`, `umbreon ex` and `mewtwo`, each a link to
     `/search?q=<words>` in the default order. Each was checked to land its card on the first page of
     results (Lugia `neo1-9`, Umbreon VMAX `swsh7-215`, Umbreon ex `sv8pt5-161`, Mewtwo `base1-10`).
@@ -91,8 +92,9 @@ prices get into the database is in [`OPERATIONS.md`](OPERATIONS.md).
 - **`/sign-in`.** Email and password. When two-factor is on, a second step asks for an authentication code (or a
   recovery code). It also offers `Forgot your password?`, `Create an account` and `Try the read-only demo`. A
   `?next=` address is followed after sign-in only when it is a page of this site. The sixth wrong sign-in in a minute is refused.
-- **`/sign-up`.** Accounts are invite-only: an invite code, an email address and a password of at least 12
-  characters.
+- **`/sign-up`.** It opens with `Accounts are invite-only for the moment. Try the read-only demo.` and the
+  `Try the read-only demo` button beside that sentence, then the form: an invite code, an email address and a
+  password of at least 12 characters. Opening the page asks for nothing; the demo button asks only when pressed.
 - **`/password/forgot`.** Asks for an email address and says a reset link is on its way, whether or not the address
   has an account.
 - **`/password/reset`.** Where the reset link lands (`?token=` and `&email=` are removed from the address bar on
@@ -100,7 +102,8 @@ prices get into the database is in [`OPERATIONS.md`](OPERATIONS.md).
 - **`/account`.** Who is signed in, whether the email is verified (with a button to send the verification email
   again), two-factor on and off with a QR code and one-time recovery codes, `Download your data (JSON)`,
   `Delete my account`, a link to `Alerts and webhooks` and `Sign out`. Signed out, it offers sign-in and sign-up. As
-  the demo, it says the demo is read-only.
+  the demo, it says the demo is read-only, shows two-factor as off with no button, and says the demo cannot be
+  deleted.
 - **`/account/verify-email`.** Where the verification link in the email lands. It needs a signed-in person.
 - **`/watchlist`.** The variants a person watches, each a short row with the card's picture, the card name from
   PokéSearch (`Card <id>` while it is unavailable) and a `Remove` button. One line above the list stamps it:
@@ -111,7 +114,8 @@ prices get into the database is in [`OPERATIONS.md`](OPERATIONS.md).
   (`Off`, `5%`, `10%`, `20%`, `50%`, plus the stored value when it is another number) and a `Save alert` button; `Off`
   removes the threshold. Below the list a line explains that an alert is sent when a card's daily close moves by at
   least its threshold and at least $1.00 against the previous close, with a link to `/alerts`. An unverified account
-  sees `Verify your email address to set alerts.` instead of the control, and the demo sees no control.
+  sees `Verify your email address to set alerts.` instead of the control. The demo sees no control and no
+  `Remove`; the row of its seeded alert says `Sample alert: at 10%`.
 - **`/portfolio`.** The variants a person holds with a quantity, each a short row with the card's picture and its
   value, and a total computed by the API that names the days it rests on; that line is the list's one stamp (each
   row also shows `Close of <day>` when the days differ). A holding without a price is not valued and is named as
@@ -119,9 +123,24 @@ prices get into the database is in [`OPERATIONS.md`](OPERATIONS.md).
   holding.`, which names what each row's change is measured against: it is the card's daily-close change, not a
   return on the holding.
 - **`/alerts`.** `Alerts and webhooks`, linked from `/account` (the header is unchanged). It needs a signed-in
-  account: signed out it offers `Sign in` and `Create an account`; as the demo it says the read-only demo cannot set
-  alerts or add webhooks and shows no form; an unverified account is asked to verify its email address and sees its
-  lists without a form. A verified account sees three sections:
+  account: signed out it offers `Sign in` and `Create an account`; an unverified account is asked to verify its
+  email address and sees its lists without a form. As the demo it says the read-only demo cannot set alerts or add
+  webhooks, then `The alert, the email and the signed webhook delivery below are samples: nothing is ever sent from
+  the demo.`, and shows, with no form and no button, the samples of `GET /v1/demo/samples` (see
+  [`ALERTS.md`](ALERTS.md#the-demos-samples)):
+  - `Sample alert`: the card and variant, and `An alert at 10% (and at least $1.00) on the demo's watchlist: …`;
+  - `Sample alert email`: `Delivered by email on <day>.`, the subject and the text as the account would have
+    received them;
+  - `Sample signed webhook delivery`: `Delivered to https://example.test/… on <day>.`, the `webhook-id`,
+    `webhook-timestamp` and `webhook-signature` headers, the exact body (its bytes are what is signed, so the
+    event's own RFC 3339 times stay in it) and the sample secret under `Sample signing secret, published for the
+    demo only; it belongs to no account.`;
+  - its webhooks list, which holds the `Sample signed webhook`.
+
+  With no sample message it says `No sample messages: no card on the demo watchlist moved by its alert threshold in
+  the collected closes.` The demo's /alerts asks `GET /v1/me`, `GET /v1/webhooks` and `GET /v1/demo/samples`, and
+  shows no market price of its own (the sample texts carry their own source and day), so it has no stale-prices
+  banner. A verified account sees three sections:
   - `Where alerts go`: a choice of `Email (<address>)` or `Discord` (disabled until a Discord webhook is added), the
     checkbox `Send me a daily digest` and `Save`;
   - `Per-card alerts`: a pointer to the watchlist, where each threshold is set;
@@ -142,7 +161,10 @@ prices get into the database is in [`OPERATIONS.md`](OPERATIONS.md).
   once you are, and a security token that protects the site’s forms."
 
 The watchlist and portfolio are filled from the card page, where each priced variant has `Add to watchlist` and
-`Add to portfolio` buttons. Each row's card name links back to the card page on that row's variant
+`Add to portfolio` buttons; a tab known to be signed in to the read-only demo shows neither (a tab that has not
+asked who is signed in yet still shows them, and a press answers `The demo account is read-only.`). Any write the
+demo can still attempt anywhere (the sign-up or password forms, for instance) shows that same sentence, with no
+request id. Each row's card name links back to the card page on that row's variant
 (`/card/<id>?variant=<variant key>`, see the card page above). The account pages, the sessions behind them and the rules for the demo are described in
 [`ACCOUNTS.md`](ACCOUNTS.md).
 

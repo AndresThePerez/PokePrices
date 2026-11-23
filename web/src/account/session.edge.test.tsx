@@ -12,6 +12,7 @@ import {
   FAKE_SIGNING_SECRET,
   clearXsrfCookie,
   demoMe,
+  demoSamplesBody,
   domHolds,
   historyFor,
   holdingOf,
@@ -219,6 +220,7 @@ describe('a late answer of the last account never repopulates a cleared key (C1,
       ],
       'POST /logout': new Response(null, { status: 204 }),
       'POST /demo': jsonResponse({}),
+      'GET /v1/demo/samples': jsonResponse(demoSamplesBody()),
     });
     const inner = globalThis.fetch;
     let releasePut: ((response: Response) => void) | undefined;

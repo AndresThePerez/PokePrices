@@ -315,6 +315,33 @@ const NOTIFICATIONS = fields({
   data: fields({ channel: oneOf('discord', 'email'), digest: flag, discord_available: flag }),
 });
 
+const DEMO_SAMPLES = fields({
+  data: fields({
+    sample_secret: text,
+    alert: orNull(
+      fields({
+        ...VARIANT_NAMING,
+        card_id: text,
+        card: orNull(fields({ name: text, set_name: text, number: text })),
+        alert_pct: whole,
+      }),
+    ),
+    message: orNull(fields({ delivered_at: text, subject: text, text })),
+    webhook: orNull(
+      fields({
+        url_hint: text,
+        delivered_at: text,
+        headers: fields({
+          'webhook-id': text,
+          'webhook-timestamp': text,
+          'webhook-signature': text,
+        }),
+        body: text,
+      }),
+    ),
+  }),
+});
+
 // The write answers: the fields their callers read. Where a caller reads none, the answer's
 // envelope (a data object) is checked and its fields are not.
 
@@ -358,6 +385,7 @@ const isWatchlistBody = (value: unknown): value is WatchlistBody => WATCHLIST(va
 const isPortfolioBody = (value: unknown): value is PortfolioBody => PORTFOLIO(value);
 const isWebhooksBody = (value: unknown): value is WebhooksBody => WEBHOOKS(value);
 const isNotificationsBody = (value: unknown): value is NotificationsBody => NOTIFICATIONS(value);
+const isDemoSamplesBody = (value: unknown): value is DemoSamplesBody => DEMO_SAMPLES(value);
 const isMessageAnswer = (value: unknown): value is MessageAnswer => MESSAGE(value);
 const isWatchlistEntry = (value: unknown): value is WatchlistEntry => WATCHLIST_ENTRY(value);
 const isHoldingEntry = (value: unknown): value is HoldingEntry => HOLDING_ENTRY(value);
@@ -538,7 +566,7 @@ const SESSION_PATHS: ReadonlySet<string> = new Set([
 
 /** The /v1 account paths: the account itself, the lists, the webhooks and alerts, the demo. */
 const ACCOUNT_API =
-  /^\/v1\/(?:me|watchlist|portfolio|webhooks|alerts)(?:[/?]|$)|^\/v1\/demo\/session$/;
+  /^\/v1\/(?:me|watchlist|portfolio|webhooks|alerts)(?:[/?]|$)|^\/v1\/demo\/(?:session|samples)$/;
 
 /** A verification link is /email/verify/<id>/<hash>?<query>, nothing else. */
 const VERIFY_LINK = /^\/email\/verify\/([^/?#]+)\/([^/?#]+)\?/;
@@ -1052,6 +1080,23 @@ export function getNotifications(
   return decoded(
     accountAnswer('/v1/me/notifications', { method: 'GET', signal: options.signal }),
     isNotificationsBody,
+  );
+}
+
+// ---- The read-only demo's samples -----------------------------------------------------
+
+export type DemoSamplesBody =
+  operations['getDemoSamples']['responses'][200]['content']['application/json'];
+export type DemoSamples = DemoSamplesBody['data'];
+
+/**
+ * GET /v1/demo/samples: the demo's alert, its sample delivered email and its sample signed webhook
+ * delivery with the published sample secret (404 for any other account, 401 signed out).
+ */
+export function getDemoSamples(options: RequestOptions = {}): Promise<ApiResult<DemoSamplesBody>> {
+  return decoded(
+    accountAnswer('/v1/demo/samples', { method: 'GET', signal: options.signal }),
+    isDemoSamplesBody,
   );
 }
 

@@ -2,7 +2,9 @@
 // Prices list, as two quiet 44 px buttons under the row's lines (right-aligned from 640 px). Nothing here fetches before a click: the public card page keeps its exact request
 // list. Opening Add to portfolio reads PORTFOLIO_KEY once, to prefill the quantity already held.
 // The two controls are <input type="button">: their words are the input's value, not text in the
-// row, so a row's text stays the price lines it was (P3 exact-text tests).
+// row, so a row's text stays the price lines it was (P3 exact-text tests). A session known to be
+// the read-only demo (useReadOnly) gets neither; one not yet known gets them, and a click is
+// answered by the calm demo sentence.
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useId, useState } from 'react';
 import {
@@ -21,8 +23,16 @@ import { ProblemBlock } from './Form';
 import { QUIET_BUTTON, TEXT_LINK } from '../ui/classes';
 import { firstErrors } from './fields';
 import { QuantityForm } from './ListParts';
-import { PORTFOLIO_KEY, WATCHLIST_KEY, isDemoReadOnly, quantityOf, signInPath } from './lists';
+import {
+  DEMO_READ_ONLY_LINE,
+  PORTFOLIO_KEY,
+  WATCHLIST_KEY,
+  isDemoReadOnly,
+  quantityOf,
+  signInPath,
+} from './lists';
 import { useAccountWrite, useWriteGuard } from './mutations';
+import { useReadOnly } from './session';
 
 const WATCH_CONTEXT = 'Could not change your watchlist';
 const HOLD_CONTEXT = 'Could not change your portfolio';
@@ -78,7 +88,7 @@ function OutcomeLine({ outcome, cardId }: { readonly outcome: Outcome; readonly 
     case 'read-only':
       return (
         <p role="status" className={RESULT}>
-          <span>The demo account is read-only.</span>
+          <span>{DEMO_READ_ONLY_LINE}</span>
         </p>
       );
     case 'failed':
@@ -155,6 +165,7 @@ export default function CardActions({
   const [open, setOpen] = useState(false);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const guard = useWriteGuard();
+  const readOnly = useReadOnly();
   const watch = useAccountWrite(
     {
       onMutate: () => {
@@ -192,6 +203,7 @@ export default function CardActions({
   const quantityError =
     open && outcome?.kind === 'failed' ? firstErrors(outcome.failure).quantity : undefined;
 
+  if (readOnly) return null;
   return (
     <div className="mt-3">
       <div className="flex flex-wrap gap-2 sm:justify-end">

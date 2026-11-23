@@ -7,6 +7,7 @@ import { navigate } from '../router';
 import {
   clearXsrfCookie,
   demoMe,
+  demoSamplesBody,
   jsonResponse,
   notificationsBody,
   problemResponse,
@@ -206,6 +207,7 @@ describe('the Alerts empty state (D2-i2-T07)', () => {
       'GET /v1/me': jsonResponse(me),
       'GET /v1/webhooks': jsonResponse(webhooksBody()),
       'GET /v1/me/notifications': jsonResponse(notificationsBody()),
+      'GET /v1/demo/samples': jsonResponse(demoSamplesBody()),
     });
     visit('/alerts');
     render(<App />);

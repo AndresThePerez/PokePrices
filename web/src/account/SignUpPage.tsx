@@ -1,10 +1,12 @@
-// /sign-up: invite code, email and password over POST /register. On 201 the account is
-// signed in; the page refetches ['me'] and opens /account with its status line.
+// /sign-up: the invite-only sentence with the demo button beside it, then invite code, email and
+// password over POST /register. On 201 the account is signed in; the page refetches ['me'] and
+// opens /account with its status line. Opening the page asks for nothing: the demo button asks
+// only when pressed.
 import { useState, type SubmitEvent } from 'react';
 import { signUp } from '../api/client';
 import Link from '../Link';
 import Notice from '../ui/Notice';
-import { DemoPanel } from './DemoButton';
+import DemoButton from './DemoButton';
 import { AccountMain, Field, ProblemBlock } from './Form';
 import { PRIMARY_BUTTON, TEXT_LINK } from '../ui/classes';
 import { firstErrors } from './fields';
@@ -12,6 +14,8 @@ import { useAccountWrite, useSessionTransition } from './mutations';
 
 const FIELDS = ['invite_code', 'email', 'password', 'password_confirmation'] as const;
 const CREATED = 'Account created. Check your email for the verification link.';
+/** The owner's sentence: sign-up is by invitation, and the demo is the way in without one. */
+const INVITE_ONLY = 'Accounts are invite-only for the moment. Try the read-only demo.';
 
 export default function SignUpPage() {
   const transition = useSessionTransition({ clearsMe: false });
@@ -55,9 +59,10 @@ export default function SignUpPage() {
   }
 
   return (
-    <AccountMain title="Create an account" width="auth" after={<DemoPanel />}>
-      <Notice tone="info" as="p" className="mt-4">
-        PokéPrices accounts are invite-only.
+    <AccountMain title="Create an account" width="auth">
+      <Notice tone="info" className="mt-4">
+        <p>{INVITE_ONLY}</p>
+        <DemoButton placement="block" />
       </Notice>
       {failure !== null && (
         <ProblemBlock context="Could not create the account" failure={failure} fields={FIELDS} />

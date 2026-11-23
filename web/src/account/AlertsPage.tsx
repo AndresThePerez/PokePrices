@@ -1,11 +1,13 @@
 // /alerts: where a verified account manages its webhooks and, above them, where
 // alerts go and the per-card pointer. Signed out, it offers sign-in (and back here) and
 // sign-up. The demo and an unverified account read the page and are told, in words, why they cannot
-// change it: no form and no button. Requests: GET /v1/me, then GET /v1/webhooks once signed in, and
+// change it: no form and no button; the demo (useReadOnly) also sees its seeded samples. Requests:
+// GET /v1/me, then GET /v1/webhooks once signed in, then GET /v1/demo/samples for the demo only, or
 // GET /v1/me/notifications only for an account that may change its settings.
 import type { ReactNode } from 'react';
 import Link from '../Link';
-import { WEBHOOKS_LOADING, useNotifications, useWebhooks } from './alerts';
+import { WEBHOOKS_LOADING, useDemoSamples, useNotifications, useWebhooks } from './alerts';
+import DemoSamples, { SAMPLES_LINE } from './DemoSamples';
 import Notice from '../ui/Notice';
 import Page from '../ui/Page';
 import StatusLine from '../ui/StatusLine';
@@ -13,7 +15,7 @@ import AccountScope from './AccountScope';
 import { ProblemBlock } from './Form';
 import { TEXT_LINK } from '../ui/classes';
 import NotificationSettings, { PerCardAlerts } from './NotificationSettings';
-import { useSession } from './session';
+import { useReadOnly, useSession } from './session';
 import SignInPrompt from './SignInPrompt';
 import Webhooks from './Webhooks';
 
@@ -54,10 +56,13 @@ function Unverified() {
 
 export default function AlertsPage() {
   const session = useSession();
-  const canWrite =
-    session.state === 'signed-in' && session.me.email_verified && !session.me.read_only;
-  // Declared in this order so the requests go out in it: webhooks, then the settings.
-  const webhooks = useWebhooks(session.state === 'signed-in');
+  const readOnly = useReadOnly();
+  const signedIn = session.state === 'signed-in';
+  const canWrite = signedIn && session.me.email_verified && !readOnly;
+  // Declared in this order so the requests go out in it: webhooks, then the demo's samples (the
+  // demo only) or the settings (an account that may change them).
+  const webhooks = useWebhooks(signedIn);
+  const samples = useDemoSamples(signedIn && readOnly);
   const notifications = useNotifications(canWrite);
 
   let body;
@@ -76,10 +81,14 @@ export default function AlertsPage() {
     // (a webhook's one-time signing secret, the settings draft).
     body = (
       <AccountScope>
-        {me.read_only ? (
-          <Notice tone="info" as="p" className="mt-6">
-            {DEMO_LINE}
-          </Notice>
+        {readOnly ? (
+          <>
+            <Notice tone="info" className="mt-6">
+              <p>{DEMO_LINE}</p>
+              <p className="mt-1">{SAMPLES_LINE}</p>
+            </Notice>
+            <DemoSamples body={samples.data} error={samples.error} />
+          </>
         ) : (
           !me.email_verified && <Unverified />
         )}

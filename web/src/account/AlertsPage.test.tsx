@@ -9,6 +9,7 @@ import {
   FORBIDDEN_WORDS,
   clearXsrfCookie,
   demoMe,
+  demoSamplesBody,
   discordWebhook,
   jsonResponse,
   lightOnlyClasses,
@@ -183,13 +184,18 @@ describe('the alerts page states (P5 T04 criterion 1, D10)', () => {
     const { calls } = open({
       'GET /v1/me': jsonResponse(demoMe),
       'GET /v1/webhooks': jsonResponse(webhooksBody()),
+      'GET /v1/demo/samples': jsonResponse(demoSamplesBody()),
     });
     expect(await screen.findByText(DEMO_LINE)).toBeTruthy();
     expect(within(main()).queryByRole('button')).toBeNull();
     expect(main().querySelector('form')).toBeNull();
     expect(within(main()).queryByRole('textbox')).toBeNull();
     expect(screen.queryByRole('heading', { name: 'Add a webhook' })).toBeNull();
-    expect(calls.map((call) => call.key)).toEqual(['GET /v1/me', 'GET /v1/webhooks']);
+    expect(calls.map((call) => call.key)).toEqual([
+      'GET /v1/me',
+      'GET /v1/webhooks',
+      'GET /v1/demo/samples',
+    ]);
   });
 
   it('unverified: says to verify, links to the account, lists webhooks without any button', async () => {
@@ -265,7 +271,17 @@ describe('the alerts page is accessible and honest in every state (P5 T04 criter
       expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
       expect(lightOnlyClasses(container)).toEqual([]);
       expect(shortControls(main())).toEqual([]);
-      for (const pattern of FORBIDDEN_WORDS) expect(main().textContent).not.toMatch(pattern);
+      // The demo's sample payload is shown as its exact signed bytes, the event's RFC 3339 times
+      // included: the page's own words are checked without it, and the payload holds no
+      // forbidden word once those times are taken out.
+      const words = main().cloneNode(true) as HTMLElement;
+      for (const payload of Array.from(words.querySelectorAll('[data-sample-payload]'))) {
+        expect(
+          payload.textContent.replace(/"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z"/g, '""'),
+        ).not.toMatch(/\blive\b|real-?time|\btoday\b|\bnow\b|20:05/i);
+        payload.remove();
+      }
+      for (const pattern of FORBIDDEN_WORDS) expect(words.textContent).not.toMatch(pattern);
       expect(main().textContent).not.toContain('2031');
       for (const input of Array.from(main().querySelectorAll('input, select'))) {
         expect(input.id).not.toBe('');
@@ -273,7 +289,11 @@ describe('the alerts page is accessible and honest in every state (P5 T04 criter
       }
     };
     for (const [me, webhooks, expected] of states) {
-      const { container } = open({ 'GET /v1/me': me, 'GET /v1/webhooks': webhooks });
+      const { container } = open({
+        'GET /v1/me': me,
+        'GET /v1/webhooks': webhooks,
+        'GET /v1/demo/samples': jsonResponse(demoSamplesBody()),
+      });
       check(container);
       await screen.findByText(expected);
       check(container);
@@ -339,6 +359,7 @@ describe('the /account link to /alerts (P5 T04 criterion 4)', () => {
     const calls = stubAccountFetch({
       'GET /v1/me': jsonResponse(demoMe),
       'GET /v1/webhooks': jsonResponse(webhooksBody()),
+      'GET /v1/demo/samples': jsonResponse(demoSamplesBody()),
     });
     visit('/account');
     render(<App />);

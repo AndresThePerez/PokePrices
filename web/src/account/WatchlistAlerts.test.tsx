@@ -222,12 +222,7 @@ describe('the alert control on each watchlist row (P5 T07 criterion 3)', () => {
       'Could not save the alert: Verify Your Email First',
       null,
     ],
-    [
-      '403 demo',
-      demoReadOnlyProblem(CHARIZARD_ALERT),
-      'Could not save the alert: Demo Account Is Read-Only',
-      null,
-    ],
+    ['403 demo', demoReadOnlyProblem(CHARIZARD_ALERT), 'The demo account is read-only.', null],
   ] as const)(
     'shows a %s beside the row and keeps the list',
     async (_name, problem, line, field) => {

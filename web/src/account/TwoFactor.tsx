@@ -23,7 +23,7 @@ import { Field, ProblemBlock } from './Form';
 import { PRIMARY_BUTTON, SECONDARY_BUTTON } from '../ui/classes';
 import { firstErrors } from './fields';
 import { useAccountWrite } from './mutations';
-import { ME_KEY } from './session';
+import { ME_KEY, useReadOnly } from './session';
 
 const CONTEXT = 'Could not change two-factor authentication';
 
@@ -85,6 +85,8 @@ export default function TwoFactorSection({ me }: { readonly me: Me }) {
   const awaiting = useRef<Step | null>(null);
   const errors = firstErrors(failure);
   const on = me.two_factor;
+  // The read-only demo cannot change two-factor authentication: it sees the state and no button.
+  const readOnly = useReadOnly();
 
   async function refreshMe(): Promise<void> {
     await queryClient.invalidateQueries({ queryKey: ME_KEY });
@@ -231,7 +233,8 @@ export default function TwoFactorSection({ me }: { readonly me: Me }) {
           </button>
         </form>
       ) : (
-        !settingUp && (
+        !settingUp &&
+        !readOnly && (
           <p className="mt-4 flex flex-wrap gap-3">
             {on && (
               <>
