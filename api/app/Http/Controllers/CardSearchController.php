@@ -46,7 +46,7 @@ final class CardSearchController
     /**
      * Search cards in the PokéSearch catalog, with each card's headline price.
      *
-     * Proxies PokéSearch's search with q (the search text, 1 to 200 characters and at most 32 words, counted as PokéSearch counts terms: runs of whitespace separate them), page (from 1), page_size (PokéSearch's default is 24) and sort only; any other query parameter answers 422. Each row carries variant, the card's first variant in card order (by variant key, as the card page lists them) that has a close, and price, that variant's newest daily close from TCGplayer market prices via TCGCSV with source, feed, day and as_of, the previous close and the change; both are null when no variant of the card has a close. sort is relevance (the default: PokéSearch's order and paging, passed through unchanged; PokéSearch clamps page to its last reachable page, and pages stops at its 9,600-result window, so read pages rather than computing it from total), price_desc or price_asc. A price order takes PokéSearch's first 100 matches (its largest page), orders them by the headline close, rows without a price last and equal closes in PokéSearch's order, and pages that list itself: meta.ordered is how many matches were ordered (null under relevance), meta.total how many exist, meta.pages is at least 1, and a page past the last answers the last page. While PokéSearch is unavailable the last good copy answers with meta.degraded true, or 503 when there is none.
+     * Proxies PokéSearch's search with q (the search text, 1 to 200 characters and at most 32 words, counted as PokéSearch counts terms: runs of whitespace separate them), page (from 1), page_size (PokéSearch's default is 24) and sort only; any other query parameter answers 422. Each row carries variant, the card's first variant in card order (by variant key, as the card page lists them) that has a close, and price, that variant's newest daily close from TCGplayer market prices via TCGCSV with source, feed, day and as_of, the previous close and the change; both are null when no variant of the card has a close. sort is relevance (the default: PokéSearch's order and paging, passed through unchanged, except that a page past the last answers the last page, read with one more PokéSearch call; pages stops at PokéSearch's 9,600-result window, so read pages rather than computing it from total, and a search with no matches answers pages 0 with the page asked for), price_desc or price_asc. A price order takes PokéSearch's first 100 matches (its largest page), orders them by the headline close, rows without a price last and equal closes in PokéSearch's order, and pages that list itself: meta.ordered is how many matches were ordered (null under relevance), meta.total how many exist, meta.pages is at least 1, and a page past the last answers the last page. While PokéSearch is unavailable the last good copy answers with meta.degraded true, or 503 when there is none.
      *
      * @operationId searchCards
      */
@@ -77,6 +77,13 @@ final class CardSearchController
         $result = $byPrice
             ? $this->catalog->search($q, 1, self::PRICE_WINDOW)
             : $this->catalog->search($q, $page, $pageSize);
+        $at = $result->data['page'] ?? null;
+        $last = $result->data['pages'] ?? null;
+        if (! $byPrice && is_int($at) && is_int($last) && $last >= 1 && $at > $last) {
+            // PokéSearch echoes a page past its last one (bounded only by its 9,600-result window) with no rows:
+            // one more call, for the last page it named, answers that page instead. Never more than one.
+            $result = $this->catalog->search($q, $last, $pageSize);
+        }
         // PokeSearchClient::search() checked this shape before the answer was cached; the casts are no-ops that
         // keep the integers visible to the contract export (Scramble does not read the @var).
         /** @var array{total: int, page: int, pages: int, page_size: int, results: list<array{id: string}&array<string, mixed>>} $answer */
