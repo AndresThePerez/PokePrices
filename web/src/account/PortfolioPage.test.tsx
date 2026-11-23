@@ -330,8 +330,13 @@ describe('changing the portfolio (T07 criterion 2)', () => {
         name: 'Remove Charizard, holo, unlimited from your portfolio',
       }),
     );
+    // Two rows and exactly one "Removed." line, where the removed row was.
     await waitFor(() => {
-      expect(rows().filter((item) => !item.textContent.startsWith('Removed.'))).toHaveLength(2);
+      expect(rows().map((item) => item.textContent.startsWith('Removed.'))).toEqual([
+        false,
+        true,
+        false,
+      ]);
     });
     expect(screen.getByText('Total value $79.02')).toBeTruthy();
     expect(calls.filter((call) => call.key === `DELETE ${CHARIZARD_KEY}`)).toHaveLength(1);

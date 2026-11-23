@@ -418,12 +418,15 @@ describe('the alert select follows the server and never loses an unsaved choice'
     fireEvent.click(
       screen.getByRole('button', { name: 'Remove Charizard, holo, 1st from your watchlist' }),
     );
+    const items = () =>
+      within(screen.getByRole('list', { name: 'Watchlist' })).getAllByRole('listitem');
+    // Two rows and exactly one "Removed." line, where the removed (first) row was.
     await waitFor(() => {
-      expect(
-        within(screen.getByRole('list', { name: 'Watchlist' }))
-          .getAllByRole('listitem')
-          .filter((item) => !item.textContent.startsWith('Removed.')),
-      ).toHaveLength(2);
+      expect(items().map((item) => item.textContent.startsWith('Removed.'))).toEqual([
+        true,
+        false,
+        false,
+      ]);
     });
     const names = within(main())
       .getAllByRole('combobox')

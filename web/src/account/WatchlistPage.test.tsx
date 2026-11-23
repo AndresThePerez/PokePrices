@@ -206,8 +206,13 @@ describe('removing from the watchlist (T07 criterion 2)', () => {
         name: 'Remove Charizard, holo, unlimited from your watchlist',
       }),
     );
+    // Two rows and exactly one "Removed." line, where the removed row was.
     await waitFor(() => {
-      expect(rows().filter((item) => !item.textContent.startsWith('Removed.'))).toHaveLength(2);
+      expect(rows().map((item) => item.textContent.startsWith('Removed.'))).toEqual([
+        false,
+        true,
+        false,
+      ]);
     });
     expect(screen.queryByText('Market price $968.91')).toBeNull();
     const keys = calls.map((call) => call.key);
