@@ -197,7 +197,7 @@ describe('SearchPage', () => {
     expect(alert.textContent).toContain('req-t46-validation-0002');
   });
 
-  it('asks for a query and calls nothing while the query is empty', () => {
+  it('asks for a query and sends only the freshness request while the query is empty', () => {
     const calls = stubFetch(() => jsonResponse(searchPage));
     visit('/search?q=%20%20');
     render(<App />);
