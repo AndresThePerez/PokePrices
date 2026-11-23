@@ -2,7 +2,7 @@
 // prices, movers, search) is built here, so a page and its tests share one shape. Per-user keys
 // never live here: they go through accountKey() (account/session.ts), under ['account', …], so a
 // session transition forgets all of them at once.
-import type { MoversDirection, PriceRange } from './api/client';
+import type { MoversDirection, PriceRange, SearchSort } from './api/client';
 
 /** GET /v1/cards/{id}. */
 export function cardKey(id: string): readonly ['card', string] {
@@ -30,7 +30,14 @@ export function freshnessKey(): readonly ['price-freshness'] {
   return ['price-freshness'];
 }
 
-/** GET /v1/cards?q=…[&page=…] */
-export function searchKey(q: string, page: number): readonly ['search', string, number] {
-  return ['search', q, page];
+/**
+ * GET /v1/cards?q=…[&page=…][&sort=…]. The relevance order keeps the key it always had; a price
+ * order adds itself, so an answer in one order is never read for another.
+ */
+export function searchKey(
+  q: string,
+  page: number,
+  sort: SearchSort = 'relevance',
+): readonly ['search', string, number] | readonly ['search', string, number, SearchSort] {
+  return sort === 'relevance' ? ['search', q, page] : ['search', q, page, sort];
 }

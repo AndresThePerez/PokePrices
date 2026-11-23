@@ -62,6 +62,21 @@ export function daysText(first: string, last: string): string {
 }
 
 /**
+ * What a price order of a search covers: the API orders the first `ordered` of `total` matches
+ * (PokéSearch's first page of at most 100), so the sentence names the top `ordered` only when
+ * more matches exist than were ordered, and every match otherwise.
+ */
+export function priceOrderText(ordered: number, total: number): string {
+  if (total === 0 || ordered === 0) return 'No matches to order by price.';
+  if (ordered >= total) {
+    return total === 1
+      ? 'Ordered by price among the only match.'
+      : `Ordered by price among all ${grouped(String(total))} matches; cards with no price come last.`;
+  }
+  return `Ordered by price among the top ${grouped(String(ordered))} of ${grouped(String(total))} matches; cards with no price come last.`;
+}
+
+/**
  * The initial a card-back placeholder draws: the first code point of the trimmed name (an astral
  * character is never split), upper-cased; '' for a blank name.
  */

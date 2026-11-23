@@ -11,7 +11,23 @@ prices get into the database is in [`OPERATIONS.md`](OPERATIONS.md).
   The strip is static (no scrolling, no animation), each row is a short row (see the next section), and it
   links to `/movers`.
 - **`/search`.** Card search over the PokéSearch catalogue. Results are catalogue entries, each with the card's
-  picture (see Card pictures); the page shows no price. Opening a result goes to its card page.
+  picture (see Card pictures) and its headline price: the latest close of **the first priced variant in card
+  order** (the card page's variants, by variant key; not the variant the card page opens on), named on the row.
+  Each row is a short row like the lists' (see the next section): the price and the short change, with the
+  list's one `as of <day> from TCGCSV (daily close)` line above it, or `Closes from <first> to <last> from
+  TCGCSV (daily close)` with each row's own `Close of <day>` when the rows' days differ; the row's accessible
+  name holds the full `Market price $<amount>`, change and `as of` lines. A card with no priced variant reads
+  `No price in the collected snapshots` (search shows no listing, even for a card whose variants have one).
+  Opening a result goes to its card page, opened on the variant the row priced.
+  - **Order.** `Best match` (PokéSearch's relevance, the default), `Price: high to low` and `Price: low to
+    high`, kept in the address (`sort=price_desc` or `sort=price_asc`) so a reload and Back keep it; choosing
+    an order goes back to page 1. PokéSearch pages its results and cannot sort by price, so a price order
+    covers **the top 100 matches** (its largest page) only, and the page says so: `Ordered by price among the
+    top 100 of <N> matches; cards with no price come last.`, or `among all <N> matches` when there are no
+    more than 100. Cards without a price come last and equal prices keep PokéSearch's order.
+  - **Word cap.** A search has at most **32 words** (PokéSearch's limit; any run of spaces, tabs or other
+    whitespace separates two words). A longer one shows `A search can have at most 32 words.` under the
+    search box, and the API answers it with a 422 on `q`.
 - **`/card/{id}`.** One card, for example `/card/base1-4`.
   - The catalogue details come from PokéSearch through the API. When PokéSearch is unavailable the page
     says `Catalog data may be out of date: PokéSearch is unavailable`.
@@ -199,13 +215,13 @@ no new close looks exactly like the day before.
 - **When the day itself arrives.** The collector's marker lands around 20:05 UTC and the API ingests it at
   the next hourly `:40` scan (see `OPERATIONS.md`). Before that, every page keeps showing the previous day,
   stamped with its own `as of` day.
-- **Stale-prices banner.** Every page that shows a price (home, a card page, `/movers`, `/watchlist` and
-  `/portfolio`) asks `GET /v1/prices/freshness` once, polled like the page's own data. When the answer is out
+- **Stale-prices banner.** Every page that shows a price (home, `/search`, a card page, `/movers`,
+  `/watchlist` and `/portfolio`) asks `GET /v1/prices/freshness` once, polled like the page's own data. When the answer is out
   of its freshness SLO (`within_slo: false`), one line appears under the header, outside the page's main
   region: `Prices are out of date: the newest collected prices are as of <day>, <age_hours> hours old.`
   (the day and the age with one decimal are the API's; the browser reads no clock). Nothing appears while
   the answer is within the SLO, while it loads, when the request fails or is not the documented shape, or
-  before any day was ingested. The pages that show no price (`/search`, sign-in, sign-up, the password
+  before any day was ingested. The pages that show no price (sign-in, sign-up, the password
   pages, `/account`, `/account/verify-email`, `/alerts` and the not-found page) neither ask for it nor show the banner. The dev
   stack, whose closes end on 2026-10-13, shows it on every page that shows a price.
 

@@ -9,6 +9,8 @@ import App from '../App';
 import type { CardSearchPage } from '../api/client';
 import { navigate } from '../router';
 import {
+  freshnessBody,
+  isFreshnessUrl,
   jsonResponse,
   problemResponse,
   sprigatitoPromo,
@@ -103,10 +105,11 @@ describe('which inputs share one search entry (Q1-i5-T04 review)', () => {
     ]) {
       await go(same);
     }
-    expect(calls.map((call) => call.url)).toEqual(['/v1/cards?q=a']);
+    expect(calls.map((call) => call.url)).toEqual(['/v1/prices/freshness', '/v1/cards?q=a']);
     await go('/search?q=A');
     await go('/search?q=a&page=2');
     expect(calls.map((call) => call.url)).toEqual([
+      '/v1/prices/freshness',
       '/v1/cards?q=a',
       '/v1/cards?q=A',
       '/v1/cards?q=a&page=2',
@@ -122,9 +125,10 @@ describe('which inputs share one search entry (Q1-i5-T04 review)', () => {
     await settle();
     for (const q of queries.slice(1)) await go(path(q));
     for (const q of [...queries].reverse()) await go(path(q));
-    expect(calls.map((call) => call.url)).toEqual(
-      queries.map((q) => `/v1/cards?${new URLSearchParams({ q }).toString()}`),
-    );
+    expect(calls.map((call) => call.url)).toEqual([
+      '/v1/prices/freshness',
+      ...queries.map((q) => `/v1/cards?${new URLSearchParams({ q }).toString()}`),
+    ]);
   });
 
   it('asks nothing for a blank q and leaves the entry a left behind: a, blank, a is one request', async () => {
@@ -140,7 +144,7 @@ describe('which inputs share one search entry (Q1-i5-T04 review)', () => {
     }
     await go('/search?q=a');
     expect(screen.getByRole('status').textContent).toBe('1 card matches “a”');
-    expect(calls.map((call) => call.url)).toEqual(['/v1/cards?q=a']);
+    expect(calls.map((call) => call.url)).toEqual(['/v1/prices/freshness', '/v1/cards?q=a']);
   });
 });
 
@@ -162,8 +166,12 @@ describe('search cancellation and the stale answer (Q1-i5-T04 review)', () => {
     render(<App />);
     await settle();
     await go('/search?q=b');
-    const [forA, forB] = held;
-    if (forA === undefined || forB === undefined) throw new Error('two requests expected');
+    const [freshness, forA, forB] = held;
+    if (freshness === undefined || forA === undefined || forB === undefined) {
+      throw new Error('three requests expected');
+    }
+    expect(freshness.url).toBe('/v1/prices/freshness');
+    freshness.answer(jsonResponse(freshnessBody({ within_slo: true })));
     expect(forA.url).toBe('/v1/cards?q=a');
     expect(forB.url).toBe('/v1/cards?q=b');
     await act(async () => {
@@ -246,6 +254,7 @@ describe('failures and the loading state (Q1-i5-T04 review)', () => {
       expect(screen.getByRole('list', { name: 'Search results' })).toBeTruthy();
       expect(screen.queryByRole('alert')).toBeNull();
       expect(calls.map((call) => call.url)).toEqual([
+        '/v1/prices/freshness',
         '/v1/cards?q=unown',
         '/v1/cards?q=unown&page=2',
       ]);
@@ -283,6 +292,7 @@ describe('search polling and staleness with the clock (Q1-i5-T04 review)', () =>
     const urls: string[] = [];
     stubFetch((url) => {
       urls.push(url);
+      if (isFreshnessUrl(url)) return jsonResponse(freshnessBody({ within_slo: true }));
       asked += 1;
       if (asked === 2) return problemResponse(upstreamUnavailableProblem);
       return jsonResponse(page(asked === 1 ? unownQuestion : sprigatitoPromo));
@@ -296,14 +306,14 @@ describe('search polling and staleness with the clock (Q1-i5-T04 review)', () =>
       window.dispatchEvent(new Event('visibilitychange'));
     });
     await settle();
-    expect(urls).toHaveLength(1);
-    await advance(200_000);
     expect(urls).toHaveLength(2);
+    await advance(200_000);
+    expect(urls).toHaveLength(4);
     expect(screen.getByText('Unown')).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
     expect(screen.getAllByRole('status')).toHaveLength(1);
     await advance(300_000);
-    expect(urls).toHaveLength(3);
+    expect(urls).toHaveLength(6);
     expect(screen.getByText('Sprigatito')).toBeTruthy();
     expect(screen.queryByText('Unown')).toBeNull();
   });
@@ -314,7 +324,10 @@ describe('search polling and staleness with the clock (Q1-i5-T04 review)', () =>
     vi.stubGlobal('fetch', (input: string | URL) => {
       const url = String(input);
       urls.push(url);
-      if (urls.length === 3) {
+      if (isFreshnessUrl(url)) {
+        return Promise.resolve(jsonResponse(freshnessBody({ within_slo: true })));
+      }
+      if (urls.length === 5) {
         return new Promise<Response>((resolve) => {
           pendingFor = resolve;
         });
@@ -330,7 +343,13 @@ describe('search polling and staleness with the clock (Q1-i5-T04 review)', () =>
     await go('/search?q=b');
     await advance(100_001);
     await go('/search?q=a');
-    expect(urls).toEqual(['/v1/cards?q=a', '/v1/cards?q=b', '/v1/cards?q=a']);
+    expect(urls).toEqual([
+      '/v1/prices/freshness',
+      '/v1/cards?q=a',
+      '/v1/cards?q=b',
+      '/v1/prices/freshness',
+      '/v1/cards?q=a',
+    ]);
     expect(screen.getByText('Unown')).toBeTruthy();
     expect(screen.getAllByRole('status')).toHaveLength(1);
     expect(screen.getByRole('status').textContent).toBe('1 card matches “a”');

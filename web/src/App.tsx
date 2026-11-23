@@ -103,6 +103,7 @@ function Routes() {
 /** The routes whose pages show a price: the stale-prices banner shows on these only. */
 const PRICED_ROUTES: ReadonlySet<string> = new Set([
   'home',
+  'search',
   'card',
   'movers',
   'watchlist',

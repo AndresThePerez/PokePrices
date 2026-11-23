@@ -79,7 +79,7 @@ describe('SearchPage', () => {
     visit('/search?q=unown');
     render(<App />);
     await screen.findByRole('list', { name: 'Search results' });
-    expect(calls.map((call) => call.url)).toEqual(['/v1/cards?q=unown']);
+    expect(calls.map((call) => call.url)).toEqual(['/v1/prices/freshness', '/v1/cards?q=unown']);
     const items = within(results()).getAllByRole('listitem');
     expect(items).toHaveLength(3);
     const first = items[0];
@@ -136,6 +136,7 @@ describe('SearchPage', () => {
       );
     });
     expect(calls.map((call) => call.url)).toEqual([
+      '/v1/prices/freshness',
       '/v1/cards?q=unown',
       '/v1/cards?q=unown&page=5',
     ]);
@@ -155,9 +156,9 @@ describe('SearchPage', () => {
     expect(next.getAttribute('href')).toBe('/search?q=unown+%3F&page=2');
     fireEvent.click(next);
     await waitFor(() => {
-      expect(calls).toHaveLength(2);
+      expect(calls).toHaveLength(3);
     });
-    expect(calls[1]?.url).toBe('/v1/cards?q=unown+%3F&page=2');
+    expect(calls[2]?.url).toBe('/v1/cards?q=unown+%3F&page=2');
     expect(window.location.search).toBe('?q=unown+%3F&page=2');
   });
 
@@ -202,7 +203,7 @@ describe('SearchPage', () => {
     render(<App />);
     expect(screen.getByRole('main').textContent).toContain('Type a card name');
     expect(screen.queryByRole('list', { name: 'Search results' })).toBeNull();
-    expect(calls).toEqual([]);
+    expect(calls.map((call) => call.url)).toEqual(['/v1/prices/freshness']);
   });
 
   it('shows a loading status until the API answers', async () => {
@@ -242,16 +243,19 @@ describe('SearchPage', () => {
     fireEvent.submit(box);
     await screen.findByRole('list', { name: 'Search results' });
     expect(window.location.search).toBe('?q=unown+%3F');
-    expect(calls.map((call) => call.url)).toEqual(['/v1/cards?q=unown+%3F']);
+    expect(calls.map((call) => call.url)).toEqual([
+      '/v1/prices/freshness',
+      '/v1/cards?q=unown+%3F',
+    ]);
   });
 
-  it('never shows a price, live or real-time wording', async () => {
+  it('never shows live or real-time wording', async () => {
     stubFetch(() => jsonResponse(degradedSearchPage));
     visit('/search?q=unown');
     render(<App />);
     await screen.findByRole('list', { name: 'Search results' });
     const text = screen.getByRole('main').textContent.toLowerCase();
-    for (const word of ['price', 'live', 'real-time', 'realtime', '$']) {
+    for (const word of ['live', 'real-time', 'realtime']) {
       expect(text).not.toContain(word);
     }
   });

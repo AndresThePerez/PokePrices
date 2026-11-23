@@ -167,8 +167,8 @@ describe('the stale-prices banner', () => {
     expect(calls.filter((call) => isFreshnessUrl(call.url))).toHaveLength(0);
   });
 
-  it('shows no banner and asks nothing on search, sign-in and account pages, even when prices are out of date', async () => {
-    for (const path of ['/search', '/sign-in', '/account']) {
+  it('shows no banner and asks nothing on sign-in and account pages, even when prices are out of date', async () => {
+    for (const path of ['/sign-in', '/account']) {
       const calls = stubWith(() => jsonResponse(freshnessBody()));
       visit(path);
       render(<App />);
@@ -185,8 +185,8 @@ describe('the stale-prices banner', () => {
     }
   });
 
-  it('shows the banner on the watchlist and the portfolio, once each', async () => {
-    for (const path of ['/watchlist', '/portfolio']) {
+  it('shows the banner on search, the watchlist and the portfolio, once each', async () => {
+    for (const path of ['/search', '/watchlist', '/portfolio']) {
       const calls = stubWith(() => jsonResponse(freshnessBody()));
       visit(path);
       render(<App />);

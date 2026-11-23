@@ -320,7 +320,7 @@ describe('one banner, across routes', () => {
     await go('/movers');
     expect(banners()).toHaveLength(1);
     await go('/search');
-    expect(banners()).toHaveLength(0);
+    expect(banners()).toHaveLength(1);
     await go('/movers?direction=down');
     expect(banners()).toHaveLength(1);
     await go('/');
@@ -329,9 +329,8 @@ describe('one banner, across routes', () => {
 });
 
 describe('where the docs say the banner shows', () => {
-  const SHOWS = ['/', '/movers', '/movers?direction=down', '/watchlist', '/portfolio'];
+  const SHOWS = ['/', '/search', '/movers', '/movers?direction=down', '/watchlist', '/portfolio'];
   const HIDES = [
-    '/search',
     '/sign-in',
     '/sign-up',
     '/forgot-password',
@@ -347,11 +346,10 @@ describe('where the docs say the banner shows', () => {
     expect(section).toContain(
       'Prices are out of date: the newest collected prices are as of <day>, <age_hours> hours old.',
     );
-    for (const shown of ['home', 'a card page', '/movers', '/watchlist', '/portfolio']) {
+    for (const shown of ['home', '/search', 'a card page', '/movers', '/watchlist', '/portfolio']) {
       expect(section, shown).toContain(shown);
     }
     for (const hidden of [
-      '/search',
       'sign-in',
       'sign-up',
       'the password pages',

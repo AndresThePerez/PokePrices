@@ -4,6 +4,7 @@ import App from '../App';
 import type { CardSearchPage } from '../api/client';
 import {
   degradedSearchPage,
+  freshnessBody,
   jsonResponse,
   problemResponse,
   searchPage,
@@ -64,13 +65,14 @@ describe('SearchPage edge cases', () => {
     const pending = manualFetch();
     visit('/search?q=alpha');
     render(<App />);
-    expect(pending).toHaveLength(1);
-    goTo('/search?q=beta');
     expect(pending).toHaveLength(2);
-    expect(pending[0]?.signal?.aborted).toBe(true);
-    expect(pending[1]?.signal?.aborted).toBe(false);
+    settle(pending[0], jsonResponse(freshnessBody({ within_slo: true })));
+    goTo('/search?q=beta');
+    expect(pending).toHaveLength(3);
+    expect(pending[1]?.signal?.aborted).toBe(true);
+    expect(pending[2]?.signal?.aborted).toBe(false);
     await act(async () => {
-      settle(pending[1], jsonResponse({ ...searchPage, data: [unownExclamation] }));
+      settle(pending[2], jsonResponse({ ...searchPage, data: [unownExclamation] }));
       await Promise.resolve();
     });
     const list = await screen.findByRole('list', { name: 'Search results' });
@@ -81,6 +83,7 @@ describe('SearchPage edge cases', () => {
 
   it('drops the degraded line and the problem when the next query succeeds cleanly', async () => {
     const replies: Response[] = [
+      jsonResponse(freshnessBody({ within_slo: true })),
       jsonResponse(degradedSearchPage),
       problemResponse(upstreamUnavailableProblem),
       jsonResponse(searchPage),
@@ -160,7 +163,7 @@ describe('SearchPage edge cases', () => {
       visit(`/search?q=unown&page=${encodeURIComponent(raw)}`);
       render(<App />);
       await screen.findByRole('list', { name: 'Search results' });
-      expect(calls.map((call) => call.url)).toEqual(['/v1/cards?q=unown']);
+      expect(calls.map((call) => call.url)).toEqual(['/v1/prices/freshness', '/v1/cards?q=unown']);
     },
   );
 
@@ -237,7 +240,7 @@ describe('SearchPage edge cases', () => {
     visit('/search?q=unown');
     render(<App />);
     const list = await screen.findByRole('list', { name: 'Search results' });
-    expect(calls.map((call) => call.url)).toEqual(['/v1/cards?q=unown']);
+    expect(calls.map((call) => call.url)).toEqual(['/v1/prices/freshness', '/v1/cards?q=unown']);
     const [bare, imaged] = within(list).getAllByRole('listitem');
     if (bare === undefined || imaged === undefined) throw new Error('two rows expected');
 
@@ -264,7 +267,11 @@ describe('SearchPage edge cases', () => {
   });
 
   it('shows the unreachable-API problem without a request id line and recovers on retry', async () => {
-    const answers: (Response | Error)[] = [new TypeError('network down'), jsonResponse(searchPage)];
+    const answers: (Response | Error)[] = [
+      jsonResponse(freshnessBody({ within_slo: true })),
+      new TypeError('network down'),
+      jsonResponse(searchPage),
+    ];
     const calls = stubFetch(() => answers[calls.length - 1] ?? new Error('unexpected call'));
     visit('/search?q=unown');
     render(<App />);
@@ -283,20 +290,23 @@ describe('SearchPage edge cases', () => {
     visit('/search?q=unown&page=3');
     render(<App />);
     await screen.findByRole('list', { name: 'Search results' });
-    expect(calls.map((call) => call.url)).toEqual(['/v1/cards?q=unown&page=3']);
+    expect(calls.map((call) => call.url)).toEqual([
+      '/v1/prices/freshness',
+      '/v1/cards?q=unown&page=3',
+    ]);
     const box = screen.getByRole('searchbox', { name: 'Card name' });
     fireEvent.change(box, { target: { value: 'sprigatito' } });
     fireEvent.submit(box);
     await waitFor(() => {
-      expect(calls).toHaveLength(2);
+      expect(calls).toHaveLength(3);
     });
-    expect(calls[1]?.url).toBe('/v1/cards?q=sprigatito');
+    expect(calls[2]?.url).toBe('/v1/cards?q=sprigatito');
     fireEvent.change(screen.getByRole('searchbox', { name: 'Card name' }), {
       target: { value: '   ' },
     });
     fireEvent.submit(screen.getByRole('searchbox', { name: 'Card name' }));
     expect(screen.getByRole('main').textContent).toContain('Type a card name');
     expect(screen.queryByRole('list', { name: 'Search results' })).toBeNull();
-    expect(calls).toHaveLength(2);
+    expect(calls).toHaveLength(3);
   });
 });

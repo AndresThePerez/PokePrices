@@ -1,28 +1,67 @@
-// The PokéPrices search page: /search?q=&page= over GET /v1/cards. The URL is the only search state.
+// The PokéPrices search page: /search?q=&sort=&page= over GET /v1/cards. The URL is the only
+// search state. Each row shows its card's headline close (the first priced variant in card order,
+// as the API picks it) in the short-row form, under the list's one source-and-"as of" stamp, and
+// links to the card page opened on that variant.
+import { useId } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import Link from '../Link';
-import { cardPath } from '../router';
-import { searchCards, type ApiFailure, type CardSearchPage } from '../api/client';
+import { cardPath, navigate } from '../router';
+import {
+  searchCards,
+  type ApiFailure,
+  type CardSearchPage,
+  type CardSummary,
+  type SearchSort,
+} from '../api/client';
+import { PRICE_FOOTNOTE, daysText, priceOrderText, variantLabel } from '../format';
 import { unwrap } from '../query';
 import { searchKey } from '../queryKeys';
+import { cardVariantPath } from '../routes';
+import { Button } from '../ui/Button';
 import { FOCUS, MUTED, SECONDARY_BUTTON } from '../ui/classes';
 import CardThumbnail from '../ui/CardThumbnail';
+import { RowPrice } from '../ui/PriceTag';
+import { rowPriceIds } from '../ui/rowPriceIds';
 import StatusLine from '../ui/StatusLine';
 import DegradedNotice from '../ui/DegradedNotice';
 import Page from '../ui/Page';
 import ProblemNotice from '../ui/ProblemNotice';
 import SearchForm from './SearchForm';
 
+/** What a row without a priced variant says in place of a price. */
+const NO_PRICE = 'No price in the collected snapshots';
+
+/** The orders, in the order the control offers them. */
+const ORDERS: readonly { readonly sort: SearchSort; readonly label: string }[] = [
+  { sort: 'relevance', label: 'Best match' },
+  { sort: 'price_desc', label: 'Price: high to low' },
+  { sort: 'price_asc', label: 'Price: low to high' },
+];
+
 /** A page number from the URL; anything that is not a positive integer reads as page 1. */
 function readPage(raw: string | null): number {
   return raw !== null && /^[1-9][0-9]{0,8}$/.test(raw) ? Number(raw) : 1;
 }
 
-/** The in-app URL of a search; page 1 stays implicit so it shares one URL with the plain query. */
-function searchPath(q: string, page: number): string {
+/** An order from the URL; anything that is not one of the three reads as relevance. */
+function readSort(raw: string | null): SearchSort {
+  return raw === 'price_desc' || raw === 'price_asc' ? raw : 'relevance';
+}
+
+/**
+ * The in-app URL of a search; page 1 and the relevance order stay implicit, so they share one URL
+ * with the plain query.
+ */
+function searchPath(q: string, page: number, sort: SearchSort): string {
   const params = new URLSearchParams({ q });
+  if (sort !== 'relevance') params.set('sort', sort);
   if (page > 1) params.set('page', String(page));
   return `/search?${params.toString()}`;
+}
+
+/** The API's 422 message on q (the word cap), if that is what the failure is. */
+function queryError(failure: ApiFailure | null): string | undefined {
+  return failure?.status === 422 ? failure.problem?.errors?.q?.[0] : undefined;
 }
 
 function Problem({ failure }: { readonly failure: ApiFailure }) {
@@ -31,10 +70,12 @@ function Problem({ failure }: { readonly failure: ApiFailure }) {
 
 function Pager({
   q,
+  sort,
   page,
   pages,
 }: {
   readonly q: string;
+  readonly sort: SearchSort;
   readonly page: number;
   readonly pages: number;
 }) {
@@ -49,7 +90,10 @@ function Pager({
     >
       <div className="flex justify-start">
         {page > 1 && (
-          <Link to={searchPath(q, previous)} className={`${SECONDARY_BUTTON} whitespace-nowrap`}>
+          <Link
+            to={searchPath(q, previous, sort)}
+            className={`${SECONDARY_BUTTON} whitespace-nowrap`}
+          >
             Previous page
           </Link>
         )}
@@ -59,7 +103,10 @@ function Pager({
       </span>
       <div className="flex justify-end">
         {page < pages && (
-          <Link to={searchPath(q, page + 1)} className={`${SECONDARY_BUTTON} whitespace-nowrap`}>
+          <Link
+            to={searchPath(q, page + 1, sort)}
+            className={`${SECONDARY_BUTTON} whitespace-nowrap`}
+          >
             Next page
           </Link>
         )}
@@ -68,7 +115,98 @@ function Pager({
   );
 }
 
-function Results({ q, body }: { readonly q: string; readonly body: CardSearchPage }) {
+/** The three orders as one pressed-segment group; a choice goes back to page 1 of that order. */
+function OrderControl({ q, sort }: { readonly q: string; readonly sort: SearchSort }) {
+  return (
+    <div role="group" aria-label="Order" className="mt-4 flex flex-wrap gap-2">
+      {ORDERS.map((order) => (
+        <Button
+          key={order.sort}
+          variant="segment"
+          pressed={order.sort === sort}
+          onClick={() => {
+            navigate(searchPath(q, 1, order.sort));
+          }}
+        >
+          {order.label}
+        </Button>
+      ))}
+    </div>
+  );
+}
+
+/** The first and last close days of the priced rows, or null when no row has a price. */
+function priceDays(
+  rows: readonly CardSummary[],
+): { readonly first: string; readonly last: string } | null {
+  const days = rows.flatMap((row) => (row.price === null ? [] : [row.price.day])).sort();
+  const first = days[0];
+  const last = days[days.length - 1];
+  return first === undefined || last === undefined ? null : { first, last };
+}
+
+/**
+ * One result: the card's picture, then its name, set, number and rarity, and the headline price
+ * (the variant's name over the price and the short change) or the no-price line, all one link to
+ * the card page opened on the priced variant. The row's accessible name is the name lines, the
+ * variant, the full "Market price" and change lines and the row's own "as of" line.
+ */
+function ResultRow({ card, showDay }: { readonly card: CardSummary; readonly showDay: boolean }) {
+  const id = useId();
+  const { price, variant } = card;
+  const priced = price !== null && variant !== null;
+  const label = priced ? variantLabel(variant) : '';
+  const priceIds = priced ? `${id}-variant ${rowPriceIds(id, true)}` : `${id}-missing`;
+  return (
+    <li aria-labelledby={`${id}-name ${id}-set ${id}-number ${priceIds}`}>
+      <Link
+        to={priced ? cardVariantPath(card.id, variant.variant_key) : cardPath(card.id)}
+        className={`flex min-h-18 items-center gap-3 px-2 py-2 hover:bg-surface-sunken after:ml-auto after:shrink-0 after:pl-1 after:text-lg after:text-ink-muted after:[content:'›'_/_''] ${FOCUS}`}
+      >
+        <CardThumbnail src={card.image_small} name={card.name} />
+        <span className="grid min-w-0 flex-1 gap-x-4 wrap-anywhere sm:grid-cols-[minmax(0,1fr)_minmax(9rem,14rem)]">
+          <span className="min-w-0">
+            <span id={`${id}-name`} className="block text-base font-semibold">
+              {card.name}
+            </span>
+            <span id={`${id}-set`} className={`block text-sm ${MUTED}`}>
+              {card.set_name}
+            </span>
+            <span id={`${id}-number`} className={`block text-sm ${MUTED}`}>
+              {card.rarity === null ? `No. ${card.number}` : `No. ${card.number} · ${card.rarity}`}
+            </span>
+          </span>
+          <span className="mt-1 block min-w-0 sm:mt-0 sm:text-right">
+            {priced ? (
+              <>
+                <span id={`${id}-variant`} className={`block text-sm ${MUTED}`}>
+                  {label.charAt(0).toUpperCase() + label.slice(1)}
+                </span>
+                <span className="flex flex-col sm:items-end">
+                  <RowPrice price={price} id={id} day={price.day} showDay={showDay} />
+                </span>
+              </>
+            ) : (
+              <span id={`${id}-missing`} className={`block text-meta ${MUTED}`}>
+                {NO_PRICE}
+              </span>
+            )}
+          </span>
+        </span>
+      </Link>
+    </li>
+  );
+}
+
+function Results({
+  q,
+  sort,
+  body,
+}: {
+  readonly q: string;
+  readonly sort: SearchSort;
+  readonly body: CardSearchPage;
+}) {
   const { data, meta } = body;
   let summary = `${String(meta.total)} ${meta.total === 1 ? 'card matches' : 'cards match'} “${q}”`;
   if (data.length === 0) {
@@ -77,36 +215,34 @@ function Results({ q, body }: { readonly q: string; readonly body: CardSearchPag
         ? `Page ${String(meta.page)} has no cards for “${q}”.`
         : `No cards match “${q}”. Check the spelling or try fewer words.`;
   }
+  // One stamp for the list: its one day, or the first and last day when the rows differ (each row
+  // then prints its own day under its price).
+  const days = priceDays(data);
   return (
     <>
       {meta.degraded && <DegradedNotice className="mt-4" />}
       <p role="status" className="mt-4 text-base font-semibold text-ink">
         {summary}
       </p>
+      {sort !== 'relevance' && meta.ordered !== null && (
+        <p className={`mt-1 text-sm ${MUTED}`}>{priceOrderText(meta.ordered, meta.total)}</p>
+      )}
+      {days !== null && (
+        <p className={`mt-2 text-meta ${MUTED}`}>{daysText(days.first, days.last)}</p>
+      )}
       {data.length > 0 && (
         <ol aria-label="Search results" className="mt-4 divide-y divide-line-subtle">
           {data.map((card) => (
-            <li key={card.id}>
-              <Link
-                to={cardPath(card.id)}
-                className={`flex min-h-18 items-center gap-3 px-2 py-2 hover:bg-surface-sunken after:ml-auto after:shrink-0 after:pl-1 after:text-lg after:text-ink-muted after:[content:'›'_/_''] ${FOCUS}`}
-              >
-                <CardThumbnail src={card.image_small} name={card.name} />
-                <span className="min-w-0 flex-1 wrap-anywhere">
-                  <span className="block text-base font-semibold">{card.name}</span>
-                  <span className={`block text-sm ${MUTED}`}>{card.set_name}</span>
-                  <span className={`block text-sm ${MUTED}`}>
-                    {card.rarity === null
-                      ? `No. ${card.number}`
-                      : `No. ${card.number} · ${card.rarity}`}
-                  </span>
-                </span>
-              </Link>
-            </li>
+            <ResultRow
+              key={card.id}
+              card={card}
+              showDay={days !== null && days.first !== days.last}
+            />
           ))}
         </ol>
       )}
-      <Pager q={q} page={meta.page} pages={meta.pages} />
+      {days !== null && <p className={`mt-4 text-meta ${MUTED}`}>{PRICE_FOOTNOTE}</p>}
+      <Pager q={q} sort={sort} page={meta.page} pages={meta.pages} />
     </>
   );
 }
@@ -114,19 +250,29 @@ function Results({ q, body }: { readonly q: string; readonly body: CardSearchPag
 export default function SearchPage({ query }: { readonly query: URLSearchParams }) {
   const q = (query.get('q') ?? '').trim();
   const page = readPage(query.get('page'));
-  // One cache entry per query and page (polling, five minutes while visible): a revisited search
-  // answers from the cache, and a failed poll keeps the last good answer on screen.
+  const sort = readSort(query.get('sort'));
+  // One cache entry per query, page and order (polling, five minutes while visible): a revisited
+  // search answers from the cache, and a failed poll keeps the last good answer on screen.
   const search = useQuery<CardSearchPage, ApiFailure>({
-    queryKey: searchKey(q, page),
-    queryFn: ({ signal }) => unwrap(searchCards(page > 1 ? { q, page } : { q }, { signal })),
+    queryKey: searchKey(q, page, sort),
+    queryFn: ({ signal }) =>
+      unwrap(
+        searchCards(
+          { q, ...(page > 1 ? { page } : {}), ...(sort === 'relevance' ? {} : { sort }) },
+          { signal },
+        ),
+      ),
     enabled: q !== '',
   });
+  const wordCap = search.data === undefined ? queryError(search.error) : undefined;
 
   let body;
   if (q === '') {
     body = <p className={`mt-6 ${MUTED}`}>Type a card name, then press Search.</p>;
   } else if (search.data !== undefined) {
-    body = <Results q={q} body={search.data} />;
+    body = <Results q={q} sort={sort} body={search.data} />;
+  } else if (wordCap !== undefined) {
+    body = null;
   } else if (search.error !== null) {
     body = <Problem failure={search.error} />;
   } else {
@@ -136,7 +282,8 @@ export default function SearchPage({ query }: { readonly query: URLSearchParams 
   return (
     <Page>
       <h1 className="text-2xl font-semibold">Search cards</h1>
-      <SearchForm key={q} initial={q} />
+      <SearchForm key={q} initial={q} error={wordCap} />
+      {q !== '' && <OrderControl q={q} sort={sort} />}
       {body}
     </Page>
   );

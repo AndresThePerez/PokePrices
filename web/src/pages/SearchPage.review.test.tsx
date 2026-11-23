@@ -56,7 +56,9 @@ describe('SearchPage review (D2-i2-T08)', () => {
     for (const row of within(list).getAllByRole('listitem')) {
       expect(row.textContent).not.toMatch(/null|undefined/u);
     }
-    expect(promo.textContent).toBe('SprigatitoScarlet & Violet Black Star PromosNo. 1');
+    expect(promo.textContent).toBe(
+      'SprigatitoScarlet & Violet Black Star PromosNo. 1No price in the collected snapshots',
+    );
   });
 
   it('draws a placeholder initial that is only an attribute, for hostile, astral and padded names', async () => {
@@ -150,7 +152,7 @@ describe('SearchPage review (D2-i2-T08)', () => {
     visit('/search?q=a');
     render(<App />);
     await screen.findByRole('list', { name: 'Search results' });
-    expect(calls.map((call) => call.url)).toEqual(['/v1/cards?q=a']);
+    expect(calls.map((call) => call.url)).toEqual(['/v1/prices/freshness', '/v1/cards?q=a']);
   });
 });
 
@@ -178,7 +180,7 @@ describe('SearchPage in the query cache (Q1-i5-T04)', () => {
     await act(async () => {
       await Promise.resolve();
     });
-    expect(urls()).toEqual(['/v1/cards?q=a', '/v1/cards?q=b']);
+    expect(urls()).toEqual(['/v1/prices/freshness', '/v1/cards?q=a', '/v1/cards?q=b']);
     expect(screen.getByRole('status').textContent).toBe('1 card matches “a”');
     expect(screen.getAllByRole('status')).toHaveLength(1);
   });
@@ -201,6 +203,7 @@ describe('SearchPage in the query cache (Q1-i5-T04)', () => {
       await Promise.resolve();
     });
     expect(calls.map((call) => call.url)).toEqual([
+      '/v1/prices/freshness',
       '/v1/cards?q=unown&page=2',
       '/v1/cards?q=unown',
     ]);
@@ -250,11 +253,16 @@ describe('SearchPage polling (Q1-i5-T04, HG-40 #11)', () => {
     render(<App />);
     await settle();
     expect(screen.getByRole('status').textContent).toBe('1 card matches “a”');
-    expect(urls()).toEqual(['/v1/cards?q=a']);
+    expect(urls()).toEqual(['/v1/prices/freshness', '/v1/cards?q=a']);
     await advance(299_999);
-    expect(urls()).toEqual(['/v1/cards?q=a']);
+    expect(urls()).toEqual(['/v1/prices/freshness', '/v1/cards?q=a']);
     await advance(1);
-    expect(urls()).toEqual(['/v1/cards?q=a', '/v1/cards?q=a']);
+    expect(urls()).toEqual([
+      '/v1/prices/freshness',
+      '/v1/cards?q=a',
+      '/v1/cards?q=a',
+      '/v1/prices/freshness',
+    ]);
     expect(screen.getByRole('status').textContent).toBe('1 card matches “a”');
   });
 
@@ -268,6 +276,6 @@ describe('SearchPage polling (Q1-i5-T04, HG-40 #11)', () => {
       document.dispatchEvent(new Event('visibilitychange', { bubbles: true }));
     });
     await advance(600_000);
-    expect(urls()).toEqual(['/v1/cards?q=a']);
+    expect(urls()).toEqual(['/v1/prices/freshness', '/v1/cards?q=a']);
   });
 });

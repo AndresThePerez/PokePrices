@@ -4,6 +4,8 @@ import type { components, operations } from './schema';
 export type Problem = components['schemas']['Problem'];
 export type CardSummary = components['schemas']['CardSummaryResource'];
 type CardSearchQuery = operations['searchCards']['parameters']['query'];
+/** The orders of a search: relevance (the default), or the headline close high or low first. */
+export type SearchSort = NonNullable<CardSearchQuery['sort']>;
 export type CardSearchPage =
   operations['searchCards']['responses'][200]['content']['application/json'];
 
@@ -383,7 +385,7 @@ async function trusted(pending: Promise<ApiResult<unknown>>): Promise<ApiResult<
   return result.ok ? { ok: true, data: result.data as undefined } : result;
 }
 
-/** GET /v1/cards?q=&page=&page_size= (the PokéSearch search, proxied by the API). */
+/** GET /v1/cards?q=&page=&page_size=&sort= (the PokéSearch search, proxied by the API). */
 export function searchCards(
   query: CardSearchQuery,
   options: RequestOptions = {},
@@ -391,6 +393,7 @@ export function searchCards(
   const params = new URLSearchParams({ q: query.q });
   if (query.page !== undefined) params.set('page', String(query.page));
   if (query.page_size !== undefined) params.set('page_size', String(query.page_size));
+  if (query.sort !== undefined) params.set('sort', query.sort);
   return decoded(publicRead(`/cards?${params.toString()}`, options), isCardSearchPage);
 }
 
