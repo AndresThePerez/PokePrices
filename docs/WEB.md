@@ -25,8 +25,15 @@ prices get into the database is in [`OPERATIONS.md`](OPERATIONS.md).
     `Listing as of <day> from TCGCSV (daily snapshot)` under it, in place of
     `No price in the collected snapshots`; a variant with neither keeps that line. The watchlist and the
     portfolio rows do not carry the listing.
+  - **A card with listings and no close.** When no variant of the card has a close but at least one has a
+    listing, the page reads as it does beside a priced variant: each variant with a listing reads
+    `No recent sales; lowest listing $<amount>` with its own `Listing as of <day> from TCGCSV (daily
+    snapshot)` line, a variant with neither reads `No price in the collected snapshots`, and the headline
+    shows the variant the address names (else the first one with a listing) with that same line and no
+    price. The chart says `No daily close is held for this card yet.` and draws nothing.
   - **Price history:** a chart of daily closes per variant (see Charts).
-  - A card with no priced variant makes no history request and shows no history.
+  - A card with neither a close nor a listing on any variant shows `No prices yet`, makes no history
+    request and shows no history.
   - **Which variant opens.** The headline price and the chart show one variant. `?variant=<variant key>` names
     it, the key percent-encoded as one query value, for example
     `/card/ex13-3?variant=ex13-3%3Areverse%3A-%3A-`. The rows of the movers strip, the movers board, the
@@ -36,8 +43,8 @@ prices get into the database is in [`OPERATIONS.md`](OPERATIONS.md).
     headline, is pressed in the chart's `Variant` group after the priced ones, and the chart shows its
     no-close line, never another variant's series. Without the parameter, or when it is empty or names no
     variant of the card (an unknown, malformed or another card's key), the page opens its default variant,
-    the first priced one with history, without an error. So does a variant that loses its close on a poll
-    while the page shows it.
+    the first priced one with history (on a card with no close, the first one with a listing), without an
+    error. So does a variant that loses its close on a poll while the page shows it.
   - **The address follows the choice.** Choosing another variant in the chart's `Variant` group replaces the
     address with that variant's `?variant=` (it adds no history step), so Back leaves the card page, Forward
     and a reload reopen the variant last chosen, and a copied address opens what was on screen.

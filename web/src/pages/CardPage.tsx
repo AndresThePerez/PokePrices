@@ -291,7 +291,8 @@ function VariantRow({
  * own state. A key of a variant the card has opens that variant, priced or not: one with no close
  * shows its listing sentence (or no price) in the hero and the no-close line in the chart. Any
  * other key, or none, opens the default: the first priced variant with an eligible series, in
- * card order, else the first priced variant; so does a variant that loses its price on a poll
+ * card order, else the first priced variant, else (a card with listings and no close) the first
+ * variant with a listing; so does a variant that loses its price on a poll
  * while the page shows it. The 1M history
  * query is the chart's default one (same key), so the page still asks for it once; it feeds the
  * sparklines and the default choice, and nothing is drawn while it loads or after it fails.
@@ -327,13 +328,15 @@ function PricedCard({ pageId, card }: { readonly pageId: string; readonly card: 
     namedUnpriced ??
     priced.find((variant) => variant.variant_key === chosen) ??
     priced.find((variant) => eligible.has(variant.variant_key)) ??
-    priced[0];
+    priced[0] ??
+    card.variants.find((variant) => variant.listing !== undefined);
   // Priced rows first, then the unpriced ones, each group in card order (RULING m).
   const rows = [...priced, ...card.variants.filter((variant) => variant.price === null)];
   let hero = null;
   if (selected !== undefined) {
     hero = isPriced(selected) ? <Hero variant={selected} /> : <UnpricedHero variant={selected} />;
   }
+  const shownUnpriced = selected !== undefined && !isPriced(selected) ? selected : null;
   return (
     <>
       {hero}
@@ -342,7 +345,7 @@ function PricedCard({ pageId, card }: { readonly pageId: string; readonly card: 
         chosen={selected?.variant_key ?? null}
         onChoose={setChosen}
         priced={priced.map((variant) => variant.variant_key)}
-        unpriced={namedUnpriced}
+        unpriced={shownUnpriced}
       />
       <PricesSection>
         <ul className="mt-4 divide-y divide-line-subtle">
@@ -465,7 +468,11 @@ const SET_PART = "before:mx-2 before:content-['·']";
 
 function Loaded({ id, body }: { readonly id: string; readonly body: CardDetail }) {
   const card = body.data;
-  const anyPriced = card.variants.some((variant) => variant.price !== null);
+  // A card with a close or a listing on any variant shows its Prices list; one with neither on
+  // every variant says "No prices yet" and asks for no history.
+  const anyPriceOrListing = card.variants.some(
+    (variant) => variant.price !== null || variant.listing !== undefined,
+  );
   return (
     <>
       {body.meta.degraded && <DegradedNotice className="mb-6" />}
@@ -483,7 +490,7 @@ function Loaded({ id, body }: { readonly id: string; readonly body: CardDetail }
             </p>
           </div>
           <div className="col-span-2 min-w-0 sm:mt-6">
-            {anyPriced ? (
+            {anyPriceOrListing ? (
               <PricedCard pageId={id} card={card} />
             ) : (
               <PricesSection>

@@ -11,6 +11,7 @@ import {
   clearXsrfCookie,
   demoMe,
   emptyPortfolioBody,
+  freshnessBody,
   historyFor,
   holdingOf,
   jsonResponse,
@@ -128,6 +129,9 @@ describe('the strip claims a session state only when the cache really knows it',
         'GET /v1/cards?q=unown': jsonResponse(searchPage),
         'GET /v1/cards/ex10-%3F': jsonResponse(pricedCardBody),
         'GET /v1/cards/ex10-%3F/prices?range=1M': jsonResponse(historyFor(pricedCardBody)),
+        'GET /v1/prices/freshness': jsonResponse(
+          freshnessBody({ within_slo: true, age_hours: 3.5 }),
+        ),
       });
       visit(start);
       render(<App />);
@@ -142,15 +146,10 @@ describe('the strip claims a session state only when the cache really knows it',
       const hops: readonly (readonly [string, readonly string[]])[] = [
         ['/movers', ['GET /v1/movers?direction=up&limit=50']],
         ['/search?q=unown', ['GET /v1/cards?q=unown']],
-        [
-          '/card/ex10-%3F',
-          [
-            'GET /v1/prices/freshness',
-            'GET /v1/cards/ex10-%3F',
-            'GET /v1/cards/ex10-%3F/prices?range=1M',
-          ],
-        ],
+        ['/card/ex10-%3F', ['GET /v1/cards/ex10-%3F', 'GET /v1/cards/ex10-%3F/prices?range=1M']],
       ];
+      // The prices' freshness was asked once, before the hops, and answered within its limit.
+      expect(calls.filter((call) => call.key === 'GET /v1/prices/freshness')).toHaveLength(1);
       for (const [path, keys] of hops) {
         const before = calls.length;
         go(path);

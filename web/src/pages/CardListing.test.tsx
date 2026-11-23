@@ -283,3 +283,136 @@ describe('a link naming a variant the card has opens it, priced or not', () => {
     }
   });
 });
+
+describe('a card with no priced variant', () => {
+  const ZERO_ELIGIBLE = 'No daily close is held for this card yet.';
+  const NO_PRICE = 'No price in the collected snapshots';
+  /** 1st Edition with a listing and no close is the card's only variant. */
+  const listedOnlyCard = cardOf(variantOf(FIRST, null, firstListing));
+  /** 1st Edition listed with no close, and a normal print with neither a close nor a listing. */
+  const listedAndBareCard = cardOf(variantOf(FIRST, null, firstListing), variantOf(NORMAL, null));
+  /** Two variants with neither a close nor a listing. */
+  const bareCard = cardOf(variantOf(FIRST, null), variantOf(NORMAL, null));
+
+  /** Every dollar amount on the page: only the listing may stand on a card with no close. */
+  function amounts(): string[] {
+    return document.body.textContent.match(/\$[\d,.]+/g) ?? [];
+  }
+
+  function noFigures(): void {
+    const text = document.body.textContent;
+    expect(text).not.toMatch(/NaN|undefined|null/);
+    expect(text).not.toMatch(/previous close|daily close\)|Market price \$/i);
+    expect(amounts()).toEqual(amounts().map(() => '$100,000.00'));
+    expect(recorder.charts).toHaveLength(0);
+  }
+
+  async function calmHistory(): Promise<HTMLElement> {
+    const section = await screen.findByRole('region', { name: 'Price history' });
+    await within(section).findByText(ZERO_ELIGIBLE);
+    return section;
+  }
+
+  it('lists a variant with only a listing as "No recent sales; lowest listing $X" with its as-of line and source, not "No prices yet"', async () => {
+    serve(listedOnlyCard);
+    visit('/card/base1-4');
+    render(<App />);
+    const prices = await screen.findByRole('region', { name: 'Prices' });
+    await within(prices).findByText(NO_SALES);
+    const first = within(row('holo, 1st'));
+    expect(first.getByText(NO_SALES)).toBeTruthy();
+    expect(first.getByText(LISTING_AS_OF)).toBeTruthy();
+    expect(screen.queryByText('No prices yet')).toBeNull();
+    // With no parameter the page opens the listed variant: its sentence heads the page.
+    const block = await hero();
+    expect(within(block).getByText('Market price · holo, 1st')).toBeTruthy();
+    expect(within(block).getByText(NO_SALES)).toBeTruthy();
+    expect(within(block).getByText(LISTING_AS_OF)).toBeTruthy();
+    await calmHistory();
+    noFigures();
+    expect(forbiddenIn(document.body.textContent)).toEqual([]);
+    expect(consoleError).not.toHaveBeenCalled();
+  });
+
+  it('opens the variant a link names in the hero, with no price, change or previous close anywhere', async () => {
+    const calls = serve(listedOnlyCard);
+    visit(cardVariantPath('base1-4', FIRST));
+    render(<App />);
+    const block = await hero();
+    expect(within(block).getByText('Market price · holo, 1st')).toBeTruthy();
+    expect(within(block).getByText(NO_SALES)).toBeTruthy();
+    expect(within(block).getByText(LISTING_AS_OF)).toBeTruthy();
+    const section = await calmHistory();
+    expect(within(section).queryByRole('group', { name: 'Variant' })).toBeNull();
+    expect(within(row('holo, 1st')).getByText(NO_SALES)).toBeTruthy();
+    expect(screen.queryByText('No prices yet')).toBeNull();
+    expect(screen.queryByRole('alert')).toBeNull();
+    noFigures();
+    expect(window.location.search).toBe(`?variant=${encodeURIComponent(FIRST)}`);
+    expect(calls.map((call) => call.url)).toEqual([
+      '/v1/prices/freshness',
+      '/v1/cards/base1-4',
+      '/v1/cards/base1-4/prices?range=1M',
+    ]);
+    expect(forbiddenIn(document.body.textContent)).toEqual([]);
+    expect(consoleError).not.toHaveBeenCalled();
+  });
+
+  it('reads each of two unpriced variants as it does beside a priced one, and opens either one a link names', async () => {
+    serve(listedAndBareCard);
+    visit('/card/base1-4');
+    render(<App />);
+    expect(within(await hero()).getByText('Market price · holo, 1st')).toBeTruthy();
+    const first = within(row('holo, 1st'));
+    expect(first.getByText(NO_SALES)).toBeTruthy();
+    expect(first.getByText(LISTING_AS_OF)).toBeTruthy();
+    expect(first.queryByText(NO_PRICE)).toBeNull();
+    expect(within(row('normal, unlimited')).getByText(NO_PRICE)).toBeTruthy();
+    expect(within(row('normal, unlimited')).queryByText(/lowest listing/i)).toBeNull();
+    expect(screen.queryByText('No prices yet')).toBeNull();
+    await calmHistory();
+    noFigures();
+    expect(forbiddenIn(document.body.textContent)).toEqual([]);
+    cleanup();
+
+    serve(listedAndBareCard);
+    visit(cardVariantPath('base1-4', NORMAL));
+    render(<App />);
+    let block = await hero();
+    expect(within(block).getByText('Market price · normal, unlimited')).toBeTruthy();
+    expect(within(block).getByText(NO_PRICE)).toBeTruthy();
+    expect(block.textContent).not.toMatch(/\$/);
+    await calmHistory();
+    noFigures();
+    cleanup();
+
+    serve(listedAndBareCard);
+    visit(cardVariantPath('base1-4', FIRST));
+    render(<App />);
+    block = await hero();
+    expect(within(block).getByText('Market price · holo, 1st')).toBeTruthy();
+    expect(within(block).getByText(NO_SALES)).toBeTruthy();
+    await calmHistory();
+    noFigures();
+    expect(forbiddenIn(document.body.textContent)).toEqual([]);
+    expect(consoleError).not.toHaveBeenCalled();
+  });
+
+  it('keeps "No prices yet" and asks only for the card when no variant has a close or a listing', async () => {
+    for (const path of ['/card/base1-4', cardVariantPath('base1-4', FIRST)]) {
+      const calls = serve(bareCard);
+      visit(path);
+      render(<App />);
+      const prices = await screen.findByRole('region', { name: 'Prices' });
+      await within(prices).findByText('No prices yet');
+      expect(prices.textContent, path).toBe('PricesNo prices yet');
+      expect(screen.queryByText(/^Market price · /), path).toBeNull();
+      expect(screen.queryByRole('region', { name: 'Price history' }), path).toBeNull();
+      expect(
+        calls.map((call) => call.url),
+        path,
+      ).toEqual(['/v1/prices/freshness', '/v1/cards/base1-4']);
+      cleanup();
+    }
+  });
+});
