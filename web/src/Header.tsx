@@ -4,7 +4,7 @@
 // footer. The last link is Sign in once the ['me'] cache knows the visitor is signed out, else
 // Account; the header reads the session passively (useKnownSession) and sends no request. Under
 // the bar, inside the banner and outside nav, a signed-in session's portfolio estimate links to
-// /portfolio (HeaderEstimate), and the demo strip names the read-only demo (RULING e).
+// /portfolio (HeaderEstimate), and the demo strip names the read-only demo.
 import { useEffect, useId, useState } from 'react';
 import HeaderEstimate from './account/HeaderEstimate';
 import { DemoStrip } from './account/SignOut';

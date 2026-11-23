@@ -5,7 +5,13 @@
 // visitor without one keeps the exact request list. Every query key that holds one account's data lives under ['account', …]
 // (accountKey), so a session transition forgets all of it at once (endSession); ['me'] itself is
 // outside it.
-import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
+import {
+  notifyManager,
+  useQuery,
+  useQueryClient,
+  type QueryCache,
+  type QueryClient,
+} from '@tanstack/react-query';
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
 import { getMe, type ApiFailure, type Me, type RequestOptions } from '../api/client';
 
@@ -137,6 +143,39 @@ export function useArrivalStatus(): string | null {
 }
 
 /**
+ * The query-cache subscription of a passive reader (useSyncExternalStore). The cache also speaks
+ * while another component renders: its useQuery builds its query ('added') and reads its result
+ * ('observerResultsUpdated'), and a call to React from there updates this reader during that
+ * render, which React refuses ("Cannot update a component while rendering a different
+ * component"). So only a change of a query's state ('updated': an answer, a write to the cache, an
+ * invalidation) and a removal, which happen outside render, are passed on at once; an added query
+ * is passed on on TanStack's notify schedule, after the render; the observer events, which change
+ * no query's state, are not passed on. Every render reads the snapshot afresh, so a render in
+ * between never shows an older answer.
+ */
+export function useCacheSubscription(cache: QueryCache): (onChange: () => void) => () => void {
+  return useCallback(
+    (onChange: () => void) => {
+      let subscribed = true;
+      const unsubscribe = cache.subscribe((event) => {
+        if (event.type === 'updated' || event.type === 'removed') {
+          onChange();
+        } else if (event.type === 'added') {
+          notifyManager.schedule(() => {
+            if (subscribed) onChange();
+          });
+        }
+      });
+      return () => {
+        subscribed = false;
+        unsubscribe();
+      };
+    },
+    [cache],
+  );
+}
+
+/**
  * Whether this tab's session is the read-only demo: the one shared way a component asks. It reads
  * the ['me'] cache passively (no observer, no request), so a public page such as the card page may
  * ask too and keeps its exact request list. True once an ['me'] answer named the read-only demo,
@@ -150,7 +189,7 @@ export function useArrivalStatus(): string | null {
  */
 export function useReadOnly(): boolean {
   const cache = useQueryClient().getQueryCache();
-  const subscribe = useCallback((onChange: () => void) => cache.subscribe(onChange), [cache]);
+  const subscribe = useCacheSubscription(cache);
   return useSyncExternalStore(subscribe, () => {
     const data: unknown = cache.find({ queryKey: ME_KEY, exact: true })?.state.data;
     return (
@@ -188,7 +227,7 @@ const UNKNOWN = 'unknown';
  */
 export function useKnownSession(): KnownSession {
   const cache = useQueryClient().getQueryCache();
-  const subscribe = useCallback((onChange: () => void) => cache.subscribe(onChange), [cache]);
+  const subscribe = useCacheSubscription(cache);
   return useSyncExternalStore(subscribe, () => {
     const query = cache.find<Me | null>({ queryKey: ME_KEY, exact: true });
     const data = query?.state.data;

@@ -138,8 +138,13 @@ prices get into the database is in [`OPERATIONS.md`](OPERATIONS.md).
   row. The line stays until the visitor leaves the page or removes another row (one line per list), and goes by
   itself once the list read again holds the row (put back from another tab, say); when it goes while holding focus,
   focus moves to the row that takes its place, or to the page heading when there is none, never to the page body. A
-  removal that fails keeps the row with its problem block and gives focus back to its `Remove`; an `Undo` that
-  fails says `Removed. Undo did not go through.` with the problem block and offers `Undo` again.
+  removal that fails keeps the row with its problem block and gives focus back to its `Remove`; an `Undo` whose
+  row write fails says `Removed. Undo did not go through.` with the problem block and offers `Undo` again. When
+  the row write succeeds and only the alert write fails, the row is back on the server without its alert, so
+  the line goes, the list is read again, focus moves to the restored row, and that row shows its `Alert: off`
+  with its threshold select and one status line (announced like `Saved.`, not a problem block): `Back on your
+  watchlist. Its alert could not be put back; set it again.` The alert is set again on that row; the line goes
+  when the visitor saves that row's alert, removes the row or leaves the page.
 - **`/alerts`.** `Alerts and webhooks`, linked from `/account` (the header is unchanged). It needs a signed-in
   account: signed out it offers `Sign in` and `Create an account`; an unverified account is asked to verify its
   email address and sees its lists without a form. As the demo it says the read-only demo cannot set alerts or add
@@ -189,9 +194,13 @@ no `Add`, `Remove`, `Edit` or quantity form. A public page learns the session af
 browser already holds the app's security token cookie (`XSRF-TOKEN`, set with the session cookie by a sign-in or
 account page, a sign-in or the demo): home, `/search`, a card page and `/movers` then ask `GET /v1/me` once, when
 nothing is known yet; without that cookie they ask nothing about the session, so browsing prices still sets no
-cookies. A card page opened directly by the demo therefore shows its lines and no write control; only a tab with
-no such cookie and nothing cached (which has not asked who is signed in) still shows the `Add` buttons, and a
-press answers `The demo account is read-only.` Any write the demo can still attempt anywhere (the sign-up or
+cookies. With that cookie, until `GET /v1/me` (and, signed in, both lists) has answered, a card page shows no
+account control on any variant and keeps the space the `Add` row takes, empty, so nothing below moves when the
+controls arrive; a 401, a failed session read or a failed list read then shows what it would have shown (the
+`Add` buttons, calmly, with no page-wide error). A card page opened directly by the demo therefore never shows
+an `Add` button: the held space, then its lines and no write control. Only a tab with no such cookie and nothing
+cached (which has not asked who is signed in) shows the `Add` buttons at once, and a press by the demo answers
+`The demo account is read-only.` Any write the demo can still attempt anywhere (the sign-up or
 password forms, for instance) shows that same sentence, with no request id. A signed-in session's portfolio
 estimate also shows in the header, under the bar, on home, `/search`, a card page, `/movers` and `/watchlist`
 (the pages where the stale-prices banner can show, less `/portfolio`, which states the total itself): one link

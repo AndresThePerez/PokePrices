@@ -8,13 +8,13 @@
 // header shows the portfolio estimate and the card page reads the two lists; a 401 (an expired
 // session) is the signed-out state, calmly. The sign-in and account pages ask for the session
 // themselves.
+// The rule itself (which routes, the cookie) is asksSession in sessionAsk.ts; the card page reads
+// useSessionAwaited from there to hold its account controls until the answer comes.
 import { useQuery } from '@tanstack/react-query';
 import type { ApiFailure, Me } from '../api/client';
-import { useRoute, type Route } from '../router';
-import { ME_KEY, fetchMe, holdsSessionCookie } from './session';
-
-/** The public routes that show a price and, with the cookie, ask for the session. */
-const ASKING: ReadonlySet<Route['name']> = new Set(['home', 'search', 'card', 'movers']);
+import { useRoute } from '../router';
+import { ME_KEY, fetchMe } from './session';
+import { asksSession } from './sessionAsk';
 
 function Ask() {
   useQuery<Me | null, ApiFailure>({
@@ -28,5 +28,5 @@ function Ask() {
 
 export default function PublicSession() {
   const { route } = useRoute();
-  return ASKING.has(route.name) && holdsSessionCookie() ? <Ask /> : null;
+  return asksSession(route.name) ? <Ask /> : null;
 }

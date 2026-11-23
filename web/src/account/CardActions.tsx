@@ -8,8 +8,11 @@
 // variant is on gives way to its line, and comes back, focused, when the variant is removed. The
 // buttons are <input type="button">: their words are the input's value, not text in the row, so a
 // row's text stays the price lines it was (P3 exact-text tests). A session known to be the
-// read-only demo (useReadOnly) sees the lines and no control that writes; one not yet known gets
-// the Add controls, and a click is answered by the calm demo sentence.
+// read-only demo (useReadOnly) sees the lines and no control that writes. With the cookie, while
+// the session (useSessionAwaited) or, signed in, either list has not answered, the row shows no
+// control and holds the Add row's space; a 401 or a failed read gives what it gave before. A
+// session not known for another reason (no cookie, a stale answer) gets the Add controls, and a
+// click by the demo is answered by the calm demo sentence.
 import { useQueryClient } from '@tanstack/react-query';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import {
@@ -38,7 +41,8 @@ import {
   signInPath,
 } from './lists';
 import { useAccountWrite, useWriteGuard } from './mutations';
-import { useKnownSession, useReadOnly } from './session';
+import { holdsSessionCookie, useKnownSession, useReadOnly } from './session';
+import { useSessionAwaited } from './sessionAsk';
 
 const WATCH_CONTEXT = 'Could not change your watchlist';
 const HOLD_CONTEXT = 'Could not change your portfolio';
@@ -209,6 +213,13 @@ export default function CardActions({
   const watched = watchBody?.data.some((item) => item.variant_key === key) ?? null;
   const holding = holdBody?.data.find((one) => one.variant_key === key) ?? null;
   const held = holdBody === undefined ? null : holding !== null;
+  // With the cookie, until the session (and, signed in, both lists) has answered, the row shows no
+  // control: what it would offer is not known yet. A failed read is an answer.
+  const sessionAwaited = useSessionAwaited();
+  const listsAwaited =
+    signedIn &&
+    holdsSessionCookie() &&
+    (watchlist.status === 'pending' || portfolio.status === 'pending');
 
   const watch = useAccountWrite(
     {
@@ -306,6 +317,10 @@ export default function CardActions({
       ? null
       : outcome;
 
+  if (sessionAwaited || listsAwaited) {
+    // The Add row's top gap and height, empty and hidden, so nothing below moves when it fills.
+    return <div data-held="account-controls" aria-hidden="true" className="mt-3 min-h-11" />;
+  }
   if (readOnly) {
     if (watched !== true && holding === null) return null;
     return (

@@ -4,7 +4,8 @@
 // its rows without a Remove button, and its seeded alert as a sample line. A verified account
 // that is not the demo also sets each row's alert
 // threshold here; an unverified one is told to verify first. Remove leaves "Removed." with Undo in
-// the row's place (RemovedLine), which puts the row back with its alert. The page asks for
+// the row's place (RemovedLine), which puts the row back with its alert; when only the alert's
+// write fails, the row comes back without it and says so in one status line. The page asks for
 // nothing beyond the session and the list until a write.
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useId, useRef, useState } from 'react';
@@ -22,7 +23,7 @@ import Link from '../Link';
 import { MUTED, SECONDARY_BUTTON, SELECT, TEXT_LINK } from '../ui/classes';
 import { MOVEMENT_ABS } from './alerts';
 import AccountScope from './AccountScope';
-import { ProblemBlock } from './Form';
+import { ProblemBlock, StatusLine } from './Form';
 import { firstErrors } from './fields';
 import {
   DegradedLine,
@@ -45,6 +46,8 @@ const EMPTY = 'Your watchlist is empty. Open a card from Search and choose Add t
 const BASE = 'Change vs previous close.';
 const LOADING = 'Loading your watchlist…';
 const UNVERIFIED_LINE = 'Verify your email address to set alerts.';
+/** The owner's words for a row Undo put back without its alert; the alert is set on the row. */
+const ALERT_LOST_LINE = 'Back on your watchlist. Its alert could not be put back; set it again.';
 
 /** Who may do what on this page: remove rows (not the demo), set alerts (verified, not the demo). */
 type Access = 'read-only' | 'unverified' | 'alerts';
@@ -65,7 +68,13 @@ function choiceOf(stored: number | null): string {
 }
 
 /** The row's alert: its line, the threshold select and Save alert (Off deletes, a number puts). */
-function AlertControl({ item }: { readonly item: WatchlistItem }) {
+function AlertControl({
+  item,
+  onSaved,
+}: {
+  readonly item: WatchlistItem;
+  readonly onSaved: () => void;
+}) {
   const queryClient = useQueryClient();
   const id = useId();
   const errorId = `${id}-error`;
@@ -79,7 +88,10 @@ function AlertControl({ item }: { readonly item: WatchlistItem }) {
   }
   // A failure leaves the last good list on screen and shows beside the row.
   const write = useAccountWrite({
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: WATCHLIST_KEY }),
+    onSuccess: () => {
+      onSaved();
+      return queryClient.invalidateQueries({ queryKey: WATCHLIST_KEY });
+    },
   });
   const pending = write.isPending;
   const failure = write.error;
@@ -168,12 +180,17 @@ function WatchRow({
   item,
   access,
   showDay,
+  alertLost,
   onRemoved,
+  onAlertSaved,
 }: {
   readonly item: WatchlistItem;
   readonly access: Access;
   readonly showDay: boolean;
+  /** Undo put this row back but not its alert: say so, calmly, until the visitor acts on it. */
+  readonly alertLost: boolean;
   readonly onRemoved: (item: WatchlistItem) => void;
+  readonly onAlertSaved: (item: WatchlistItem) => void;
 }) {
   const queryClient = useQueryClient();
   const removeRef = useRef<HTMLButtonElement>(null);
@@ -203,7 +220,13 @@ function WatchRow({
         <div className="mt-3 flex flex-wrap items-end gap-x-6 gap-y-3 sm:col-span-2">
           {access === 'alerts' && (
             <div className="min-w-0">
-              <AlertControl key={item.variant_key} item={item} />
+              <AlertControl
+                key={item.variant_key}
+                item={item}
+                onSaved={() => {
+                  onAlertSaved(item);
+                }}
+              />
             </div>
           )}
           <button
@@ -220,6 +243,11 @@ function WatchRow({
           </button>
         </div>
       )}
+      {alertLost && item.alert_pct === null && (
+        <div className="sm:col-span-2">
+          <StatusLine>{ALERT_LOST_LINE}</StatusLine>
+        </div>
+      )}
       {failure !== null && (
         <div className="sm:col-span-2">
           <ProblemBlock context="Could not change your watchlist" failure={failure} />
@@ -229,23 +257,30 @@ function WatchRow({
   );
 }
 
+/** What an Undo put back: the row as it was, or the row without the alert it had. */
+type PutBack = 'whole' | 'without-alert';
+
 /**
  * Puts a removed row back: the watchlist PUT, then, when the row had an alert, the alert PUT with
- * its threshold. The first failure is the answer.
+ * its threshold. A failed row write is the answer (nothing was put back); once the row is back, a
+ * failed alert write is not a failed Undo: the row is on the list without its alert.
  */
-async function putBack(item: WatchlistItem): Promise<ApiResult<undefined>> {
+async function putBack(item: WatchlistItem): Promise<ApiResult<PutBack>> {
   const put = await putWatchlistItem(item.variant_key);
   if (!put.ok) return put;
-  if (item.alert_pct === null) return { ok: true, data: undefined };
+  if (item.alert_pct === null) return { ok: true, data: 'whole' };
   const alert = await putAlert(item.variant_key, item.alert_pct);
-  return alert.ok ? { ok: true, data: undefined } : alert;
+  return { ok: true, data: alert.ok ? 'whole' : 'without-alert' };
 }
 
 function Loaded({ body, access }: { readonly body: WatchlistBody; readonly access: Access }) {
   const queryClient = useQueryClient();
   const days = priceDays(body.data);
   const { removal, shown, removed } = useRemoval(body.data, body);
-  const undo = useAccountWrite({
+  // The row an Undo put back without its alert; its line goes when the visitor saves that row's
+  // alert or removes the row, and with the page.
+  const [alertLost, setAlertLost] = useState<string | null>(null);
+  const undo = useAccountWrite<PutBack>({
     onSuccess: () => queryClient.invalidateQueries({ queryKey: WATCHLIST_KEY }),
   });
   const { reset } = undo;
@@ -253,16 +288,22 @@ function Loaded({ body, access }: { readonly body: WatchlistBody; readonly acces
     (item: WatchlistItem) => {
       reset();
       removed(item);
+      setAlertLost((lost) => (lost === item.variant_key ? null : lost));
     },
     [reset, removed],
   );
+  const onAlertSaved = useCallback((item: WatchlistItem) => {
+    setAlertLost((lost) => (lost === item.variant_key ? null : lost));
+  }, []);
   const rows = shown.map((item) => (
     <WatchRow
       key={item.variant_key}
       item={item}
       access={access}
       showDay={days !== null && days.first !== days.last}
+      alertLost={alertLost === item.variant_key}
       onRemoved={onRemoved}
+      onAlertSaved={onAlertSaved}
     />
   ));
   if (removal !== null) {
@@ -277,7 +318,11 @@ function Loaded({ body, access }: { readonly body: WatchlistBody; readonly acces
         pending={undo.isPending}
         failure={undo.error}
         onUndo={() => {
-          undo.run(() => putBack(item));
+          undo.run(async () => {
+            const result = await putBack(item);
+            if (result.ok && result.data === 'without-alert') setAlertLost(item.variant_key);
+            return result;
+          });
         }}
       />,
     );

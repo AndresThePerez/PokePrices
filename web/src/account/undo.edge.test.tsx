@@ -1,6 +1,7 @@
 // Adversarial tests for Removed. Undo and "Saved.": Undo sends the old quantity (1 and 9999, never 1
 // by default and never an unsaved draft), a double press sends one write, a watchlist Undo whose
-// alert PUT fails can be retried to the end, a removal and an Undo that fail with 404, 422, 429 and
+// alert PUT fails brings the row back without it and the alert can be set again on the row, a
+// removal and an Undo that fail with 404, 422, 429 and
 // 500 each keep their line and their focus (never the page body), two removals in flight end with one
 // line and no row shown twice, leaving the page and coming back drops the line, and "Saved." is one
 // status line that goes with the next write.
@@ -232,12 +233,13 @@ describe('Undo restores exactly what was removed', () => {
 });
 
 describe('a watchlist row with an alert: the second write of Undo fails', () => {
-  it('says Undo did not go through, offers it again, and the retry sends both writes and finishes', async () => {
+  it('brings the row back without its alert, says so on the row, and setting it again there finishes', async () => {
     const alerted = watchItemOf({ alert_pct: 10 });
     const calls = await open('/watchlist', {
       [WATCHLIST]: [
         jsonResponse(watchlistBody([alerted])),
         jsonResponse(watchlistBody([])),
+        jsonResponse(watchlistBody([watchItemOf({ alert_pct: null })])),
         jsonResponse(watchlistBody([alerted])),
       ],
       [`DELETE /v1/watchlist/${CHARIZARD}`]: rawResponse(204, null),
@@ -252,23 +254,29 @@ describe('a watchlist row with an alert: the second write of Undo fails', () => 
     fireEvent.click(within(list('Watchlist')).getByRole('button', { name: /^Remove Charizard/ }));
     const undo = await screen.findByRole('button', { name: /^Undo removing Charizard/ });
     fireEvent.click(undo);
-    await screen.findByText(/Could not put it back: Internal Server Error/);
+    await screen.findByText(
+      'Back on your watchlist. Its alert could not be put back; set it again.',
+    );
     const line = list('Watchlist').children[0] as HTMLElement;
-    expect(line.textContent).toContain('Undo did not go through.');
-    const again = within(line).getByRole('button', { name: /^Undo removing Charizard/ });
-    expect(again.getAttribute('aria-disabled')).toBeNull();
+    expect(line.textContent).not.toContain('Undo did not go through.');
+    expect(within(line).getByText('Alert: off')).toBeTruthy();
     await waitFor(() => {
-      expect(document.activeElement).toBe(again);
+      expect(document.activeElement).toBe(line.querySelector('a, button, input'));
     });
     for (const word of FORBIDDEN_WORDS) expect(line.textContent).not.toMatch(word);
 
-    fireEvent.click(again);
+    fireEvent.change(
+      within(line).getByRole('combobox', { name: /^Alert threshold for Charizard/ }),
+      {
+        target: { value: '10' },
+      },
+    );
+    fireEvent.click(within(line).getByRole('button', { name: /^Save the alert for Charizard/ }));
     await screen.findByText('Alert: at 10%');
     const writes = calls.map((call) => call.key).filter((key) => key.startsWith('PUT '));
     expect(writes).toEqual([
       `PUT /v1/watchlist/${CHARIZARD}`,
       `PUT /v1/alerts/${CHARIZARD}`,
-      `PUT /v1/watchlist/${CHARIZARD}`,
       `PUT /v1/alerts/${CHARIZARD}`,
     ]);
     expect(screen.queryByText(/Could not put it back/)).toBeNull();
