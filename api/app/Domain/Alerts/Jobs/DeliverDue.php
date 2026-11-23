@@ -21,7 +21,8 @@ use stdClass;
  * deliver runs one in-line). One worker serves ingest too, so a sweep is short and bounded:
  *
  * 1. Retire: pending rows claimed 2 x max_attempts times fail with internal (a row whose sends never finish cannot
- *    loop); delivered and failed rows created more than retention_days ago are deleted.
+ *    loop); delivered and failed rows created more than retention_days ago are deleted, except the read-only demo's
+ *    samples.
  * 2. Claim: at most batch due rows, at most per_endpoint per endpoint, oldest first, FOR UPDATE SKIP LOCKED in one
  *    short transaction; each gets claims + 1 and a lease (next_attempt_at = now + lease_seconds) that only a crashed
  *    sweep ever waits out.
@@ -62,8 +63,11 @@ final class DeliverDue implements ShouldBeUnique, ShouldQueue
             "UPDATE deliveries SET status = 'failed', last_error = 'internal' WHERE status = 'pending' AND claims >= ?",
             [2 * $maxAttempts],
         );
+        // The read-only demo's delivered samples (App\Domain\Alerts\DemoSamples) are kept: they are dated by the close
+        // they are about, and nothing else ever writes a delivery for the demo.
         $db->delete(
-            "DELETE FROM deliveries WHERE status IN ('delivered', 'failed') AND created_at < ?::timestamptz",
+            "DELETE FROM deliveries WHERE status IN ('delivered', 'failed') AND created_at < ?::timestamptz
+             AND NOT EXISTS (SELECT 1 FROM users u WHERE u.id = deliveries.user_id AND u.is_demo)",
             [self::timestamp($now->subDays((int) config('alerts.delivery.retention_days', 30)))],
         );
 

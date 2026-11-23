@@ -1589,6 +1589,86 @@
                 }
             }
         },
+        "/demo/samples": {
+            "get": {
+                "operationId": "getDemoSamples",
+                "description": "For the read-only demo account only: its alert (the watchlist card and threshold), a sample delivered alert email as the account would have received it (subject and text), and a sample signed webhook delivery (price.moved): the exact body, the webhook-id, webhook-timestamp and webhook-signature headers it was signed with, and the webhook's url_hint. sample_secret is the fixed, published sample signing secret the signature verifies with; it belongs to no account. Nothing is ever sent for the demo. alert, message and webhook are null when the demo has none. Any other account gets 404 not-found; signed out, 401. The answer is never cached.",
+                "summary": "Read the demo's samples",
+                "tags": [
+                    "Account"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`DemoSamplesResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/DemoSamplesResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ],
+                                    "additionalProperties": false
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthenticated: sign in first (problem type https://pokeprices.andrestheperez.com/problems/unauthenticated).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not found",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests: the rate limit of this route is spent.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds until the limit resets.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "An error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
         "/demo/session": {
             "post": {
                 "operationId": "startDemoSession",
@@ -3231,6 +3311,182 @@
                 ],
                 "additionalProperties": false,
                 "title": "CardSummaryResource"
+            },
+            "DemoSamplesResource": {
+                "type": "object",
+                "properties": {
+                    "sample_secret": {
+                        "type": "string",
+                        "description": "the published sample signing secret (whsec_\u2026); it belongs to no account"
+                    },
+                    "alert": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "properties": {
+                            "variant_key": {
+                                "type": "string"
+                            },
+                            "card_id": {
+                                "type": "string"
+                            },
+                            "finish": {
+                                "type": "string"
+                            },
+                            "edition": {
+                                "type": "string"
+                            },
+                            "treatment": {
+                                "type": "string"
+                            },
+                            "card": {
+                                "type": [
+                                    "object",
+                                    "null"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "set_name": {
+                                        "type": "string"
+                                    },
+                                    "number": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "name",
+                                    "set_name",
+                                    "number"
+                                ],
+                                "additionalProperties": false
+                            },
+                            "alert_pct": {
+                                "type": "integer"
+                            }
+                        },
+                        "required": [
+                            "variant_key",
+                            "card_id",
+                            "finish",
+                            "edition",
+                            "treatment",
+                            "card",
+                            "alert_pct"
+                        ],
+                        "additionalProperties": false
+                    },
+                    "message": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "properties": {
+                            "message_id": {
+                                "type": "string"
+                            },
+                            "kind": {
+                                "type": "string",
+                                "const": "alert.triggered"
+                            },
+                            "channel": {
+                                "type": "string",
+                                "const": "email"
+                            },
+                            "status": {
+                                "type": "string",
+                                "const": "delivered"
+                            },
+                            "delivered_at": {
+                                "type": "string"
+                            },
+                            "subject": {
+                                "type": "string"
+                            },
+                            "text": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "message_id",
+                            "kind",
+                            "channel",
+                            "status",
+                            "delivered_at",
+                            "subject",
+                            "text"
+                        ],
+                        "additionalProperties": false
+                    },
+                    "webhook": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "properties": {
+                            "message_id": {
+                                "type": "string"
+                            },
+                            "kind": {
+                                "type": "string",
+                                "const": "price.moved"
+                            },
+                            "url_hint": {
+                                "type": "string"
+                            },
+                            "status": {
+                                "type": "string",
+                                "const": "delivered"
+                            },
+                            "delivered_at": {
+                                "type": "string"
+                            },
+                            "headers": {
+                                "type": "object",
+                                "properties": {
+                                    "webhook-id": {
+                                        "type": "string"
+                                    },
+                                    "webhook-timestamp": {
+                                        "type": "string"
+                                    },
+                                    "webhook-signature": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "webhook-id",
+                                    "webhook-timestamp",
+                                    "webhook-signature"
+                                ],
+                                "additionalProperties": false
+                            },
+                            "body": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "message_id",
+                            "kind",
+                            "url_hint",
+                            "status",
+                            "delivered_at",
+                            "headers",
+                            "body"
+                        ],
+                        "additionalProperties": false
+                    }
+                },
+                "required": [
+                    "sample_secret",
+                    "alert",
+                    "message",
+                    "webhook"
+                ],
+                "additionalProperties": false,
+                "title": "DemoSamplesResource"
             },
             "HoldingEntryResource": {
                 "type": "object",

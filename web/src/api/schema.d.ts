@@ -276,6 +276,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/demo/samples": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the demo's samples
+         * @description For the read-only demo account only: its alert (the watchlist card and threshold), a sample delivered alert email as the account would have received it (subject and text), and a sample signed webhook delivery (price.moved): the exact body, the webhook-id, webhook-timestamp and webhook-signature headers it was signed with, and the webhook's url_hint. sample_secret is the fixed, published sample signing secret the signature verifies with; it belongs to no account. Nothing is ever sent for the demo. alert, message and webhook are null when the demo has none. Any other account gets 404 not-found; signed out, 401. The answer is never cached.
+         */
+        get: operations["getDemoSamples"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/demo/session": {
         parameters: {
             query?: never;
@@ -592,6 +612,51 @@ export interface components {
                 change: string | null;
                 change_pct: string | null;
                 series_epoch: number;
+            } | null;
+        };
+        /** DemoSamplesResource */
+        DemoSamplesResource: {
+            /** @description the published sample signing secret (whsec_…); it belongs to no account */
+            sample_secret: string;
+            alert: {
+                variant_key: string;
+                card_id: string;
+                finish: string;
+                edition: string;
+                treatment: string;
+                card: {
+                    name: string;
+                    set_name: string;
+                    number: string;
+                } | null;
+                alert_pct: number;
+            } | null;
+            message: {
+                message_id: string;
+                /** @constant */
+                kind: "alert.triggered";
+                /** @constant */
+                channel: "email";
+                /** @constant */
+                status: "delivered";
+                delivered_at: string;
+                subject: string;
+                text: string;
+            } | null;
+            webhook: {
+                message_id: string;
+                /** @constant */
+                kind: "price.moved";
+                url_hint: string;
+                /** @constant */
+                status: "delivered";
+                delivered_at: string;
+                headers: {
+                    "webhook-id": string;
+                    "webhook-timestamp": string;
+                    "webhook-signature": string;
+                };
+                body: string;
             } | null;
         };
         /** HoldingEntryResource */
@@ -1812,6 +1877,66 @@ export interface operations {
                 headers: {
                     /** @description Seconds until the limit resets. */
                     "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getDemoSamples: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `DemoSamplesResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["DemoSamplesResource"];
+                    };
+                };
+            };
+            /** @description Unauthenticated: sign in first (problem type https://pokeprices.andrestheperez.com/problems/unauthenticated). */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Not found */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Too Many Requests: the rate limit of this route is spent. */
+            429: {
+                headers: {
+                    /** @description Seconds until the limit resets. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description An error */
+            500: {
+                headers: {
                     [name: string]: unknown;
                 };
                 content: {

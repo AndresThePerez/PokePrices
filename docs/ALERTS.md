@@ -87,13 +87,42 @@ their watchlist together with their portfolio.
   configured, so the `log` mailer writes the message to the worker log (`docker compose -f compose.dev.yml logs worker`),
   recipient included. That output is the mailer's own, not an application log line; the application itself never writes
   an email address to a log. Eligibility is checked when a delivery is created, not again when it is sent.
-- **The demo account cannot set alerts or add webhooks and never receives anything: it has no email address or Discord of its own.**
-  Its writes are refused with `403` `demo-read-only`. An unverified account is refused with `403` `email-not-verified`
+- **The demo account is read-only and never receives anything: it has no email address or Discord of its own.** It
+  shows one seeded alert and sample messages instead (see "The demo's samples" below), and it is never eligible, so
+  the dispatch creates nothing for it. Its writes (setting or clearing an alert, adding or deleting a webhook, the
+  test send, choosing where alerts go) are refused with `403` `demo-read-only`. An unverified account is refused with `403` `email-not-verified`
   on `POST /v1/webhooks`, `POST /v1/webhooks/{id}/test`, `PUT /v1/alerts/{variantKey}` and `PUT /v1/me/notifications`
   (reading its lists and deleting still work).
 - **Late watchers.** Fan-out is idempotent: a person who starts watching a variant after the first dispatch of the day
   gets that day's messages on the next dispatch run, for events up to the day's ceiling only.
 - **Limits per person:** five signed webhooks and one Discord webhook (a disabled one still counts).
+
+## The demo's samples
+
+The read-only demo shows what a real account sees, from rows `DemoAccountSeeder` writes (`api/app/Domain/Alerts/DemoSamples.php`).
+**Nothing is ever sent for the demo**: no mail, no outbound request, no queued job.
+
+- **The alert.** A 10 % threshold on one card of the demo watchlist: the card of the newest movement event among the
+  demo's cards whose move reached 10 % (on the dev data, Chimecho `ex5-17:reverse:-:-`, +361.30 % on 2026-10-12), else
+  Chimecho with no sample message.
+- **The sample delivered message.** An `alert.triggered` email about that event, as the account would have received
+  it (the same renderer, subject and text as above), stored `delivered`.
+- **The sample signed webhook.** One signed webhook, `Sample signed webhook`, at `https://example.test/…` (a reserved
+  name: nothing is ever sent there), and one `price.moved` delivery to it about the same event, stored `delivered` with
+  the exact body. Both deliveries are dated by the event's own `as_of`, so seeding twice writes the same rows.
+- **The sample secret.** The demo's signatures use a fixed, **published sample secret** that exists only for the demo:
+  `whsec_` followed by the base64 of the 32 ASCII bytes `pokeprices-demo-sample-secret-01`. It is not a key of any
+  account, it is never read from the environment, and the demo never shows a real account's secret.
+- **Reading them.** `GET /v1/demo/samples` (the demo only; any other account gets `404` `not-found`, signed out `401`)
+  answers `{"data": {"sample_secret", "alert", "message", "webhook"}}`: the alert (`variant_key`, the card's name,
+  `alert_pct`), the message (`subject`, `text`, `delivered_at`) and the webhook delivery (`url_hint`, `delivered_at`, the
+  exact `body` and the `webhook-id`, `webhook-timestamp` and `webhook-signature` headers, the timestamp being the
+  delivery's own time). Each is `null` when the seeder wrote none. The signature verifies with the sample secret as in
+  "Verifying a delivery" below, and with no other secret. The demo also reads its webhook in `GET /v1/webhooks` (last
+  delivery `delivered`) and its alert on `GET /v1/watchlist` (`alert_pct`).
+- **Why nothing is sent.** Both deliveries are written `delivered`, and the sweep only claims `pending` rows; the demo is
+  never eligible, so the dispatch creates no delivery for it; every write of the demo (the test send included) is
+  refused; and the retention sweep keeps the demo's samples (they are dated by the close, often more than 30 days ago).
 
 ## Signed webhooks
 
@@ -193,7 +222,7 @@ HTTP `408`, `429` and `5xx`. A message ends `delivered` or `failed`. `last_error
 sweep is queued or running at a time (`ShouldBeUnique`, 120 seconds). In order it:
 
 1. retires pending rows claimed 12 times (twice the attempt limit) as `failed` with `internal`, and deletes `delivered` and
-   `failed` rows older than 30 days;
+   `failed` rows older than 30 days (the read-only demo's samples excepted);
 2. claims at most 10 due rows, at most 3 per endpoint, oldest first, and sets a 300-second lease on each;
 3. sends them one after another, in the job itself, while less than 60 seconds have passed. When the budget is spent, or an
    endpoint timed out or refused the connection, the rest of the claimed rows of the sweep (or of that endpoint) are
@@ -215,7 +244,8 @@ the sweep goes on with the next row; that row keeps its 300-second lease and is 
 after it, and a `delivery_outcome_unrecorded` warning carries only the delivery id and the class name. No log line carries a URL, `url_hint`,
 secret, signature, body or email address, and a send never adds a row to `failed_jobs`.
 
-**What is kept.** Delivered and failed rows are kept for 30 days (`config('alerts.delivery.retention_days')`). The account
+**What is kept.** Delivered and failed rows are kept for 30 days (`config('alerts.delivery.retention_days')`), except
+the read-only demo's two samples, which are kept. The account
 export (`GET /v1/me/export`, version 2) lists the newest 500 deliveries (`config('alerts.export_deliveries_limit')`): with
 30-day retention that is everything kept in practice. It never holds a message body, a webhook URL or a secret.
 

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Domain\Accounts;
 
+use App\Domain\Alerts\DemoSamples;
 use App\Models\User;
 use Closure;
 use Illuminate\Support\Facades\DB;
@@ -12,15 +13,65 @@ use Illuminate\Support\Str;
 use RuntimeException;
 
 /**
- * The read-only demo account, configured in config/accounts.php demo: whether it may be
- * entered, its email, its optional password (DEMO_PASSWORD, never committed) and the watchlist and portfolio it is
- * seeded with. seed() is idempotent: one demo user (is_demo, verified, no two-factor) holding exactly the configured
- * rows whose variants exist in card_variants. Without DEMO_PASSWORD the demo gets a random 40-character password that
- * nothing prints, so it is entered only through POST /v1/demo/session.
+ * The read-only demo account. config/accounts.php demo says whether it may be entered, its email
+ * and its optional password (DEMO_PASSWORD, never committed); the watchlist and portfolio it is seeded with are
+ * WATCHLIST and PORTFOLIO here (the config's watchlist and portfolio keys are no longer read). seed() is idempotent:
+ * one demo user (is_demo, verified, no two-factor) holding exactly those rows whose variants exist in card_variants,
+ * plus the samples of App\Domain\Alerts\DemoSamples (one alert, a sample signed webhook and two delivered sample
+ * messages). Nothing is sent, queued or read from the catalogue. Without DEMO_PASSWORD the demo gets a random
+ * 40-character password that nothing prints, so it is entered only through POST /v1/demo/session.
  */
 final class DemoAccount
 {
     public const int PASSWORD_LENGTH = 40;
+
+    /**
+     * The demo watchlist: one variant each of 14 well-known cards, no card twice. Every card is in the catalogue and
+     * has daily closes, except the 1st Edition holo Charizard, kept as the example of a variant with no close.
+     */
+    public const array WATCHLIST = [
+        'base1-4:holo:1st:-',
+        'base1-2:holo:unlimited:-',
+        'base1-15:holo:unlimited:-',
+        'base1-10:holo:unlimited:-',
+        'base1-16:holo:unlimited:-',
+        'base1-58:normal:unlimited:-',
+        'base2-11:holo:unlimited:-',
+        'base3-4:holo:unlimited:-',
+        'neo1-9:holo:unlimited:-',
+        'ex5-17:reverse:-:-',
+        'swsh7-95:holo:-:-',
+        'sv2-203:holo:-:-',
+        'sv4pt5-232:holo:-:-',
+        'sv8pt5-161:holo:-:-',
+    ];
+
+    /** The demo portfolio, variant key => quantity: variants of the watchlist only. */
+    public const array PORTFOLIO = [
+        'base1-2:holo:unlimited:-' => 1,
+        'base1-58:normal:unlimited:-' => 2,
+        'neo1-9:holo:unlimited:-' => 1,
+        'ex5-17:reverse:-:-' => 3,
+        'sv2-203:holo:-:-' => 1,
+    ];
+
+    /** @var array<string, array{name: string, set_name: string, number: string}> */
+    private const array CARDS = [
+        'base1-4' => ['name' => 'Charizard', 'set_name' => 'Base', 'number' => '4'],
+        'base1-2' => ['name' => 'Blastoise', 'set_name' => 'Base', 'number' => '2'],
+        'base1-15' => ['name' => 'Venusaur', 'set_name' => 'Base', 'number' => '15'],
+        'base1-10' => ['name' => 'Mewtwo', 'set_name' => 'Base', 'number' => '10'],
+        'base1-16' => ['name' => 'Zapdos', 'set_name' => 'Base', 'number' => '16'],
+        'base1-58' => ['name' => 'Pikachu', 'set_name' => 'Base', 'number' => '58'],
+        'base2-11' => ['name' => 'Snorlax', 'set_name' => 'Jungle', 'number' => '11'],
+        'base3-4' => ['name' => 'Dragonite', 'set_name' => 'Fossil', 'number' => '4'],
+        'neo1-9' => ['name' => 'Lugia', 'set_name' => 'Neo Genesis', 'number' => '9'],
+        'ex5-17' => ['name' => 'Chimecho', 'set_name' => 'Hidden Legends', 'number' => '17'],
+        'swsh7-95' => ['name' => 'Umbreon VMAX', 'set_name' => 'Evolving Skies', 'number' => '95'],
+        'sv2-203' => ['name' => 'Magikarp', 'set_name' => 'Paldea Evolved', 'number' => '203'],
+        'sv4pt5-232' => ['name' => 'Mew ex', 'set_name' => 'Paldean Fates', 'number' => '232'],
+        'sv8pt5-161' => ['name' => 'Umbreon ex', 'set_name' => 'Prismatic Evolutions', 'number' => '161'],
+    ];
 
     public static function enabled(): bool
     {
@@ -54,26 +105,27 @@ final class DemoAccount
         return self::configuredPassword() ?? Str::random(self::PASSWORD_LENGTH);
     }
 
-    /** @return list<string> */
+    /** @return list<string> the demo's watchlist: WATCHLIST */
     public static function watchlist(): array
     {
-        $keys = config('accounts.demo.watchlist');
-
-        return is_array($keys) ? array_values(array_filter($keys, 'is_string')) : [];
+        return self::WATCHLIST;
     }
 
-    /** @return array<string, int> variant key => quantity */
+    /** @return array<string, int> the demo's portfolio, variant key => quantity: PORTFOLIO */
     public static function portfolio(): array
     {
-        $holdings = config('accounts.demo.portfolio');
-        $portfolio = [];
-        foreach (is_array($holdings) ? $holdings : [] as $key => $quantity) {
-            if (is_string($key) && is_int($quantity)) {
-                $portfolio[$key] = $quantity;
-            }
-        }
+        return self::PORTFOLIO;
+    }
 
-        return $portfolio;
+    /**
+     * The catalogue name, set name and number of a card on the demo watchlist, as PokéSearch gives them; null for
+     * any other card. The samples are written with these, so seeding never reads the catalogue.
+     *
+     * @return array{name: string, set_name: string, number: string}|null
+     */
+    public static function card(string $cardId): ?array
+    {
+        return self::CARDS[$cardId] ?? null;
     }
 
     /**
@@ -119,6 +171,8 @@ final class DemoAccount
                     WHERE portfolio_holdings.quantity <> EXCLUDED.quantity
                     SQL, [$demo->id, $key, $quantity]);
             }
+
+            DemoSamples::seed(DB::connection(), $demo->id, $watchlist, $line);
 
             $line('Demo account '.$demo->email.' is ready: '.count($watchlist).' watchlist and '.count($portfolio).' portfolio rows.');
 

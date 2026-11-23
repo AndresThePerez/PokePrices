@@ -6,6 +6,7 @@ use App\Http\Controllers\AlertController;
 use App\Http\Controllers\CardController;
 use App\Http\Controllers\CardPricesController;
 use App\Http\Controllers\CardSearchController;
+use App\Http\Controllers\DemoSamplesController;
 use App\Http\Controllers\DemoSessionController;
 use App\Http\Controllers\MeController;
 use App\Http\Controllers\MoversController;
@@ -89,6 +90,10 @@ Route::middleware([
     Route::delete('/alerts/{variantKey}', [AlertController::class, 'destroy'])->where('variantKey', '.+')->name('alerts.destroy');
     Route::get('/me/notifications', [NotificationController::class, 'show'])->name('notifications.show');
     Route::put('/me/notifications', [NotificationController::class, 'put'])->middleware(RequireAlertEligibility::class)->name('notifications.put');
+
+    // The read-only demo's seeded alert, sample delivered message and sample signed payload: a read, for the demo only
+    // (any other account gets 404). Nothing is ever sent for the demo.
+    Route::get('/demo/samples', DemoSamplesController::class)->name('demo.samples');
 });
 
 // One-click entry to the read-only demo: outside the account group (a visitor is not signed in yet), stateful

@@ -21,7 +21,7 @@ use Tests\Support\CatalogCache;
 // from the router), and the demo's own rate tiers. Every /v1 response is also validated against openapi/api.json by
 // Tests\TestCase (C3).
 
-const DEMO_KEYS = ['base1-4:holo:unlimited:-', 'base1-4:holo:1st:-', 'ex5-17:reverse:-:-'];
+const DEMO_KEYS = DemoAccount::WATCHLIST;
 
 beforeEach(function (): void {
     Accounts::setUp();
@@ -73,7 +73,7 @@ function demoSnapshot(): array
 }
 
 it('seeds one verified demo user without two-factor, with exactly the configured rows that exist, idempotently', function (): void {
-    AccountRows::variant('base1-4:holo:unlimited:-');
+    AccountRows::variant('base1-2:holo:unlimited:-');
     AccountRows::variant('ex5-17:reverse:-:-');
 
     $first = demoSeed();
@@ -87,8 +87,8 @@ it('seeds one verified demo user without two-factor, with exactly the configured
         ->and($demo->two_factor_secret)->toBeNull()
         ->and($demo->two_factor_confirmed_at)->toBeNull()
         ->and($demo->password)->toBe($hash)
-        ->and(AccountRows::watched($demo))->toBe(['base1-4:holo:unlimited:-', 'ex5-17:reverse:-:-'])
-        ->and(AccountRows::held($demo))->toBe(['base1-4:holo:unlimited:-' => 1, 'ex5-17:reverse:-:-' => 3]);
+        ->and(AccountRows::watched($demo))->toBe(['base1-2:holo:unlimited:-', 'ex5-17:reverse:-:-'])
+        ->and(AccountRows::held($demo))->toBe(['base1-2:holo:unlimited:-' => 1, 'ex5-17:reverse:-:-' => 3]);
     foreach ([$first, $second] as $output) {
         expect(substr_count($output, 'base1-4:holo:1st:-'))->toBe(1)
             ->and($output)->toContain('Skipped base1-4:holo:1st:-');
@@ -102,7 +102,7 @@ it('runs on an empty database: the demo user, no rows, one console line per miss
     $skipped = array_values(array_filter(explode("\n", $output), fn (string $line): bool => str_contains($line, 'Skipped ')));
     expect(AccountRows::watched($demo))->toBe([])
         ->and(AccountRows::held($demo))->toBe([])
-        ->and($skipped)->toHaveCount(5);
+        ->and($skipped)->toHaveCount(count(DemoAccount::WATCHLIST) + count(DemoAccount::PORTFOLIO));
     foreach (DEMO_KEYS as $key) {
         expect($output)->toContain($key);
     }
@@ -122,8 +122,8 @@ it('puts the demo back to the configured rows and state on a second run', functi
     demoSeed();
 
     $demo = demoUser();
-    expect(AccountRows::watched($demo))->toBe(['base1-4:holo:1st:-', 'base1-4:holo:unlimited:-', 'ex5-17:reverse:-:-'])
-        ->and(AccountRows::held($demo))->toBe(['base1-4:holo:unlimited:-' => 1, 'ex5-17:reverse:-:-' => 3])
+    expect(AccountRows::watched($demo))->toBe(collect(DemoAccount::WATCHLIST)->sort()->values()->all())
+        ->and(AccountRows::held($demo))->toBe(collect(DemoAccount::PORTFOLIO)->sortKeys()->all())
         ->and($demo->email_verified_at)->not->toBeNull()
         ->and($demo->two_factor_secret)->toBeNull()
         ->and($demo->two_factor_confirmed_at)->toBeNull();
@@ -289,8 +289,8 @@ it('answers the demo\'s GETs with 200', function (): void {
 
     expect([$me->getStatusCode(), $watchlist->getStatusCode(), $portfolio->getStatusCode()])->toBe([200, 200, 200])
         ->and($me->json('data.read_only'))->toBeTrue()
-        ->and($watchlist->json('meta.count'))->toBe(3)
-        ->and($portfolio->json('meta.total_value'))->toBe('40.00');
+        ->and($watchlist->json('meta.count'))->toBe(count(DemoAccount::WATCHLIST))
+        ->and($portfolio->json('meta.total_value'))->toBe('80.00');
 });
 
 it('never lets a reset change the demo\'s password: 422 errors.email', function (): void {
