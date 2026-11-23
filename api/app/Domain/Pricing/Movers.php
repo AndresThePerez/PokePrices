@@ -29,7 +29,11 @@ use stdClass;
  *   (observed_at = the candle's as_of): its low and mid are present and above zero, and the close is no lower than
  *   PricingConfig::MOVERS_LISTING_LOW_RATIO times the low and no higher than PricingConfig::MOVERS_LISTING_MID_RATIO
  *   times the mid, both bounds included. A close whose observation or listings are missing cannot be shown to be in
- *   line and is not ranked, and neither is a close of 0.00.
+ *   line and is not ranked, and neither is a close of 0.00;
+ * - the close is not a thin market: it is not under PricingConfig::THIN_MARKET_RATIO times the low listing of its
+ *   observation, the line the card price block flags (Listings). With both ratios at one half the listing lower bound
+ *   above already keeps such a close out; the condition is stated on its own so the movers never rank a close the card
+ *   page flags, whatever the listing bounds are set to.
  *
  * The ranked variants are `up` when change > 0 and `down` when change < 0, by abs(change_pct) desc, abs(change) desc,
  * variant_key asc (byte order), top PricingConfig::moversLimit() per direction. A move whose percent does not fit
@@ -71,7 +75,7 @@ final class Movers
                        ?::numeric AS min_previous, ?::integer AS lim,
                        ?::numeric AS min_pct, ?::numeric AS max_pct, ?::numeric AS min_change,
                        ?::integer AS activity_closes, ?::integer AS activity_min,
-                       ?::numeric AS low_ratio, ?::numeric AS mid_ratio
+                       ?::numeric AS low_ratio, ?::numeric AS mid_ratio, ?::numeric AS thin_ratio
             ),
             moves AS MATERIALIZED (
                 SELECT c.day, c.source, c.variant_key, c.series_epoch, c.close, c.as_of,
@@ -127,6 +131,8 @@ final class Movers
                   AND previously_listed.low > 0
                   AND m.previous_close >= previously_listed.low * x.low_ratio
                   AND m.previous_close <= previously_listed.mid * x.mid_ratio
+                  -- Not a thin market: the close the card price block would flag is never a mover.
+                  AND NOT (m.close < listed.low * x.thin_ratio)
             ),
             ranked AS (
                 SELECT m.*, CASE WHEN m.change > 0 THEN 'up' ELSE 'down' END AS direction,
@@ -159,7 +165,7 @@ final class Movers
             PricingConfig::moversLimit(),
             PricingConfig::MOVERS_MIN_CHANGE_PCT, self::MAX_CHANGE_PCT, PricingConfig::MOVERS_MIN_CHANGE,
             PricingConfig::MOVERS_ACTIVITY_CLOSES, PricingConfig::MOVERS_ACTIVITY_MIN_DISTINCT,
-            PricingConfig::MOVERS_LISTING_LOW_RATIO, PricingConfig::MOVERS_LISTING_MID_RATIO,
+            PricingConfig::MOVERS_LISTING_LOW_RATIO, PricingConfig::MOVERS_LISTING_MID_RATIO, PricingConfig::THIN_MARKET_RATIO,
         ]);
     }
 

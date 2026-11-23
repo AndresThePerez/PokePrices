@@ -13,7 +13,8 @@ use App\Domain\Pricing\PricingConfig;
  * portfolio: its latest TCGplayer close via TCGCSV with the previous close and change, or null
  * when the collected snapshots hold no close for it. Money and change_pct are decimal strings with two decimals as
  * Postgres numeric(12,2) gives them; day and previous_day are YYYY-MM-DD and as_of (the snapshot marker of the close)
- * is RFC 3339 UTC.
+ * is RFC 3339 UTC. The card page's block also carries the lowest listing and the thin-market flag (withListing());
+ * the watchlist and portfolio blocks do not.
  */
 final class PriceBlock
 {
@@ -41,9 +42,26 @@ final class PriceBlock
     }
 
     /**
+     * The card page's block: from()'s keys, then lowest_listing (the low of the observation the close came from, a
+     * decimal string with two decimals, null when that observation lists none or 0.00) and thin_market (the close is
+     * under PricingConfig::THIN_MARKET_RATIO times that listing). Null without a close.
+     *
+     * @return array{source: string, feed: string, basis: string, currency: string, cadence: string, close: string, day: string, as_of: string, previous_close: string|null, previous_day: string|null, change: string|null, change_pct: string|null, series_epoch: int, lowest_listing: string|null, thin_market: bool}|null
+     */
+    public static function withListing(?PriceLatest $latest, ?string $lowest, bool $thin): ?array
+    {
+        $block = self::from($latest);
+        if ($block === null) {
+            return null;
+        }
+
+        return [...$block, 'lowest_listing' => $lowest, 'thin_market' => $lowest !== null && $thin];
+    }
+
+    /**
      * The block of a row that LEFT JOINed price_latest with every PriceColumns::LATEST entry selected as
      * price_<column>: the row's price_latest values become a PriceLatest exactly as an eager load would hydrate it, so
-     * the block is the card page's, key for key. Null when the join found no close (price_variant_key is null).
+     * the block is from()'s, key for key. Null when the join found no close (price_variant_key is null).
      *
      * @param  array<string, mixed>  $row
      * @return array{source: string, feed: string, basis: string, currency: string, cadence: string, close: string, day: string, as_of: string, previous_close: string|null, previous_day: string|null, change: string|null, change_pct: string|null, series_epoch: int}|null

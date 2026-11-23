@@ -194,6 +194,8 @@ export const pricedUnownCard = {
         change: '1.45',
         change_pct: '2.09',
         series_epoch: 1,
+        lowest_listing: null,
+        thin_market: false,
       },
     },
     {
@@ -240,6 +242,8 @@ function closeOf(fields: Partial<VariantPrice>): VariantPrice {
     change: '1.45',
     change_pct: '2.09',
     series_epoch: 1,
+    lowest_listing: null,
+    thin_market: false,
     ...fields,
   };
 }

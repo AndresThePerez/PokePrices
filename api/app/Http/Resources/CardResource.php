@@ -8,6 +8,8 @@ use App\Domain\Catalog\CatalogResult;
 use App\Domain\Catalog\PokeSearchClient;
 use App\Domain\Catalog\Problems\UpstreamContract;
 use App\Domain\Mapping\Models\CardVariant;
+use App\Domain\Pricing\Listings;
+use App\Domain\Pricing\PricingConfig;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
@@ -16,6 +18,11 @@ use Illuminate\Http\Resources\Json\JsonResource;
  * One card as GET /v1/cards/{id} answers it: the PokéSearch card fields PokéPrices
  * shows, its set and images, the PokéPrices variants with their current source mappings and their latest daily
  * close (price), and the provenance of the catalog that answered.
+ *
+ * Each price also carries lowest_listing, the low listing of the observation its close came from (null when that
+ * observation lists none or 0.00), and thin_market, true when the close is under half of it. A variant without a
+ * close keeps price null; when its newest observation lists a low above zero it also carries listing, that lowest
+ * listing with the observation's day and snapshot marker. listing is absent otherwise, and on every priced variant.
  *
  * Image URLs are passed through as PokéSearch sends them (OQ4: the SPA rewrites them). hp, rarity and artist
  * are null and subtypes and types empty when PokéSearch omits them. catalog.status is the variant rows' catalog
@@ -63,7 +70,7 @@ final class CardResource extends JsonResource
      *     rarity: string|null, number: string, artist: string|null,
      *     set: array{id: string, name: string, series: string, total: int, release_date: string},
      *     images: array{small: string, large: string},
-     *     variants: list<array{variant_key: string, finish: string, edition: string, treatment: string, sources: list<array{source: string, product_id: int, subtype: string, group_id: int, series_epoch: int, map_snapshot_day: string}>, price: array{source: string, feed: string, basis: string, currency: string, cadence: string, close: string, day: string, as_of: string, previous_close: string|null, previous_day: string|null, change: string|null, change_pct: string|null, series_epoch: int}|null}>,
+     *     variants: list<array{variant_key: string, finish: string, edition: string, treatment: string, sources: list<array{source: string, product_id: int, subtype: string, group_id: int, series_epoch: int, map_snapshot_day: string}>, price: array{source: string, feed: string, basis: string, currency: string, cadence: string, close: string, day: string, as_of: string, previous_close: string|null, previous_day: string|null, change: string|null, change_pct: string|null, series_epoch: int, lowest_listing: string|null, thin_market: bool}|null, listing?: array{source: string, feed: string, currency: string, cadence: string, lowest_listing: string, day: string, as_of: string}}>,
      *     catalog: array{seed_ref: string|null, seeded_at: string|null, status: string}
      * }
      */
@@ -95,7 +102,7 @@ final class CardResource extends JsonResource
                 'small' => $card['image_small'],
                 'large' => $card['image_large'],
             ],
-            /** @var list<array{variant_key: string, finish: string, edition: string, treatment: string, sources: list<array{source: string, product_id: int, subtype: string, group_id: int, series_epoch: int, map_snapshot_day: string}>, price: array{source: string, feed: string, basis: string, currency: string, cadence: string, close: string, day: string, as_of: string, previous_close: string|null, previous_day: string|null, change: string|null, change_pct: string|null, series_epoch: int}|null}> */
+            /** @var list<array{variant_key: string, finish: string, edition: string, treatment: string, sources: list<array{source: string, product_id: int, subtype: string, group_id: int, series_epoch: int, map_snapshot_day: string}>, price: array{source: string, feed: string, basis: string, currency: string, cadence: string, close: string, day: string, as_of: string, previous_close: string|null, previous_day: string|null, change: string|null, change_pct: string|null, series_epoch: int, lowest_listing: string|null, thin_market: bool}|null, listing?: array{source: string, feed: string, currency: string, cadence: string, lowest_listing: string, day: string, as_of: string}}> */
             'variants' => $this->variants(),
             'catalog' => [
                 /** @var string|null */
@@ -120,9 +127,16 @@ final class CardResource extends JsonResource
         ];
     }
 
-    /** @return list<array{variant_key: string, finish: string, edition: string, treatment: string, sources: list<array{source: string, product_id: int, subtype: string, group_id: int, series_epoch: int, map_snapshot_day: string}>, price: array{source: string, feed: string, basis: string, currency: string, cadence: string, close: string, day: string, as_of: string, previous_close: string|null, previous_day: string|null, change: string|null, change_pct: string|null, series_epoch: int}|null}> */
+    /** @return list<array{variant_key: string, finish: string, edition: string, treatment: string, sources: list<array{source: string, product_id: int, subtype: string, group_id: int, series_epoch: int, map_snapshot_day: string}>, price: array{source: string, feed: string, basis: string, currency: string, cadence: string, close: string, day: string, as_of: string, previous_close: string|null, previous_day: string|null, change: string|null, change_pct: string|null, series_epoch: int, lowest_listing: string|null, thin_market: bool}|null, listing?: array{source: string, feed: string, currency: string, cadence: string, lowest_listing: string, day: string, as_of: string}}> */
     private function variants(): array
     {
+        $latest = [];
+        foreach ($this->variants as $variant) {
+            $latest[$variant->variant_key] = $variant->latestPrice;
+        }
+        // One query for every variant's listing, whatever the number of variants.
+        $listings = Listings::forVariants($latest);
+
         $variants = [];
         foreach ($this->variants as $variant) {
             $sources = [];
@@ -136,17 +150,43 @@ final class CardResource extends JsonResource
                     'map_snapshot_day' => $source->mapBuild->snapshot_day->format('Y-m-d'),
                 ];
             }
-            $variants[] = [
+            $listing = $listings[$variant->variant_key] ?? null;
+            $one = [
                 'variant_key' => $variant->variant_key,
                 'finish' => $variant->finish,
                 'edition' => $variant->edition,
                 'treatment' => $variant->treatment,
                 'sources' => $sources,
-                'price' => PriceBlock::from($variant->latestPrice),
+                'price' => PriceBlock::withListing($variant->latestPrice, $listing['lowest'] ?? null, $listing['thin'] ?? false),
             ];
+            if ($variant->latestPrice === null && $listing !== null && $listing['lowest'] !== null) {
+                $one['listing'] = self::listing($listing['lowest'], $listing['day'], $listing['as_of']);
+            }
+            $variants[] = $one;
         }
 
         return $variants;
+    }
+
+    /**
+     * The newest lowest listing of a variant without a close: no price, only what its newest observation lists, with
+     * that observation's day and snapshot marker.
+     *
+     * @return array{source: string, feed: string, currency: string, cadence: string, lowest_listing: string, day: string, as_of: string}
+     */
+    private static function listing(string $lowest, string $day, string $asOf): array
+    {
+        $provenance = PricingConfig::provenance();
+
+        return [
+            'source' => $provenance['source'],
+            'feed' => $provenance['feed'],
+            'currency' => $provenance['currency'],
+            'cadence' => PricingConfig::CADENCE,
+            'lowest_listing' => $lowest,
+            'day' => $day,
+            'as_of' => $asOf,
+        ];
     }
 
     private function catalogStatus(): string

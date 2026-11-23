@@ -147,6 +147,24 @@ const PRICE = fields({
 });
 
 /**
+ * The card page's price block: PRICE plus the lowest listing of the close's observation (a decimal
+ * string or null) and the thin-market flag, each checked when it is there.
+ */
+const CARD_PRICE = (value: unknown): boolean =>
+  PRICE(value) &&
+  fields({ lowest_listing: ifPresent(orNull(text)), thin_market: ifPresent(flag) })(value);
+
+/** The lowest listing of a variant without a close, with its own day and marker (an optional field). */
+const LISTING = fields({
+  source: text,
+  feed: text,
+  currency: text,
+  lowest_listing: text,
+  day: text,
+  as_of: text,
+});
+
+/**
  * The catalog naming of a list row (movers, watchlist, portfolio), with the card's small image URL
  * when the catalog gives one (CardThumbnail); null when not in the catalog.
  */
@@ -187,7 +205,8 @@ const CARD = fields({
           sources: listOf(
             fields({ source: text, product_id: whole, subtype: text, map_snapshot_day: text }),
           ),
-          price: orNull(PRICE),
+          price: orNull(CARD_PRICE),
+          listing: ifPresent(LISTING),
         }),
       ),
     ),

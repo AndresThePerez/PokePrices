@@ -360,6 +360,11 @@ on day D when all of this holds:
   with their own observation in `price_points`: each must be no lower than half the low listing and no
   higher than twice the mid listing, bounds included. A close whose observation is missing, or lists no
   low or no mid, or lists either at 0.00, is not ranked; neither is a close of 0.00.
+- **Not a thin market.** The close of D is not under half the low listing of its own observation
+  (`PricingConfig::THIN_MARKET_RATIO`), the line the card page flags as a thin market (see Lowest listing
+  and thin markets). With both ratios at one half the listing bound above already keeps such a close out,
+  so on dev this removes no row; it is stated on its own so the board never ranks a close the card page
+  flags, whatever the listing bounds are set to.
 
 The ranked variants are ordered by the size of the change in percent, then by the change, then by
 `variant_key`; rises and falls are ranked apart and 50 of each are kept at most. The thresholds are the
@@ -393,6 +398,26 @@ It takes the lock, and in one transaction deletes the `price_movers` rows of tho
 inserts the rows the rule gives; it reads the two price tables and writes nothing else. It prints the
 database name and the rows per direction it left, or `pricing ingest lock held, nothing changed` when an
 ingest or a replay is running. Running it twice gives the same rows.
+
+## Lowest listing and thin markets
+
+The market price of a variant is an average of recent sales, so a card that rarely sells can show a close
+far from what it is listed at. `price_latest` holds no listing; `GET /v1/cards/{id}` reads it from
+`price_points` with one query for all the card's variants (no index and no migration were added):
+
+- **`price.lowest_listing`** is the low listing of the observation the close came from (the `price_points`
+  row at the close's `as_of`), a decimal string with two decimals, or `null` when that observation lists
+  no low or a low of 0.00.
+- **`price.thin_market`** is `true` when that listing is present and the close is under half of it
+  (`PricingConfig::THIN_MARKET_RATIO`, 0.5). Exactly half is not thin.
+- **`listing`** is on a variant that has observations but no close (its market price was never given):
+  the low listing of its newest observation, with that observation's `day` and `as_of`, when the low is
+  above zero. `price` stays `null`, and `listing` is left out on every other variant.
+
+Only the card answer carries these fields; the watchlist and portfolio price blocks are unchanged. On dev
+(closes 2026-10-09 to 2026-10-13), 2,950 of 165,072 price points have a market under half their low
+listing, 518 of the 32,992 newest closes are flagged, and 31 variants have listings but no close on
+2026-10-13 (1st Edition Base Charizard, `base1-4:holo:1st:-`, among them).
 
 ## Partitions and retention
 

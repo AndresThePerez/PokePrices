@@ -135,6 +135,8 @@ it('serves the exact price block of a variant with two real days', function (): 
         'change' => '3.00',
         'change_pct' => '12.00',
         'series_epoch' => 1,
+        'lowest_listing' => '25.20',
+        'thin_market' => false,
     ])
         ->and(array_keys(t05cVariant($response->json(), 'basep-8:holo:-:-')))->toBe(['variant_key', 'finish', 'edition', 'treatment', 'sources', 'price']);
 });
@@ -259,7 +261,7 @@ it('documents a closed, nullable price block on each variant and an honest opera
     expect($variant['required'])->toContain('price')
         ->and(json_encode($price))->toContain('null')
         ->and($object['additionalProperties'])->toBeFalse()
-        ->and(array_keys($object['properties']))->toBe(['source', 'feed', 'basis', 'currency', 'cadence', 'close', 'day', 'as_of', 'previous_close', 'previous_day', 'change', 'change_pct', 'series_epoch'])
+        ->and(array_keys($object['properties']))->toBe(['source', 'feed', 'basis', 'currency', 'cadence', 'close', 'day', 'as_of', 'previous_close', 'previous_day', 'change', 'change_pct', 'series_epoch', 'lowest_listing', 'thin_market'])
         ->and($object['required'])->toBe(array_keys($object['properties']))
         ->and($description)->not->toContain('There is no price yet.')
         ->and($description)->toContain('TCGplayer market prices via TCGCSV')

@@ -234,7 +234,8 @@ it('carries, key for key, the card page\'s price block for the same variant', fu
     $card->assertOk();
     $pagePrices = [];
     foreach ($card->json('data.variants') as $variant) {
-        $pagePrices[$variant['variant_key']] = $variant['price'];
+        // The card page's block adds the lowest listing and the thin-market flag; every other key is shared.
+        $pagePrices[$variant['variant_key']] = $variant['price'] === null ? null : array_diff_key($variant['price'], array_flip(['lowest_listing', 'thin_market']));
     }
     $listPrices = [];
     foreach ($list->json('data') as $item) {

@@ -221,7 +221,7 @@ it('carries the price block with its exact keys and none of the PokéSearch fiel
     expect(array_keys($response->json()))->toBe(['data', 'meta'])
         ->and(array_keys($response->json('data')))->toBe(['id', 'name', 'supertype', 'subtypes', 'hp', 'types', 'rarity', 'number', 'artist', 'set', 'images', 'variants', 'catalog'])
         ->and(array_keys($response->json('data.variants.0')))->toBe(['variant_key', 'finish', 'edition', 'treatment', 'sources', 'price'])
-        ->and(array_keys($response->json('data.variants.0.price')))->toBe(['source', 'feed', 'basis', 'currency', 'cadence', 'close', 'day', 'as_of', 'previous_close', 'previous_day', 'change', 'change_pct', 'series_epoch'])
+        ->and(array_keys($response->json('data.variants.0.price')))->toBe(['source', 'feed', 'basis', 'currency', 'cadence', 'close', 'day', 'as_of', 'previous_close', 'previous_day', 'change', 'change_pct', 'series_epoch', 'lowest_listing', 'thin_market'])
         ->and($response->json('data.variants.1.price'))->toBeNull()
         ->and(array_keys($response->json('data.variants.0.sources.0')))->toBe(['source', 'product_id', 'subtype', 'group_id', 'series_epoch', 'map_snapshot_day']);
 });
@@ -541,7 +541,7 @@ it('registers the lazy-loading guard from App\Domain\Catalog, never from app/Pro
         ->and($providers)->not->toContain('preventLazyLoading');
 })->group('P7');
 
-it('reads a card with 4 queries whether it has 1 or 24 variant rows', function (): void {
+it('reads a card with 5 queries whether it has 1 or 24 variant rows', function (): void {
     $build = t43Build();
     t43Variants('base1-4', 1, $build);
     t43Variants('base1-5', 24, $build, 43000);
@@ -558,7 +558,7 @@ it('reads a card with 4 queries whether it has 1 or 24 variant rows', function (
         $counts[$id] = count(DB::getQueryLog());
     }
 
-    expect($counts)->toBe(['base1-4' => 4, 'base1-5' => 4]);
+    expect($counts)->toBe(['base1-4' => 5, 'base1-5' => 5]);
 })->group('P8');
 
 /** How many GET /api/v1/cards/{id} requests the fake recorded for one card. */

@@ -170,7 +170,7 @@ it('keeps a real 0.00 close as a priced block, distinct from price null, with -1
     expect($zeroPrice)->toMatchArray(['close' => '0.00', 'day' => '2026-10-11', 'previous_close' => null, 'change' => null, 'change_pct' => null])
         ->and(t05rPrice($this, 'base1-5', $dropped))->toMatchArray(['close' => '0.00', 'previous_close' => '5.00', 'change' => '-5.00', 'change_pct' => '-100.00'])
         ->and(t05rPrice($this, 'base1-5', $absent))->toBeNull()
-        ->and(array_keys($zeroPrice))->toBe(['source', 'feed', 'basis', 'currency', 'cadence', 'close', 'day', 'as_of', 'previous_close', 'previous_day', 'change', 'change_pct', 'series_epoch']);
+        ->and(array_keys($zeroPrice))->toBe(['source', 'feed', 'basis', 'currency', 'cadence', 'close', 'day', 'as_of', 'previous_close', 'previous_day', 'change', 'change_pct', 'series_epoch', 'lowest_listing', 'thin_market']);
 });
 
 it('takes the close and previous from real candles only: a filled candle is never the latest nor the previous', function (): void {
@@ -209,7 +209,7 @@ it('serves the new day on a warm catalog cache: the PokéSearch card is cached, 
         ->and($second['previous_day'])->toBe('2026-10-10');
 });
 
-it('reads a card with 4 queries when all 24 variants carry a price', function (): void {
+it('reads a card with 5 queries when all 24 variants carry a price', function (): void {
     $keys = [];
     foreach (['-', 'pokeball'] as $treatment) {
         foreach (['-', '1st', 'unlimited', 'shadowless'] as $edition) {
@@ -240,7 +240,7 @@ it('reads a card with 4 queries when all 24 variants carry a price', function ()
     $response->assertOk();
     expect($response->json('data.variants'))->toHaveCount(24)
         ->and(array_filter(array_column($response->json('data.variants'), 'price'), fn (mixed $p): bool => $p === null))->toBe([])
-        ->and(count($queries))->toBe(4)
+        ->and(count($queries))->toBe(5)
         ->and(count(array_filter($queries, fn (array $q): bool => str_contains((string) $q['query'], 'price_latest'))))->toBe(1);
 });
 

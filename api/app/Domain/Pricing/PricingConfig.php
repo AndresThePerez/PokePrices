@@ -9,7 +9,8 @@ namespace App\Domain\Pricing;
  * provenance every price-shaped answer carries: source and feed from config, market basis, USD. CADENCE is the
  * cadence the card prices, the price block and the price.moved payload state; the movers and portfolio meta do not.
  * The MOVERS_* thresholds are the movers eligibility rule Movers::rebuild() applies; the evidence for each is in
- * docs/measurements/movers-eligibility.md.
+ * docs/measurements/movers-eligibility.md. THIN_MARKET_RATIO is the thin-market line of the card price block
+ * (Listings) and of the movers.
  */
 final class PricingConfig
 {
@@ -44,6 +45,12 @@ final class PricingConfig
 
     /** In line with the listings: a close is no higher than this multiple of the mid listing of its observation. */
     public const string MOVERS_LISTING_MID_RATIO = '2';
+
+    /**
+     * A thin market: the close is under this multiple of the lowest listing (the low, above zero) of the observation it
+     * came from. Exactly this multiple is not thin. The card price block flags such a close, and the movers leave it out.
+     */
+    public const string THIN_MARKET_RATIO = '0.5';
 
     public static function source(): string
     {
