@@ -142,7 +142,8 @@ describe('a tile picture', () => {
       expect(img.getAttribute('decoding')).toBe('async');
       expect(img.getAttribute('width')).toBe('245');
       expect(img.getAttribute('height')).toBe('342');
-      expect(img.getAttribute('aria-hidden')).toBe('true');
+      expect(img.getAttribute('alt')).toBe('');
+      expect(img.hasAttribute('aria-hidden')).toBe(false);
       expect(img.className.split(/\s+/)).toEqual(
         expect.arrayContaining(['aspect-[63/88]', 'w-full']),
       );

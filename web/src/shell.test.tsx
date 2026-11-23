@@ -54,7 +54,7 @@ describe('shell page honesty', () => {
       ['Umbreon ex Prismatic Evolutions', '/card/sv8pt5-161'],
       ['About', '/about'],
       ['Source', 'https://github.com/AndresThePerez/PokePrices'],
-      ['Built by AndresThePerez', 'https://andrestheperez.com'],
+      ['Built by Andres Perez', 'https://andrestheperez.com'],
       ['Contact', 'https://andrestheperez.com'],
     ]);
   });

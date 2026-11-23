@@ -277,11 +277,12 @@ describe('the Display panel on /account (D2-i2-T07, R297)', () => {
     document.documentElement.removeAttribute('data-palette');
   }
 
-  // The footer landmark stays, empty; main holds the two settings once, labels and options exact.
+  // The footer holds the site links and no settings; main holds the two settings once, labels and
+  // options exact.
   function checkDisplay(): void {
     const footer = screen.getByRole('contentinfo');
     expect(within(footer).queryAllByRole('combobox')).toEqual([]);
-    expect(footer.textContent).toBe('');
+    expect(footer.textContent).toBe('AboutSourceBuilt by Andres PerezContact');
     const display = within(main()).getByRole('region', { name: 'Display' });
     const theme = within(display).getByRole('combobox', { name: 'Theme' });
     expect(options(theme)).toEqual([

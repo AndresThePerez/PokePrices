@@ -225,7 +225,7 @@ describe('Header (T02 criterion 1; D1-T03)', () => {
     // The settings strip, then the site links: the labels, the option texts and the link names are
     // all the footer says.
     expect(footer.textContent).toBe(
-      'ThemeSystemLightDarkUp/down coloursGreen and redBlue and orangeAboutSourceBuilt by AndresThePerezContact',
+      'ThemeSystemLightDarkUp/down coloursGreen and redBlue and orangeAboutSourceBuilt by Andres PerezContact',
     );
   });
 
@@ -236,7 +236,7 @@ describe('Header (T02 criterion 1; D1-T03)', () => {
     await screen.findByText('You are not signed in.');
     expect(screen.getAllByRole('contentinfo')).toHaveLength(1);
     expect(within(footer()).queryAllByRole('combobox')).toEqual([]);
-    expect(footer().textContent).toBe('');
+    expect(footer().textContent).toBe('AboutSourceBuilt by Andres PerezContact');
     act(() => {
       navigate('/nowhere');
     });
@@ -252,7 +252,7 @@ describe('Header (T02 criterion 1; D1-T03)', () => {
       ['blue-orange', 'Blue and orange'],
     ]);
     expect(footer().textContent).toBe(
-      'ThemeSystemLightDarkUp/down coloursGreen and redBlue and orangeAboutSourceBuilt by AndresThePerezContact',
+      'ThemeSystemLightDarkUp/down coloursGreen and redBlue and orangeAboutSourceBuilt by Andres PerezContact',
     );
   });
 

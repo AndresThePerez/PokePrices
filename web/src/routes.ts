@@ -20,8 +20,8 @@ interface RouteEntry {
   /** The path of the header link marked current on this route, or null when none is. */
   readonly nav: string | null;
   /**
-   * False on the account page, which carries its own Display settings and Sign out: the footer
-   * (its settings strip and its site links) and the demo strip's Sign out stay off there.
+   * False on the account page, which carries its own Display settings and Sign out: the footer's
+   * settings strip and the demo strip's Sign out stay off there (the footer's site links stay).
    */
   readonly footerSettings: boolean;
 }

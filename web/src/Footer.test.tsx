@@ -8,7 +8,7 @@ import { FORBIDDEN_WORDS, stubFetch } from './test/fixtures';
 const SITE_LINKS: readonly (readonly [name: string, href: string])[] = [
   ['About', '/about'],
   ['Source', 'https://github.com/AndresThePerez/PokePrices'],
-  ['Built by AndresThePerez', 'https://andrestheperez.com'],
+  ['Built by Andres Perez', 'https://andrestheperez.com'],
   ['Contact', 'https://andrestheperez.com'],
 ];
 
@@ -68,6 +68,33 @@ describe('the footer site links', () => {
     render(<App />);
     for (const pattern of FORBIDDEN_WORDS) expect(footer().textContent).not.toMatch(pattern);
   });
+
+  it.each([
+    ['/', true],
+    ['/about', true],
+    ['/search?q=x', true],
+    ['/card/base1-4', true],
+    ['/movers', true],
+    ['/sign-in', true],
+    ['/watchlist', true],
+    ['/account', false],
+    ['/account/verify-email', true],
+    ['/alerts', true],
+    ['/no-such-page', true],
+  ] as const)(
+    'shows the links on %s, with the settings only where the route keeps them',
+    (path, settings) => {
+      stubFetch(() => new Error('no answer'));
+      visit(path);
+      render(<App />);
+      expect(
+        within(siteLinks())
+          .getAllByRole('link')
+          .map((link) => [link.textContent, link.getAttribute('href')]),
+      ).toEqual(SITE_LINKS);
+      expect(within(footer()).queryAllByRole('combobox')).toHaveLength(settings ? 2 : 0);
+    },
+  );
 
   it('shows the same links on the home page and the About page', () => {
     stubFetch(() => new Error('no answer'));

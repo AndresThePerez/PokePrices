@@ -8,7 +8,7 @@ export const SOURCE_URL = 'https://github.com/AndresThePerez/PokePrices';
 export const BUILDER_URL = 'https://andrestheperez.com';
 
 /** The builder's name as the links show it. */
-export const BUILDER_NAME = 'AndresThePerez';
+export const BUILDER_NAME = 'Andres Perez';
 
 /** TCGCSV, which publishes the TCGplayer prices PokéPrices collects once a day. */
 export const TCGCSV_URL = 'https://tcgcsv.com';

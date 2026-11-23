@@ -48,8 +48,8 @@ function searchPath(q: string): string {
 const PICTURE = 'aspect-[63/88] w-full rounded-md border border-line-subtle bg-surface-sunken';
 
 /**
- * A tile's picture, or the card back in the same box. Decorative and hidden from assistive
- * technology: the tile's link text names the card.
+ * A tile's picture, or the card back in the same box. Decorative, with an empty alt as the list
+ * thumbnails have: the tile's link text names the card.
  */
 function TilePicture({ tile }: { readonly tile: Tile }) {
   const image = useImageFallback(`${CATALOGUE_IMAGES}${tile.image}`);
@@ -57,7 +57,7 @@ function TilePicture({ tile }: { readonly tile: Tile }) {
   return (
     <img
       src={image.src}
-      aria-hidden="true"
+      alt=""
       width={245}
       height={342}
       loading="lazy"

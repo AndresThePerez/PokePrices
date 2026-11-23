@@ -167,7 +167,7 @@ describe('secrets leave the page on every exit path (T04 criterion 4, D14)', () 
     });
     expect(count(calls, 'POST /logout')).toBe(1);
     noSecretLeft(SECRETS);
-    expect(document.querySelector('img[alt]')).toBeNull();
+    expect(screen.queryByRole('img', { name: QR_ALT })).toBeNull();
     // Coming back to /account signed out shows no trace of the unfinished setup.
     act(() => {
       navigate('/account');

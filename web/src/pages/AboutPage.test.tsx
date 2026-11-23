@@ -69,7 +69,7 @@ describe('the About page', () => {
     visit('/about');
     render(<App />);
     const who = section('Who built it');
-    expect(within(who).getByRole('link', { name: 'AndresThePerez' }).getAttribute('href')).toBe(
+    expect(within(who).getByRole('link', { name: 'Andres Perez' }).getAttribute('href')).toBe(
       'https://andrestheperez.com',
     );
     expect(

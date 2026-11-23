@@ -1,8 +1,8 @@
 // The PokéPrices footer: the display settings strip, Theme and Up/down colours, moved
-// out of the header bar, then the site links (About, Source, Built by, Contact). Labels and option
-// strings are unchanged. On /account the same settings sit in the page's Display panel, so the
-// footer keeps its landmark and top rule but no content there and every control name stays unique.
-// It reads no session and sends no request.
+// out of the header bar, then the site links (About, Source, Built by, Contact) on every page. Labels
+// and option strings are unchanged. On /account the same settings sit in the page's Display panel,
+// so the footer holds only the site links there and every control name stays unique. It reads no
+// session and sends no request.
 import { useId, type ChangeEvent } from 'react';
 import {
   PALETTES,
@@ -107,11 +107,13 @@ export function DisplaySettings({ layout }: { readonly layout: keyof typeof LAYO
 }
 
 /** About, Source, Built by and Contact: no email address anywhere, contact is the website. */
-function SiteLinks() {
+function SiteLinks({ alone }: { readonly alone: boolean }) {
+  // Under the settings strip it takes the strip's bottom padding; alone (on /account) it takes the
+  // strip's top padding too.
   return (
     <nav
       aria-label="Site"
-      className="mx-auto flex max-w-3xl flex-wrap gap-x-6 px-4 pb-6 text-sm sm:px-6"
+      className={`mx-auto flex max-w-3xl flex-wrap gap-x-6 px-4 pb-6 text-sm sm:px-6${alone ? ' pt-6' : ''}`}
     >
       <Link to="/about" className={TEXT_LINK}>
         About
@@ -132,14 +134,11 @@ function SiteLinks() {
 export default function Footer() {
   usePreferences(); // keeps the snapshot subscribed while the Display panel is unmounted
   const { route } = useRoute();
+  const settings = ROUTES[route.name].footerSettings;
   return (
     <footer className="mt-10 border-t border-line-subtle bg-surface">
-      {ROUTES[route.name].footerSettings && (
-        <>
-          <DisplaySettings layout="strip" />
-          <SiteLinks />
-        </>
-      )}
+      {settings && <DisplaySettings layout="strip" />}
+      <SiteLinks alone={!settings} />
     </footer>
   );
 }

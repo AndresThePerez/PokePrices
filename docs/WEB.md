@@ -145,10 +145,10 @@ The watchlist and portfolio are filled from the card page, where each priced var
 
 Every page also carries the header with links and the display settings (see Display settings).
 
-**Footer.** Under the display settings, the footer links `About` (`/about`), `Source` (the project's
-repository, `https://github.com/AndresThePerez/PokePrices`), `Built by AndresThePerez` and `Contact` (both
-`https://andrestheperez.com`). There is no email address anywhere on the site. On `/account`, which carries
-its own Display panel, the footer stays empty.
+**Footer.** On every page, under the display settings, the footer links `About` (`/about`), `Source` (the
+project's repository, `https://github.com/AndresThePerez/PokePrices`), `Built by Andres Perez` and `Contact`
+(both `https://andrestheperez.com`). There is no email address anywhere on the site. On `/account`, which
+carries its own Display panel, the footer holds the links only, without the settings.
 
 **Link previews.** `index.html` carries an `og:image` (`/og-image.png`, a 1200 × 630 PNG drawn from
 `og-image.svg`, with its width, height and alt text), a `twitter:card` of `summary_large_image` and a
