@@ -1,7 +1,8 @@
 // The PokéPrices footer: the display settings strip, Theme and Up/down colours, moved
-// out of the header bar. Labels and option strings are unchanged. On /account the same settings sit
-// in the page's Display panel, so the footer keeps its landmark and top rule but no content
-// there and every control name stays unique. It reads no session and sends no request.
+// out of the header bar, then the site links (About, Source, Built by, Contact). Labels and option
+// strings are unchanged. On /account the same settings sit in the page's Display panel, so the
+// footer keeps its landmark and top rule but no content there and every control name stays unique.
+// It reads no session and sends no request.
 import { useId, type ChangeEvent } from 'react';
 import {
   PALETTES,
@@ -12,10 +13,12 @@ import {
   type Palette,
   type ThemeChoice,
 } from './preferences';
+import Link from './Link';
 import { useRoute } from './router';
 import { ROUTES } from './routes';
-import { LABEL } from './ui/classes';
+import { LABEL, TEXT_LINK } from './ui/classes';
 import { Select, type SelectOption } from './ui/Field';
+import { BUILDER_NAME, BUILDER_URL, SOURCE_URL } from './ui/siteLinks';
 
 const THEME_LABELS: Record<ThemeChoice, string> = {
   system: 'System',
@@ -103,12 +106,40 @@ export function DisplaySettings({ layout }: { readonly layout: keyof typeof LAYO
   );
 }
 
+/** About, Source, Built by and Contact: no email address anywhere, contact is the website. */
+function SiteLinks() {
+  return (
+    <nav
+      aria-label="Site"
+      className="mx-auto flex max-w-3xl flex-wrap gap-x-6 px-4 pb-6 text-sm sm:px-6"
+    >
+      <Link to="/about" className={TEXT_LINK}>
+        About
+      </Link>
+      <a href={SOURCE_URL} className={TEXT_LINK}>
+        Source
+      </a>
+      <a href={BUILDER_URL} className={TEXT_LINK}>
+        Built by {BUILDER_NAME}
+      </a>
+      <a href={BUILDER_URL} className={TEXT_LINK}>
+        Contact
+      </a>
+    </nav>
+  );
+}
+
 export default function Footer() {
   usePreferences(); // keeps the snapshot subscribed while the Display panel is unmounted
   const { route } = useRoute();
   return (
     <footer className="mt-10 border-t border-line-subtle bg-surface">
-      {ROUTES[route.name].footerSettings && <DisplaySettings layout="strip" />}
+      {ROUTES[route.name].footerSettings && (
+        <>
+          <DisplaySettings layout="strip" />
+          <SiteLinks />
+        </>
+      )}
     </footer>
   );
 }

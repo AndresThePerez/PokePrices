@@ -13,6 +13,7 @@ import WatchlistPage from './account/WatchlistPage';
 import Footer from './Footer';
 import Header from './Header';
 import Link from './Link';
+import AboutPage from './pages/AboutPage';
 import CardPage from './pages/CardPage';
 import { CardTiles, ExampleSearches } from './pages/HomeStart';
 import { BiggestMoves } from './pages/MoverList';
@@ -97,6 +98,8 @@ function Routes() {
       return <PortfolioPage />;
     case 'alerts':
       return <AlertsPage />;
+    case 'about':
+      return <AboutPage />;
     case 'not-found':
       // Designed not-found: the path in a chip, the search form as the primary
       // action, then the three ways on. It sends no request.

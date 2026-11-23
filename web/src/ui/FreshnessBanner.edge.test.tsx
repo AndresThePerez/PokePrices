@@ -338,6 +338,7 @@ describe('where the docs say the banner shows', () => {
     '/account',
     '/account/verify-email',
     '/alerts',
+    '/about',
     '/no-such-page',
   ];
 
@@ -356,6 +357,7 @@ describe('where the docs say the banner shows', () => {
       '/account',
       '/account/verify-email',
       '/alerts',
+      '/about',
       'the not-found page',
     ]) {
       expect(section, hidden).toContain(hidden);

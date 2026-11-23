@@ -130,6 +130,13 @@ prices get into the database is in [`OPERATIONS.md`](OPERATIONS.md).
     webhook's secret is shown once, in a box, until `I have stored the secret` is pressed; it is never shown again.
 
   The messages themselves, who gets them and the delivery rules are in [`ALERTS.md`](ALERTS.md).
+- **`/about`.** `About`: what PokéPrices is (daily closes from TCGplayer, collected once a day, not a running
+  quote), a linked thank-you to TCGCSV (`https://tcgcsv.com`) as the source of the price data, who built it
+  with a link to the source code on GitHub, the affiliation disclaimer (not affiliated with or endorsed by
+  Nintendo, The Pokémon Company, Game Freak, Creatures or TCGplayer; card images and names belong to their
+  owners), a privacy paragraph (the cookies set on sign-in, what an account stores, the third-party image host
+  and Cloudflare) and the contact link to `https://andrestheperez.com`. It shows no price and sends no
+  request. nginx serves it like every other app path (`/about` is not reserved).
 
 The watchlist and portfolio are filled from the card page, where each priced variant has `Add to watchlist` and
 `Add to portfolio` buttons. Each row's card name links back to the card page on that row's variant
@@ -137,6 +144,11 @@ The watchlist and portfolio are filled from the card page, where each priced var
 [`ACCOUNTS.md`](ACCOUNTS.md).
 
 Every page also carries the header with links and the display settings (see Display settings).
+
+**Footer.** Under the display settings, the footer links `About` (`/about`), `Source` (the project's
+repository, `https://github.com/AndresThePerez/PokePrices`), `Built by AndresThePerez` and `Contact` (both
+`https://andrestheperez.com`). There is no email address anywhere on the site. On `/account`, which carries
+its own Display panel, the footer stays empty.
 
 **Link previews.** `index.html` carries an `og:image` (`/og-image.png`, a 1200 × 630 PNG drawn from
 `og-image.svg`, with its width, height and alt text), a `twitter:card` of `summary_large_image` and a
@@ -240,7 +252,7 @@ no new close looks exactly like the day before.
   (the day and the age with one decimal are the API's; the browser reads no clock). Nothing appears while
   the answer is within the SLO, while it loads, when the request fails or is not the documented shape, or
   before any day was ingested. The pages that show no price (sign-in, sign-up, the password
-  pages, `/account`, `/account/verify-email`, `/alerts` and the not-found page) neither ask for it nor show the banner. The dev
+  pages, `/account`, `/account/verify-email`, `/alerts`, `/about` and the not-found page) neither ask for it nor show the banner. The dev
   stack, whose closes end on 2026-10-13, shows it on every page that shows a price.
 
 ## Display settings

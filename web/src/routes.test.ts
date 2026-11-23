@@ -18,16 +18,17 @@ const NAMES: readonly Route['name'][] = [
   'watchlist',
   'portfolio',
   'alerts',
+  'about',
   'not-found',
 ];
 
 describe('the route table', () => {
-  it('has one entry per route name, 14 in all', () => {
+  it('has one entry per route name, 15 in all', () => {
     expect(Object.keys(ROUTES).sort()).toEqual([...NAMES].sort());
-    expect(Object.keys(ROUTES)).toHaveLength(14);
+    expect(Object.keys(ROUTES)).toHaveLength(15);
   });
 
-  it('holds the 13 tab titles and leaves the card page to title itself', () => {
+  it('holds the 14 tab titles and leaves the card page to title itself', () => {
     expect(Object.fromEntries(NAMES.map((name) => [name, ROUTES[name].title]))).toEqual({
       home: 'PokéPrices · Pokémon card prices at the daily close',
       search: 'Search cards · PokéPrices',
@@ -42,6 +43,7 @@ describe('the route table', () => {
       watchlist: 'Watchlist · PokéPrices',
       portfolio: 'Portfolio · PokéPrices',
       alerts: 'Alerts and webhooks · PokéPrices',
+      about: 'About · PokéPrices',
       'not-found': 'Page not found · PokéPrices',
     });
   });
@@ -61,6 +63,7 @@ describe('the route table', () => {
       watchlist: '/watchlist',
       portfolio: '/portfolio',
       alerts: '/account',
+      about: null,
       'not-found': null,
     });
     expect(NAMES.filter((name) => !ROUTES[name].footerSettings)).toEqual(['account']);

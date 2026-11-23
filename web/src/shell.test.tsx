@@ -52,6 +52,10 @@ describe('shell page honesty', () => {
       ['Lugia Neo Genesis', '/card/neo1-9'],
       ['Charizard ex 151', '/card/sv3pt5-199'],
       ['Umbreon ex Prismatic Evolutions', '/card/sv8pt5-161'],
+      ['About', '/about'],
+      ['Source', 'https://github.com/AndresThePerez/PokePrices'],
+      ['Built by AndresThePerez', 'https://andrestheperez.com'],
+      ['Contact', 'https://andrestheperez.com'],
     ]);
   });
 

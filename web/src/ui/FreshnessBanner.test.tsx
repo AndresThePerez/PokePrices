@@ -168,7 +168,7 @@ describe('the stale-prices banner', () => {
   });
 
   it('shows no banner and asks nothing on sign-in and account pages, even when prices are out of date', async () => {
-    for (const path of ['/sign-in', '/account']) {
+    for (const path of ['/sign-in', '/account', '/about']) {
       const calls = stubWith(() => jsonResponse(freshnessBody()));
       visit(path);
       render(<App />);

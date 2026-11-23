@@ -222,9 +222,10 @@ describe('Header (T02 criterion 1; D1-T03)', () => {
     // Visible labels: the label text is on screen, not only in an aria-label.
     expect(within(footer).getByText('Theme').tagName).toBe('LABEL');
     expect(within(footer).getByText('Up/down colours').tagName).toBe('LABEL');
-    // A settings strip only: the labels and the option texts are all the footer says.
+    // The settings strip, then the site links: the labels, the option texts and the link names are
+    // all the footer says.
     expect(footer.textContent).toBe(
-      'ThemeSystemLightDarkUp/down coloursGreen and redBlue and orange',
+      'ThemeSystemLightDarkUp/down coloursGreen and redBlue and orangeAboutSourceBuilt by AndresThePerezContact',
     );
   });
 
@@ -251,7 +252,7 @@ describe('Header (T02 criterion 1; D1-T03)', () => {
       ['blue-orange', 'Blue and orange'],
     ]);
     expect(footer().textContent).toBe(
-      'ThemeSystemLightDarkUp/down coloursGreen and redBlue and orange',
+      'ThemeSystemLightDarkUp/down coloursGreen and redBlue and orangeAboutSourceBuilt by AndresThePerezContact',
     );
   });
 
@@ -261,7 +262,7 @@ describe('Header (T02 criterion 1; D1-T03)', () => {
       ...Array.from(header().querySelectorAll('a, select, button, input')),
       ...Array.from(screen.getByRole('contentinfo').querySelectorAll('a, select, button, input')),
     ];
-    expect(controls).toHaveLength(10);
+    expect(controls).toHaveLength(14);
     for (const control of controls) {
       expect(control.className.split(/\s+/)).toContain('min-h-11');
     }

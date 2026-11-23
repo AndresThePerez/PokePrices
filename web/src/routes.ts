@@ -21,7 +21,7 @@ interface RouteEntry {
   readonly nav: string | null;
   /**
    * False on the account page, which carries its own Display settings and Sign out: the footer
-   * strip and the demo strip's Sign out stay off there.
+   * (its settings strip and its site links) and the demo strip's Sign out stay off there.
    */
   readonly footerSettings: boolean;
 }
@@ -40,5 +40,6 @@ export const ROUTES: Readonly<Record<Route['name'], RouteEntry>> = {
   watchlist: { title: pageTitle('Watchlist'), nav: '/watchlist', footerSettings: true },
   portfolio: { title: pageTitle('Portfolio'), nav: '/portfolio', footerSettings: true },
   alerts: { title: pageTitle('Alerts and webhooks'), nav: '/account', footerSettings: true },
+  about: { title: pageTitle('About'), nav: null, footerSettings: true },
   'not-found': { title: pageTitle('Page not found'), nav: null, footerSettings: true },
 };

@@ -242,9 +242,15 @@ describe('production sources', () => {
     const names = Object.keys(sources);
     expect(names).toContain('./client.ts');
     expect(names).toContain('../App.tsx');
-    // Addresses that are no API call, each in its one file: the home tiles' catalogue image host.
+    // Addresses that are no API call, each in its one file: the home tiles' catalogue image host,
+    // and the outside links of the footer and the About page.
     const notCalls: Readonly<Record<string, readonly string[]>> = {
       '../pages/HomeStart.tsx': ["'https://images.pokemontcg.io'"],
+      '../ui/siteLinks.ts': [
+        "'https://github.com/AndresThePerez/PokePrices'",
+        "'https://andrestheperez.com'",
+        "'https://tcgcsv.com'",
+      ],
     };
     for (const [name, text] of Object.entries(sources)) {
       let scanned = text.replaceAll('"https://www.tradingview.com/"', '');
