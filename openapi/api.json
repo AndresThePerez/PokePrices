@@ -1646,8 +1646,8 @@
         "/cards": {
             "get": {
                 "operationId": "searchCards",
-                "description": "Proxies Pok\u00e9Search's search with q (the search text), page (from 1; Pok\u00e9Search clamps it to its last reachable page) and page_size (Pok\u00e9Search's default is 24) only; any other query parameter answers 422. Pagination passes through unchanged: pages is Pok\u00e9Search's count, which stops at its 9,600-result window, so read pages rather than computing it from total.",
-                "summary": "Search cards in the Pok\u00e9Search catalog",
+                "description": "Proxies Pok\u00e9Search's search with q (the search text, 1 to 200 characters and at most 32 words, counted as Pok\u00e9Search counts terms: runs of whitespace separate them), page (from 1), page_size (Pok\u00e9Search's default is 24) and sort only; any other query parameter answers 422. Each row carries variant, the card's first variant in card order (by variant key, as the card page lists them) that has a close, and price, that variant's newest daily close from TCGplayer market prices via TCGCSV with source, feed, day and as_of, the previous close and the change; both are null when no variant of the card has a close. sort is relevance (the default: Pok\u00e9Search's order and paging, passed through unchanged; Pok\u00e9Search clamps page to its last reachable page, and pages stops at its 9,600-result window, so read pages rather than computing it from total), price_desc or price_asc. A price order takes Pok\u00e9Search's first 100 matches (its largest page), orders them by the headline close, rows without a price last and equal closes in Pok\u00e9Search's order, and pages that list itself: meta.ordered is how many matches were ordered (null under relevance), meta.total how many exist, meta.pages is at least 1, and a page past the last answers the last page. While Pok\u00e9Search is unavailable the last good copy answers with meta.degraded true, or 503 when there is none.",
+                "summary": "Search cards in the Pok\u00e9Search catalog, with each card's headline price",
                 "tags": [
                     "Cards"
                 ],
@@ -1677,6 +1677,18 @@
                             "type": "integer",
                             "minimum": 1,
                             "maximum": 100
+                        }
+                    },
+                    {
+                        "name": "sort",
+                        "in": "query",
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "relevance",
+                                "price_desc",
+                                "price_asc"
+                            ]
                         }
                     }
                 ],
@@ -1714,6 +1726,20 @@
                                                 },
                                                 "cached": {
                                                     "type": "boolean"
+                                                },
+                                                "sort": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                        "relevance",
+                                                        "price_desc",
+                                                        "price_asc"
+                                                    ]
+                                                },
+                                                "ordered": {
+                                                    "type": [
+                                                        "integer",
+                                                        "null"
+                                                    ]
                                                 }
                                             },
                                             "required": [
@@ -1722,7 +1748,9 @@
                                                 "pages",
                                                 "page_size",
                                                 "degraded",
-                                                "cached"
+                                                "cached",
+                                                "sort",
+                                                "ordered"
                                             ],
                                             "additionalProperties": false
                                         }
@@ -3084,6 +3112,108 @@
                     },
                     "image_small": {
                         "type": "string"
+                    },
+                    "variant": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "properties": {
+                            "variant_key": {
+                                "type": "string"
+                            },
+                            "finish": {
+                                "type": "string"
+                            },
+                            "edition": {
+                                "type": "string"
+                            },
+                            "treatment": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "variant_key",
+                            "finish",
+                            "edition",
+                            "treatment"
+                        ],
+                        "additionalProperties": false
+                    },
+                    "price": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "properties": {
+                            "source": {
+                                "type": "string"
+                            },
+                            "feed": {
+                                "type": "string"
+                            },
+                            "basis": {
+                                "type": "string"
+                            },
+                            "currency": {
+                                "type": "string"
+                            },
+                            "cadence": {
+                                "type": "string"
+                            },
+                            "close": {
+                                "type": "string"
+                            },
+                            "day": {
+                                "type": "string"
+                            },
+                            "as_of": {
+                                "type": "string"
+                            },
+                            "previous_close": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "previous_day": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "change": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "change_pct": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "series_epoch": {
+                                "type": "integer"
+                            }
+                        },
+                        "required": [
+                            "source",
+                            "feed",
+                            "basis",
+                            "currency",
+                            "cadence",
+                            "close",
+                            "day",
+                            "as_of",
+                            "previous_close",
+                            "previous_day",
+                            "change",
+                            "change_pct",
+                            "series_epoch"
+                        ],
+                        "additionalProperties": false
                     }
                 },
                 "required": [
@@ -3095,7 +3225,9 @@
                     "set_id",
                     "set_name",
                     "release_date",
-                    "image_small"
+                    "image_small",
+                    "variant",
+                    "price"
                 ],
                 "additionalProperties": false,
                 "title": "CardSummaryResource"

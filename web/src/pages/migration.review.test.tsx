@@ -108,7 +108,16 @@ describe('T07 migration invariants', () => {
   it('keeps the search form: searchbox Card name, one submit button named Search, 44 px pager links', async () => {
     const many = {
       data: [unownQuestion],
-      meta: { total: 100, page: 2, pages: 4, page_size: 24, degraded: false, cached: false },
+      meta: {
+        total: 100,
+        page: 2,
+        pages: 4,
+        page_size: 24,
+        degraded: false,
+        cached: false,
+        sort: 'relevance',
+        ordered: null,
+      },
     };
     stubFetch(() => jsonResponse(many));
     visit('/search?q=unown&page=2');

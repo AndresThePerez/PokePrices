@@ -175,6 +175,10 @@ const ROW_CARD = orNull(
   fields({ name: text, set_name: text, number: text, image_small: ifPresent(text) }),
 );
 
+/**
+ * A search page: each row's catalog fields, its headline variant and that variant's close (both
+ * null without a priced variant), and the order the rows are in with how many matches it ordered.
+ */
 const SEARCH = fields({
   data: listOf(
     fields({
@@ -184,9 +188,18 @@ const SEARCH = fields({
       rarity: orNull(text),
       set_name: text,
       image_small: text,
+      variant: orNull(fields(VARIANT_NAMING)),
+      price: orNull(PRICE),
     }),
   ),
-  meta: fields({ total: whole, page: whole, pages: whole, degraded: flag }),
+  meta: fields({
+    total: whole,
+    page: whole,
+    pages: whole,
+    degraded: flag,
+    sort: oneOf('relevance', 'price_desc', 'price_asc'),
+    ordered: orNull(whole),
+  }),
 });
 
 /**

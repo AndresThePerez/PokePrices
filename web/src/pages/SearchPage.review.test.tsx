@@ -30,6 +30,8 @@ function bodyOf(
       page_size: 24,
       degraded: false,
       cached: false,
+      sort: 'relevance',
+      ordered: null,
       ...meta,
     },
   };

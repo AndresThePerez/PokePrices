@@ -307,8 +307,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * Search cards in the PokéSearch catalog
-         * @description Proxies PokéSearch's search with q (the search text), page (from 1; PokéSearch clamps it to its last reachable page) and page_size (PokéSearch's default is 24) only; any other query parameter answers 422. Pagination passes through unchanged: pages is PokéSearch's count, which stops at its 9,600-result window, so read pages rather than computing it from total.
+         * Search cards in the PokéSearch catalog, with each card's headline price
+         * @description Proxies PokéSearch's search with q (the search text, 1 to 200 characters and at most 32 words, counted as PokéSearch counts terms: runs of whitespace separate them), page (from 1), page_size (PokéSearch's default is 24) and sort only; any other query parameter answers 422. Each row carries variant, the card's first variant in card order (by variant key, as the card page lists them) that has a close, and price, that variant's newest daily close from TCGplayer market prices via TCGCSV with source, feed, day and as_of, the previous close and the change; both are null when no variant of the card has a close. sort is relevance (the default: PokéSearch's order and paging, passed through unchanged; PokéSearch clamps page to its last reachable page, and pages stops at its 9,600-result window, so read pages rather than computing it from total), price_desc or price_asc. A price order takes PokéSearch's first 100 matches (its largest page), orders them by the headline close, rows without a price last and equal closes in PokéSearch's order, and pages that list itself: meta.ordered is how many matches were ordered (null under relevance), meta.total how many exist, meta.pages is at least 1, and a page past the last answers the last page. While PokéSearch is unavailable the last good copy answers with meta.degraded true, or 503 when there is none.
          */
         get: operations["searchCards"];
         put?: never;
@@ -572,6 +572,27 @@ export interface components {
             set_name: string;
             release_date: string;
             image_small: string;
+            variant: {
+                variant_key: string;
+                finish: string;
+                edition: string;
+                treatment: string;
+            } | null;
+            price: {
+                source: string;
+                feed: string;
+                basis: string;
+                currency: string;
+                cadence: string;
+                close: string;
+                day: string;
+                as_of: string;
+                previous_close: string | null;
+                previous_day: string | null;
+                change: string | null;
+                change_pct: string | null;
+                series_epoch: number;
+            } | null;
         };
         /** HoldingEntryResource */
         HoldingEntryResource: {
@@ -1852,6 +1873,7 @@ export interface operations {
                 q: string;
                 page?: number;
                 page_size?: number;
+                sort?: "relevance" | "price_desc" | "price_asc";
             };
             header?: never;
             path?: never;
@@ -1874,6 +1896,9 @@ export interface operations {
                             page_size: number;
                             degraded: boolean;
                             cached: boolean;
+                            /** @enum {string} */
+                            sort: "relevance" | "price_desc" | "price_asc";
+                            ordered: number | null;
                         };
                     };
                 };

@@ -19,17 +19,44 @@ const DEGRADED_LINE = 'Catalog data may be out of date: PokéSearch is unavailab
 /** pages deliberately disagrees with ceil(total / page_size) = 2: the page must trust pages. */
 const fivePages = {
   data: [unownQuestion, unownExclamation],
-  meta: { total: 30, page: 1, pages: 5, page_size: 24, degraded: false, cached: false },
+  meta: {
+    total: 30,
+    page: 1,
+    pages: 5,
+    page_size: 24,
+    degraded: false,
+    cached: false,
+    sort: 'relevance',
+    ordered: null,
+  },
 } satisfies CardSearchPage;
 
 const lastOfFive = {
   data: [unownExclamation],
-  meta: { total: 30, page: 5, pages: 5, page_size: 24, degraded: false, cached: false },
+  meta: {
+    total: 30,
+    page: 5,
+    pages: 5,
+    page_size: 24,
+    degraded: false,
+    cached: false,
+    sort: 'relevance',
+    ordered: null,
+  },
 } satisfies CardSearchPage;
 
 const noMatches = {
   data: [],
-  meta: { total: 0, page: 1, pages: 0, page_size: 24, degraded: false, cached: false },
+  meta: {
+    total: 0,
+    page: 1,
+    pages: 0,
+    page_size: 24,
+    degraded: false,
+    cached: false,
+    sort: 'relevance',
+    ordered: null,
+  },
 } satisfies CardSearchPage;
 
 function visit(path: string): void {

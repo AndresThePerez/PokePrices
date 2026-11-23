@@ -7,7 +7,7 @@ namespace App\Domain\Pricing;
 use Illuminate\Database\ConnectionInterface;
 
 /**
- * Rebuilds price_latest from price_daily. It runs inside the ingest finalize
+ * Reads each search row's headline close (headlines()) and rebuilds price_latest from price_daily. It runs inside the ingest finalize
  * transaction, after the rollup, and recomputes, with one set-based statement, the newest real (never filled) candle of
  * each variant of a set S with its previous close:
  *
@@ -31,6 +31,43 @@ use Illuminate\Database\ConnectionInterface;
  */
 final class LatestPrices
 {
+    /**
+     * The headline of each card: its first variant in card order (variant_key, as the card page lists them) that has
+     * a close in price_latest for the configured source, read for every card in one statement whatever their number.
+     * Each row holds card_id, variant_key, finish, edition, treatment and every PriceColumns::LATEST column as
+     * price_<column> (PriceBlock::fromRow() reads it). A card without a priced variant has no entry.
+     *
+     * @param  list<string>  $cardIds
+     * @return array<string, array<string, mixed>> keyed by card id
+     */
+    public static function headlines(ConnectionInterface $db, array $cardIds): array
+    {
+        $cardIds = array_values(array_unique($cardIds));
+        if ($cardIds === []) {
+            return [];
+        }
+
+        $columns = implode(', ', array_map(fn (string $column): string => "pl.{$column} AS price_{$column}", PriceColumns::LATEST));
+        $marks = implode(', ', array_fill(0, count($cardIds), '?'));
+        $rows = $db->select(
+            "SELECT DISTINCT ON (v.card_id) v.card_id, v.variant_key, v.finish, v.edition, v.treatment, {$columns}
+             FROM card_variants v
+             JOIN price_latest pl ON pl.variant_key = v.variant_key AND pl.source = ?
+             WHERE v.card_id IN ({$marks})
+             ORDER BY v.card_id, v.variant_key",
+            [PricingConfig::source(), ...$cardIds],
+            false,
+        );
+
+        $headlines = [];
+        foreach ($rows as $row) {
+            $row = (array) $row;
+            $headlines[(string) $row['card_id']] = $row;
+        }
+
+        return $headlines;
+    }
+
     /**
      * @param  string|null  $from  the first day of the recompute window, YYYY-MM-DD; null with $to for the whole table
      * @param  string|null  $to  the last day of the recompute window, YYYY-MM-DD

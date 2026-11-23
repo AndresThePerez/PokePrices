@@ -340,7 +340,16 @@ function lightOnly(root: HTMLElement): string[] {
 
 const pagedSearch = {
   data: [...searchPage.data],
-  meta: { total: 60, page: 2, pages: 3, page_size: 24, degraded: true, cached: true },
+  meta: {
+    total: 60,
+    page: 2,
+    pages: 3,
+    page_size: 24,
+    degraded: true,
+    cached: true,
+    sort: 'relevance',
+    ordered: null,
+  },
 } satisfies CardSearchPage;
 
 describe('dark theme on the existing pages (T02 criterion 6)', () => {

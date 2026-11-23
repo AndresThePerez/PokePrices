@@ -22,7 +22,7 @@ use Tests\Support\CatalogCache;
 
 const T44_BASE = 'http://192.0.2.10:8081';
 
-const T44_SUMMARY_KEYS = ['id', 'name', 'number', 'rarity', 'supertype', 'set_id', 'set_name', 'release_date', 'image_small'];
+const T44_SUMMARY_KEYS = ['id', 'name', 'number', 'rarity', 'supertype', 'set_id', 'set_name', 'release_date', 'image_small', 'variant', 'price'];
 
 beforeEach(function (): void {
     config(['services.pokesearch.url' => T44_BASE, 'services.pokesearch.api_key' => null]);
@@ -132,15 +132,15 @@ it('maps the PokéSearch answer to data summaries and meta, passing pages throug
             [
                 'id' => 'sv1-1', 'name' => 'Card 1', 'number' => '1', 'rarity' => 'Common', 'supertype' => 'Pokémon',
                 'set_id' => 'sv1', 'set_name' => 'Scarlet & Violet', 'release_date' => '2023-03-31',
-                'image_small' => 'https://images.example.com/sv1/1.png',
+                'image_small' => 'https://images.example.com/sv1/1.png', 'variant' => null, 'price' => null,
             ],
             [
                 'id' => 'sv1-2', 'name' => 'Card 2', 'number' => '2', 'rarity' => 'Common', 'supertype' => 'Pokémon',
                 'set_id' => 'sv1', 'set_name' => 'Scarlet & Violet', 'release_date' => '2023-03-31',
-                'image_small' => 'https://images.example.com/sv1/2.png',
+                'image_small' => 'https://images.example.com/sv1/2.png', 'variant' => null, 'price' => null,
             ],
         ],
-        'meta' => ['total' => 20000, 'page' => 3, 'pages' => 400, 'page_size' => 24, 'degraded' => false, 'cached' => false],
+        'meta' => ['total' => 20000, 'page' => 3, 'pages' => 400, 'page_size' => 24, 'degraded' => false, 'cached' => false, 'sort' => 'relevance', 'ordered' => null],
     ]);
 });
 
@@ -156,7 +156,7 @@ it('never passes on highlights, matched, facets, dsl, took_ms or any other upstr
     }
     expect(array_keys($response->json()))->toBe(['data', 'meta'])
         ->and(array_keys($response->json('data.0')))->toBe(T44_SUMMARY_KEYS)
-        ->and(array_keys($response->json('meta')))->toBe(['total', 'page', 'pages', 'page_size', 'degraded', 'cached']);
+        ->and(array_keys($response->json('meta')))->toBe(['total', 'page', 'pages', 'page_size', 'degraded', 'cached', 'sort', 'ordered']);
 });
 
 it('answers rarity null when PokéSearch omits it, as it does for cards without a rarity', function (): void {
@@ -178,7 +178,7 @@ it('answers an empty data list for a search with no hits', function (): void {
 
     $response->assertOk();
     expect($response->json('data'))->toBe([])
-        ->and($response->json('meta'))->toBe(['total' => 0, 'page' => 1, 'pages' => 0, 'page_size' => 24, 'degraded' => false, 'cached' => false]);
+        ->and($response->json('meta'))->toBe(['total' => 0, 'page' => 1, 'pages' => 0, 'page_size' => 24, 'degraded' => false, 'cached' => false, 'sort' => 'relevance', 'ordered' => null]);
 });
 
 it('forwards exactly q, page and page_size to GET /api/search', function (): void {
@@ -461,6 +461,6 @@ it('documents GET /cards with closed summary and meta schemas and the 304, 422, 
         ->and($item['additionalProperties'])->toBeFalse()
         ->and(array_keys($item['properties']))->toBe(T44_SUMMARY_KEYS)
         ->and($body['properties']['meta']['additionalProperties'])->toBeFalse()
-        ->and(array_keys($body['properties']['meta']['properties']))->toBe(['total', 'page', 'pages', 'page_size', 'degraded', 'cached'])
-        ->and(array_column($operation['parameters'], 'name'))->toBe(['q', 'page', 'page_size']);
+        ->and(array_keys($body['properties']['meta']['properties']))->toBe(['total', 'page', 'pages', 'page_size', 'degraded', 'cached', 'sort', 'ordered'])
+        ->and(array_column($operation['parameters'], 'name'))->toBe(['q', 'page', 'page_size', 'sort']);
 });

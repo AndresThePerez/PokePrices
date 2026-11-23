@@ -17,6 +17,8 @@ export const unownQuestion = {
   set_name: 'Unseen Forces',
   release_date: '2005-08-22',
   image_small: 'https://images.example.com/ex10/question.png',
+  variant: null,
+  price: null,
 } satisfies Schemas['CardSummaryResource'];
 
 export const unownExclamation = {
@@ -29,6 +31,8 @@ export const unownExclamation = {
   set_name: 'Unseen Forces',
   release_date: '2005-08-22',
   image_small: 'https://images.example.com/ex10/exclamation.png',
+  variant: null,
+  price: null,
 } satisfies Schemas['CardSummaryResource'];
 
 export const sprigatitoPromo = {
@@ -41,6 +45,8 @@ export const sprigatitoPromo = {
   set_name: 'Scarlet & Violet Black Star Promos',
   release_date: '2023-01-01',
   image_small: 'https://images.example.com/svp/1.png',
+  variant: null,
+  price: null,
 } satisfies Schemas['CardSummaryResource'];
 
 export const cardSummaries = [
@@ -51,13 +57,88 @@ export const cardSummaries = [
 
 export const searchPage = {
   data: [...cardSummaries],
-  meta: { total: 3, page: 1, pages: 1, page_size: 24, degraded: false, cached: false },
+  meta: {
+    total: 3,
+    page: 1,
+    pages: 1,
+    page_size: 24,
+    degraded: false,
+    cached: false,
+    sort: 'relevance',
+    ordered: null,
+  },
 } satisfies SearchBody;
 
 export const degradedSearchPage = {
   data: [unownQuestion],
-  meta: { total: 1, page: 1, pages: 1, page_size: 24, degraded: true, cached: true },
+  meta: {
+    total: 1,
+    page: 1,
+    pages: 1,
+    page_size: 24,
+    degraded: true,
+    cached: true,
+    sort: 'relevance',
+    ordered: null,
+  },
 } satisfies SearchBody;
+
+type SearchRow = Schemas['CardSummaryResource'];
+export type SearchPrice = NonNullable<SearchRow['price']>;
+
+/**
+ * A search row's headline close, the list block (no lowest listing, no thin-market flag): up
+ * from 69.36 on 2026-10-11 to 70.81 on 2026-10-12 unless `fields` say otherwise.
+ */
+export function searchPriceOf(fields: Partial<SearchPrice> = {}): SearchPrice {
+  return {
+    source: 'tcgplayer',
+    feed: 'tcgcsv',
+    basis: 'market',
+    currency: 'USD',
+    cadence: 'daily',
+    close: '70.81',
+    day: '2026-10-12',
+    as_of: '2026-10-12T20:05:44Z',
+    previous_close: '69.36',
+    previous_day: '2026-10-11',
+    change: '1.45',
+    change_pct: '2.09',
+    series_epoch: 1,
+    ...fields,
+  };
+}
+
+/** `card` priced by its variant `finish:edition:treatment` at `price`. */
+export function pricedRow(card: SearchRow, naming: string, price: SearchPrice): SearchRow {
+  const [finish = '', edition = '', treatment = ''] = naming.split(':');
+  return {
+    ...card,
+    variant: { variant_key: `${card.id}:${naming}`, finish, edition, treatment },
+    price,
+  };
+}
+
+/** A search answer of `data`, one page in relevance order unless `meta` says otherwise. */
+export function searchBodyOf(
+  data: readonly SearchRow[],
+  meta: Partial<SearchBody['meta']> = {},
+): SearchBody {
+  return {
+    data: [...data],
+    meta: {
+      total: data.length,
+      page: 1,
+      pages: 1,
+      page_size: 24,
+      degraded: false,
+      cached: false,
+      sort: 'relevance',
+      ordered: null,
+      ...meta,
+    },
+  };
+}
 
 export const upstreamUnavailableProblem = {
   type: 'https://pokeprices.andrestheperez.com/problems/upstream-unavailable',

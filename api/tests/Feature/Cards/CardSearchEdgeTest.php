@@ -160,7 +160,7 @@ it('passes pages through even when it contradicts total and page_size, and when 
 
     $response = $this->getJson('/v1/cards?q=a&page=9&page_size=1');
 
-    expect($response->json('meta'))->toBe(['total' => 5, 'page' => 9, 'pages' => 77, 'page_size' => 1, 'degraded' => false, 'cached' => false]);
+    expect($response->json('meta'))->toBe(['total' => 5, 'page' => 9, 'pages' => 77, 'page_size' => 1, 'degraded' => false, 'cached' => false, 'sort' => 'relevance', 'ordered' => null]);
 });
 
 it('keeps the ETag deterministic across requests and changes it with the page', function (): void {

@@ -24,7 +24,16 @@ function visit(path: string): void {
 function page(card: CardSearchPage['data'][number]): CardSearchPage {
   return {
     data: [card],
-    meta: { total: 1, page: 1, pages: 1, page_size: 24, degraded: false, cached: false },
+    meta: {
+      total: 1,
+      page: 1,
+      pages: 1,
+      page_size: 24,
+      degraded: false,
+      cached: false,
+      sort: 'relevance',
+      ordered: null,
+    },
   };
 }
 

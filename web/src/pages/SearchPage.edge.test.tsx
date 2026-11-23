@@ -110,7 +110,16 @@ describe('SearchPage edge cases', () => {
 
     const zeroPages = {
       data: [],
-      meta: { total: 0, page: 1, pages: 0, page_size: 24, degraded: false, cached: false },
+      meta: {
+        total: 0,
+        page: 1,
+        pages: 0,
+        page_size: 24,
+        degraded: false,
+        cached: false,
+        sort: 'relevance',
+        ordered: null,
+      },
     } satisfies CardSearchPage;
     stubFetch(() => jsonResponse(zeroPages));
     visit('/search?q=none');
@@ -123,7 +132,16 @@ describe('SearchPage edge cases', () => {
   it('offers a way back to page 1 when the page is beyond pages and has no cards', async () => {
     const beyond = {
       data: [],
-      meta: { total: 30, page: 9, pages: 2, page_size: 24, degraded: false, cached: false },
+      meta: {
+        total: 30,
+        page: 9,
+        pages: 2,
+        page_size: 24,
+        degraded: false,
+        cached: false,
+        sort: 'relevance',
+        ordered: null,
+      },
     } satisfies CardSearchPage;
     stubFetch(() => jsonResponse(beyond));
     visit('/search?q=unown&page=9');
@@ -156,7 +174,16 @@ describe('SearchPage edge cases', () => {
           set_name: '<script>window.__pwned=1</script>',
         },
       ],
-      meta: { total: 1, page: 1, pages: 1, page_size: 24, degraded: false, cached: false },
+      meta: {
+        total: 1,
+        page: 1,
+        pages: 1,
+        page_size: 24,
+        degraded: false,
+        cached: false,
+        sort: 'relevance',
+        ordered: null,
+      },
     } satisfies CardSearchPage;
     stubFetch(() => jsonResponse(hostile));
     visit('/search?q=unown');
@@ -172,7 +199,16 @@ describe('SearchPage edge cases', () => {
   it('keeps the row when the API sends an empty image_small, never inventing an image URL', async () => {
     const noImage = {
       data: [{ ...unownQuestion, image_small: '' }],
-      meta: { total: 1, page: 1, pages: 1, page_size: 24, degraded: false, cached: false },
+      meta: {
+        total: 1,
+        page: 1,
+        pages: 1,
+        page_size: 24,
+        degraded: false,
+        cached: false,
+        sort: 'relevance',
+        ordered: null,
+      },
     } satisfies CardSearchPage;
     stubFetch(() => jsonResponse(noImage));
     visit('/search?q=unown');
@@ -186,7 +222,16 @@ describe('SearchPage edge cases', () => {
   it('draws a card-back placeholder for an empty image_small and one lazy async img otherwise', async () => {
     const mixed = {
       data: [{ ...unownQuestion, image_small: '' }, unownExclamation],
-      meta: { total: 2, page: 1, pages: 1, page_size: 24, degraded: false, cached: false },
+      meta: {
+        total: 2,
+        page: 1,
+        pages: 1,
+        page_size: 24,
+        degraded: false,
+        cached: false,
+        sort: 'relevance',
+        ordered: null,
+      },
     } satisfies CardSearchPage;
     const calls = stubFetch(() => jsonResponse(mixed));
     visit('/search?q=unown');
