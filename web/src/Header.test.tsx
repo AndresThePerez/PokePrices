@@ -229,7 +229,7 @@ describe('Header (T02 criterion 1; D1-T03)', () => {
     );
   });
 
-  it('empties the footer on /account only (R297): on /nowhere it is the full settings strip again', async () => {
+  it('takes the settings out of the footer on /account only, keeping the links (R297): on /nowhere the settings strip is back', async () => {
     stubFetch(() => problemResponse(unauthenticatedProblem));
     visit('/account');
     render(<App />);

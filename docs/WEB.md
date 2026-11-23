@@ -134,9 +134,12 @@ prices get into the database is in [`OPERATIONS.md`](OPERATIONS.md).
   quote), a linked thank-you to TCGCSV (`https://tcgcsv.com`) as the source of the price data, who built it
   with a link to the source code on GitHub, the affiliation disclaimer (not affiliated with or endorsed by
   Nintendo, The Pokémon Company, Game Freak, Creatures or TCGplayer; card images and names belong to their
-  owners), a privacy paragraph (the cookies set on sign-in, what an account stores, the third-party image host
-  and Cloudflare) and the contact link to `https://andrestheperez.com`. It shows no price and sends no
-  request. nginx serves it like every other app path (`/about` is not reserved).
+  owners), a privacy paragraph (the cookies, what an account stores, the third-party image host and
+  Cloudflare) and the contact link to `https://andrestheperez.com`. It shows no price and sends no
+  request. nginx serves it like every other app path (`/about` is not reserved). The privacy paragraph
+  opens: "Browsing prices sets no cookies. Opening a sign-in or account page (sign-in, account, watchlist,
+  portfolio, alerts), signing in or trying the demo sets two: a session cookie, which keeps you signed in
+  once you are, and a security token that protects the site’s forms."
 
 The watchlist and portfolio are filled from the card page, where each priced variant has `Add to watchlist` and
 `Add to portfolio` buttons. Each row's card name links back to the card page on that row's variant

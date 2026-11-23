@@ -55,7 +55,6 @@ function Routes() {
   const { pathname, route } = useRoute();
   useDocumentTitle(ROUTES[route.name].title);
   useRouteFocus(pathname);
-  useCanonical(pathname);
   switch (route.name) {
     case 'home':
       // The landing: the job in the h1, the source sentence, then the one task (search) and
@@ -137,6 +136,16 @@ const PRICED_ROUTES: ReadonlySet<string> = new Set([
 ]);
 
 /** The one stale-prices banner, under the header, on a page that shows a price. */
+/**
+ * The canonical link's keeper, outside the root boundary, so a page that throws while it renders
+ * still leaves the canonical on the address on screen. It renders nothing.
+ */
+function Canonical() {
+  const { pathname } = useRoute();
+  useCanonical(pathname);
+  return null;
+}
+
 function StaleBanner() {
   const { route } = useRoute();
   return PRICED_ROUTES.has(route.name) ? <FreshnessBanner /> : null;
@@ -148,6 +157,7 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <Header />
+      <Canonical />
       <StaleBanner />
       <div id="content" tabIndex={-1}>
         <RootBoundary>
