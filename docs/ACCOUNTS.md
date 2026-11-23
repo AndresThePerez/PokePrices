@@ -138,9 +138,12 @@ Fortify's profile-update, password-update and passkey routes are not enabled, an
   The demo may download its data (a read) but cannot delete itself. It may read its alert, its sample messages
   (`GET /v1/demo/samples`), its webhooks list and where its alerts go; creating, changing or deleting an alert, a
   webhook or the notification settings, and the webhook test send, are refused like every other write. The pages
-  also hide the write controls a read-only session cannot use (the two-factor buttons, the card page's Add buttons,
-  the list and alert controls) and say it is the read-only demo, but no test relies on the pages for enforcement; a
-  write that can still be attempted shows the calm sentence `The demo account is read-only.`
+  also hide the write controls a read-only session cannot use (the two-factor buttons, the card page's Add, Remove
+  and Edit controls and its quantity form, the list and alert controls, Undo) and say it is the read-only demo, but
+  no test relies on the pages for enforcement; a write that can still be attempted shows the calm sentence
+  `The demo account is read-only.` A card page opened directly (a reload or a pasted link) knows the demo session
+  when the browser holds the `XSRF-TOKEN` cookie, which entering the demo sets: it asks `GET /v1/me` and shows the
+  list lines without a write control. Only a tab with no such cookie and nothing cached shows the Add buttons.
 - **Limits.** The entry is 10 a minute per IP; the demo's account API is 30 a minute keyed by IP, so one visitor
   cannot spend it for everyone. Both are global on the dev topology (see [Rate limits](#rate-limits)).
 
@@ -211,6 +214,12 @@ may read but not write.
   have none); how alerts work is in [`ALERTS.md`](ALERTS.md).
 - **Idempotent writes.** Every state-changing `/v1` call is idempotent in effect (PUT sets, DELETE removes), so there
   is no `Idempotency-Key` header.
+- **Undo and the card page's list state (web).** There is no undo route: the pages' `Undo` after a removal puts
+  the row back through the same writes (`PUT /v1/watchlist/{variantKey}`, then `PUT /v1/alerts/{variantKey}` with
+  its threshold when the row had an alert; `PUT /v1/portfolio/{variantKey}` with the quantity it had), each
+  refused for the demo like any write. The card page of a known session reads `GET /v1/watchlist` and
+  `GET /v1/portfolio` once each to say which variants are on which list, with `Remove` and `Edit` through the same
+  routes. Where the estimate shows, Undo's focus rules and the exact lines are in [`WEB.md`](WEB.md).
 
 ## Your data
 

@@ -211,6 +211,7 @@ describe('a tab that never read ["me"] drops what it cached before the first acc
     const calls = stubAccountFetch({
       'GET /v1/me': () => me,
       'GET /v1/portfolio': () => portfolio,
+      'GET /v1/watchlist': jsonResponse(watchlistBody([])),
       ...CARD_ROUTES,
     });
     visit(CARD);

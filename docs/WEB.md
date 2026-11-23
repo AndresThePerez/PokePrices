@@ -115,13 +115,31 @@ prices get into the database is in [`OPERATIONS.md`](OPERATIONS.md).
   removes the threshold. Below the list a line explains that an alert is sent when a card's daily close moves by at
   least its threshold and at least $1.00 against the previous close, with a link to `/alerts`. An unverified account
   sees `Verify your email address to set alerts.` instead of the control. The demo sees no control and no
-  `Remove`; the row of its seeded alert says `Sample alert: at 10%`.
+  `Remove`; the row of its seeded alert says `Sample alert: at 10%`. `Remove` leaves `Removed.` with an `Undo`
+  button in the row's place (see Undo below).
 - **`/portfolio`.** The variants a person holds with a quantity, each a short row with the card's picture and its
   value, and a total computed by the API that names the days it rests on; that line is the list's one stamp (each
   row also shows `Close of <day>` when the days differ). A holding without a price is not valued and is named as
   not counted. The total's panel ends with `Change is each card's close vs its previous close, not a gain on your
   holding.`, which names what each row's change is measured against: it is the card's daily-close change, not a
-  return on the holding.
+  return on the holding. The panel reads, in order: `An estimate at daily-close market prices, not a sale value.`,
+  `Total value $<total>`, the days line, the not-counted line when a holding has no price, the day's change of the
+  total (`▲ +$16.93 (+1.64%) vs previous close.`; `No change vs previous close.`; with no percent,
+  `▲ +$4.00 vs previous close; no percent, as the previous closes add up to $0.00.`; with no previous close at all,
+  `No previous close yet, so no change to show.`), the counts (`3 cards, 1 without a price.`, or `12 cards.`),
+  `The change leaves out <n> card(s) with no previous close.` when some priced card has none, then the line above.
+  Every figure is the API's (see [`ACCOUNTS.md`](ACCOUNTS.md) for the rule) and rests on the one days line. Each
+  row has `Quantity owned` with `Save`, which says `Saved.` once the quantity is saved (the alerts page's line,
+  announced the same way), and `Remove`, which leaves `Removed.` with `Undo` (see Undo below).
+- **Undo.** On `/watchlist` and `/portfolio`, `Remove` replaces the row, once the API has removed it, by
+  `Removed.` and `Undo`, and keyboard focus moves to `Undo`. `Undo` puts the row back through the same routes:
+  `PUT /v1/watchlist/{key}` (and `PUT /v1/alerts/{key}` with its threshold when the row had an alert), or
+  `PUT /v1/portfolio/{key}` with the quantity it had; then the list is read again and focus moves to the restored
+  row. The line stays until the visitor leaves the page or removes another row (one line per list), and goes by
+  itself once the list read again holds the row (put back from another tab, say); when it goes while holding focus,
+  focus moves to the row that takes its place, or to the page heading when there is none, never to the page body. A
+  removal that fails keeps the row with its problem block and gives focus back to its `Remove`; an `Undo` that
+  fails says `Removed. Undo did not go through.` with the problem block and offers `Undo` again.
 - **`/alerts`.** `Alerts and webhooks`, linked from `/account` (the header is unchanged). It needs a signed-in
   account: signed out it offers `Sign in` and `Create an account`; an unverified account is asked to verify its
   email address and sees its lists without a form. As the demo it says the read-only demo cannot set alerts or add
@@ -160,11 +178,28 @@ prices get into the database is in [`OPERATIONS.md`](OPERATIONS.md).
   portfolio, alerts), signing in or trying the demo sets two: a session cookie, which keeps you signed in
   once you are, and a security token that protects the site’s forms."
 
-The watchlist and portfolio are filled from the card page, where each priced variant has `Add to watchlist` and
-`Add to portfolio` buttons; a tab known to be signed in to the read-only demo shows neither (a tab that has not
-asked who is signed in yet still shows them, and a press answers `The demo account is read-only.`). Any write the
-demo can still attempt anywhere (the sign-up or password forms, for instance) shows that same sentence, with no
-request id. Each row's card name links back to the card page on that row's variant
+The watchlist and portfolio are filled from the card page, where each variant has `Add to watchlist` and
+`Add to portfolio` buttons. Once the tab knows who is signed in, the card page reads both lists (one
+`GET /v1/watchlist` and one `GET /v1/portfolio` for the whole page, never one per variant) and each variant on
+them says so for as long as it is true, after a reload too: `On your watchlist.` with `See your watchlist` and
+`Remove`, and `In your portfolio: <n>.` with `See your portfolio`, `Edit` (the quantity form) and `Remove`, both
+at once when both are true; the `Add` button of a list the variant is on gives way to its line and comes back,
+focused, when the variant is removed. A tab known to be signed in to the read-only demo shows the two lines and
+no `Add`, `Remove`, `Edit` or quantity form. A public page learns the session after a reload only when the
+browser already holds the app's security token cookie (`XSRF-TOKEN`, set with the session cookie by a sign-in or
+account page, a sign-in or the demo): home, `/search`, a card page and `/movers` then ask `GET /v1/me` once, when
+nothing is known yet; without that cookie they ask nothing about the session, so browsing prices still sets no
+cookies. A card page opened directly by the demo therefore shows its lines and no write control; only a tab with
+no such cookie and nothing cached (which has not asked who is signed in) still shows the `Add` buttons, and a
+press answers `The demo account is read-only.` Any write the demo can still attempt anywhere (the sign-up or
+password forms, for instance) shows that same sentence, with no request id. A signed-in session's portfolio
+estimate also shows in the header, under the bar, on home, `/search`, a card page, `/movers` and `/watchlist`
+(the pages where the stale-prices banner can show, less `/portfolio`, which states the total itself): one link
+to `/portfolio`, `Portfolio estimate $<total>` with the short change (`▲ +1.64%`), whose accessible name goes on
+with the full sentence (an estimate at daily-close market prices, not a sale value; the change vs previous
+close; the cards; TCGplayer market prices and the days line). It comes from `GET /v1/me` and adopts the
+portfolio list's figures whenever that list is read again, so it sends no request of its own; nothing shows
+signed out, while the session loads, when its request fails, or for a portfolio with no priced card. Each row's card name links back to the card page on that row's variant
 (`/card/<id>?variant=<variant key>`, see the card page above). The account pages, the sessions behind them and the rules for the demo are described in
 [`ACCOUNTS.md`](ACCOUNTS.md).
 

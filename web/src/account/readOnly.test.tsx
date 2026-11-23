@@ -16,6 +16,7 @@ import {
   demoReadOnlyProblem,
   demoSampleWebhook,
   demoSamplesBody,
+  emptyPortfolioBody,
   historyFor,
   jsonResponse,
   notificationsBody,
@@ -128,6 +129,9 @@ describe('controls a read-only session cannot use', () => {
         'GET /v1/me': jsonResponse(me),
         [CARD]: jsonResponse(pricedCardBody),
         [HISTORY]: jsonResponse(historyFor(pricedCardBody)),
+        // The card page of a known session reads both lists (answered empty: no line shows).
+        'GET /v1/watchlist': jsonResponse(watchlistBody([])),
+        'GET /v1/portfolio': jsonResponse(emptyPortfolioBody),
       });
       visit('/account');
       render(<App />);

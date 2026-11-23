@@ -207,7 +207,7 @@ describe('removing from the watchlist (T07 criterion 2)', () => {
       }),
     );
     await waitFor(() => {
-      expect(rows()).toHaveLength(2);
+      expect(rows().filter((item) => !item.textContent.startsWith('Removed.'))).toHaveLength(2);
     });
     expect(screen.queryByText('Market price $968.91')).toBeNull();
     const keys = calls.map((call) => call.key);

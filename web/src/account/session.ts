@@ -1,7 +1,8 @@
 // The PokéPrices session: the ['me'] query and the signed-in, signed-out, loading and
 // failed states every account page reads. A 401 from GET /v1/me is the signed-out state (null),
-// not a problem. The header reads it passively only (useKnownSession), so public pages keep their
-// exact request lists. Every query key that holds one account's data lives under ['account', …]
+// not a problem. The header reads it passively only (useKnownSession); a public price page asks for
+// it only when the browser already holds the CSRF cookie (holdsSessionCookie, PublicSession), so a
+// visitor without one keeps the exact request list. Every query key that holds one account's data lives under ['account', …]
 // (accountKey), so a session transition forgets all of it at once (endSession); ['me'] itself is
 // outside it.
 import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
@@ -156,6 +157,21 @@ export function useReadOnly(): boolean {
       typeof data === 'object' && data !== null && 'read_only' in data && data.read_only === true
     );
   });
+}
+
+/**
+ * Whether this browser already holds the app's CSRF cookie (XSRF-TOKEN, readable by script). Only
+ * a sign-in or account page, a sign-in or the demo sets it, together with the session cookie, so a
+ * public page may ask GET /v1/me when it is there (the answer sets no cookie the visitor did not
+ * already have) and must not when it is not: browsing prices sets no cookies.
+ */
+export function holdsSessionCookie(): boolean {
+  for (const pair of document.cookie.split(';')) {
+    const at = pair.indexOf('=');
+    if (at < 0 || pair.slice(0, at).trim() !== 'XSRF-TOKEN') continue;
+    if (pair.slice(at + 1).trim() !== '') return true;
+  }
+  return false;
 }
 
 /** What the cache already knows about the session: 'unknown', null (signed out) or the account. */

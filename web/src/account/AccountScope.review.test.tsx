@@ -267,6 +267,7 @@ describe('the card page controls across an account change (R221)', () => {
       [CARD]: jsonResponse(pricedCardBody),
       [HISTORY]: jsonResponse(historyFor(pricedCardBody)),
       'GET /v1/portfolio': jsonResponse(portfolioBody([])),
+      'GET /v1/watchlist': jsonResponse(watchlistBody([])),
     });
     visit('/account');
     render(<App />);
@@ -307,6 +308,7 @@ describe('the card page controls across an account change (R221)', () => {
         data: { variant_key: 'ex10-?:holo:unlimited:-' },
       }),
       'GET /v1/watchlist': problemResponse(unauthenticatedProblem),
+      'GET /v1/portfolio': jsonResponse(portfolioBody([])),
     });
     visit('/account');
     render(<App />);

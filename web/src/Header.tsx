@@ -3,8 +3,10 @@
 // 640 px the links fold into a Menu sheet, hidden by CSS only. The display settings live in the
 // footer. The last link is Sign in once the ['me'] cache knows the visitor is signed out, else
 // Account; the header reads the session passively (useKnownSession) and sends no request. Under
-// the bar, inside the banner and outside nav, the demo strip names the read-only demo (RULING e).
+// the bar, inside the banner and outside nav, a signed-in session's portfolio estimate links to
+// /portfolio (HeaderEstimate), and the demo strip names the read-only demo (RULING e).
 import { useEffect, useId, useState } from 'react';
+import HeaderEstimate from './account/HeaderEstimate';
 import { DemoStrip } from './account/SignOut';
 import { useKnownSession } from './account/session';
 import Link from './Link';
@@ -118,6 +120,7 @@ export default function Header() {
           </ul>
         </nav>
       </div>
+      <HeaderEstimate />
       <DemoStrip />
     </header>
   );

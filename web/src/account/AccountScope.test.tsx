@@ -12,6 +12,7 @@ import {
   clearXsrfCookie,
   historyFor,
   jsonResponse,
+  portfolioBody,
   pricedCardBody,
   signedInMe,
   stubAccountFetch,
@@ -97,11 +98,20 @@ function holoRow(): HTMLElement {
 describe('the card page outcome line belongs to one account (c9)', () => {
   async function watchedAsA() {
     let me: Response = jsonResponse(signedInMe);
+    // The card page of a known session reads both lists: A's watchlist holds the variant once
+    // the PUT is answered; B's is empty; neither holds a portfolio.
+    const holo = watchItemOf({ variant_key: 'ex10-?:holo:unlimited:-', card_id: 'ex10-?' });
+    let watched: readonly (typeof holo)[] = [];
     const calls = stubAccountFetch({
       'GET /v1/me': () => me,
       [CARD]: jsonResponse(pricedCardBody),
       [HISTORY]: jsonResponse(historyFor(pricedCardBody)),
-      [WATCH_PUT]: jsonResponse({ data: { variant_key: 'ex10-?:holo:unlimited:-' } }),
+      [WATCH_PUT]: () => {
+        watched = [holo];
+        return jsonResponse({ data: { variant_key: 'ex10-?:holo:unlimited:-' } });
+      },
+      'GET /v1/watchlist': () => jsonResponse(watchlistBody(watched)),
+      'GET /v1/portfolio': jsonResponse(portfolioBody([])),
     });
     // Signed in as A: the account page asked ['me'], then the card page opens in the same tab.
     visit('/account');
@@ -117,8 +127,9 @@ describe('the card page outcome line belongs to one account (c9)', () => {
     expect(await within(holoRow()).findByText(WATCHED)).toBeTruthy();
     return {
       calls,
-      answer: (next: Response) => {
+      answer: (next: Response, list: readonly (typeof holo)[] = watched) => {
         me = next;
+        watched = list;
       },
     };
   }
@@ -126,7 +137,7 @@ describe('the card page outcome line belongs to one account (c9)', () => {
   it("drops the line when ['me'] names account B", async () => {
     const { calls, answer } = await watchedAsA();
     const before = calls.filter((call) => call.key === 'GET /v1/me').length;
-    answer(jsonResponse(B_ME));
+    answer(jsonResponse(B_ME), []);
     await pollMe();
     expect(within(holoRow()).queryByText(WATCHED)).toBeNull();
     // The buttons are still there, fresh for B.

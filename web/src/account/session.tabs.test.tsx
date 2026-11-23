@@ -167,6 +167,7 @@ describe('another tab signing out or in reaches this tab (F2)', () => {
     const calls = stubAccountFetch({
       'GET /v1/me': jsonResponse(signedInMe),
       'GET /v1/portfolio': () => portfolio,
+      'GET /v1/watchlist': jsonResponse(watchlistBody([])),
       'GET /v1/cards/ex10-%3F': jsonResponse(pricedCardBody),
       'GET /v1/cards/ex10-%3F/prices?range=1M': jsonResponse(historyFor(pricedCardBody)),
     });
@@ -182,12 +183,17 @@ describe('another tab signing out or in reaches this tab (F2)', () => {
     await settle();
     const before = calls.map((call) => call.key);
 
-    // Another tab signs A out and writes the signal; this tab's own page asks nothing.
+    // Another tab signs A out and writes the signal; this tab's card page, which reads the
+    // lists of a known session, reads them again with the session the browser holds now.
     portfolio = problemResponse({ ...unauthenticatedProblem, instance: '/v1/portfolio' });
     const written = window.localStorage.getItem(SESSION_SIGNAL_KEY);
     otherTabSignals();
     await settle();
-    expect(calls.map((call) => call.key)).toEqual(before);
+    expect(calls.map((call) => call.key)).toEqual([
+      ...before,
+      'GET /v1/portfolio',
+      'GET /v1/watchlist',
+    ]);
     // Handling the signal writes nothing back (no echo between tabs).
     expect(window.localStorage.getItem(SESSION_SIGNAL_KEY)).toBe(written);
 

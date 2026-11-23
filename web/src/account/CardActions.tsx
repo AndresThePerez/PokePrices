@@ -1,14 +1,20 @@
-// The card page's Add to watchlist and Add to portfolio controls, on every variant row of the
-// Prices list, as two quiet 44 px buttons under the row's lines (right-aligned from 640 px). Nothing here fetches before a click: the public card page keeps its exact request
-// list. Opening Add to portfolio reads PORTFOLIO_KEY once, to prefill the quantity already held.
-// The two controls are <input type="button">: their words are the input's value, not text in the
-// row, so a row's text stays the price lines it was (P3 exact-text tests). A session known to be
-// the read-only demo (useReadOnly) gets neither; one not yet known gets them, and a click is
-// answered by the calm demo sentence.
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useId, useState } from 'react';
+// The card page's list controls, on every variant row of the Prices list, under the row's lines
+// (right-aligned from 640 px). While the session is not known (no ['me'] answer: a visitor
+// without the session cookie, see PublicSession) the row has Add to watchlist and Add to
+// portfolio and nothing here fetches before a click, so the public card page keeps its exact
+// request list. Once ['me'] names an account, the row reads the two lists (one shared query each,
+// never one per variant) and says, for as long as they are true, "On your watchlist." with Remove
+// and "In your portfolio: N." with Edit and Remove, both at once; the Add control of a list the
+// variant is on gives way to its line, and comes back, focused, when the variant is removed. The
+// buttons are <input type="button">: their words are the input's value, not text in the row, so a
+// row's text stays the price lines it was (P3 exact-text tests). A session known to be the
+// read-only demo (useReadOnly) sees the lines and no control that writes; one not yet known gets
+// the Add controls, and a click is answered by the calm demo sentence.
+import { useQueryClient } from '@tanstack/react-query';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import {
-  getPortfolio,
+  deleteHolding,
+  deleteWatchlistItem,
   putHolding,
   putWatchlistItem,
   type ApiFailure,
@@ -17,12 +23,12 @@ import {
 } from '../api/client';
 import { variantLabel, type VariantNaming } from '../format';
 import Link from '../Link';
-import { unwrap } from '../query';
 import StatusLine from '../ui/StatusLine';
 import { ProblemBlock } from './Form';
 import { QUIET_BUTTON, TEXT_LINK } from '../ui/classes';
 import { firstErrors } from './fields';
 import { QuantityForm } from './ListParts';
+import { usePortfolioQuery, useWatchlistQuery } from './listQueries';
 import {
   DEMO_READ_ONLY_LINE,
   PORTFOLIO_KEY,
@@ -32,7 +38,7 @@ import {
   signInPath,
 } from './lists';
 import { useAccountWrite, useWriteGuard } from './mutations';
-import { useReadOnly } from './session';
+import { useKnownSession, useReadOnly } from './session';
 
 const WATCH_CONTEXT = 'Could not change your watchlist';
 const HOLD_CONTEXT = 'Could not change your portfolio';
@@ -63,26 +69,44 @@ function SignInPrompt({ cardId }: { readonly cardId: string }) {
   );
 }
 
+/** "On your watchlist." with its link, and `children` (the line's controls) after it. */
+function WatchedLine({ children }: { readonly children?: ReactNode }) {
+  return (
+    <p role="status" className={RESULT}>
+      <span>On your watchlist.</span>
+      <Link to="/watchlist" className={TEXT_LINK}>
+        See your watchlist
+      </Link>
+      {children}
+    </p>
+  );
+}
+
+/** "In your portfolio: N." with its link, and `children` (the line's controls) after it. */
+function HeldLine({
+  quantity,
+  children,
+}: {
+  readonly quantity: number;
+  readonly children?: ReactNode;
+}) {
+  return (
+    <p role="status" className={RESULT}>
+      <span>{`In your portfolio: ${String(quantity)}.`}</span>
+      <Link to="/portfolio" className={TEXT_LINK}>
+        See your portfolio
+      </Link>
+      {children}
+    </p>
+  );
+}
+
 function OutcomeLine({ outcome, cardId }: { readonly outcome: Outcome; readonly cardId: string }) {
   switch (outcome.kind) {
     case 'watched':
-      return (
-        <p role="status" className={RESULT}>
-          <span>On your watchlist.</span>
-          <Link to="/watchlist" className={TEXT_LINK}>
-            See your watchlist
-          </Link>
-        </p>
-      );
+      return <WatchedLine />;
     case 'held':
-      return (
-        <p role="status" className={RESULT}>
-          <span>{`In your portfolio: ${String(outcome.quantity)}.`}</span>
-          <Link to="/portfolio" className={TEXT_LINK}>
-            See your portfolio
-          </Link>
-        </p>
-      );
+      return <HeldLine quantity={outcome.quantity} />;
     case 'sign-in':
       return <SignInPrompt cardId={cardId} />;
     case 'read-only':
@@ -105,9 +129,10 @@ function heldQuantity(body: PortfolioBody, variantKey: string): string {
 }
 
 /**
- * The opened Add to portfolio form: it reads the portfolio once, then sets the quantity. A typed
- * quantity survives a refetch (QuantityForm's draft); another account's forgotten portfolio shows
- * the loading line first, which drops it, and a successful save closes the form.
+ * The opened quantity form (Add to portfolio, or Edit): it reads the portfolio once, then sets
+ * the quantity. A typed quantity survives a refetch (QuantityForm's draft); another account's
+ * forgotten portfolio shows the loading line first, which drops it, and a successful save closes
+ * the form.
  */
 function HoldingForm({
   id,
@@ -124,10 +149,7 @@ function HoldingForm({
   readonly error: string | undefined;
   readonly onSave: (text: string) => void;
 }) {
-  const portfolio = useQuery<PortfolioBody, ApiFailure>({
-    queryKey: PORTFOLIO_KEY,
-    queryFn: ({ signal }) => unwrap(getPortfolio({ signal })),
-  });
+  const portfolio = usePortfolioQuery();
   let body;
   if (portfolio.error?.status === 401) {
     body = <SignInPrompt cardId={cardId} />;
@@ -152,6 +174,9 @@ function HoldingForm({
   );
 }
 
+/** The control that takes focus once a write has changed which controls the row shows. */
+type Refocus = 'add-watch' | 'add-hold' | 'remove-watch' | 'remove-hold' | 'edit' | null;
+
 export default function CardActions({
   cardId,
   variant,
@@ -162,18 +187,38 @@ export default function CardActions({
   const queryClient = useQueryClient();
   const formId = useId();
   const label = variantLabel(variant);
+  const key = variant.variant_key;
   const [open, setOpen] = useState(false);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const [refocus, setRefocus] = useState<Refocus>(null);
+  const addWatchRef = useRef<HTMLInputElement>(null);
+  const addHoldRef = useRef<HTMLInputElement>(null);
+  const removeWatchRef = useRef<HTMLInputElement>(null);
+  const removeHoldRef = useRef<HTMLInputElement>(null);
+  const editRef = useRef<HTMLInputElement>(null);
   const guard = useWriteGuard();
   const readOnly = useReadOnly();
+  const known = useKnownSession();
+  const signedIn = known !== 'unknown' && known !== null;
+  const watchlist = useWatchlistQuery(signedIn);
+  const portfolio = usePortfolioQuery(signedIn);
+  // The lists' answers, when a known session has read them: null while they are not known (a
+  // portfolio read by the Add to portfolio form of an unknown session does not count).
+  const watchBody = signedIn ? watchlist.data : undefined;
+  const holdBody = signedIn ? portfolio.data : undefined;
+  const watched = watchBody?.data.some((item) => item.variant_key === key) ?? null;
+  const holding = holdBody?.data.find((one) => one.variant_key === key) ?? null;
+  const held = holdBody === undefined ? null : holding !== null;
+
   const watch = useAccountWrite(
     {
       onMutate: () => {
         setOutcome(null);
       },
-      onSuccess: () => {
+      onSuccess: async () => {
         setOutcome({ kind: 'watched' });
-        return queryClient.invalidateQueries({ queryKey: WATCHLIST_KEY });
+        await queryClient.invalidateQueries({ queryKey: WATCHLIST_KEY });
+        if (signedIn) setRefocus('remove-watch');
       },
       onError: (failure) => {
         setOutcome(refusal(failure, WATCH_CONTEXT));
@@ -186,10 +231,11 @@ export default function CardActions({
       onMutate: () => {
         setOutcome(null);
       },
-      onSuccess: (entry) => {
+      onSuccess: async (entry) => {
         setOpen(false);
         setOutcome({ kind: 'held', quantity: entry.data.quantity });
-        return queryClient.invalidateQueries({ queryKey: PORTFOLIO_KEY });
+        await queryClient.invalidateQueries({ queryKey: PORTFOLIO_KEY });
+        if (signedIn) setRefocus('edit');
       },
       onError: (failure) => {
         setOutcome(refusal(failure, HOLD_CONTEXT));
@@ -197,52 +243,168 @@ export default function CardActions({
     },
     guard,
   );
+  const unwatch = useAccountWrite(
+    {
+      onMutate: () => {
+        setOutcome(null);
+      },
+      onSuccess: async () => {
+        await queryClient.invalidateQueries({ queryKey: WATCHLIST_KEY });
+        setRefocus('add-watch');
+      },
+      onError: (failure) => {
+        setOutcome(refusal(failure, WATCH_CONTEXT));
+        setRefocus('remove-watch');
+      },
+    },
+    guard,
+  );
+  const unhold = useAccountWrite(
+    {
+      onMutate: () => {
+        setOutcome(null);
+        setOpen(false);
+      },
+      onSuccess: async () => {
+        await queryClient.invalidateQueries({ queryKey: PORTFOLIO_KEY });
+        setRefocus('add-hold');
+      },
+      onError: (failure) => {
+        setOutcome(refusal(failure, HOLD_CONTEXT));
+        setRefocus('remove-hold');
+      },
+    },
+    guard,
+  );
   // One write at a time on a row, as one pending flag before.
-  const pending = watch.isPending || hold.isPending;
+  const pending = watch.isPending || hold.isPending || unwatch.isPending || unhold.isPending;
+
+  // A write that takes its control away hands focus to the control that takes its place (the Add
+  // a removal gives back, the line's Remove or Edit after an Add), and a failed removal back to its
+  // Remove once it is enabled again: never to the page body.
+  useEffect(() => {
+    if (refocus === null) return;
+    const target = {
+      'add-watch': addWatchRef,
+      'add-hold': addHoldRef,
+      'remove-watch': removeWatchRef,
+      'remove-hold': removeHoldRef,
+      edit: editRef,
+    }[refocus].current;
+    if (target !== null && !target.disabled) {
+      target.focus();
+      setRefocus(null);
+    }
+  }, [refocus, watched, held, pending]);
 
   const quantityError =
     open && outcome?.kind === 'failed' ? firstErrors(outcome.failure).quantity : undefined;
 
-  if (readOnly) return null;
+  // The lines say what the lists hold; a write's own outcome line gives way to them.
+  const shownOutcome =
+    (outcome?.kind === 'watched' && watched === true) || (outcome?.kind === 'held' && held === true)
+      ? null
+      : outcome;
+
+  if (readOnly) {
+    if (watched !== true && holding === null) return null;
+    return (
+      <div className="mt-3">
+        {watched === true && <WatchedLine />}
+        {holding !== null && <HeldLine quantity={holding.quantity} />}
+      </div>
+    );
+  }
   return (
     <div className="mt-3">
-      <div className="flex flex-wrap gap-2 sm:justify-end">
-        <input
-          type="button"
-          value="Add to watchlist"
-          aria-label={`Add ${label} to your watchlist`}
-          disabled={pending}
-          onClick={() => {
-            if (!pending) watch.run(() => putWatchlistItem(variant.variant_key));
-          }}
-          className={QUIET_BUTTON}
-        />
-        <input
-          type="button"
-          value="Add to portfolio"
-          aria-label={`Add ${label} to your portfolio`}
-          aria-expanded={open}
-          aria-controls={open ? formId : undefined}
-          onClick={() => {
-            setOpen(!open);
-            setOutcome(null);
-          }}
-          className={QUIET_BUTTON}
-        />
-      </div>
+      {(watched !== true || held !== true) && (
+        <div className="flex flex-wrap gap-2 sm:justify-end">
+          {watched !== true && (
+            <input
+              ref={addWatchRef}
+              type="button"
+              value="Add to watchlist"
+              aria-label={`Add ${label} to your watchlist`}
+              disabled={pending}
+              onClick={() => {
+                if (!pending) watch.run(() => putWatchlistItem(key));
+              }}
+              className={QUIET_BUTTON}
+            />
+          )}
+          {held !== true && (
+            <input
+              ref={addHoldRef}
+              type="button"
+              value="Add to portfolio"
+              aria-label={`Add ${label} to your portfolio`}
+              aria-expanded={open}
+              aria-controls={open ? formId : undefined}
+              onClick={() => {
+                setOpen(!open);
+                setOutcome(null);
+              }}
+              className={QUIET_BUTTON}
+            />
+          )}
+        </div>
+      )}
+      {watched === true && (
+        <WatchedLine>
+          <input
+            ref={removeWatchRef}
+            type="button"
+            value="Remove"
+            aria-label={`Remove ${label} from your watchlist`}
+            disabled={pending}
+            onClick={() => {
+              if (!pending) unwatch.run(() => deleteWatchlistItem(key));
+            }}
+            className={QUIET_BUTTON}
+          />
+        </WatchedLine>
+      )}
+      {holding !== null && (
+        <HeldLine quantity={holding.quantity}>
+          <input
+            ref={editRef}
+            type="button"
+            value="Edit"
+            aria-label={`Edit how many ${label} you hold`}
+            aria-expanded={open}
+            aria-controls={open ? formId : undefined}
+            onClick={() => {
+              setOpen(!open);
+              setOutcome(null);
+            }}
+            className={QUIET_BUTTON}
+          />
+          <input
+            ref={removeHoldRef}
+            type="button"
+            value="Remove"
+            aria-label={`Remove ${label} from your portfolio`}
+            disabled={pending}
+            onClick={() => {
+              if (!pending) unhold.run(() => deleteHolding(key));
+            }}
+            className={QUIET_BUTTON}
+          />
+        </HeldLine>
+      )}
       {open && (
         <HoldingForm
           id={formId}
           cardId={cardId}
-          variantKey={variant.variant_key}
+          variantKey={key}
           pending={pending}
           error={quantityError}
           onSave={(text) => {
-            hold.run(() => putHolding(variant.variant_key, quantityOf(text)));
+            hold.run(() => putHolding(key, quantityOf(text)));
           }}
         />
       )}
-      {outcome !== null && <OutcomeLine outcome={outcome} cardId={cardId} />}
+      {shownOutcome !== null && <OutcomeLine outcome={shownOutcome} cardId={cardId} />}
     </div>
   );
 }

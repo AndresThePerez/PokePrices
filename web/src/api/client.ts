@@ -515,8 +515,17 @@ export function getPriceFreshness(
 // same-origin Referer (Sanctum's first-party check) and refuses redirects, so a redirect never
 // lands on the SPA's index.html. Every write carries the XSRF-TOKEN cookie as X-XSRF-TOKEN.
 
-export type Me = components['schemas']['MeResource'];
-export type MeBody = operations['getMe']['responses'][200]['content']['application/json'];
+type MeResource = components['schemas']['MeResource'];
+/** The portfolio estimate GET /v1/me carries for the header (data.portfolio). */
+export type Estimate = MeResource['portfolio'];
+/**
+ * The signed-in account. Its portfolio estimate is optional here: the decoder checks it when it is
+ * there and passes an answer without it, which then shows no estimate.
+ */
+export type Me = Omit<MeResource, 'portfolio'> & { readonly portfolio?: Estimate };
+export interface MeBody {
+  readonly data: Me;
+}
 
 /** Fortify's sign-in answer (LoginResponse, RedirectIfTwoFactorAuthenticatable): 200 JSON. */
 export interface SignInAnswer {

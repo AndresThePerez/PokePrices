@@ -3,22 +3,22 @@
 // days differ). Signed out, it offers sign-in, sign-up and the demo; the demo (useReadOnly) sees
 // its rows without a Remove button, and its seeded alert as a sample line. A verified account
 // that is not the demo also sets each row's alert
-// threshold here; an unverified one is told to verify first. The page asks for nothing beyond
-// the session and the list.
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useId, useState } from 'react';
+// threshold here; an unverified one is told to verify first. Remove leaves "Removed." with Undo in
+// the row's place (RemovedLine), which puts the row back with its alert. The page asks for
+// nothing beyond the session and the list until a write.
+import { useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import {
   deleteAlert,
   deleteWatchlistItem,
-  getWatchlist,
   putAlert,
-  type ApiFailure,
+  putWatchlistItem,
+  type ApiResult,
   type WatchlistBody,
   type WatchlistItem,
 } from '../api/client';
 import { variantLabel } from '../format';
 import Link from '../Link';
-import { unwrap } from '../query';
 import { MUTED, SECONDARY_BUTTON, SELECT, TEXT_LINK } from '../ui/classes';
 import { MOVEMENT_ABS } from './alerts';
 import AccountScope from './AccountScope';
@@ -33,8 +33,11 @@ import {
   ListStamp,
   SignedOutList,
 } from './ListParts';
+import { useWatchlistQuery } from './listQueries';
 import { NO_PRICE, WATCHLIST_KEY, cardLabel, priceDays } from './lists';
 import { useAccountWrite } from './mutations';
+import RemovedLine from './RemovedLine';
+import { useRemoval } from './removal';
 import { useReadOnly, useSession } from './session';
 
 const EMPTY = 'Your watchlist is empty. Open a card from Search and choose Add to watchlist.';
@@ -165,18 +168,29 @@ function WatchRow({
   item,
   access,
   showDay,
+  onRemoved,
 }: {
   readonly item: WatchlistItem;
   readonly access: Access;
   readonly showDay: boolean;
+  readonly onRemoved: (item: WatchlistItem) => void;
 }) {
   const queryClient = useQueryClient();
-  // A failure leaves the last good list on screen and shows beside the row.
+  const removeRef = useRef<HTMLButtonElement>(null);
+  // Removed: the row gives way to its "Removed." line at once, then the list is read again. A
+  // failure leaves the row on screen with its problem, and each new failure gives focus back to
+  // its Remove once it is enabled again.
   const remove = useAccountWrite({
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: WATCHLIST_KEY }),
+    onSuccess: async () => {
+      onRemoved(item);
+      await queryClient.invalidateQueries({ queryKey: WATCHLIST_KEY });
+    },
   });
   const pending = remove.isPending;
   const failure = remove.error;
+  useEffect(() => {
+    if (failure !== null && !pending) removeRef.current?.focus();
+  }, [failure, pending]);
 
   return (
     <ListItem row={item} missing={NO_PRICE} showDay={showDay}>
@@ -193,6 +207,7 @@ function WatchRow({
             </div>
           )}
           <button
+            ref={removeRef}
             type="button"
             disabled={pending}
             aria-label={`Remove ${cardLabel(item)}, ${variantLabel(item)} from your watchlist`}
@@ -214,12 +229,63 @@ function WatchRow({
   );
 }
 
+/**
+ * Puts a removed row back: the watchlist PUT, then, when the row had an alert, the alert PUT with
+ * its threshold. The first failure is the answer.
+ */
+async function putBack(item: WatchlistItem): Promise<ApiResult<undefined>> {
+  const put = await putWatchlistItem(item.variant_key);
+  if (!put.ok) return put;
+  if (item.alert_pct === null) return { ok: true, data: undefined };
+  const alert = await putAlert(item.variant_key, item.alert_pct);
+  return alert.ok ? { ok: true, data: undefined } : alert;
+}
+
 function Loaded({ body, access }: { readonly body: WatchlistBody; readonly access: Access }) {
+  const queryClient = useQueryClient();
   const days = priceDays(body.data);
+  const { removal, shown, removed } = useRemoval(body.data, body);
+  const undo = useAccountWrite({
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: WATCHLIST_KEY }),
+  });
+  const { reset } = undo;
+  const onRemoved = useCallback(
+    (item: WatchlistItem) => {
+      reset();
+      removed(item);
+    },
+    [reset, removed],
+  );
+  const rows = shown.map((item) => (
+    <WatchRow
+      key={item.variant_key}
+      item={item}
+      access={access}
+      showDay={days !== null && days.first !== days.last}
+      onRemoved={onRemoved}
+    />
+  ));
+  if (removal !== null) {
+    const item = removal.row;
+    rows.splice(
+      Math.min(removal.index, rows.length),
+      0,
+      <RemovedLine
+        key={`removed:${item.variant_key}`}
+        index={Math.min(removal.index, rows.length)}
+        undoLabel={`Undo removing ${cardLabel(item)}, ${variantLabel(item)} from your watchlist`}
+        pending={undo.isPending}
+        failure={undo.error}
+        onUndo={() => {
+          undo.run(() => putBack(item));
+        }}
+      />,
+    );
+  }
   return (
     <>
       {body.meta.degraded && <DegradedLine />}
-      {body.data.length === 0 ? (
+      {body.data.length === 0 && removal === null ? (
         <p className="mt-6">{EMPTY}</p>
       ) : (
         <>
@@ -228,16 +294,7 @@ function Loaded({ body, access }: { readonly body: WatchlistBody; readonly acces
             aria-label="Watchlist"
             className="mt-6 divide-y divide-line-subtle border-y border-line-subtle"
           >
-            <AccountScope>
-              {body.data.map((item) => (
-                <WatchRow
-                  key={item.variant_key}
-                  item={item}
-                  access={access}
-                  showDay={days !== null && days.first !== days.last}
-                />
-              ))}
-            </AccountScope>
+            <AccountScope>{rows}</AccountScope>
           </ul>
           {access === 'alerts' && <AlertExplainer />}
           {access === 'unverified' && <p className={`mt-4 text-sm ${MUTED}`}>{UNVERIFIED_LINE}</p>}
@@ -252,11 +309,7 @@ export default function WatchlistPage() {
   const session = useSession();
   const signedIn = session.state === 'signed-in';
   // Polled like every query; asked for only once the session is known to be signed in.
-  const query = useQuery<WatchlistBody, ApiFailure>({
-    queryKey: WATCHLIST_KEY,
-    queryFn: ({ signal }) => unwrap(getWatchlist({ signal })),
-    enabled: signedIn,
-  });
+  const query = useWatchlistQuery(signedIn);
   const readOnly = useReadOnly();
   let access: Access = 'read-only';
   if (session.state === 'signed-in' && !readOnly) {

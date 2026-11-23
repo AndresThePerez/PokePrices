@@ -125,6 +125,7 @@ describe('the strip claims a session state only when the cache really knows it',
         'GET /v1/me': [...meAnswers],
         'POST /v1/demo/session': rawResponse(204, null),
         'GET /v1/watchlist': jsonResponse(watchlistBody()),
+        'GET /v1/portfolio': jsonResponse(portfolioBody()),
         'GET /v1/movers?direction=up&limit=50': jsonResponse(moversBody('up', [risingMover])),
         'GET /v1/movers?direction=down&limit=50': jsonResponse(moversBody('down', [fallingMover])),
         'GET /v1/cards?q=unown': jsonResponse(searchPage),
@@ -147,7 +148,10 @@ describe('the strip claims a session state only when the cache really knows it',
       const hops: readonly (readonly [string, readonly string[]])[] = [
         ['/movers', ['GET /v1/movers?direction=up&limit=50']],
         ['/search?q=unown', ['GET /v1/cards?q=unown']],
-        ['/card/ex10-%3F', ['GET /v1/cards/ex10-%3F', 'GET /v1/cards/ex10-%3F/prices?range=1M']],
+        [
+          '/card/ex10-%3F',
+          ['GET /v1/cards/ex10-%3F', 'GET /v1/cards/ex10-%3F/prices?range=1M', 'GET /v1/portfolio'],
+        ],
       ];
       // The prices' freshness was asked once, before the hops, and answered within its limit.
       expect(calls.filter((call) => call.key === 'GET /v1/prices/freshness')).toHaveLength(1);
@@ -416,7 +420,9 @@ describe('the alert select follows the server and never loses an unsaved choice'
     );
     await waitFor(() => {
       expect(
-        within(screen.getByRole('list', { name: 'Watchlist' })).getAllByRole('listitem'),
+        within(screen.getByRole('list', { name: 'Watchlist' }))
+          .getAllByRole('listitem')
+          .filter((item) => !item.textContent.startsWith('Removed.')),
       ).toHaveLength(2);
     });
     const names = within(main())

@@ -152,6 +152,87 @@ export function changeLine(price: ChangeFields): { readonly text: string; readon
   };
 }
 
+/** The fields of the portfolio's estimate the lines below read (GET /v1/portfolio meta, /v1/me). */
+export interface EstimateFields {
+  readonly count: number;
+  readonly unpriced: number;
+  readonly no_previous_close: number;
+  readonly total_value: string | null;
+  readonly change: string | null;
+  readonly change_pct: string | null;
+  readonly first_day: string | null;
+  readonly last_day: string | null;
+}
+
+/** What the portfolio total is: the label printed with it, on the page and in the header's name. */
+export const ESTIMATE_LABEL = 'An estimate at daily-close market prices, not a sale value.';
+
+/**
+ * The portfolio's change vs the previous close, in the tone of changeLine(): the arrow, the signed
+ * amount and, when the API sent one, the signed percent ("▲ +$16.93 (+1.64%) vs previous close");
+ * the amount alone with the reason when there is no percent (the previous closes add up to
+ * $0.00); "No change vs previous close"; or no change at all when no card has a previous close.
+ */
+export function estimateChangeLine(estimate: EstimateFields): {
+  readonly text: string;
+  readonly tone: string;
+} {
+  if (estimate.change === null) {
+    return { text: 'No previous close yet, so no change to show.', tone: NEUTRAL };
+  }
+  const change = signed(estimate.change);
+  if (/^0+(\.0+)?$/.test(change.digits)) {
+    return { text: 'No change vs previous close.', tone: NEUTRAL };
+  }
+  const arrow = change.negative ? '▼ -' : '▲ +';
+  const amount = `${arrow}$${grouped(change.digits)}`;
+  const tone = change.negative ? 'text-down' : 'text-up';
+  if (estimate.change_pct === null) {
+    return {
+      text: `${amount} vs previous close; no percent, as the previous closes add up to $0.00.`,
+      tone,
+    };
+  }
+  const pct = signed(estimate.change_pct);
+  return {
+    text: `${amount} (${pct.negative ? '-' : '+'}${pct.digits}%) vs previous close.`,
+    tone,
+  };
+}
+
+/** The short change of the header's estimate: "▲ +1.64%", "▲ +$4.00", "No change", or null. */
+export function shortEstimateChange(estimate: EstimateFields): string | null {
+  if (estimate.change === null) return null;
+  const change = signed(estimate.change);
+  if (/^0+(\.0+)?$/.test(change.digits)) return 'No change';
+  const arrow = change.negative ? '▼ ' : '▲ ';
+  if (estimate.change_pct === null) {
+    return `${arrow}${change.negative ? '-' : '+'}$${grouped(change.digits)}`;
+  }
+  const pct = signed(estimate.change_pct);
+  return `${arrow}${pct.negative ? '-' : '+'}${pct.digits}%`;
+}
+
+function cards(count: number): string {
+  return count === 1 ? '1 card' : `${grouped(String(count))} cards`;
+}
+
+/** "12 cards, 2 without a price." (or "12 cards." when every card has one). */
+export function cardsLine(estimate: EstimateFields): string {
+  return estimate.unpriced > 0
+    ? `${cards(estimate.count)}, ${grouped(String(estimate.unpriced))} without a price.`
+    : `${cards(estimate.count)}.`;
+}
+
+/** How many priced cards the change leaves out (no previous close), or null when none. */
+export function changeCoverLine(estimate: EstimateFields): string | null {
+  const left = estimate.no_previous_close;
+  if (left <= 0) return null;
+  return left === 1
+    ? 'The change leaves out 1 card with no previous close.'
+    : `The change leaves out ${grouped(String(left))} cards with no previous close.`;
+}
+
 /**
  * The change chip of a short list row, in the tone of changeLine(): the arrow and the signed
  * percent ("▲ +361.30%"), or the signed amount when the API sent no change_pct, without

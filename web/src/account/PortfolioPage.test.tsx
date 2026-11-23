@@ -331,7 +331,7 @@ describe('changing the portfolio (T07 criterion 2)', () => {
       }),
     );
     await waitFor(() => {
-      expect(rows()).toHaveLength(2);
+      expect(rows().filter((item) => !item.textContent.startsWith('Removed.'))).toHaveLength(2);
     });
     expect(screen.getByText('Total value $79.02')).toBeTruthy();
     expect(calls.filter((call) => call.key === `DELETE ${CHARIZARD_KEY}`)).toHaveLength(1);

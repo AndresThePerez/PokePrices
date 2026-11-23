@@ -21,7 +21,10 @@ import DemoButton from './DemoButton';
 import { cardLabel, priceDays, type ListRow } from './lists';
 import SignInPrompt from './SignInPrompt';
 
-/** A list page: one main landmark, one h1, the width of the movers board. */
+/**
+ * A list page: one main landmark, one h1, the width of the movers board. The h1 can take focus
+ * from script (tabIndex -1): a removed row's line hands focus to it when no row is left.
+ */
 export function ListMain({
   title,
   children,
@@ -31,7 +34,9 @@ export function ListMain({
 }) {
   return (
     <Page>
-      <h1 className="text-2xl font-semibold">{title}</h1>
+      <h1 tabIndex={-1} className="text-2xl font-semibold">
+        {title}
+      </h1>
       {children}
     </Page>
   );

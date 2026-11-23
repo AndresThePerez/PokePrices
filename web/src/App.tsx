@@ -5,6 +5,7 @@ import AlertsPage from './account/AlertsPage';
 import DemoButton from './account/DemoButton';
 import ForgotPasswordPage from './account/ForgotPasswordPage';
 import PortfolioPage from './account/PortfolioPage';
+import PublicSession from './account/PublicSession';
 import ResetPasswordPage from './account/ResetPasswordPage';
 import SignInPage from './account/SignInPage';
 import SignUpPage from './account/SignUpPage';
@@ -164,6 +165,8 @@ export default function App() {
           <Routes />
         </RootBoundary>
       </div>
+      {/* After the page, so its own requests keep their order; with the cookie only. */}
+      <PublicSession />
       <Footer />
     </QueryClientProvider>
   );
