@@ -53,8 +53,13 @@ describe('head metadata in index.html', () => {
     expect(indexHtml.indexOf('<script>')).toBeLessThan(indexHtml.indexOf(ICON_LINE));
   });
 
-  it('defers og:image (no og:image meta yet)', () => {
-    expect(indexHtml).not.toMatch(/og:image/);
+  it('names the PNG og:image, never the SVG one', () => {
+    expect(
+      indexHtml.split(
+        '<meta property="og:image" content="https://pokeprices.andrestheperez.com/og-image.png" />',
+      ),
+    ).toHaveLength(2);
+    expect(indexHtml).not.toMatch(/og-image\.svg/);
   });
 });
 

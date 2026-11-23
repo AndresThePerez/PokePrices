@@ -124,7 +124,7 @@ describe('home strip (T10 criterion 1)', () => {
     );
     expect([...urls].sort()).toEqual([DOWN_URL, UP_URL, '/v1/prices/freshness']);
     const intro = screen.getByText(
-      'Pokémon card prices at the daily close. Every price shows its source and the date it is as of.',
+      'Each price is a TCGplayer market price collected once a day through TCGCSV, shown with its source and the day it is as of.',
     );
     const section = strip();
     expect(intro.compareDocumentPosition(section) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();

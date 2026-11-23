@@ -16,7 +16,7 @@ import {
 
 const H1 = 'Pokémon card prices at the daily close';
 const INTRO =
-  'Pokémon card prices at the daily close. Every price shows its source and the date it is as of.';
+  'Each price is a TCGplayer market price collected once a day through TCGCSV, shown with its source and the day it is as of.';
 const SCOPE =
   'Ranked by change vs previous close among variants whose previous close was at least $2.00, that moved at least 5% and at least $1.00, had four different closes among their last five, and whose two closes each sat between half the lowest listing and 1.5 times the mid listing of their own day.';
 const STAMP_1012 = 'as of 2026-10-12 from TCGCSV (daily close)';

@@ -7,9 +7,21 @@ prices get into the database is in [`OPERATIONS.md`](OPERATIONS.md).
 
 ## Pages
 
-- **`/` (home).** The entry page: a one-line description and the "Biggest moves vs previous close" strip.
-  The strip is static (no scrolling, no animation), each row is a short row (see the next section), and it
-  links to `/movers`.
+- **`/` (home).** The entry page, in this order: the heading, one sentence under it (`Each price is a
+  TCGplayer market price collected once a day through TCGCSV, shown with its source and the day it is as
+  of.`), the search box, the demo entry, then:
+  - **Example searches**: `lugia neo genesis`, `umbreon vmax`, `umbreon ex` and `mewtwo`, each a link to
+    `/search?q=<words>` in the default order. Each was checked to land its card on the first page of
+    results (Lugia `neo1-9`, Umbreon VMAX `swsh7-215`, Umbreon ex `sv8pt5-161`, Mewtwo `base1-10`).
+  - **Well-known cards**: six fixed tiles (Charizard `base1-4`, Blastoise `base1-2`, Pikachu `base1-58`,
+    Lugia `neo1-9`, Charizard ex `sv3pt5-199`, Umbreon ex `sv8pt5-161`), each the card's picture, its name
+    and its set, linking to its card page. The tiles are written into the page: they send no request, and
+    the pictures load lazily from the catalogue's image host in a reserved box, with the plain card back
+    when one fails (see Card pictures). A tile shows no price; the card page does, with its source and date.
+  - The "Biggest moves vs previous close" strip. The strip is static (no scrolling, no animation), each
+    row is a short row (see the next section), and it links to `/movers`.
+
+  The home page asks the API for the two movers lists and the freshness answer, nothing more.
 - **`/search`.** Card search over the PokéSearch catalogue. Results are catalogue entries, each with the card's
   picture (see Card pictures) and its headline price: the latest close of **the first priced variant in card
   order** (the card page's variants, by variant key; not the variant the card page opens on), named on the row.
@@ -125,6 +137,12 @@ The watchlist and portfolio are filled from the card page, where each priced var
 [`ACCOUNTS.md`](ACCOUNTS.md).
 
 Every page also carries the header with links and the display settings (see Display settings).
+
+**Link previews.** `index.html` carries an `og:image` (`/og-image.png`, a 1200 × 630 PNG drawn from
+`og-image.svg`, with its width, height and alt text), a `twitter:card` of `summary_large_image` and a
+canonical link, each on the site's public address. Every address shares the same preview: there are no
+per-card previews. The app points the canonical link at the page on screen (its path, without the query),
+so a card page is not declared a copy of the home page.
 
 ## What every price shows
 

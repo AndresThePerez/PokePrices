@@ -17,7 +17,7 @@ import {
 vi.mock('lightweight-charts', () => import('./test/lightweightChartsFake'));
 
 const HOME_SENTENCE =
-  'Pokémon card prices at the daily close. Every price shows its source and the date it is as of.';
+  'Each price is a TCGplayer market price collected once a day through TCGCSV, shown with its source and the day it is as of.';
 
 function visit(path: string): void {
   window.history.replaceState(null, '', path);

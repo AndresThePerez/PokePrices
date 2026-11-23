@@ -184,7 +184,9 @@ describe('migrated notices keep the role and element they had before T05 (review
       expect(bar.textContent).toBe('');
       expect(bar.childElementCount).toBe(0);
     }
-    expect(container.querySelector('img, svg')).toBeNull();
+    expect(container.querySelector('svg')).toBeNull();
+    const tiles = screen.getByRole('list', { name: 'Well-known cards' });
+    expect(container.querySelectorAll('img')).toHaveLength(tiles.querySelectorAll('img').length);
   });
 
   it('movers: the degraded line is a role-less p above the board while the board has no alert', async () => {

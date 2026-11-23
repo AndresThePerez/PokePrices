@@ -21,7 +21,9 @@ describe('shell page honesty', () => {
     const { container } = render(<App />);
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     expect(screen.getByRole('main')).toBeTruthy();
-    expect(container.querySelectorAll('img, svg')).toHaveLength(0);
+    expect(container.querySelectorAll('svg')).toHaveLength(0);
+    const tiles = screen.getByRole('list', { name: 'Well-known cards' });
+    expect(container.querySelectorAll('img')).toHaveLength(tiles.querySelectorAll('img').length);
     expect(Array.from(container.querySelectorAll('button')).map((b) => b.textContent)).toEqual([
       'Menu',
       'Search',
@@ -40,6 +42,16 @@ describe('shell page honesty', () => {
       ['Watchlist', '/watchlist'],
       ['Portfolio', '/portfolio'],
       ['Account', '/account'],
+      ['lugia neo genesis', '/search?q=lugia+neo+genesis'],
+      ['umbreon vmax', '/search?q=umbreon+vmax'],
+      ['umbreon ex', '/search?q=umbreon+ex'],
+      ['mewtwo', '/search?q=mewtwo'],
+      ['Charizard Base', '/card/base1-4'],
+      ['Blastoise Base', '/card/base1-2'],
+      ['Pikachu Base', '/card/base1-58'],
+      ['Lugia Neo Genesis', '/card/neo1-9'],
+      ['Charizard ex 151', '/card/sv3pt5-199'],
+      ['Umbreon ex Prismatic Evolutions', '/card/sv8pt5-161'],
     ]);
   });
 

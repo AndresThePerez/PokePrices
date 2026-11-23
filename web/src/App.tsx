@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import AccountPage from './account/AccountPage';
 import AlertsPage from './account/AlertsPage';
@@ -14,6 +14,7 @@ import Footer from './Footer';
 import Header from './Header';
 import Link from './Link';
 import CardPage from './pages/CardPage';
+import { CardTiles, ExampleSearches } from './pages/HomeStart';
 import { BiggestMoves } from './pages/MoverList';
 import MoversPage from './pages/MoversPage';
 import SearchForm from './pages/SearchForm';
@@ -30,23 +31,45 @@ import RootBoundary from './ui/RootBoundary';
 /** The unknown path as a mono chip: only the pathname, breaking anywhere on a narrow screen. */
 const PATH_CHIP = 'rounded-sm bg-surface-sunken px-1.5 py-0.5 font-mono text-sm break-all';
 
+/**
+ * Points index.html's canonical link at the page on screen: the site address the link is written
+ * on, then the pathname without the query, so no page is declared a copy of the home page. Without
+ * that link, or with one that is not an absolute address, it does nothing.
+ */
+function useCanonical(pathname: string): void {
+  useEffect(() => {
+    const link = document.head.querySelector('link[rel="canonical"]');
+    if (link === null) return;
+    let origin: string;
+    try {
+      origin = new URL(link.getAttribute('href') ?? '').origin;
+    } catch {
+      return;
+    }
+    link.setAttribute('href', `${origin}${pathname}`);
+  }, [pathname]);
+}
+
 function Routes() {
   const { pathname, route } = useRoute();
   useDocumentTitle(ROUTES[route.name].title);
   useRouteFocus(pathname);
+  useCanonical(pathname);
   switch (route.name) {
     case 'home':
       // The landing: the job in the h1, the source sentence, then the one task (search) and
-      // the demo entry; the movers follow as supporting content.
+      // the demo entry, example searches and well-known cards; the movers follow.
       return (
         <Page>
           <h1 className="text-2xl font-semibold sm:text-4xl">{HOME_H1}</h1>
           <p className={`mt-2 text-base ${MUTED}`}>
-            Pokémon card prices at the daily close. Every price shows its source and the date it is
-            as of.
+            Each price is a TCGplayer market price collected once a day through TCGCSV, shown with
+            its source and the day it is as of.
           </p>
           <SearchForm initial="" size="hero" />
           <DemoButton placement="hero" />
+          <ExampleSearches />
+          <CardTiles />
           <BiggestMoves />
         </Page>
       );

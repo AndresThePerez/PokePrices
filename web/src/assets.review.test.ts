@@ -32,14 +32,25 @@ describe('head metadata is well formed', () => {
     }
   });
 
-  it('only the icon link and the og title and description are added, with no image or manifest reference', () => {
+  it('only the icon link, the og title, description and image, and the twitter card are added, with no manifest reference', () => {
     const icons = headTags.filter((tag) => /rel="(?:shortcut )?icon"/.test(tag));
     expect(icons).toHaveLength(1);
     const ogProperties = headTags
       .map((tag) => attributeValue(tag, 'property'))
       .filter((value): value is string => value !== undefined);
-    expect(ogProperties.sort()).toEqual(['og:description', 'og:title']);
-    expect(headWithoutScript).not.toMatch(/apple-touch-icon|manifest|twitter:|og:image/);
+    expect(ogProperties.sort()).toEqual([
+      'og:description',
+      'og:image',
+      'og:image:alt',
+      'og:image:height',
+      'og:image:width',
+      'og:title',
+    ]);
+    const twitter = headTags
+      .map((tag) => attributeValue(tag, 'name'))
+      .filter((value): value is string => value?.startsWith('twitter:') === true);
+    expect(twitter).toEqual(['twitter:card']);
+    expect(headWithoutScript).not.toMatch(/apple-touch-icon|manifest/);
   });
 
   it('og:title matches the document title, and og:description is one sentence with no live wording', () => {

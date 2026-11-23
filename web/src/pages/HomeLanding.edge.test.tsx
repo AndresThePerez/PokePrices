@@ -146,7 +146,11 @@ describe('home search form: requests and hostile text (D2-i1-T03 review)', () =>
     await screen.findByText('Market price $26.34');
     const home = screen.getByRole('main').textContent;
     for (const word of FORBIDDEN_WORDS) expect(home).not.toMatch(word);
-    expect(document.querySelectorAll('#root img, main img, main svg')).toHaveLength(0);
+    const tiles = screen.getByRole('list', { name: 'Well-known cards' });
+    expect(document.querySelectorAll('#root img, main img, main svg')).toHaveLength(
+      tiles.querySelectorAll('img').length,
+    );
+    expect(document.querySelectorAll('main svg')).toHaveLength(0);
     goTo('/movers');
     await screen.findByText(STAMP_1012);
     const board = screen.getByRole('main').textContent;
