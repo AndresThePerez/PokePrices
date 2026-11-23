@@ -41,6 +41,18 @@ prices get into the database is in [`OPERATIONS.md`](OPERATIONS.md).
   - **Word cap.** A search has at most **32 words** (PokéSearch's limit; any run of spaces, tabs or other
     whitespace separates two words). A longer one shows `A search can have at most 32 words.` under the
     search box, and the API answers it with a 422 on `q`.
+  - **Pages.** `Previous page` and `Next page` keep the address's `page` (page 1 stays implicit). After
+    either, keyboard focus moves to the page's heading, `Search cards` (focusable for that, but not in the
+    tab order), since the link that was pressed is gone while the next page loads. An address naming a page
+    past the last one shows the last page: the API answers it (in `Best match` with one more catalogue
+    call, since PokéSearch answers a page past its last with no rows; a price order pages its own list),
+    and the page then replaces the address's `page` with the last page, leaving `q`, `sort` and every
+    other parameter exactly as they were. The replace adds no history step and sends no request. A search
+    with no matches keeps the page its address names.
+  - **Loading.** While a search loads, the page reserves one viewport of height below the search box, as
+    the card page and the movers board do. A full page of results is taller than that, so the footer starts
+    below the fold and the rows push nothing on screen when they arrive; a result shorter than the viewport
+    pulls the footer up once. A page change reserves the same room again.
 - **`/card/{id}`.** One card, for example `/card/base1-4`.
   - The catalogue details come from PokéSearch through the API. When PokéSearch is unavailable the page
     says `Catalog data may be out of date: PokéSearch is unavailable`.
@@ -61,6 +73,11 @@ prices get into the database is in [`OPERATIONS.md`](OPERATIONS.md).
     shows the variant the address names (else the first one with a listing) with that same line and no
     price. The chart says `No daily close is held for this card yet.` and draws nothing.
   - **Price history:** a chart of daily closes per variant (see Charts).
+  - **Listing links.** In Sources, each mapped TCGplayer product's line is followed by a link,
+    `Product <id> on TCGplayer`, to `https://www.tcgplayer.com/product/<id>`: the plain product address
+    built from the id, with no query, tracking or affiliate part. It opens in a new tab (`rel="noopener
+    noreferrer"`), and screen readers hear `(opens in a new tab)`. A variant with no mapped product, or an
+    id that is not a positive whole number, shows no link.
   - A card with neither a close nor a listing on any variant shows `No prices yet`, makes no history
     request and shows no history.
   - **Which variant opens.** The headline price and the chart show one variant. `?variant=<variant key>` names
@@ -262,6 +279,16 @@ card's small picture, 48 px wide, loaded lazily from the catalogue's own image a
 address PokéSearch gives; PokéPrices stores and resizes no image). When the catalogue gives no picture, or the
 picture fails to load, the row shows a plain card back with the card's first letter in its place.
 
+The card page shows the card's picture in a column 240 px wide (104 px below 640 px), inside a mat: the image
+itself is 222 px wide there (94 px below 640 px). The catalogue serves two sizes (the small one 240 or 245 px
+wide, the large one 600 or 734 px), and the page offers both with `srcset` (small first, described as 240 and
+600 px wide) and `sizes="(min-width: 640px) 222px, 94px"`, so the browser fetches the small one unless the slot
+times the screen's pixel density needs more (a 2x screen from 640 px up, a 3x phone). A card with only one of
+the two, or the same address twice, has that one as its only source. The image carries a fixed `width` and
+`height` (245 × 342) in a 63:88 box, so the picture takes its room before it loads, and it is the page's one
+high-priority image. When the catalogue gives no picture, or it fails to load, the same card back as the rows'
+takes its place, at the column's size.
+
 Money is the API's decimal string with thousands separators (`1234.50` shows as `$1,234.50`), never
 re-rounded. The browser reads no clock: every date is a `YYYY-MM-DD` day string from the API. A ticker never
 animates, flashes or shows an activity dot, and nothing marks what is new since a previous visit. A day with
@@ -292,7 +319,9 @@ no new close looks exactly like the day before.
   the newest epoch only). A `Show data table` button opens the same data as a table with the columns `Day`,
   `Close` and `Note`. The table is closed by default.
 - **Attribution.** Under every chart, the link `Chart by TradingView Lightweight Charts` points to
-  `https://www.tradingview.com/`, as the library's licence requires.
+  `https://www.tradingview.com/`, as the library's licence requires. It is an ordinary link outside the
+  chart's own box; the library's logo link, which it would draw inside that box (a link inside an image), is
+  turned off.
 - **If drawing fails** the page stays up and says `The chart could not be drawn. Show the data table to read
   every close.`
 

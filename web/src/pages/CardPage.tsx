@@ -19,14 +19,16 @@ import { DEFAULT_RANGE } from '../chart/series';
 import Sparkline from '../chart/Sparkline';
 import {
   PRICE_FOOTNOTE,
-  initialOf,
   listingAsOfText,
   lowestListingText,
   noRecentSalesText,
   thinMarketText,
   variantLabel,
 } from '../format';
+import { CardBack } from '../ui/CardThumbnail';
 import { MUTED, TEXT_LINK } from '../ui/classes';
+import { useImageFallback } from '../ui/imageFallback';
+import { TCGPLAYER_PRODUCT_URL } from '../ui/siteLinks';
 import StatusLine from '../ui/StatusLine';
 import DegradedNotice from '../ui/DegradedNotice';
 import Notice from '../ui/Notice';
@@ -79,6 +81,35 @@ type Source = Variant['sources'][number];
 
 function sourceLine(source: Source): string {
   return `TCGplayer product ${String(source.product_id)} (${source.subtype}) via TCGCSV, mapped from the collected snapshot of ${source.map_snapshot_day}`;
+}
+
+/**
+ * The TCGplayer product page of a source: the plain address built from its product id, with no
+ * query or tracking part; null for an id that is not a positive whole number.
+ */
+function productAddress(source: Source): string | null {
+  const id: unknown = source.product_id;
+  if (typeof id !== 'number' || !Number.isSafeInteger(id) || id < 1) return null;
+  return `${TCGPLAYER_PRODUCT_URL}${String(id)}`;
+}
+
+/** A source's line, then the link to its product's listing page when it has one. */
+function SourceLine({ source }: { readonly source: Source }) {
+  const address = productAddress(source);
+  return (
+    <>
+      <span>{sourceLine(source)}</span>
+      {address !== null && (
+        <>
+          {' '}
+          <a href={address} target="_blank" rel="noopener noreferrer" className={TEXT_LINK}>
+            {`Product ${String(source.product_id)} on TCGplayer`}
+            <span className="sr-only"> (opens in a new tab)</span>
+          </a>
+        </>
+      )}
+    </>
+  );
 }
 
 /** The host an image URL points at, for the attribution; null when the URL does not parse. */
@@ -383,29 +414,64 @@ function imageSrc(card: Card): string {
   return card.images.small.trim() !== '' ? card.images.small : '';
 }
 
-/** The card image in a 6 px mat, or the neutral card-back with the name's initial (CSS only). */
+/**
+ * The catalogue's two picture widths (its small image is 240 or 245 px wide, its large one 600 or
+ * 734): the smaller of each, so the large image is never chosen for a slot the small one fills.
+ */
+const SMALL_WIDTH = 240;
+const LARGE_WIDTH = 600;
+
+/**
+ * The slot the image fills, less its mat: 240 px column, 1 px border and 8 px padding a side from
+ * 640 px up; 104 px column, 1 px border and 4 px padding a side below.
+ */
+const IMAGE_SIZES = '(min-width: 640px) 222px, 94px';
+
+/** A URL as a srcset candidate: whitespace and commas would split it, so they are escaped. */
+function candidate(url: string): string {
+  return url.replace(/[\s,]/g, (character) => encodeURIComponent(character));
+}
+
+/**
+ * Both images as a srcset, small first, when the API sent two different ones; else undefined and
+ * the one image is the src alone.
+ */
+function imageSrcset(card: Card): string | undefined {
+  const { small, large } = card.images;
+  if (small.trim() === '' || large.trim() === '' || small === large) return undefined;
+  return `${candidate(small)} ${String(SMALL_WIDTH)}w, ${candidate(large)} ${String(LARGE_WIDTH)}w`;
+}
+
+/**
+ * The card image in a 6 px mat, or the shared card back with the name's initial (CSS only) when
+ * the API sent no image or the image fails to load.
+ */
 function CardImage({ card }: { readonly card: Card }) {
-  const src = imageSrc(card);
+  const image = useImageFallback(imageSrc(card));
   const place = 'col-start-1 row-start-1 self-start sm:sticky sm:top-4';
-  if (src === '') {
+  if (image.src === null) {
     return (
-      <div
-        data-initial={initialOf(card.name)}
-        className={`${place} flex aspect-[63/88] w-full items-center justify-center rounded-lg border border-line bg-surface-sunken text-2xl font-semibold text-ink-muted before:content-[attr(data-initial)] sm:text-4xl`}
+      <CardBack
+        name={card.name}
+        className={`${place} aspect-[63/88] w-full rounded-lg border border-line bg-surface-sunken text-2xl sm:text-4xl`}
       />
     );
   }
+  const srcset = imageSrcset(card);
   return (
     <figure
       className={`${place} rounded-lg border border-line bg-surface-raised p-1 shadow-panel sm:p-2`}
     >
       <img
-        src={src}
+        src={image.src}
+        srcSet={srcset}
+        sizes={srcset === undefined ? undefined : IMAGE_SIZES}
         alt={`${card.name}, ${card.set.name} No. ${card.number}`}
         width={245}
         height={342}
         fetchPriority="high"
         decoding="async"
+        onError={image.onError}
         className="block aspect-[63/88] h-auto w-full rounded-md bg-surface-sunken object-cover"
       />
     </figure>
@@ -444,7 +510,7 @@ function Sources({ card }: { readonly card: Card }) {
                     key={`${source.source} ${String(source.product_id)} ${source.subtype}`}
                     className={`sm:col-start-2 ${MUTED}`}
                   >
-                    {sourceLine(source)}
+                    <SourceLine source={source} />
                   </dd>
                 ))
               )}

@@ -60,7 +60,11 @@ function themed(colours: Colours) {
   };
 }
 
-/** The chart options; the theme's keys are kept, the time scale adds its month ticks (F11). */
+/**
+ * The chart options; the theme's keys are kept, the time scale adds its month ticks (F11). The
+ * library's logo link is off: it would sit inside the role="img" container, a link inside an
+ * image. The page credits the library with its own link under the chart instead.
+ */
 function chartOptions(colours: Colours): DeepPartial<ChartOptions> {
   const theme = themed(colours);
   return {
@@ -68,7 +72,7 @@ function chartOptions(colours: Colours): DeepPartial<ChartOptions> {
     layout: {
       background: { type: ColorType.Solid, color: 'transparent' },
       textColor: colours.text,
-      attributionLogo: true,
+      attributionLogo: false,
     },
     ...theme,
     timeScale: { ...theme.timeScale, tickMarkFormatter: dayTick },

@@ -2,10 +2,10 @@
 // search state. Each row shows its card's headline close (the first priced variant in card order,
 // as the API picks it) in the short-row form, under the list's one source-and-"as of" stamp, and
 // links to the card page opened on that variant.
-import { useId } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useEffect, useId, useRef, type MouseEvent } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import Link from '../Link';
-import { cardPath, navigate } from '../router';
+import { cardPath, navigate, replaceRoute } from '../router';
 import {
   searchCards,
   type ApiFailure,
@@ -59,6 +59,36 @@ function searchPath(q: string, page: number, sort: SearchSort): string {
   return `/search?${params.toString()}`;
 }
 
+/**
+ * The address's query string with its page set to `page` and nothing else touched: every other
+ * parameter keeps its place and its bytes. Page 1 stays implicit, as searchPath writes it.
+ */
+function withPage(search: string, page: number): string {
+  let placed = false;
+  const parts = search
+    .replace(/^\?/, '')
+    .split('&')
+    .flatMap((part) => {
+      const key = part.split('=', 1)[0] ?? '';
+      let name = key;
+      try {
+        name = decodeURIComponent(key.replace(/\+/g, ' '));
+      } catch {
+        // A key that does not decode is not page: kept as it is.
+      }
+      if (name !== 'page') return [part];
+      if (placed || page <= 1) return [];
+      placed = true;
+      return [`page=${String(page)}`];
+    });
+  return parts.length === 0 ? '' : `?${parts.join('&')}`;
+}
+
+/** A plain click: the one Link handles in place (a modified click opens a tab instead). */
+function plainClick(event: MouseEvent<HTMLAnchorElement>): boolean {
+  return event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
+}
+
 /** The API's 422 message on q (the word cap), if that is what the failure is. */
 function queryError(failure: ApiFailure | null): string | undefined {
   return failure?.status === 422 ? failure.problem?.errors?.q?.[0] : undefined;
@@ -73,13 +103,19 @@ function Pager({
   sort,
   page,
   pages,
+  onTurn,
 }: {
   readonly q: string;
   readonly sort: SearchSort;
   readonly page: number;
   readonly pages: number;
+  /** Called on a plain click of either link, before the page changes. */
+  readonly onTurn: () => void;
 }) {
   if (pages <= 1 && page <= 1) return null;
+  const turn = (event: MouseEvent<HTMLAnchorElement>): void => {
+    if (plainClick(event)) onTurn();
+  };
   const previous = Math.max(1, Math.min(page - 1, pages));
   // Three slots: Previous left, the page line centred, Next right; a missing link leaves its slot
   // empty so the centre never moves.
@@ -92,6 +128,7 @@ function Pager({
         {page > 1 && (
           <Link
             to={searchPath(q, previous, sort)}
+            onClick={turn}
             className={`${SECONDARY_BUTTON} whitespace-nowrap`}
           >
             Previous page
@@ -105,6 +142,7 @@ function Pager({
         {page < pages && (
           <Link
             to={searchPath(q, page + 1, sort)}
+            onClick={turn}
             className={`${SECONDARY_BUTTON} whitespace-nowrap`}
           >
             Next page
@@ -202,10 +240,12 @@ function Results({
   q,
   sort,
   body,
+  onTurn,
 }: {
   readonly q: string;
   readonly sort: SearchSort;
   readonly body: CardSearchPage;
+  readonly onTurn: () => void;
 }) {
   const { data, meta } = body;
   let summary = `${String(meta.total)} ${meta.total === 1 ? 'card matches' : 'cards match'} “${q}”`;
@@ -242,7 +282,7 @@ function Results({
         </ol>
       )}
       {days !== null && <p className={`mt-4 text-meta ${MUTED}`}>{PRICE_FOOTNOTE}</p>}
-      <Pager q={q} sort={sort} page={meta.page} pages={meta.pages} />
+      <Pager q={q} sort={sort} page={meta.page} pages={meta.pages} onTurn={onTurn} />
     </>
   );
 }
@@ -265,12 +305,30 @@ export default function SearchPage({ query }: { readonly query: URLSearchParams 
     enabled: q !== '',
   });
   const wordCap = search.data === undefined ? queryError(search.error) : undefined;
+  const client = useQueryClient();
+  const answer = search.data;
+  // An address past the last page shows the last page the API answered: the address is corrected
+  // in place (a replace, so Back never returns to it), only its page changes, and the answer is
+  // kept as that page's, so the correction asks for nothing more.
+  useEffect(() => {
+    if (answer === undefined) return;
+    const { meta } = answer;
+    if (meta.pages < 1 || page <= meta.pages || meta.page > meta.pages || meta.page >= page) return;
+    client.setQueryData(searchKey(q, meta.page, sort), answer);
+    replaceRoute(`${window.location.pathname}${withPage(window.location.search, meta.page)}`);
+  }, [answer, client, page, q, sort]);
+  // A page change moves keyboard focus to the heading, which stays while the next page loads (the
+  // link that was clicked does not).
+  const heading = useRef<HTMLHeadingElement>(null);
+  const onTurn = (): void => {
+    heading.current?.focus();
+  };
 
   let body;
   if (q === '') {
     body = <p className={`mt-6 ${MUTED}`}>Type a card name, then press Search.</p>;
   } else if (search.data !== undefined) {
-    body = <Results q={q} sort={sort} body={search.data} />;
+    body = <Results q={q} sort={sort} body={search.data} onTurn={onTurn} />;
   } else if (wordCap !== undefined) {
     body = null;
   } else if (search.error !== null) {
@@ -279,9 +337,15 @@ export default function SearchPage({ query }: { readonly query: URLSearchParams 
     body = <StatusLine gap="mt-6">Searching for “{q}”…</StatusLine>;
   }
 
+  // While searching, the page reserves one viewport (as the card page and the movers board do): a
+  // full page of results is taller than that, so the footer starts below the fold and the rows
+  // push nothing on screen when they arrive. Every other state keeps its own height.
+  const searching = q !== '' && search.data === undefined && search.error === null;
   return (
-    <Page>
-      <h1 className="text-2xl font-semibold">Search cards</h1>
+    <Page reserve={searching}>
+      <h1 ref={heading} tabIndex={-1} className="text-2xl font-semibold">
+        Search cards
+      </h1>
       <SearchForm key={q} initial={q} error={wordCap} />
       {q !== '' && <OrderControl q={q} sort={sort} />}
       {body}

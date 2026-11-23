@@ -243,13 +243,14 @@ describe('production sources', () => {
     expect(names).toContain('./client.ts');
     expect(names).toContain('../App.tsx');
     // Addresses that are no API call, each in its one file: the home tiles' catalogue image host,
-    // and the outside links of the footer and the About page.
+    // and the outside links of the footer, the About page and the card page's listing links.
     const notCalls: Readonly<Record<string, readonly string[]>> = {
       '../pages/HomeStart.tsx': ["'https://images.pokemontcg.io'"],
       '../ui/siteLinks.ts': [
         "'https://github.com/AndresThePerez/PokePrices'",
         "'https://andrestheperez.com'",
         "'https://tcgcsv.com'",
+        "'https://www.tcgplayer.com/product/'",
       ],
     };
     for (const [name, text] of Object.entries(sources)) {

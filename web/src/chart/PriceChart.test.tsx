@@ -77,7 +77,7 @@ function chartOptions(colours: typeof LIGHT) {
     layout: {
       background: { type: 'solid', color: 'transparent' },
       textColor: colours.text,
-      attributionLogo: true,
+      attributionLogo: false,
     },
     grid: { vertLines: { color: colours.grid }, horzLines: { color: colours.grid } },
     rightPriceScale: { borderColor: colours.grid },
@@ -221,7 +221,7 @@ describe('PriceChart (T06, D6)', () => {
       handleScroll: false,
       handleScale: false,
       localization: { dateFormat: 'yyyy-MM-dd' },
-      layout: { attributionLogo: true },
+      layout: { attributionLogo: false },
     });
     expect(chart.series[0]?.options).toMatchObject({
       priceLineVisible: false,
@@ -326,7 +326,7 @@ describe('the chart on the card page (T06)', () => {
     expect(summary?.id).not.toBe('');
     expect(image.getAttribute('aria-describedby')).toBe(summary?.id);
     const chart = onlyChart();
-    expect(chart.options).toMatchObject({ layout: { attributionLogo: true } });
+    expect(chart.options).toMatchObject({ layout: { attributionLogo: false } });
     expect(chart.series).toHaveLength(1);
     expect(image.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
