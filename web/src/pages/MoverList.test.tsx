@@ -140,7 +140,7 @@ describe('home strip (T10 criterion 1)', () => {
     expect(within(section).getAllByText(STAMP_1012)).toHaveLength(1);
     const rises = within(section).getByRole('list', { name: 'Rises' });
     expect(within(rises).getByRole('link', { name: 'Chimecho' }).getAttribute('href')).toBe(
-      '/card/ex5-17',
+      '/card/ex5-17?variant=ex5-17%3Areverse%3A-%3A-',
     );
     expect(
       within(rises).getByText('▲ +$20.63 (+361.30%) vs previous close (2026-10-11)'),

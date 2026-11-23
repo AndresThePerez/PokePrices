@@ -500,6 +500,108 @@ export const fallingMover = moverOf({
   change_pct: '-60.54',
 });
 
+const DEOXYS_HOLO = 'ex13-3:holo:-:-';
+const DEOXYS_REVERSE = 'ex13-3:reverse:-:-';
+
+/** One TCGplayer source of Deoxys δ: the holo and the reverse holo share the product. */
+function deoxysSource(subtype: string): Variant['sources'][number] {
+  return {
+    source: 'tcgplayer',
+    product_id: 84760,
+    subtype,
+    group_id: 1379,
+    series_epoch: 1,
+    map_snapshot_day: '2026-10-11',
+  };
+}
+
+/**
+ * Deoxys δ (ex13-3) the way the dev data has it on 2026-10-13: the holo first in card order and
+ * unchanged at 81.78, the reverse holo second and up from 5.00 to 752.00. The page's default
+ * choice is the holo; a link from the movers must open the reverse.
+ */
+export const deoxysCard = {
+  id: 'ex13-3',
+  name: 'Deoxys δ',
+  supertype: 'Pokémon',
+  subtypes: ['Basic'],
+  hp: 70,
+  types: ['Darkness'],
+  rarity: 'Rare Holo',
+  number: '3',
+  artist: 'Mitsuhiro Arita',
+  set: {
+    id: 'ex13',
+    name: 'Holon Phantoms',
+    series: 'EX',
+    total: 111,
+    release_date: '2006-05-01',
+  },
+  images: {
+    small: 'https://images.example.com/ex13/3.png',
+    large: 'https://images.example.com/ex13/3_hires.png',
+  },
+  variants: [
+    {
+      variant_key: DEOXYS_HOLO,
+      finish: 'holo',
+      edition: '-',
+      treatment: '-',
+      sources: [deoxysSource('Holofoil')],
+      price: closeOf({
+        close: '81.78',
+        day: '2026-10-13',
+        as_of: '2026-10-13T20:06:44Z',
+        previous_close: '81.78',
+        previous_day: '2026-10-12',
+        change: '0.00',
+        change_pct: '0.00',
+      }),
+    },
+    {
+      variant_key: DEOXYS_REVERSE,
+      finish: 'reverse',
+      edition: '-',
+      treatment: '-',
+      sources: [deoxysSource('Reverse Holofoil')],
+      price: closeOf({
+        close: '752.00',
+        day: '2026-10-13',
+        as_of: '2026-10-13T20:06:44Z',
+        previous_close: '5.00',
+        previous_day: '2026-10-12',
+        change: '747.00',
+        change_pct: '14940.00',
+      }),
+    },
+  ],
+  catalog: {
+    seed_ref: '39a26a144c8b6ef6c2fb17b2c29d0bb7121e3a11',
+    seeded_at: '2026-10-13T01:32:54Z',
+    status: 'ok',
+  },
+} satisfies Schemas['CardResource'];
+
+export const deoxysCardBody = { data: deoxysCard, meta: { degraded: false } } satisfies CardBody;
+
+/** The top riser of 2026-10-13: Deoxys δ's reverse holo, up 14940.00 %. */
+export const deoxysReverseMover = moverOf({
+  card_id: 'ex13-3',
+  card: {
+    name: 'Deoxys δ',
+    set_name: 'Holon Phantoms',
+    number: '3',
+    image_small: 'https://images.example.com/ex13/3.png',
+  },
+  variant_key: DEOXYS_REVERSE,
+  finish: 'reverse',
+  close: '752.00',
+  previous_close: '5.00',
+  previous_day: '2026-10-12',
+  change: '747.00',
+  change_pct: '14940.00',
+});
+
 /** GET /v1/movers for one direction over the given rows; the day defaults to 2026-10-12. */
 export function moversBody(
   direction: 'up' | 'down',

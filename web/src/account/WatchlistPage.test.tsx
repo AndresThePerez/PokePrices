@@ -85,7 +85,7 @@ describe('the watchlist page (T07 criterion 1, D10)', () => {
       throw new Error('three rows expected');
     }
     const link = within(rising).getByRole('link', { name: 'Charizard' });
-    expect(link.getAttribute('href')).toBe('/card/base1-4');
+    expect(link.getAttribute('href')).toBe('/card/base1-4?variant=base1-4%3Aholo%3Aunlimited%3A-');
     expect(within(rising).getByText('Base No. 4 · Holo, unlimited')).toBeTruthy();
     expect(within(rising).getByText('Market price $968.91')).toBeTruthy();
     const up = within(rising).getByText('▲ +$18.91 (+1.99%) vs previous close (2026-10-11)');
@@ -124,7 +124,7 @@ describe('the watchlist page (T07 criterion 1, D10)', () => {
       'GET /v1/watchlist': jsonResponse(watchlistBody([watchItemOf({ card: null })])),
     });
     const link = await screen.findByRole('link', { name: 'Card base1-4' });
-    expect(link.getAttribute('href')).toBe('/card/base1-4');
+    expect(link.getAttribute('href')).toBe('/card/base1-4?variant=base1-4%3Aholo%3Aunlimited%3A-');
     expect(within(rows()[0] as HTMLElement).getByText('Holo, unlimited')).toBeTruthy();
   });
 

@@ -16,7 +16,7 @@ import {
 import { PRICE_FOOTNOTE, detailLine, grouped } from '../format';
 import { unwrap } from '../query';
 import { moversKey } from '../queryKeys';
-import { cardPath } from '../router';
+import { cardVariantPath } from '../routes';
 import CardThumbnail from '../ui/CardThumbnail';
 import { FOCUS, MUTED, TEXT_LINK } from '../ui/classes';
 import StatusLine from '../ui/StatusLine';
@@ -53,7 +53,7 @@ function MoverRow({ mover, stampId }: { readonly mover: Mover; readonly stampId:
       <div className="min-w-0 wrap-anywhere">
         <Link
           id={`${id}-name`}
-          to={cardPath(mover.card_id)}
+          to={cardVariantPath(mover.card_id, mover.variant_key)}
           className={`-my-2.5 inline-flex min-h-11 items-center text-base font-semibold underline-offset-4 hover:underline ${FOCUS}`}
         >
           {name}

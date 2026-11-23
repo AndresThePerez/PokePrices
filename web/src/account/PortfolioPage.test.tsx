@@ -110,7 +110,7 @@ describe('the portfolio page (T07 criterion 1, D9, D10)', () => {
 
     const charizard = row(1);
     expect(within(charizard).getByRole('link', { name: 'Charizard' }).getAttribute('href')).toBe(
-      '/card/base1-4',
+      '/card/base1-4?variant=base1-4%3Aholo%3Aunlimited%3A-',
     );
     expect(within(charizard).getByText('Base No. 4 · Holo, unlimited')).toBeTruthy();
     expect(within(charizard).getByText('Quantity 1')).toBeTruthy();

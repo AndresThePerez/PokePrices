@@ -28,6 +28,8 @@ import ProblemNotice from '../ui/ProblemNotice';
 import Skeleton from '../ui/Skeleton';
 import { unwrap } from '../query';
 import { cardKey, cardPricesKey } from '../queryKeys';
+import { replaceRoute, useRoute } from '../router';
+import { cardVariantPath } from '../routes';
 import { pageTitle, useDocumentTitle } from '../title';
 import PriceHistory from './PriceHistory';
 
@@ -205,17 +207,27 @@ function VariantRow({
 
 /**
  * The priced card: the hero, the Price history section and the Prices list, all driven by one
- * variant choice. The page owns the chosen key; the default is the first priced variant
+ * variant choice. The chosen key is the address's `variant` parameter while the page is at its own
+ * card address (a list row links there with its variant; choosing another one replaces the
+ * address, so Back and Forward never reopen a choice the address does not name), else the page's
+ * own state. A key the card prices no variant of opens the default: the first priced variant
  * with an eligible series, in card order, else the first priced variant. The 1M history
  * query is the chart's default one (same key), so the page still asks for it once; it feeds the
  * sparklines and the default choice, and nothing is drawn while it loads or after it fails.
  */
-function PricedCard({ card }: { readonly card: Card }) {
+function PricedCard({ pageId, card }: { readonly pageId: string; readonly card: Card }) {
   const history = useQuery<CardPrices, ApiFailure>({
     queryKey: cardPricesKey(card.id, DEFAULT_RANGE),
     queryFn: ({ signal }) => unwrap(getCardPrices(card.id, DEFAULT_RANGE, { signal })),
   });
-  const [chosen, setChosen] = useState<string | null>(null);
+  const { route } = useRoute();
+  const atOwnAddress = route.name === 'card' && route.id === pageId;
+  const [ownChoice, setOwnChoice] = useState<string | null>(null);
+  const chosen = atOwnAddress ? (route.variant ?? null) : ownChoice;
+  const setChosen = (variantKey: string): void => {
+    if (atOwnAddress) replaceRoute(cardVariantPath(pageId, variantKey));
+    else setOwnChoice(variantKey);
+  };
   const priced = card.variants.filter(isPriced);
   const eligible = eligibleKeys(history.data);
   const selected =
@@ -352,7 +364,7 @@ function Sources({ card }: { readonly card: Card }) {
 
 const SET_PART = "before:mx-2 before:content-['·']";
 
-function Loaded({ body }: { readonly body: CardDetail }) {
+function Loaded({ id, body }: { readonly id: string; readonly body: CardDetail }) {
   const card = body.data;
   const anyPriced = card.variants.some((variant) => variant.price !== null);
   return (
@@ -373,7 +385,7 @@ function Loaded({ body }: { readonly body: CardDetail }) {
           </div>
           <div className="col-span-2 min-w-0 sm:mt-6">
             {anyPriced ? (
-              <PricedCard card={card} />
+              <PricedCard pageId={id} card={card} />
             ) : (
               <PricesSection>
                 <p className="mt-2">No prices yet</p>
@@ -431,7 +443,7 @@ export default function CardPage({ id }: { readonly id: string }) {
 
   let body;
   if (query.data !== undefined) {
-    body = <Loaded body={query.data} />;
+    body = <Loaded id={id} body={query.data} />;
   } else if (query.error !== null) {
     body = isCardNotFound(query.error) ? (
       <NotFound failure={query.error} />

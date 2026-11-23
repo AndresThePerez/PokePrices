@@ -18,6 +18,15 @@ prices get into the database is in [`OPERATIONS.md`](OPERATIONS.md).
   - **Prices:** one ticker per priced variant, with a small sparkline beside it.
   - **Price history:** a chart of daily closes per variant (see Charts).
   - A card with no priced variant makes no history request and shows no history.
+  - **Which variant opens.** The headline price and the chart show one variant. `?variant=<variant key>` names
+    it, the key percent-encoded as one query value, for example
+    `/card/ex13-3?variant=ex13-3%3Areverse%3A-%3A-`. The rows of the movers strip, the movers board, the
+    watchlist and the portfolio link this way, so a row opens on the variant it shows. Without the parameter,
+    or when it is empty or names no priced variant of the card (an unknown, malformed or unpriced key), the
+    page opens its default variant, the first priced one with history, without an error.
+  - **The address follows the choice.** Choosing another variant in the chart's `Variant` group replaces the
+    address with that variant's `?variant=` (it adds no history step), so Back leaves the card page, Forward
+    and a reload reopen the variant last chosen, and a copied address opens what was on screen.
 - **`/movers`.** The movers board, titled "Biggest moves". It shows one list at a time, chosen with the
   **Rises** and **Falls** buttons (`/movers` is Rises; `/movers?direction=down` is Falls). Each row is a
   short row: the rank, the card's picture, the card name (or `Card <id>` while PokéSearch is unavailable),
@@ -70,7 +79,8 @@ prices get into the database is in [`OPERATIONS.md`](OPERATIONS.md).
   The messages themselves, who gets them and the delivery rules are in [`ALERTS.md`](ALERTS.md).
 
 The watchlist and portfolio are filled from the card page, where each priced variant has `Add to watchlist` and
-`Add to portfolio` buttons. The account pages, the sessions behind them and the rules for the demo are described in
+`Add to portfolio` buttons. Each row's card name links back to the card page on that row's variant
+(`/card/<id>?variant=<variant key>`, see the card page above). The account pages, the sessions behind them and the rules for the demo are described in
 [`ACCOUNTS.md`](ACCOUNTS.md).
 
 Every page also carries the header with links and the display settings (see Display settings).

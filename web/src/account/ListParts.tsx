@@ -8,7 +8,7 @@ import { useId, useState, type ReactNode, type SubmitEvent } from 'react';
 import type { WatchlistItem } from '../api/client';
 import { PRICE_FOOTNOTE, daysText, detailLine } from '../format';
 import Link from '../Link';
-import { cardPath } from '../router';
+import { cardVariantPath } from '../routes';
 import CardThumbnail from '../ui/CardThumbnail';
 import { FOCUS, INPUT, MUTED, SECONDARY_BUTTON } from '../ui/classes';
 import DegradedNotice from '../ui/DegradedNotice';
@@ -98,7 +98,7 @@ function RowName({ row, id }: { readonly row: ListRow; readonly id: string }) {
     <>
       <Link
         id={`${id}-name`}
-        to={cardPath(row.card_id)}
+        to={cardVariantPath(row.card_id, row.variant_key)}
         className={`-mt-3 inline-flex min-h-11 items-end text-base font-semibold underline-offset-4 hover:underline ${FOCUS}`}
       >
         {cardLabel(row)}

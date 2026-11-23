@@ -1,7 +1,15 @@
 // The PokéPrices route table: what each route shows around its page. Matching a path to a route
 // stays in router.ts; the page each route renders stays in App.tsx.
-import type { Route } from './router';
+import { CARD_VARIANT_PARAM, cardPath, type Route } from './router';
 import { pageTitle, WORDMARK } from './title';
+
+/**
+ * The in-app path of a card page opened on one variant: the card path, then the variant key as
+ * one encoded `variant` query parameter. Every list row that names a variant links through this.
+ */
+export function cardVariantPath(id: string, variantKey: string): string {
+  return `${cardPath(id)}?${CARD_VARIANT_PARAM}=${encodeURIComponent(variantKey)}`;
+}
 
 /** The landing's h1, which its tab title repeats after the wordmark. */
 export const HOME_H1 = 'Pokémon card prices at the daily close';

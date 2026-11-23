@@ -5,7 +5,12 @@ import type { MoversDirection } from './api/client';
 export type Route =
   | { readonly name: 'home' }
   | { readonly name: 'search'; readonly query: URLSearchParams }
-  | { readonly name: 'card'; readonly id: string }
+  | {
+      readonly name: 'card';
+      readonly id: string;
+      /** The variant key the address names (`?variant=`), present only when it is not empty. */
+      readonly variant?: string;
+    }
   | { readonly name: 'movers'; readonly direction: MoversDirection }
   | { readonly name: 'sign-in'; readonly next: string }
   | { readonly name: 'sign-up' }
@@ -24,6 +29,12 @@ export type Route =
 
 const NAVIGATE_EVENT = 'pokeprices:navigate';
 const CARD = /^\/card\/([^/]+)$/;
+
+/**
+ * The query parameter of a card page that names the variant to open (routes.ts cardVariantPath
+ * writes it). The page opens its default variant when the card prices no variant of that key.
+ */
+export const CARD_VARIANT_PARAM = 'variant';
 
 /** Where sign-in lands when no usable next was given. */
 const ACCOUNT_PATH = '/account';
@@ -78,11 +89,14 @@ export function matchRoute(pathname: string, search: string): Route {
   }
   const encodedId = CARD.exec(pathname)?.[1];
   if (encodedId !== undefined) {
+    let id: string;
     try {
-      return { name: 'card', id: decodeURIComponent(encodedId) };
+      id = decodeURIComponent(encodedId);
     } catch {
       return { name: 'not-found' };
     }
+    const variant = new URLSearchParams(search).get(CARD_VARIANT_PARAM) ?? '';
+    return variant === '' ? { name: 'card', id } : { name: 'card', id, variant };
   }
   return { name: 'not-found' };
 }
@@ -99,6 +113,17 @@ export function cardPath(id: string): string {
  */
 export function navigate(to: string, status?: string): void {
   window.history.pushState(status === undefined ? null : { status }, '', to);
+  window.dispatchEvent(new Event(NAVIGATE_EVENT));
+}
+
+/**
+ * Replaces the current history entry's address with a same-origin path, keeping its state, and
+ * re-renders every useLocation() reader: the page changes what the address says without adding a
+ * step for Back.
+ */
+export function replaceRoute(to: string): void {
+  const state: unknown = window.history.state;
+  window.history.replaceState(state, '', to);
   window.dispatchEvent(new Event(NAVIGATE_EVENT));
 }
 

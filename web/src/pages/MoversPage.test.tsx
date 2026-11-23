@@ -141,7 +141,7 @@ describe('movers board (T09 criteria 2 and 3)', () => {
     const [first, other] = rows();
     if (first === undefined || other === undefined) throw new Error('two rows expected');
     const link = within(first).getByRole('link', { name: 'Chimecho' });
-    expect(link.getAttribute('href')).toBe('/card/ex5-17');
+    expect(link.getAttribute('href')).toBe('/card/ex5-17?variant=ex5-17%3Areverse%3A-%3A-');
     expect(link.className.split(/\s+/)).toContain('min-h-11');
     expect(within(first).getByText('#1')).toBeTruthy();
     expect(within(first).getByText('Hidden Legends No. 17 · Reverse')).toBeTruthy();
@@ -205,7 +205,7 @@ describe('movers board carry-forward cases (T09 criterion 5)', () => {
   it('names a card the catalog does not have as Card <card_id>, linking to its card page', async () => {
     openBoard('/movers', answer(moversBody('up', [moverOf({ card_id: 'ex10-?', card: null })])));
     const link = await screen.findByRole('link', { name: 'Card ex10-?' });
-    expect(link.getAttribute('href')).toBe('/card/ex10-%3F');
+    expect(link.getAttribute('href')).toBe('/card/ex10-%3F?variant=ex5-17%3Areverse%3A-%3A-');
     const [row] = rows();
     if (row === undefined) throw new Error('one row expected');
     expect(within(row).getByText('Reverse')).toBeTruthy();
