@@ -6,6 +6,8 @@ use App\Domain\Catalog\VerifyCatalog;
 use App\Domain\Pricing\Movers;
 use App\Domain\Pricing\PriceDigest;
 use App\Domain\Pricing\PriceHistory;
+use App\Domain\Pricing\PricePartitions;
+use Carbon\CarbonImmutable;
 use Database\Seeders\SetAliasSeeder;
 use Illuminate\Cache\RateLimiter;
 use Illuminate\Http\Client\Request;
@@ -18,7 +20,9 @@ use Tests\Support\CatalogCache;
 
 // Edge cases for the daily candles and the movers snapshot (plan P2-i1 T11, T12, D4, D7). Rows are inserted straight
 // into card_variants and price_daily (one real close per variant and day) and Movers::rebuild() ranks them, so each
-// case pins the exact input; two cases ingest the synthetic fixture days instead.
+// case pins the exact input; two cases ingest the synthetic fixture days instead. A series the movers are meant to rank
+// is written with edgeObservedVariant() and has four distinct closes: the movers rank a move of at least 5 % and 1.00
+// in a series with four distinct values among its five most recent real closes, both closes in line with their listings.
 
 /** Adds one variant "<card>:normal:-:-" and its real closes; $closes maps day => close. Returns the variant_key. */
 function edgeVariant(string $card, array $closes, int $epoch = 1): string
@@ -31,6 +35,33 @@ function edgeVariant(string $card, array $closes, int $epoch = 1): string
             INSERT INTO price_daily (variant_key, source, day, series_epoch, open, high, low, close, n_obs, is_filled, filled_from, as_of)
             VALUES (?, 'tcgplayer', ?::date, ?, ?, ?, ?, ?, 1, false, NULL, ?::date + interval '20 hours 5 minutes')
             SQL, [$key, $day, $epoch, $close, $close, $close, $close, $day]);
+    }
+
+    return $key;
+}
+
+/**
+ * Adds a variant as edgeVariant() does, each close with the observation it came from: a price_points row at the
+ * candle's as_of that lists low = 90 % and mid = 105 % of the close, so the close is in line with its listings. The
+ * movers rank a move only when both of its closes have one. The observations hang on one ok run of 2026-09-01, older
+ * than every run edgeRun() adds.
+ */
+function edgeObservedVariant(string $card, array $closes, int $epoch = 1): string
+{
+    $key = edgeVariant($card, $closes, $epoch);
+    $run = DB::table('ingest_runs')->where('day', '2026-09-01')->value('id')
+        ?? DB::table('ingest_runs')->insertGetId(['source' => 'tcgplayer', 'feed' => 'tcgcsv', 'day' => '2026-09-01', 'marker' => '2026-09-01 20:05:00+00',
+            'mode' => 'sync', 'status' => 'ok', 'started_at' => '2026-09-01 20:10:00+00', 'finished_at' => '2026-09-01 20:11:00+00']);
+    foreach (array_unique(array_map(fn (string $day): string => substr($day, 0, 7), array_keys($closes))) as $month) {
+        PricePartitions::ensureFor(CarbonImmutable::parse("{$month}-01 00:00:00+00"));
+    }
+    foreach ($closes as $day => $close) {
+        DB::statement(<<<'SQL'
+            INSERT INTO price_points (variant_key, source, observed_at, day, series_epoch, source_product_id, source_subtype,
+                                      market, low, mid, high, direct_low, ingest_run_id)
+            VALUES (?, 'tcgplayer', ?::date + interval '20 hours 5 minutes', ?::date, ?, 1, 'Normal', ?::numeric,
+                    trunc(?::numeric * 0.90, 2), trunc(?::numeric * 1.05, 2), NULL, NULL, ?)
+            SQL, [$key, $day, $day, $epoch, $close, $close, $close, $run]);
     }
 
     return $key;
@@ -76,13 +107,14 @@ beforeEach(function (): void {
 });
 
 test('51 or more variants tied on pct and change keep exactly 50 per direction, the first 50 in byte order of variant_key', function (): void {
-    // 56 variants all +10 % / +$1.00, upper-case ids included: byte order puts "ZQT-99" before every "zqt-".
+    // 56 variants all +10 % / +$1.00 on 10-11 after three moving days, upper-case ids included: byte order puts "ZQT-99"
+    // before every "zqt-".
     $cards = ['ZQT-99', 'zqt-aa'];
     for ($i = 1; $i <= 54; $i++) {
         $cards[] = sprintf('zqt-%02d', $i);
     }
     foreach ($cards as $card) {
-        edgeVariant($card, ['2026-10-10' => '10.00', '2026-10-11' => '11.00']);
+        edgeObservedVariant($card, ['2026-10-08' => '9.80', '2026-10-09' => '9.90', '2026-10-10' => '10.00', '2026-10-11' => '11.00']);
     }
     $expected = array_map(fn (string $c): string => "{$c}:normal:-:-", $cards);
     sort($expected, SORT_STRING);
@@ -103,46 +135,53 @@ test('51 or more variants tied on pct and change keep exactly 50 per direction, 
 });
 
 test('a zero change is dropped before ranking and never trips the change check, whatever its neighbours', function (): void {
-    edgeVariant('zqz-1', ['2026-10-10' => '10.00', '2026-10-11' => '10.00']);   // unchanged
-    edgeVariant('zqz-2', ['2026-10-10' => '10.00', '2026-10-11' => '10.01']);   // +0.10 %
-    edgeVariant('zqz-3', ['2026-10-10' => '10.00', '2026-10-11' => '9.99']);    // -0.10 %
-    edgeVariant('zqz-4', ['2026-10-10' => '1000.00', '2026-10-11' => '1000.01']); // +$0.01 but 0.00 % after rounding
+    // Every series moved on the three days before; only the last step differs.
+    edgeObservedVariant('zqz-1', ['2026-10-08' => '9.80', '2026-10-09' => '9.90', '2026-10-10' => '10.00', '2026-10-11' => '10.00']);   // unchanged
+    edgeObservedVariant('zqz-2', ['2026-10-08' => '9.80', '2026-10-09' => '9.90', '2026-10-10' => '10.00', '2026-10-11' => '11.00']);   // +10.00 %
+    edgeObservedVariant('zqz-3', ['2026-10-08' => '10.20', '2026-10-09' => '10.10', '2026-10-10' => '10.00', '2026-10-11' => '9.00']);  // -10.00 %
+    // +$0.01 and 0.00 % after rounding: a change that is not zero, and far too small to rank.
+    edgeObservedVariant('zqz-4', ['2026-10-08' => '998.00', '2026-10-09' => '999.00', '2026-10-10' => '1000.00', '2026-10-11' => '1000.01']);
 
     Movers::rebuild(DB::connection(), '2026-10-10', '2026-10-11');
 
     $all = DB::table('price_movers')->where('day', '2026-10-11')->pluck('variant_key')->all();
     expect($all)->not->toContain('zqz-1:normal:-:-')
+        ->and($all)->not->toContain('zqz-4:normal:-:-')
         ->and(DB::table('price_movers')->where('change', 0)->count())->toBe(0)
-        ->and(array_map(fn (object $r): string => $r->variant_key, edgeMovers('2026-10-11', 'up')))->toBe(['zqz-2:normal:-:-', 'zqz-4:normal:-:-'])
+        ->and(array_map(fn (object $r): string => $r->variant_key, edgeMovers('2026-10-11', 'up')))->toBe(['zqz-2:normal:-:-'])
         ->and(array_map(fn (object $r): string => $r->variant_key, edgeMovers('2026-10-11', 'down')))->toBe(['zqz-3:normal:-:-']);
 });
 
-test('the previous close counts at exactly 14 days back and not at 15, and never when the two closes are in different epochs', function (): void {
-    edgeVariant('zqc-1', ['2026-09-27' => '10.00', '2026-10-11' => '12.00']); // 14 days
-    edgeVariant('zqc-2', ['2026-09-26' => '10.00', '2026-10-11' => '12.00']); // 15 days
-    edgeVariant('zqc-3', ['2026-09-30' => '10.00'], 1);
-    edgeVariant('zqc-3', ['2026-10-11' => '12.00'], 2);
+test('a close counts at exactly 14 days back and not at 15, and never when the closes are in different epochs', function (): void {
+    // 10-11 reaches back to 09-27. A mover needs four distinct closes inside that reach, so the oldest previous close
+    // a ranked move can have is 12 days back, with the 14-day edge deciding whether the fourth close counts.
+    edgeObservedVariant('zqc-1', ['2026-09-27' => '9.80', '2026-09-28' => '9.90', '2026-09-29' => '10.00', '2026-10-11' => '12.00']); // 14 days
+    edgeObservedVariant('zqc-2', ['2026-09-26' => '9.80', '2026-09-28' => '9.90', '2026-09-29' => '10.00', '2026-10-11' => '12.00']); // 15 days
+    edgeObservedVariant('zqc-3', ['2026-09-27' => '9.80', '2026-09-28' => '9.90', '2026-09-29' => '10.00'], 1);
+    edgeObservedVariant('zqc-3', ['2026-10-11' => '12.00'], 2);
+    // Two closes exactly 14 days apart are still compared, but two closes are no activity: not ranked.
+    edgeObservedVariant('zqc-4', ['2026-09-27' => '10.00', '2026-10-11' => '12.00']);
 
     Movers::rebuild(DB::connection(), '2026-10-11', '2026-10-11');
 
     $up = edgeMovers('2026-10-11', 'up');
     expect(array_map(fn (object $r): string => $r->variant_key, $up))->toBe(['zqc-1:normal:-:-'])
-        ->and($up[0]->previous_day)->toBe('2026-09-27');
+        ->and($up[0]->previous_day)->toBe('2026-09-29');
 });
 
 test('direction and pct math stay honest: 165.00 to 65.11 is down -99.89 / -60.54, a half-cent pct rounds away from zero, no variant sits in both directions', function (): void {
-    edgeVariant('zqd-1', ['2026-10-10' => '165.00', '2026-10-11' => '65.11']);
-    edgeVariant('zqd-2', ['2026-10-10' => '200.00', '2026-10-11' => '199.99']); // -0.005 % -> -0.01
-    edgeVariant('zqd-3', ['2026-10-10' => '200.00', '2026-10-11' => '200.01']); // +0.005 % -> +0.01
-    edgeVariant('zqd-4', ['2026-10-10' => '2.00', '2026-10-11' => '19999999.00']);
+    edgeObservedVariant('zqd-1', ['2026-10-08' => '163.00', '2026-10-09' => '164.00', '2026-10-10' => '165.00', '2026-10-11' => '65.11']);
+    edgeObservedVariant('zqd-2', ['2026-10-08' => '1998.00', '2026-10-09' => '1999.00', '2026-10-10' => '2000.00', '2026-10-11' => '1899.90']); // -5.005 % -> -5.01
+    edgeObservedVariant('zqd-3', ['2026-10-08' => '1998.00', '2026-10-09' => '1999.00', '2026-10-10' => '2000.00', '2026-10-11' => '2100.10']); // +5.005 % -> +5.01
+    edgeObservedVariant('zqd-4', ['2026-10-08' => '2.02', '2026-10-09' => '2.01', '2026-10-10' => '2.00', '2026-10-11' => '19999999.00']);
 
     Movers::rebuild(DB::connection(), '2026-10-10', '2026-10-11');
 
     $down = edgeMovers('2026-10-11', 'down');
     $up = edgeMovers('2026-10-11', 'up');
     $byKey = fn (array $rows): array => collect($rows)->mapWithKeys(fn (object $r): array => [$r->variant_key => [$r->change, $r->change_pct]])->all();
-    expect($byKey($down))->toBe(['zqd-1:normal:-:-' => ['-99.89', '-60.54'], 'zqd-2:normal:-:-' => ['-0.01', '-0.01']])
-        ->and($byKey($up)['zqd-3:normal:-:-'])->toBe(['0.01', '0.01'])
+    expect($byKey($down))->toBe(['zqd-1:normal:-:-' => ['-99.89', '-60.54'], 'zqd-2:normal:-:-' => ['-100.10', '-5.01']])
+        ->and($byKey($up)['zqd-3:normal:-:-'])->toBe(['100.10', '5.01'])
         ->and(array_keys($byKey($up))[0])->toBe('zqd-4:normal:-:-')
         ->and(DB::selectOne(<<<'SQL'
             SELECT count(*) AS n FROM (SELECT day, variant_key FROM price_movers GROUP BY day, variant_key HAVING count(*) > 1) t
@@ -247,7 +286,7 @@ test('ranges cross the year boundary and leap days on the data day: YTD starts a
 });
 
 test('ETags differ per range and per movers day, and a stale validator after a new day gets a fresh 200', function (): void {
-    edgeVariant('zqe-1', ['2026-10-09' => '10.00', '2026-10-10' => '11.00']);
+    edgeObservedVariant('zqe-1', ['2026-10-07' => '9.80', '2026-10-08' => '9.90', '2026-10-09' => '10.00', '2026-10-10' => '11.00']);
     edgeRun('2026-10-10');
     Movers::rebuild(DB::connection(), '2026-10-09', '2026-10-10');
 
@@ -259,7 +298,7 @@ test('ETags differ per range and per movers day, and a stale validator after a n
         ->and($this->getJson('/v1/cards/zqe-1/prices?range=1W', ['If-None-Match' => $m])->getStatusCode())->toBe(200)
         ->and($this->getJson('/v1/movers', ['If-None-Match' => $up])->getStatusCode())->toBe(304);
 
-    edgeVariant('zqe-1', ['2026-10-11' => '12.10']);
+    edgeObservedVariant('zqe-1', ['2026-10-11' => '12.10']);
     edgeRun('2026-10-11');
     Movers::rebuild(DB::connection(), '2026-10-11', '2026-10-11');
     $freshPrices = $this->getJson('/v1/cards/zqe-1/prices?range=1W', ['If-None-Match' => $w]);

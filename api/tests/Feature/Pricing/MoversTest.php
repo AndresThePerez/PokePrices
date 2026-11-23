@@ -24,6 +24,11 @@ use Tests\Support\ForbiddenWords;
 // P1 fixture day and the synthetic days of tests/Fixtures/tcgcsv-days are ingested with --sync; edited days are
 // copies under a scratch root that afterEach removes, and the fixture tree itself is only ever read. Every /v1
 // response is also validated against openapi/api.json by Tests\TestCase (C3).
+//
+// The movers rank a move only when it is at least 5 % and 1.00, its series shows four distinct values among its five
+// most recent real closes and both closes are in line with their listings (MoversEligibilityTest pins each edge). The
+// fixture days alone hold one such move, base1-8 1st shadowless on 10-14, so the cases that need a board with several
+// rows ingest t12MoversRoot(), a scratch copy with five movers on 10-12.
 
 const T12_DAYS = ['2026-10-09', '2026-10-10', '2026-10-11', '2026-10-12', '2026-10-14'];
 
@@ -114,6 +119,32 @@ function t12SetMarket(string $root, string $day, int $group, int $productId, str
     }
     file_put_contents($path, zstd_compress(str_replace('"__T12_TOKEN__"', $token, json_encode($document, JSON_THROW_ON_ERROR))));
 }
+
+/**
+ * A scratch copy of 10-09 to 10-12 in which five variants are movers on 10-12 under the eligibility rule: each shows
+ * four distinct closes over the four days, moves at least 5 % and 1.00 on 10-12, and stays in line with the listings
+ * the fixture stores for it. The fixture's own 10-12 steps are all under 5 %, so only these closes are set:
+ *
+ * - basep-8 (85000): 24.50, 25.00, 28.00, then 31.36 (+3.36, +12.00 %);
+ * - svp-5 stamp-prerelease-staff (522650): 40.00, 41.00, 42.00, then 46.20 (+4.20, +10.00 %);
+ * - sv8pt5-5 reverse pokeball (610540): 30.00, 31.00, 32.00, then 35.20 (+3.20, +10.00 %);
+ * - svp-46 (517271): 5.10, 5.00, 4.70, then 3.70 (-1.00, -21.28 %);
+ * - base1-8 1st shadowless (107004): 120.40, 121.00, 119.80, then 112.00 (-7.80, -6.51 %).
+ */
+function t12MoversRoot(): string
+{
+    $root = t12CopyDays('2026-10-09', '2026-10-10', '2026-10-11', '2026-10-12');
+    t12SetMarket($root, '2026-10-12', 1418, 85000, 'Holofoil', '31.36');
+    t12SetMarket($root, '2026-10-12', 22872, 522650, 'Holofoil', '46.20');
+    t12SetMarket($root, '2026-10-12', 23821, 610540, 'Holofoil', '35.20');
+    t12SetMarket($root, '2026-10-12', 22872, 517271, 'Holofoil', '3.70');
+    t12SetMarket($root, '2026-10-12', 1840, 107004, '1st Edition Holofoil', '112.00');
+
+    return $root;
+}
+
+/** The four days of t12MoversRoot(), which t12Ingest() reads in order. */
+const T12_MOVERS_DAYS = ['2026-10-09', '2026-10-10', '2026-10-11', '2026-10-12'];
 
 /** Every file under $dir as relative path => sha1. */
 function t12Tree(string $dir): array
@@ -229,73 +260,78 @@ test('each price_movers key and CHECK rejects a violating row', function (array 
     'unknown variant' => [['rank' => 2, 'variant_key' => 'basep-8:holo:-:nope'], '23503', 'price_movers_variant_key_foreign'],
 ]);
 
-test('finalize ranks the movers of 10-11 vs 10-10 per D7: +12 % basep-8 first up, abs(change) breaking a percent tie', function (): void {
-    t12Ingest(['2026-10-10', '2026-10-11']);
+test('finalize ranks the movers of 10-12 vs 10-11 per D7: +12 % basep-8 first up, abs(change) breaking a percent tie', function (): void {
+    t12Ingest(T12_MOVERS_DAYS, t12MoversRoot());
 
-    expect(t12Movers('2026-10-11', 'up'))->toBe([
-        '1 basep-8:holo:-:- 28.00 25.00 2026-10-10 3.00 12.00 1 basep-8',
-        '2 sv8pt5-5:reverse:-:pokeball 32.00 31.00 2026-10-10 1.00 3.23 1 sv8pt5-5',
-        '3 svp-5:holo:-:stamp-prerelease-staff 42.00 41.00 2026-10-10 1.00 2.44 1 svp-5',
-        '4 sv8pt5-5:holo:-:- 2.20 2.15 2026-10-10 0.05 2.33 1 sv8pt5-5',
-        // Both +1.64 %: +0.20 ranks before +0.05.
-        '5 basep-13:holo:-:- 12.40 12.20 2026-10-10 0.20 1.64 1 basep-13',
-        '6 svp-5:holo:-:- 3.10 3.05 2026-10-10 0.05 1.64 1 svp-5',
-        '7 ex10-!:holo:-:- 9.00 8.90 2026-10-10 0.10 1.12 1 ex10-!',
-        '8 base1-4:holo:unlimited:- 70.81 70.10 2026-10-10 0.71 1.01 1 base1-4',
-        '9 base1-4:holo:shadowless:- 315.25 312.50 2026-10-10 2.75 0.88 1 base1-4',
+    expect(t12Movers('2026-10-12', 'up'))->toBe([
+        '1 basep-8:holo:-:- 31.36 28.00 2026-10-11 3.36 12.00 1 basep-8',
+        // Both +10.00 %: +4.20 ranks before +3.20.
+        '2 svp-5:holo:-:stamp-prerelease-staff 46.20 42.00 2026-10-11 4.20 10.00 1 svp-5',
+        '3 sv8pt5-5:reverse:-:pokeball 35.20 32.00 2026-10-11 3.20 10.00 1 sv8pt5-5',
     ])
-        ->and(t12Movers('2026-10-11', 'down'))->toBe([
-            // -6 % but only -$0.30: a mover all the same (no $1 floor on movers, R177(10)).
-            '1 svp-46:holo:-:- 4.70 5.00 2026-10-10 -0.30 -6.00 1 svp-46',
-            '2 base1-8:holo:1st:shadowless 119.80 121.00 2026-10-10 -1.20 -0.99 1 base1-8',
-            '3 sv8pt5-5:reverse:-:masterball 148.00 149.00 2026-10-10 -1.00 -0.67 1 sv8pt5-5',
+        ->and(t12Movers('2026-10-12', 'down'))->toBe([
+            '1 svp-46:holo:-:- 3.70 4.70 2026-10-11 -1.00 -21.28 1 svp-46',
+            '2 base1-8:holo:1st:shadowless 112.00 119.80 2026-10-11 -7.80 -6.51 1 base1-8',
         ])
-        // 10-10 has no previous close yet: no movers on it.
-        ->and(DB::table('price_movers')->where('day', '2026-10-10')->count())->toBe(0);
+        // The steps the fixture leaves alone on 10-12 are all under 5 %, and 10-09 to 10-11 cannot show four closes
+        // yet (basep-8's +12 % on 10-11 included): no movers on them.
+        ->and(DB::table('price_movers')->where('day', '<>', '2026-10-12')->count())->toBe(0);
 });
 
 test('a previous close of 1.99 is excluded and 2.00 is included', function (string $previous, bool $included): void {
-    $root = t12CopyDays('2026-10-10', '2026-10-11');
-    t12SetMarket($root, '2026-10-10', 23821, 610360, 'Holofoil', $previous);
-    t12Ingest(['2026-10-10', '2026-10-11'], $root);
+    // sv8pt5-5 holo closes at 1.80, 1.90, the previous close under test, then 3.10: four distinct closes and a move of
+    // more than 1.00 and 5 % either way, so only the floor decides.
+    $root = t12CopyDays('2026-10-09', '2026-10-10', '2026-10-11', '2026-10-12');
+    t12SetMarket($root, '2026-10-09', 23821, 610360, 'Holofoil', '1.80');
+    t12SetMarket($root, '2026-10-10', 23821, 610360, 'Holofoil', '1.90');
+    t12SetMarket($root, '2026-10-11', 23821, 610360, 'Holofoil', $previous);
+    t12SetMarket($root, '2026-10-12', 23821, 610360, 'Holofoil', '3.10');
+    t12Ingest(['2026-10-09', '2026-10-10', '2026-10-11', '2026-10-12'], $root);
 
-    expect(in_array('sv8pt5-5:holo:-:-', t12Keys('2026-10-11', 'up'), true))->toBe($included);
+    expect(in_array('sv8pt5-5:holo:-:-', t12Keys('2026-10-12', 'up'), true))->toBe($included);
 })->with([
     '1.99' => ['1.99', false],
     '2.00' => ['2.00', true],
 ]);
 
 test('variants equal in abs(change_pct) and abs(change) rank by variant_key', function (): void {
-    $root = t12CopyDays('2026-10-10', '2026-10-11');
-    // basep-13 and ex10-! both go 10.00 -> 11.00 (+10 %, +$1.00); tk1b-8 goes 20.00 -> 22.00 (+10 %, +$2.00).
-    t12SetMarket($root, '2026-10-10', 1418, 85001, 'Holofoil', '10.00');
-    t12SetMarket($root, '2026-10-11', 1418, 85001, 'Holofoil', '11.00');
-    t12SetMarket($root, '2026-10-10', 1398, 90166, 'Holofoil', '10.00');
-    t12SetMarket($root, '2026-10-11', 1398, 90166, 'Holofoil', '11.00');
-    t12SetMarket($root, '2026-10-10', 1543, 88336, 'Normal', '20.00');
-    t12SetMarket($root, '2026-10-11', 1543, 88336, 'Normal', '22.00');
-    t12Ingest(['2026-10-10', '2026-10-11'], $root);
+    $root = t12CopyDays(...T12_DAYS);
+    // On 10-14 basep-13 and ex10-! both go 10.00 -> 11.00 (+10 %, +$1.00) and basep-8 goes 20.00 -> 22.00 (+10 %,
+    // +$2.00), each with four or five distinct closes behind it; base1-8 1st shadowless is the fixture's own +5.93 %.
+    t12SetMarket($root, '2026-10-11', 1418, 85001, 'Holofoil', '10.00');
+    t12SetMarket($root, '2026-10-14', 1418, 85001, 'Holofoil', '11.00');
+    t12SetMarket($root, '2026-10-12', 1398, 90166, 'Holofoil', '10.00');
+    t12SetMarket($root, '2026-10-14', 1398, 90166, 'Holofoil', '11.00');
+    t12SetMarket($root, '2026-10-12', 1418, 85000, 'Holofoil', '20.00');
+    t12SetMarket($root, '2026-10-14', 1418, 85000, 'Holofoil', '22.00');
+    t12Ingest(T12_DAYS, $root);
 
-    expect(array_slice(t12Keys('2026-10-11', 'up'), 0, 4))->toBe(['basep-8:holo:-:-', 'tk1b-8:normal:-:-', 'basep-13:holo:-:-', 'ex10-!:holo:-:-']);
+    expect(t12Keys('2026-10-14', 'up'))->toBe(['basep-8:holo:-:-', 'basep-13:holo:-:-', 'ex10-!:holo:-:-', 'base1-8:holo:1st:shadowless']);
 });
 
 test('an epoch change on the day excludes the variant', function (): void {
-    t12Ingest(['2026-10-10']);
+    $root = t12MoversRoot();
+    t12Ingest(['2026-10-09', '2026-10-10', '2026-10-11'], $root);
     DB::table('source_product_map')->where('variant_key', 'basep-8:holo:-:-')->update(['series_epoch' => 2]);
-    t12Ingest(['2026-10-11']);
+    t12Ingest(['2026-10-12'], $root);
 
-    expect(t12Keys('2026-10-11', 'up'))->not->toContain('basep-8:holo:-:-')
-        ->and(t12Keys('2026-10-11', 'up')[0])->toBe('sv8pt5-5:reverse:-:pokeball');
+    // basep-8 would lead at +12 %; the next variant leads instead.
+    expect(t12Keys('2026-10-12', 'up'))->not->toContain('basep-8:holo:-:-')
+        ->and(t12Keys('2026-10-12', 'up')[0])->toBe('svp-5:holo:-:stamp-prerelease-staff');
 });
 
 test('a filled day never appears, and a real close after fills compares with the last real close', function (): void {
-    t12Ingest(T12_DAYS);
+    // basep-13 is absent on 10-12 and the gap day 10-13; its 10-14 close is set to 13.64 so the step from 10-11 is one
+    // the movers rank (+1.24, +10.00 %; 12.00, 12.20, 12.40 and 13.64 are four distinct closes).
+    $root = t12CopyDays(...T12_DAYS);
+    t12SetMarket($root, '2026-10-14', 1418, 85001, 'Holofoil', '13.64');
+    t12Ingest(T12_DAYS, $root);
 
     expect(DB::table('price_movers')->where('day', '2026-10-13')->count())->toBe(0)
         ->and(DB::table('price_movers')->where('variant_key', 'basep-13:holo:-:-')->where('day', '2026-10-12')->count())->toBe(0)
         ->and(DB::table('price_movers')->whereNotIn('day', ['2026-10-10', '2026-10-11', '2026-10-12', '2026-10-14'])->count())->toBe(0)
         ->and(collect(t12Movers('2026-10-14', 'up'))->first(fn (string $m): bool => str_contains($m, ' basep-13:holo:-:- ')))
-        ->toEndWith('basep-13:holo:-:- 12.90 12.40 2026-10-11 0.50 4.03 1 basep-13')
+        ->toEndWith('basep-13:holo:-:- 13.64 12.40 2026-10-11 1.24 10.00 1 basep-13')
         // No mover is ever a filled row of its day.
         ->and(DB::selectOne(<<<'SQL'
             SELECT count(*) AS n FROM price_movers m
@@ -326,16 +362,16 @@ test('ingest order never changes price_movers, the gap-day orders included', fun
 });
 
 test('price_movers stays outside PriceDigest and has its own movers check', function (): void {
-    t12Ingest(['2026-10-10', '2026-10-11']);
+    t12Ingest(T12_MOVERS_DAYS, t12MoversRoot());
     $digest = PriceDigest::compute(DB::connection());
     $movers = PriceDigest::movers(DB::connection());
 
-    DB::table('price_movers')->where('day', '2026-10-11')->where('direction', 'down')->where('rank', 3)->delete();
+    DB::table('price_movers')->where('day', '2026-10-12')->where('direction', 'down')->where('rank', 2)->delete();
 
     expect(array_keys($digest['tables']))->toBe(['price_points', 'price_daily', 'price_latest'])
-        ->and($movers['rows'])->toBe(12)
+        ->and($movers['rows'])->toBe(5)
         ->and(PriceDigest::compute(DB::connection()))->toBe($digest)
-        ->and(PriceDigest::movers(DB::connection())['rows'])->toBe(11)
+        ->and(PriceDigest::movers(DB::connection())['rows'])->toBe(4)
         ->and(PriceDigest::movers(DB::connection())['sha256'])->not->toBe($movers['sha256']);
 });
 
@@ -381,7 +417,7 @@ test('a movers_check that differs between passes makes the replay not identical'
 });
 
 it('serves the newest movers day: exact rows, provenance and the previous_close window', function (): void {
-    t12Ingest(['2026-10-10', '2026-10-11']);
+    t12Ingest(T12_MOVERS_DAYS, t12MoversRoot());
 
     $response = $this->getJson('/v1/movers?direction=up&limit=2');
 
@@ -389,12 +425,12 @@ it('serves the newest movers day: exact rows, provenance and the previous_close 
     expect($response->json())->toBe([
         'data' => [
             ['rank' => 1, 'card_id' => 'basep-8', 'card' => ['name' => 'Name of basep-8', 'set_name' => 'Fixture set', 'number' => '8'], 'variant_key' => 'basep-8:holo:-:-', 'finish' => 'holo', 'edition' => '-', 'treatment' => '-',
-                'close' => '28.00', 'previous_close' => '25.00', 'previous_day' => '2026-10-10', 'change' => '3.00', 'change_pct' => '12.00', 'series_epoch' => 1],
-            ['rank' => 2, 'card_id' => 'sv8pt5-5', 'card' => ['name' => 'Name of sv8pt5-5', 'set_name' => 'Fixture set', 'number' => '5'], 'variant_key' => 'sv8pt5-5:reverse:-:pokeball', 'finish' => 'reverse', 'edition' => '-', 'treatment' => 'pokeball',
-                'close' => '32.00', 'previous_close' => '31.00', 'previous_day' => '2026-10-10', 'change' => '1.00', 'change_pct' => '3.23', 'series_epoch' => 1],
+                'close' => '31.36', 'previous_close' => '28.00', 'previous_day' => '2026-10-11', 'change' => '3.36', 'change_pct' => '12.00', 'series_epoch' => 1],
+            ['rank' => 2, 'card_id' => 'svp-5', 'card' => ['name' => 'Name of svp-5', 'set_name' => 'Fixture set', 'number' => '5'], 'variant_key' => 'svp-5:holo:-:stamp-prerelease-staff', 'finish' => 'holo', 'edition' => '-', 'treatment' => 'stamp-prerelease-staff',
+                'close' => '46.20', 'previous_close' => '42.00', 'previous_day' => '2026-10-11', 'change' => '4.20', 'change_pct' => '10.00', 'series_epoch' => 1],
         ],
         'meta' => [
-            'day' => '2026-10-11', 'as_of' => '2026-10-11T20:05:45Z', 'source' => 'tcgplayer', 'feed' => 'tcgcsv', 'basis' => 'market',
+            'day' => '2026-10-12', 'as_of' => '2026-10-12T20:05:44Z', 'source' => 'tcgplayer', 'feed' => 'tcgcsv', 'basis' => 'market',
             'currency' => 'USD', 'window' => 'previous_close', 'min_previous_close' => '2.00', 'direction' => 'up', 'limit' => 2,
             'degraded' => false,
         ],
@@ -402,16 +438,16 @@ it('serves the newest movers day: exact rows, provenance and the previous_close 
 });
 
 it('defaults to up and 20, and serves down movers with signed strings', function (): void {
-    t12Ingest(['2026-10-10', '2026-10-11']);
+    t12Ingest(T12_MOVERS_DAYS, t12MoversRoot());
 
     $up = $this->getJson('/v1/movers');
     $down = $this->getJson('/v1/movers?direction=down');
 
     expect($up->json('meta'))->toMatchArray(['direction' => 'up', 'limit' => 20])
-        ->and(array_column($up->json('data'), 'rank'))->toBe(range(1, 9))
-        ->and(array_column($down->json('data'), 'variant_key'))->toBe(['svp-46:holo:-:-', 'base1-8:holo:1st:shadowless', 'sv8pt5-5:reverse:-:masterball'])
-        ->and($down->json('data.0'))->toMatchArray(['change' => '-0.30', 'change_pct' => '-6.00'])
-        ->and($down->json('meta'))->toMatchArray(['day' => '2026-10-11', 'direction' => 'down']);
+        ->and(array_column($up->json('data'), 'rank'))->toBe(range(1, 3))
+        ->and(array_column($down->json('data'), 'variant_key'))->toBe(['svp-46:holo:-:-', 'base1-8:holo:1st:shadowless'])
+        ->and($down->json('data.0'))->toMatchArray(['change' => '-1.00', 'change_pct' => '-21.28'])
+        ->and($down->json('meta'))->toMatchArray(['day' => '2026-10-12', 'direction' => 'down']);
 });
 
 it('uses the newest movers day once later days land', function (): void {
@@ -448,7 +484,7 @@ it('answers 422 for a bad direction or limit', function (string $query, string $
 ]);
 
 it('reads the movers with exactly 2 queries', function (): void {
-    t12Ingest(['2026-10-10', '2026-10-11']);
+    t12Ingest(T12_MOVERS_DAYS, t12MoversRoot());
 
     DB::flushQueryLog();
     DB::enableQueryLog();
@@ -456,7 +492,7 @@ it('reads the movers with exactly 2 queries', function (): void {
     DB::disableQueryLog();
 
     $response->assertOk();
-    expect($response->json('data'))->toHaveCount(9)
+    expect($response->json('data'))->toHaveCount(3)
         ->and(DB::getQueryLog())->toHaveCount(2);
 });
 

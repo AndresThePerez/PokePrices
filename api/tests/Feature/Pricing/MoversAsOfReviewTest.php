@@ -109,8 +109,29 @@ test('the migration backfills a stored as_of from real closes only, never from a
     expect($nullable->is_nullable)->toBe('NO');
 });
 
+/**
+ * Makes the seeded move of 10-14 one the rebuild ranks: two earlier closes, so the series shows four distinct values
+ * (9.80, 9.90, 10.00, 12.00), and the observations of the two closes the move is made of, each listing low = 90 % and
+ * mid = 105 % of its close at the candle's as_of.
+ */
+function q1t04rmActive(): void
+{
+    $run = DB::table('ingest_runs')->insertGetId(['source' => 'tcgplayer', 'feed' => 'tcgcsv', 'day' => '2026-10-14', 'marker' => '2026-10-14 20:05:46+00',
+        'mode' => 'sync', 'status' => 'ok', 'started_at' => '2026-10-14 20:10:00+00', 'finished_at' => '2026-10-14 20:11:00+00']);
+    foreach ([['2026-10-11', '9.80', '2026-10-11 20:00:00+00'], ['2026-10-12', '9.90', '2026-10-12 20:00:00+00']] as [$day, $close, $asOf]) {
+        DB::table('price_daily')->insert(['variant_key' => 'rev-1:holo:unlimited:-', 'source' => 'tcgplayer', 'day' => $day, 'series_epoch' => 1,
+            'open' => $close, 'high' => $close, 'low' => $close, 'close' => $close, 'n_obs' => 1, 'is_filled' => false, 'filled_from' => null, 'as_of' => $asOf]);
+    }
+    foreach ([['2026-10-13', '10.00', '9.00', '10.50', '2026-10-13 20:00:00+00'], ['2026-10-14', '12.00', '10.80', '12.60', '2026-10-14 20:05:46+00']] as [$day, $close, $low, $mid, $asOf]) {
+        DB::table('price_points')->insert(['variant_key' => 'rev-1:holo:unlimited:-', 'source' => 'tcgplayer', 'observed_at' => $asOf, 'day' => $day,
+            'series_epoch' => 1, 'source_product_id' => 1, 'source_subtype' => 'Holofoil', 'market' => $close, 'low' => $low, 'mid' => $mid,
+            'ingest_run_id' => $run]);
+    }
+}
+
 test('the rebuild stores the day marker over all real closes, including a variant that is not a mover', function (): void {
     q1t04rmSeed('2026-10-14 20:05:46+00', '2000-01-01 00:00:00+00');
+    q1t04rmActive();
     // A second variant with no previous close: it can never be a mover, but its close carries the newest marker.
     DB::table('card_variants')->insert(['variant_key' => 'rev-2:holo:unlimited:-', 'card_id' => 'rev-2', 'finish' => 'holo', 'edition' => 'unlimited']);
     DB::table('price_daily')->insert(['variant_key' => 'rev-2:holo:unlimited:-', 'source' => 'tcgplayer', 'day' => '2026-10-14', 'series_epoch' => 1,

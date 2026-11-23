@@ -70,12 +70,44 @@ function q1t04mRoots(?string $add = null): array
     return $out;
 }
 
-/** Copies fixture day $day under a fresh scratch root as a later collection of the same UTC date (marker $marker). */
-function q1t04mRecollect(string $day, string $marker): string
+/**
+ * Copies every fixture day under a fresh scratch root and sets the 10-12 close of base1-8:holo:1st:shadowless (product
+ * 107004, 1st Edition Holofoil) to 112.00. The fixture alone ranks one day, 10-14; with this close 10-12 has a mover too
+ * (119.80 > 112.00, -6.51 %, the fourth distinct close of the series) and 10-14 keeps one (112.00 > 125.00, +11.61 %).
+ */
+function q1t04mTwoMoverDays(): string
 {
     $root = storage_path('framework/testing/pp-q1t04m-'.bin2hex(random_bytes(6)));
     q1t04mRoots($root);
-    $src = q1t04mFixture('snapshots/'.$day);
+    foreach (Q1T04M_DAYS as $day) {
+        $src = q1t04mFixture('snapshots/'.$day);
+        mkdir("{$root}/{$day}", 0775, true);
+        foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($src, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::SELF_FIRST) as $file) {
+            $dest = "{$root}/{$day}/".substr((string) $file->getPathname(), strlen($src) + 1);
+            $file->isDir() ? mkdir($dest, 0775, true) : copy((string) $file->getPathname(), $dest);
+        }
+    }
+    $path = "{$root}/2026-10-12/prices/1840.json.zst";
+    $document = json_decode((string) zstd_uncompress((string) file_get_contents($path)), true, 512, JSON_THROW_ON_ERROR);
+    foreach ($document['results'] as $i => $row) {
+        if ($row['productId'] === 107004 && $row['subTypeName'] === '1st Edition Holofoil') {
+            $document['results'][$i]['marketPrice'] = 112.00;
+        }
+    }
+    file_put_contents($path, zstd_compress(json_encode($document, JSON_THROW_ON_ERROR)));
+
+    return $root;
+}
+
+/**
+ * Copies day $day of $snapshots (default: the fixture tree) under a fresh scratch root as a later collection of the
+ * same UTC date (marker $marker).
+ */
+function q1t04mRecollect(string $day, string $marker, ?string $snapshots = null): string
+{
+    $root = storage_path('framework/testing/pp-q1t04m-'.bin2hex(random_bytes(6)));
+    q1t04mRoots($root);
+    $src = ($snapshots ?? q1t04mFixture('snapshots')).'/'.$day;
     mkdir("{$root}/{$day}", 0775, true);
     foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($src, FilesystemIterator::SKIP_DOTS), RecursiveIteratorIterator::SELF_FIRST) as $file) {
         $dest = "{$root}/{$day}/".substr((string) $file->getPathname(), strlen($src) + 1);
@@ -218,11 +250,13 @@ test('the stored as_of of every movers day equals the old subquery', function (C
             throw new RuntimeException('the replay failed: '.Artisan::output());
         }
     }],
-    'a re-collected 10-11 after 10-14' => [function (): void {
-        q1t04mIngest(Q1T04M_DAYS);
-        q1t04mIngest(['2026-10-11'], q1t04mRecollect('2026-10-11', '2026-10-11T22:10:05+0000'));
-        // The later marker is now the 10-11 snapshot marker, and the board's newest day keeps its own.
-        expect(q1t04mStored()['2026-10-11'] ?? null)->toBe(['2026-10-11T22:10:05Z']);
+    'a re-collected 10-12 after 10-14' => [function (): void {
+        // 10-11 can hold no mover (three closes of history), so the older movers day is 10-12, from the edited copy.
+        $root = q1t04mTwoMoverDays();
+        q1t04mIngest(Q1T04M_DAYS, $root);
+        q1t04mIngest(['2026-10-12'], q1t04mRecollect('2026-10-12', '2026-10-12T22:10:05+0000', $root));
+        // The later marker is now the 10-12 snapshot marker, and the board's newest day keeps its own.
+        expect(q1t04mStored())->toBe(['2026-10-12' => ['2026-10-12T22:10:05Z'], '2026-10-14' => ['2026-10-14T20:05:46Z']]);
     }],
     'a re-collected 10-14, the newest day' => [function (): void {
         q1t04mIngest(Q1T04M_DAYS);

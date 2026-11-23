@@ -322,7 +322,9 @@ What a rebuild changes:
   the day afresh with `--queued`, or replay. A run that recorded no map build skips this check.
 - **Movers and measured volume.** `price_movers` and `movement_volume` are rebuilt by the replay. Nothing
   is ever compared across `series_epoch`: the first close of an epoch has no previous close, no mover
-  entry and no movement event.
+  entry and no movement event. The movers also count activity inside the epoch only, so a remapped
+  variant is back on the board at the earliest with the fourth distinct close of its new epoch (see "The
+  movers board").
 - **Events are not relabelled.** `price_events` rows keep the `series_epoch` they were written with,
   because replay never touches the outbox.
 - **Open decision.** Normalizing against `source_product_map_history` instead of the current map would keep
@@ -337,6 +339,60 @@ docker compose -f compose.dev.yml exec -T -w /workspace/api api php artisan poke
 
 It rewrites `movement_volume` from `price_daily` under the lock, prints a JSON summary and exits 0, or
 exits 1 when the lock is held or `price_daily` is empty.
+
+## The movers board
+
+`price_movers` holds, for each collected day, the variants whose close moved most against their previous
+close, ranked once at finalize; `GET /v1/movers` reads the newest day that has rows. A variant is ranked
+on day D when all of this holds:
+
+- **A previous close.** It has a real close on D (never a carried-forward one) and a previous close: its
+  most recent real close on an earlier day in the same `series_epoch`, at most 14 days back.
+- **The floor.** The previous close is at least 2.00 USD (`pricing.movers.min_previous_close`).
+- **A material move.** The change is at least 5.00 % (as stored, two decimals) and at least 1.00 USD,
+  both. Exactly 5.00 % and exactly 1.00 count.
+- **Recent price activity.** Of the variant's five most recent real closes in the epoch, the close of D
+  included and none older than 14 days before D, at least four are distinct values. A day without a real
+  close (missing or carried forward) is no observation: it adds neither a close nor a change, and the count
+  reaches one real close further back instead. A price the series already showed is no new value, so a
+  spike that comes back the next day is ranked on neither day.
+- **In line with the listings.** Both closes of the move are held against the low and mid listing stored
+  with their own observation in `price_points`: each must be no lower than half the low listing and no
+  higher than twice the mid listing, bounds included. A close whose observation is missing, or lists no
+  low or no mid, or lists either at 0.00, is not ranked; neither is a close of 0.00.
+
+The ranked variants are ordered by the size of the change in percent, then by the change, then by
+`variant_key`; rises and falls are ranked apart and 50 of each are kept at most. The thresholds are the
+`MOVERS_*` constants of `PricingConfig` and the floor in `config/pricing.php`;
+`docs/measurements/movers-eligibility.md` holds the evidence for each value and what the rule cannot do.
+
+What follows from the rule:
+
+- **The board is short.** A day ranks the variants that meet the rule and no others: a few dozen out of
+  about 33,000 closes, not 50 rises and 50 falls. One direction can be empty while the other is not.
+- **A new series ranks nothing for three days.** With fewer than four real closes in its epoch no variant
+  can show four values. The first three days after collection starts, after a `replay` of fewer than four
+  days, or after a remap of a variant therefore have no movers for it.
+- **A day with no ranked variant has no rows.** `GET /v1/movers` then answers the newest day that has
+  some, with that day in `meta.day` and its marker in `meta.as_of`, so the board says which close it shows.
+- **Order of arrival does not matter.** Everything a day's movers are made of lies between 14 days before
+  it and the day itself, and ingesting a day rebuilds the movers of that day and the 14 days after it.
+
+### Rebuild the movers of stored days
+
+`price_movers` is derived data. Its rows are rewritten when their day is in the recompute window of an
+ingest, and by a replay; a change to the thresholds does not touch the days already stored. To rank stored
+days again under the rule as it is, without ingesting anything, rebuild them from `price_daily` and
+`price_points` (here one day, 2026-10-13; give another first and last day for a range):
+
+```sh
+docker compose -f compose.dev.yml exec -T -w /workspace/api api php artisan tinker --execute='$db = Illuminate\Support\Facades\DB::connection(); if (! App\Domain\Pricing\IngestLock::tryAcquire($db)) { echo "pricing ingest lock held, nothing changed\n"; return; } try { $db->transaction(fn () => App\Domain\Pricing\Movers::rebuild($db, "2026-10-13", "2026-10-13")); echo $db->getDatabaseName(), " ", json_encode($db->select("SELECT direction, count(*) AS n FROM price_movers WHERE day BETWEEN ? AND ? GROUP BY direction ORDER BY direction", ["2026-10-13", "2026-10-13"])), "\n"; } finally { App\Domain\Pricing\IngestLock::release($db); }'
+```
+
+It takes the lock, and in one transaction deletes the `price_movers` rows of those days for the source and
+inserts the rows the rule gives; it reads the two price tables and writes nothing else. It prints the
+database name and the rows per direction it left, or `pricing ingest lock held, nothing changed` when an
+ingest or a replay is running. Running it twice gives the same rows.
 
 ## Partitions and retention
 

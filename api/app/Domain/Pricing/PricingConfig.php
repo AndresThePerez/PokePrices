@@ -8,6 +8,8 @@ namespace App\Domain\Pricing;
  * The one place PokéPrices reads config/pricing.php's source, feed, queue and movers limit, and the
  * provenance every price-shaped answer carries: source and feed from config, market basis, USD. CADENCE is the
  * cadence the card prices, the price block and the price.moved payload state; the movers and portfolio meta do not.
+ * The MOVERS_* thresholds are the movers eligibility rule Movers::rebuild() applies; the evidence for each is in
+ * docs/measurements/movers-eligibility.md.
  */
 final class PricingConfig
 {
@@ -18,6 +20,30 @@ final class PricingConfig
 
     /** The most movers price_movers can keep per day and direction, and the export's maximum for GET /v1/movers limit. */
     public const int MOVERS_CEILING = 50;
+
+    /**
+     * A ranked move is material: abs(change_pct), as stored with two decimals, is at least this many percent and
+     * abs(change) at least MOVERS_MIN_CHANGE, both. The movers keep their own figures; the alert rule is MovementRule's.
+     */
+    public const string MOVERS_MIN_CHANGE_PCT = '5.00';
+
+    /** The smallest abs(change) of a ranked move, in USD. */
+    public const string MOVERS_MIN_CHANGE = '1.00';
+
+    /**
+     * Recent price activity: how many of a variant's most recent real closes (the day's own included, same epoch, none
+     * older than pricing.fill_cap_days before the day) are looked at.
+     */
+    public const int MOVERS_ACTIVITY_CLOSES = 5;
+
+    /** How many of those closes must be distinct values for the variant to be ranked. */
+    public const int MOVERS_ACTIVITY_MIN_DISTINCT = 4;
+
+    /** In line with the listings: a close is no lower than this multiple of the low listing of its observation. */
+    public const string MOVERS_LISTING_LOW_RATIO = '0.5';
+
+    /** In line with the listings: a close is no higher than this multiple of the mid listing of its observation. */
+    public const string MOVERS_LISTING_MID_RATIO = '2';
 
     public static function source(): string
     {
