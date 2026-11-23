@@ -25,7 +25,8 @@ before; the other three are new.
 4. **Recent price activity.** Of the variant's five most recent real closes in the epoch (the close of D
    included, none older than 14 days before D), at least four are distinct values.
 5. **In line with the listings.** Both closes of the move, the one on D and the previous one, lie between
-   half the low listing and twice the mid listing of their own observation, bounds included. A close whose
+   half the low listing and one and a half times the mid listing of their own observation, bounds
+   included (the owner's ruling of 2026-11-23 tightened the upper bound from 2 x). A close whose
    observation is missing, or lists no low or no mid, or lists either at 0.00, is not ranked.
 
 The order is unchanged: `abs(change_pct)` descending, then `abs(change)` descending, then `variant_key`
@@ -39,12 +40,13 @@ in byte order, the first 50 per direction.
 | closes looked at for activity | 5 | `PricingConfig::MOVERS_ACTIVITY_CLOSES` |
 | distinct values needed among them | 4 | `PricingConfig::MOVERS_ACTIVITY_MIN_DISTINCT` |
 | lower bound of a close | 0.5 x its low listing | `PricingConfig::MOVERS_LISTING_LOW_RATIO` |
-| upper bound of a close | 2 x its mid listing | `PricingConfig::MOVERS_LISTING_MID_RATIO` |
+| upper bound of a close | 1.5 x its mid listing (2 x before 2026-11-23) | `PricingConfig::MOVERS_LISTING_MID_RATIO` |
 
 Edges, each pinned by a test in `api/tests/Feature/Pricing/MoversEligibilityTest.php`: exactly 5.00 % and
 exactly 1.00 count, 4.99 % and 0.99 do not (a percent of 4.995 is stored as 5.00 and counts); exactly four
-distinct values count, three do not; a close exactly at half its low or twice its mid counts, one cent
-outside does not; a previous close of 2.00 counts, 1.99 does not.
+distinct values count, three do not; a close exactly at half its low or 1.5 x its mid counts, one cent
+outside does not (and a close between 1.5 x and 2 x its mid, as the day's close or the previous one, is
+not ranked: `MoversUpperBoundTest.php`); a previous close of 2.00 counts, 1.99 does not.
 
 ## Evidence for the activity test
 
@@ -170,6 +172,14 @@ actively traded series, which is the case this test is for, so its two ratios re
 against listings (the table above), not on outcomes. At 1.5 x mid it would also remove `xy0-26`, the
 biggest rise left on 2026-10-13, at 1.52 x.
 
+**The upper bound since 2026-11-23: 1.5 x mid.** The owner ruled the upper bound down from 2 x to 1.5 x
+the mid listing (the lower bound, the activity test and the floors are unchanged). Measured again on dev
+with the rebuild's own `SELECT` and the thresholds as literals, read-only, eligible variants up / down:
+2026-10-12 stays 8 / 11, 2026-10-13 goes from 7 / 13 to 6 / 13. The one row that leaves is
+`xy0-26:normal:-:-` on 2026-10-13 (43.36 to 64.88, +49.63 %, the close at 1.52 x its mid listing, the
+previous close at 0.69 x). No fall changes. The tables below were measured at 2 x; where a figure differs
+under 1.5 x it is said next to it.
+
 ## Before and after
 
 Eligible variants per day and direction (before: every changed close with a previous close of 2.00 or
@@ -183,7 +193,7 @@ more; the stored board keeps the first 50 of each direction):
 | 2026-10-11 | down | 1,677 | 28 | 0 | 0 | 0 |
 | 2026-10-12 | up | 1,783 | 120 | 8 | 8 | 8 |
 | 2026-10-12 | down | 1,756 | 30 | 11 | 11 | 11 |
-| 2026-10-13 | up | 1,690 | 116 | 8 | 7 | 7 |
+| 2026-10-13 | up | 1,690 | 116 | 8 | 7 | 7 (6 at 1.5 x) |
 | 2026-10-13 | down | 1,754 | 42 | 13 | 13 | 13 |
 
 2026-10-13 goes from 3,444 eligible variants to 20. Each test alone on that day would leave 158 (material),
@@ -206,7 +216,8 @@ Before (the stored board), with the closes of the five days and the tests each r
 | 9 | `ex11-111:holo:-:-` | 1010.00 1010.00 1010.00 1010.00 2339.99 | +131.68 % | no activity; both closes under half the low |
 | 10 | `base6-40:reverse:-:-` | 96.48 96.48 96.48 96.48 200.00 | +107.30 % | no activity |
 
-After (seven rises are ranked; "before" is the rank the old rule gave, stored or not):
+After (seven rises are ranked at 2 x, six at 1.5 x: `xy0-26` leaves; "before" is the rank the old rule
+gave, stored or not):
 
 | rank | variant | closes 10-09 to 10-13 | previous close | close | change | before |
 |---|---|---|---|---|---|---|
@@ -299,6 +310,6 @@ there is no migration. Written as one flat join, the planner started from a scan
   of 20.90.
 - **A real revaluation of an untraded card is left out.** If a card that had not sold for weeks sells
   three times in a week at a new level, it is ranked from its fourth distinct close, not its first.
-- **The board can be short or empty.** With these thresholds dev ranks 7 rises and 13 falls on its newest
-  day, not 50 and 50. A day with no ranked variant has no rows, and `GET /v1/movers` then serves the newest
+- **The board can be short or empty.** With these thresholds dev ranks 6 rises and 13 falls on its newest
+  day (7 and 13 at the earlier 2 x bound), not 50 and 50. A day with no ranked variant has no rows, and `GET /v1/movers` then serves the newest
   day that has some, under that day's date.

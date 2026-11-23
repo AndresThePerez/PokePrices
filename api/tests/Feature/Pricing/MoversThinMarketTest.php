@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 // The movers leave out a close the price answer flags as a thin market (under half the lowest listing of its own
 // observation), on top of the eligibility rule: a real close and a previous close in the epoch within 14 days, a
 // previous close of at least 2.00, a move of at least 5.00 % and 1.00, four distinct values among the five most recent
-// real closes, and both closes between half the low and twice the mid listing of their own observation. The
+// real closes, and both closes between half the low and 1.5 x the mid listing of their own observation. The
 // listing lower bound already keeps out a close under half its low listing, so the two conditions agree on every
 // row; the cases below hold the rule's earlier cases with the exclusion in place.
 //

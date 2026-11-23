@@ -358,8 +358,8 @@ on day D when all of this holds:
   spike that comes back the next day is ranked on neither day.
 - **In line with the listings.** Both closes of the move are held against the low and mid listing stored
   with their own observation in `price_points`: each must be no lower than half the low listing and no
-  higher than twice the mid listing, bounds included. A close whose observation is missing, or lists no
-  low or no mid, or lists either at 0.00, is not ranked; neither is a close of 0.00.
+  higher than one and a half times the mid listing, bounds included. A close whose observation is
+  missing, or lists no low or no mid, or lists either at 0.00, is not ranked; neither is a close of 0.00.
 - **Not a thin market.** The close of D is not under half the low listing of its own observation
   (`PricingConfig::THIN_MARKET_RATIO`), the line the card page flags as a thin market (see Lowest listing
   and thin markets). With both ratios at one half the listing bound above already keeps such a close out,

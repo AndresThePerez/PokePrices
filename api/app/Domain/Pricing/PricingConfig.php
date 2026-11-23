@@ -44,7 +44,7 @@ final class PricingConfig
     public const string MOVERS_LISTING_LOW_RATIO = '0.5';
 
     /** In line with the listings: a close is no higher than this multiple of the mid listing of its observation. */
-    public const string MOVERS_LISTING_MID_RATIO = '2';
+    public const string MOVERS_LISTING_MID_RATIO = '1.5';
 
     /**
      * A thin market: the close is under this multiple of the lowest listing (the low, above zero) of the observation it

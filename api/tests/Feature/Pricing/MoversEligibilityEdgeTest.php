@@ -222,12 +222,12 @@ test('each close of a move is held to its own observation, never to the other cl
     t04xSeries('zxl-rise-prev-out', t04xWeek('10.00', '10.10', '10.20', ['10.30', '25.00', '30.00'], '11.40'));
     // A rise whose close of the day is under half its own low, the previous close in line: out.
     t04xSeries('zxl-rise-day-out', t04xWeek('10.00', '10.10', '10.20', '10.30', ['11.40', '30.00', '40.00']));
-    // The previous close 31.50 is in line with its own listings (30.00, 33.00) but would be over twice the mid of the
-    // day's observation (14.50); the day's 28.00 is exactly half its own low (56.00), a low above its mid. Ranked.
-    t04xSeries('zxl-own-prev', t04xWeek('30.00', '30.50', '31.00', ['31.50', '30.00', '33.00'], ['28.00', '56.00', '14.50']));
+    // The previous close 31.50 is in line with its own listings (30.00, 33.00) but would be over 1.5 x the mid of the
+    // day's observation (18.67); the day's 28.00 is exactly half its own low (56.00), a low above its mid. Ranked.
+    t04xSeries('zxl-own-prev', t04xWeek('30.00', '30.50', '31.00', ['31.50', '30.00', '33.00'], ['28.00', '56.00', '18.67']));
     // The day's 28.00 is in line with its own listings but under half the low of the previous observation (63.00);
-    // the previous close is exactly half that low. Ranked.
-    t04xSeries('zxl-own-day', t04xWeek('30.00', '30.50', '31.00', ['31.50', '63.00', '20.00'], '28.00'));
+    // the previous close is exactly half that low and exactly 1.5 x its mid (21.00). Ranked.
+    t04xSeries('zxl-own-day', t04xWeek('30.00', '30.50', '31.00', ['31.50', '63.00', '21.00'], '28.00'));
 
     Movers::rebuild(DB::connection(), '2026-10-13', '2026-10-13');
 

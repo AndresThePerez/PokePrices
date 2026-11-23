@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\DB;
 // close is at least 2.00, the move is at least 5.00 % (as stored, two decimals) and at least 1.00, the series shows
 // recent price activity (of its five most recent real closes in the epoch, none older than 14 days, at least four are
 // distinct values) and both closes are in line with the low and mid listings of their own observation (no lower than
-// half the low listing, no higher than twice the mid listing, both listings present and above zero).
+// half the low listing, no higher than 1.5 x the mid listing, both listings present and above zero).
 //
 // Every case writes its own card_variants, price_points and price_daily rows and calls Movers::rebuild(), so each pins
 // the exact input. A close given as a string gets listings in line with it (low 90 %, mid 105 % of the close).
@@ -244,10 +244,10 @@ test('activity before a series-epoch change does not count after it, and no move
         ->and(DB::table('price_movers')->where('variant_key', 'zed-own:normal:-:-')->pluck('series_epoch')->unique()->all())->toBe([2]);
 });
 
-test('a close is in line from half its low listing to twice its mid listing, both bounds included, one cent outside is not', function (): void {
-    // Above: 20.00 against a mid of 10.00 is exactly twice it; 20.01 is one cent over.
-    eligibilitySeries('zee-mid-at', eligibilityWeek('10.00', '10.10', '10.20', '10.30', ['20.00', '9.00', '10.00']));
-    eligibilitySeries('zee-mid-over', eligibilityWeek('10.00', '10.10', '10.20', '10.30', ['20.01', '9.00', '10.00']));
+test('a close is in line from half its low listing to 1.5 x its mid listing, both bounds included, one cent outside is not', function (): void {
+    // Above: 15.00 against a mid of 10.00 is exactly 1.5 x it; 15.01 is one cent over.
+    eligibilitySeries('zee-mid-at', eligibilityWeek('10.00', '10.10', '10.20', '10.30', ['15.00', '9.00', '10.00']));
+    eligibilitySeries('zee-mid-over', eligibilityWeek('10.00', '10.10', '10.20', '10.30', ['15.01', '9.00', '10.00']));
     // Below: 20000.00 against a low of 40000.00 is exactly half of it; 19999.99 is one cent under.
     eligibilitySeries('zee-low-at', eligibilityWeek('40000.00', '40400.00', '40800.00', '41200.00', ['20000.00', '40000.00', '60000.00']));
     eligibilitySeries('zee-low-under', eligibilityWeek('40000.00', '40400.00', '40800.00', '41200.00', ['19999.99', '40000.00', '60000.00']));
@@ -256,7 +256,7 @@ test('a close is in line from half its low listing to twice its mid listing, bot
 
     Movers::rebuild(DB::connection(), '2026-10-09', '2026-10-13');
 
-    expect(eligibilityMovers('2026-10-13', 'up'))->toBe(['zee-mid-at 10.30>20.00 9.70 94.17 2026-10-12'])
+    expect(eligibilityMovers('2026-10-13', 'up'))->toBe(['zee-mid-at 10.30>15.00 4.70 45.63 2026-10-12'])
         ->and(eligibilityMovers('2026-10-13', 'down'))->toBe(['zee-low-at 41200.00>20000.00 -21200.00 -51.46 2026-10-12']);
 });
 
@@ -264,9 +264,9 @@ test('the previous close is held to its own listings too: a move away from an od
     // 10.30 on 10-12 against a low of 20.61 is under half of it (10.305); against 20.60 it is exactly half.
     eligibilitySeries('zee-prev-under', eligibilityWeek('10.00', '10.10', '10.20', ['10.30', '20.61', '30.00'], '11.40'));
     eligibilitySeries('zee-prev-at', eligibilityWeek('10.00', '10.10', '10.20', ['10.30', '20.60', '30.00'], '11.40'));
-    // 10.30 against a mid of 5.14 is over twice it (10.28); against 5.15 it is exactly twice.
-    eligibilitySeries('zee-prev-over', eligibilityWeek('10.00', '10.10', '10.20', ['10.30', '1.00', '5.14'], '11.40'));
-    eligibilitySeries('zee-prev-top', eligibilityWeek('10.00', '10.10', '10.20', ['10.30', '1.00', '5.15'], '11.40'));
+    // 10.30 against a mid of 6.86 is over 1.5 x it (10.29); against 6.87 it is under 1.5 x (10.305).
+    eligibilitySeries('zee-prev-over', eligibilityWeek('10.00', '10.10', '10.20', ['10.30', '1.00', '6.86'], '11.40'));
+    eligibilitySeries('zee-prev-top', eligibilityWeek('10.00', '10.10', '10.20', ['10.30', '1.00', '6.87'], '11.40'));
     // The stored shape of a correction: 5.00 while the cheapest listing asked 549.99, then 752.00 in line with it.
     eligibilitySeries('zee-correction', eligibilityWeek('4.70', '4.80', '4.90', ['5.00', '549.99', '1498.99'], ['752.00', '549.99', '1498.99']));
 

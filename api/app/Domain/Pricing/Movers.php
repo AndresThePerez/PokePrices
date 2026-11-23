@@ -27,8 +27,8 @@ use stdClass;
  *   at before is no new value, so a spike that comes back counts once;
  * - both closes are in line with the listings of their own observation, the price_points row each close came from
  *   (observed_at = the candle's as_of): its low and mid are present and above zero, and the close is no lower than
- *   PricingConfig::MOVERS_LISTING_LOW_RATIO times the low and no higher than PricingConfig::MOVERS_LISTING_MID_RATIO
- *   times the mid, both bounds included. A close whose observation or listings are missing cannot be shown to be in
+ *   PricingConfig::MOVERS_LISTING_LOW_RATIO (0.5) times the low and no higher than
+ *   PricingConfig::MOVERS_LISTING_MID_RATIO (1.5) times the mid, both bounds included. A close whose observation or listings are missing cannot be shown to be in
  *   line and is not ranked, and neither is a close of 0.00;
  * - the close is not a thin market: it is not under PricingConfig::THIN_MARKET_RATIO times the low listing of its
  *   observation, the line the card price block flags (Listings). With both ratios at one half the listing lower bound
