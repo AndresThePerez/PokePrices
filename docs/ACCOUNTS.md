@@ -143,7 +143,7 @@ Fortify's profile-update, password-update and passkey routes are not enabled, an
   no test relies on the pages for enforcement; a write that can still be attempted shows the calm sentence
   `The demo account is read-only.` A card page opened directly (a reload or a pasted link) knows the demo session
   when the browser holds the `XSRF-TOKEN` cookie, which entering the demo sets: it asks `GET /v1/me`, shows no
-  account control on any variant (holding their space) until the session and the lists have answered, then shows
+  account control on any variant (holding the space of one Add row) until the session and the lists have answered, then shows
   the list lines without a write control, so no Add button shows at any moment. Only a tab with no such cookie
   and nothing cached shows the Add buttons.
 - **Limits.** The entry is 10 a minute per IP; the demo's account API is 30 a minute keyed by IP, so one visitor

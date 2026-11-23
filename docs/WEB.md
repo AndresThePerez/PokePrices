@@ -195,8 +195,9 @@ browser already holds the app's security token cookie (`XSRF-TOKEN`, set with th
 account page, a sign-in or the demo): home, `/search`, a card page and `/movers` then ask `GET /v1/me` once, when
 nothing is known yet; without that cookie they ask nothing about the session, so browsing prices still sets no
 cookies. With that cookie, until `GET /v1/me` (and, signed in, both lists) has answered, a card page shows no
-account control on any variant and keeps the space the `Add` row takes, empty, so nothing below moves when the
-controls arrive; a 401, a failed session read or a failed list read then shows what it would have shown (the
+account control on any variant and holds the space of one `Add` row, empty. When an `Add` row arrives there,
+nothing below moves; when the list lines or, for the read-only demo, no control replace it, the content below
+can shift once. A 401, a failed session read or a failed list read then shows what it would have shown (the
 `Add` buttons, calmly, with no page-wide error). A card page opened directly by the demo therefore never shows
 an `Add` button: the held space, then its lines and no write control. Only a tab with no such cookie and nothing
 cached (which has not asked who is signed in) shows the `Add` buttons at once, and a press by the demo answers
