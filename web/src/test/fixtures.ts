@@ -798,13 +798,60 @@ type MeBody = operations['getMe']['responses'][200]['content']['application/json
 
 const PROBLEM_BASE = 'https://pokeprices.andrestheperez.com/problems/';
 
-/** GET /v1/me for a verified account without two-factor. */
+/** The portfolio estimate GET /v1/me carries (data.portfolio). */
+export type Estimate = MeBody['data']['portfolio'];
+
+/** An empty portfolio's estimate: no card, no total, no change. */
+export const EMPTY_ESTIMATE = {
+  count: 0,
+  priced: 0,
+  unpriced: 0,
+  no_previous_close: 0,
+  total_value: null,
+  change: null,
+  change_pct: null,
+  first_day: null,
+  last_day: null,
+  source: 'tcgplayer',
+  feed: 'tcgcsv',
+  basis: 'market',
+  currency: 'USD',
+} satisfies Estimate;
+
+/**
+ * An estimate; D9's worked example with its previous closes unless `fields` say otherwise:
+ * 1047.93 over three cards, one without a price; 1 × (968.91 − 950.00) + 3 × (26.34 − 27.00) =
+ * 16.93 against 1031.00, 1.64 %. A field given as undefined is left out of the JSON.
+ */
+export function estimateOf(
+  fields: { readonly [K in keyof Estimate]?: Estimate[K] | undefined } = {},
+): Estimate {
+  return {
+    count: 3,
+    priced: 2,
+    unpriced: 1,
+    no_previous_close: 0,
+    total_value: '1047.93',
+    change: '16.93',
+    change_pct: '1.64',
+    first_day: '2026-10-11',
+    last_day: '2026-10-12',
+    source: 'tcgplayer',
+    feed: 'tcgcsv',
+    basis: 'market',
+    currency: 'USD',
+    ...fields,
+  } as Estimate;
+}
+
+/** GET /v1/me for a verified account without two-factor (an empty portfolio: no estimate shows). */
 export const signedInMe = {
   data: {
     email: 'collector@example.com',
     email_verified: true,
     two_factor: false,
     read_only: false,
+    portfolio: EMPTY_ESTIMATE,
   },
 } satisfies MeBody;
 
@@ -1214,6 +1261,9 @@ export function portfolioBody(
       total_value: '1047.93',
       priced: 2,
       unpriced: 1,
+      change: '16.93',
+      change_pct: '1.64',
+      no_previous_close: 0,
       first_day: '2026-10-11',
       last_day: '2026-10-12',
       source: 'tcgplayer',
@@ -1229,15 +1279,23 @@ export function portfolioBody(
 /** An empty portfolio: no holding, no total, no days. */
 export const emptyPortfolioBody = portfolioBody([], {
   total_value: null,
+  change: null,
+  change_pct: null,
   priced: 0,
   unpriced: 0,
   first_day: null,
   last_day: null,
 });
 
-/** GET /v1/me for the read-only demo account. */
+/** GET /v1/me for the read-only demo account (an empty portfolio estimate: none shows). */
 export const demoMe = {
-  data: { email: 'demo@example.com', email_verified: true, two_factor: false, read_only: true },
+  data: {
+    email: 'demo@example.com',
+    email_verified: true,
+    two_factor: false,
+    read_only: true,
+    portfolio: EMPTY_ESTIMATE,
+  },
 } satisfies MeBody;
 
 type DemoSamplesBody =

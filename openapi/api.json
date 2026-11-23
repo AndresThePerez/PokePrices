@@ -35,7 +35,7 @@
         "/me": {
             "get": {
                 "operationId": "getMe",
-                "description": "email is the account's lower-cased email address; email_verified says whether it has been verified; two_factor\nis true once two-factor authentication is confirmed; read_only is true for the read-only demo account. Signed\nout, the answer is 401. The answer is never cached.",
+                "description": "email is the account's lower-cased email address; email_verified says whether it has been verified; two_factor\nis true once two-factor authentication is confirmed; read_only is true for the read-only demo account. portfolio\nis the account's portfolio estimate, the same figures GET /v1/portfolio's meta carries (count, priced, unpriced,\nno_previous_close, total_value, change, change_pct, first_day, last_day) with their source, feed, basis and\ncurrency: an estimate at daily-close market prices, not a sale value, read in one statement. Signed out, the\nanswer is 401. The answer is never cached.",
                 "summary": "Who is signed in",
                 "tags": [
                     "Account"
@@ -504,7 +504,7 @@
         "/portfolio": {
             "get": {
                 "operationId": "getPortfolio",
-                "description": "The variants the signed-in account holds, ordered by card id, then variant key, each with its quantity, its card's name from the Pok\u00e9Search catalog (as on the watchlist; meta.degraded is true while Pok\u00e9Search is unavailable) and the card page's price block from TCGplayer market prices via TCGCSV. value is quantity \u00d7 close, computed by Pok\u00e9Prices as a decimal string; it is null when the collected snapshots hold no close for the variant, which is then never counted as zero. meta.total_value sums the priced holdings (null when none is priced), meta.priced and meta.unpriced count them, and meta.first_day and meta.last_day are the oldest and newest close days the total rests on. The answer is never cached.",
+                "description": "The variants the signed-in account holds, ordered by card id, then variant key, each with its quantity, its card's name from the Pok\u00e9Search catalog (as on the watchlist; meta.degraded is true while Pok\u00e9Search is unavailable) and the card page's price block from TCGplayer market prices via TCGCSV. value is quantity \u00d7 close, computed by Pok\u00e9Prices as a decimal string; it is null when the collected snapshots hold no close for the variant, which is then never counted as zero. meta.total_value, an estimate at daily-close market prices and not a sale value, sums the priced holdings (null when none is priced), meta.priced and meta.unpriced count them, and meta.first_day and meta.last_day are the oldest and newest close days the total rests on. meta.change is the change against the previous close: the sum of quantity \u00d7 (close \u2212 previous close) over the holdings that have both, the previous close being the one each holding's price block shows (null when none has both); meta.change_pct is that change against the sum of quantity \u00d7 previous close over the same holdings, \u00d7 100, rounded once to two decimals (null when that sum is 0.00 or none has both); meta.no_previous_close counts the holdings that have a close and no previous close, which are in the total and not in the change. Every amount is a decimal string computed in Postgres numeric. The answer is never cached.",
                 "summary": "Read your portfolio",
                 "tags": [
                     "Account"
@@ -544,6 +544,21 @@
                                                 "unpriced": {
                                                     "type": "integer"
                                                 },
+                                                "change": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "change_pct": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "no_previous_close": {
+                                                    "type": "integer"
+                                                },
                                                 "first_day": {
                                                     "type": [
                                                         "string",
@@ -580,6 +595,9 @@
                                                 "total_value",
                                                 "priced",
                                                 "unpriced",
+                                                "change",
+                                                "change_pct",
+                                                "no_previous_close",
                                                 "first_day",
                                                 "last_day",
                                                 "source",
@@ -625,6 +643,16 @@
                                 "required": true,
                                 "schema": {
                                     "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "An error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
                                 }
                             }
                         }
@@ -3662,13 +3690,91 @@
                     },
                     "read_only": {
                         "type": "boolean"
+                    },
+                    "portfolio": {
+                        "type": "object",
+                        "properties": {
+                            "count": {
+                                "type": "integer"
+                            },
+                            "priced": {
+                                "type": "integer"
+                            },
+                            "unpriced": {
+                                "type": "integer"
+                            },
+                            "no_previous_close": {
+                                "type": "integer"
+                            },
+                            "total_value": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "change": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "change_pct": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "first_day": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "last_day": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "source": {
+                                "type": "string"
+                            },
+                            "feed": {
+                                "type": "string"
+                            },
+                            "basis": {
+                                "type": "string",
+                                "const": "market"
+                            },
+                            "currency": {
+                                "type": "string",
+                                "const": "USD"
+                            }
+                        },
+                        "required": [
+                            "count",
+                            "priced",
+                            "unpriced",
+                            "no_previous_close",
+                            "total_value",
+                            "change",
+                            "change_pct",
+                            "first_day",
+                            "last_day",
+                            "source",
+                            "feed",
+                            "basis",
+                            "currency"
+                        ],
+                        "additionalProperties": false
                     }
                 },
                 "required": [
                     "email",
                     "email_verified",
                     "two_factor",
-                    "read_only"
+                    "read_only",
+                    "portfolio"
                 ],
                 "additionalProperties": false,
                 "title": "MeResource"

@@ -6,6 +6,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\Accounts\AccountDeletion;
 use App\Domain\Accounts\AccountExport;
+use App\Domain\Accounts\Portfolio;
 use App\Http\Resources\AccountExportResource;
 use App\Http\Resources\MeResource;
 use App\Models\User;
@@ -24,15 +25,18 @@ final class MeController
      * Who is signed in.
      *
      * email is the account's lower-cased email address; email_verified says whether it has been verified; two_factor
-     * is true once two-factor authentication is confirmed; read_only is true for the read-only demo account. Signed
-     * out, the answer is 401. The answer is never cached.
+     * is true once two-factor authentication is confirmed; read_only is true for the read-only demo account. portfolio
+     * is the account's portfolio estimate, the same figures GET /v1/portfolio's meta carries (count, priced, unpriced,
+     * no_previous_close, total_value, change, change_pct, first_day, last_day) with their source, feed, basis and
+     * currency: an estimate at daily-close market prices, not a sale value, read in one statement. Signed out, the
+     * answer is 401. The answer is never cached.
      *
      * @operationId getMe
      */
-    public function __invoke(#[CurrentUser] User $user): MeResource
+    public function __invoke(#[CurrentUser] User $user, Portfolio $portfolio): MeResource
     {
         // auth:sanctum on the account group has already answered 401 to a signed-out request.
-        return new MeResource($user);
+        return new MeResource($user, $portfolio->summary($user->id));
     }
 
     /**

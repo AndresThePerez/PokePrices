@@ -181,7 +181,10 @@ it('enters the demo with POST /v1/demo/session: 204, a new session id, and GET /
     $old = $this->withHeaders(Accounts::FIRST_PARTY)->withCredentials()->withCookie($cookie, $before)->getJson('/v1/me');
 
     expect($me->getStatusCode())->toBe(200)
-        ->and($me->json('data'))->toBe(['email' => 'demo@example.com', 'email_verified' => true, 'two_factor' => false, 'read_only' => true])
+        ->and($me->json('data'))->toBe(['email' => 'demo@example.com', 'email_verified' => true, 'two_factor' => false, 'read_only' => true, 'portfolio' => [
+            'count' => 0, 'priced' => 0, 'unpriced' => 0, 'no_previous_close' => 0, 'total_value' => null, 'change' => null, 'change_pct' => null,
+            'first_day' => null, 'last_day' => null, 'source' => 'tcgplayer', 'feed' => 'tcgcsv', 'basis' => 'market', 'currency' => 'USD',
+        ]])
         ->and($old->getStatusCode())->toBe(401);
 });
 

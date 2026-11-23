@@ -70,6 +70,7 @@ it('values D9\'s worked example exactly: 968.91, 79.02, total 1047.93, the unpri
         ])
         ->and($response->json('meta'))->toBe([
             'count' => 3, 'limit' => 100, 'total_value' => '1047.93', 'priced' => 2, 'unpriced' => 1,
+            'change' => '4.02', 'change_pct' => '5.36', 'no_previous_close' => 1,
             'first_day' => '2026-10-12', 'last_day' => '2026-10-12', 'source' => 'tcgplayer', 'feed' => 'tcgcsv',
             'basis' => 'market', 'currency' => 'USD', 'degraded' => false,
         ]);

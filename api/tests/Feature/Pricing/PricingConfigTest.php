@@ -66,7 +66,7 @@ it('gives the five provenance blocks PricingConfig::provenance()\'s values and t
         expect(array_intersect_key($block, $provenance))->toBe($provenance, $name);
     }
     expect(array_keys($blocks['movers']))->toBe(['day', 'as_of', 'source', 'feed', 'basis', 'currency', 'window', 'min_previous_close', 'direction', 'limit', 'degraded'])
-        ->and(array_keys($blocks['portfolio']))->toBe(['count', 'limit', 'total_value', 'priced', 'unpriced', 'first_day', 'last_day', 'source', 'feed', 'basis', 'currency', 'degraded'])
+        ->and(array_keys($blocks['portfolio']))->toBe(['count', 'limit', 'total_value', 'priced', 'unpriced', 'change', 'change_pct', 'no_previous_close', 'first_day', 'last_day', 'source', 'feed', 'basis', 'currency', 'degraded'])
         ->and(array_keys($blocks['prices']))->toBe(['source', 'feed', 'basis', 'currency', 'cadence', 'range', 'from', 'to', 'as_of'])
         ->and(array_keys($blocks['block']))->toBe(['source', 'feed', 'basis', 'currency', 'cadence', 'close', 'day', 'as_of', 'previous_close', 'previous_day', 'change', 'change_pct', 'series_epoch'])
         ->and(array_keys($blocks['payload']))->toBe(['event_id', 'variant_key', 'card_id', 'card', 'direction', 'close', 'previous_close', 'change', 'change_pct', 'day', 'as_of', 'previous_day', 'previous_as_of', 'series_epoch', 'rule', 'source', 'feed', 'basis', 'currency', 'cadence'])

@@ -26,6 +26,10 @@ it('answers GET /v1/me with exactly email, email_verified, two_factor and read_o
     $response->assertOk();
     expect($response->json())->toBe(['data' => [
         'email' => 'andres@example.com', 'email_verified' => true, 'two_factor' => false, 'read_only' => false,
+        'portfolio' => [
+            'count' => 0, 'priced' => 0, 'unpriced' => 0, 'no_previous_close' => 0, 'total_value' => null, 'change' => null, 'change_pct' => null,
+            'first_day' => null, 'last_day' => null, 'source' => 'tcgplayer', 'feed' => 'tcgcsv', 'basis' => 'market', 'currency' => 'USD',
+        ],
     ]])
         ->and($response->headers->get('Cache-Control'))->toContain('no-store')->toContain('private')
         ->and($response->headers->has('ETag'))->toBeFalse();

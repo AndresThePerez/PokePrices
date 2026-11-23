@@ -33,8 +33,8 @@ it('documents GET /v1/me with 200, 401 and 429, a closed data object of the four
     expect($schema['required'])->toBe(['data'])
         ->and($schema['additionalProperties'])->toBeFalse()
         ->and($me['responses']['401']['description'])->toBe('Unauthenticated: sign in first (problem type https://pokeprices.andrestheperez.com/problems/unauthenticated).');
-    expect(array_keys($data['properties']))->toBe(['email', 'email_verified', 'two_factor', 'read_only'])
-        ->and($data['required'])->toBe(['email', 'email_verified', 'two_factor', 'read_only'])
+    expect(array_keys($data['properties']))->toBe(['email', 'email_verified', 'two_factor', 'read_only', 'portfolio'])
+        ->and($data['required'])->toBe(['email', 'email_verified', 'two_factor', 'read_only', 'portfolio'])
         ->and($data['additionalProperties'])->toBeFalse()
         ->and($data['properties']['email']['type'])->toBe('string')
         ->and($data['properties']['email_verified']['type'])->toBe('boolean')

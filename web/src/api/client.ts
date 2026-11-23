@@ -269,8 +269,34 @@ const FRESHNESS = fields({
   data: fields({ day: orNull(text), age_hours: orNull(whole), within_slo: flag }),
 });
 
+/**
+ * The portfolio's figures: the estimated total, the day's change in dollars and percent (decimal
+ * strings or null), the card counts, the days the total rests on and its provenance.
+ */
+const ESTIMATE = {
+  count: whole,
+  priced: whole,
+  unpriced: whole,
+  no_previous_close: whole,
+  total_value: orNull(text),
+  change: orNull(text),
+  change_pct: orNull(text),
+  first_day: orNull(text),
+  last_day: orNull(text),
+};
+
+/**
+ * Who is signed in, with the account's portfolio estimate (the header's), checked when it is
+ * there: an answer without it shows no estimate.
+ */
 const ME = fields({
-  data: fields({ email: text, email_verified: flag, two_factor: flag, read_only: flag }),
+  data: fields({
+    email: text,
+    email_verified: flag,
+    two_factor: flag,
+    read_only: flag,
+    portfolio: ifPresent(fields({ ...ESTIMATE, source: text, feed: text, currency: text })),
+  }),
 });
 
 const LIST_ROW = {
@@ -287,13 +313,7 @@ const WATCHLIST = fields({
 
 const PORTFOLIO = fields({
   data: listOf(fields({ ...LIST_ROW, quantity: whole, value: orNull(text) })),
-  meta: fields({
-    total_value: orNull(text),
-    unpriced: whole,
-    first_day: orNull(text),
-    last_day: orNull(text),
-    degraded: flag,
-  }),
+  meta: fields({ ...ESTIMATE, degraded: flag }),
 });
 
 const WEBHOOKS = fields({

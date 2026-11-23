@@ -14,8 +14,11 @@ export interface paths {
         /**
          * Who is signed in
          * @description email is the account's lower-cased email address; email_verified says whether it has been verified; two_factor
-         *     is true once two-factor authentication is confirmed; read_only is true for the read-only demo account. Signed
-         *     out, the answer is 401. The answer is never cached.
+         *     is true once two-factor authentication is confirmed; read_only is true for the read-only demo account. portfolio
+         *     is the account's portfolio estimate, the same figures GET /v1/portfolio's meta carries (count, priced, unpriced,
+         *     no_previous_close, total_value, change, change_pct, first_day, last_day) with their source, feed, basis and
+         *     currency: an estimate at daily-close market prices, not a sale value, read in one statement. Signed out, the
+         *     answer is 401. The answer is never cached.
          */
         get: operations["getMe"];
         put?: never;
@@ -129,7 +132,7 @@ export interface paths {
         };
         /**
          * Read your portfolio
-         * @description The variants the signed-in account holds, ordered by card id, then variant key, each with its quantity, its card's name from the PokéSearch catalog (as on the watchlist; meta.degraded is true while PokéSearch is unavailable) and the card page's price block from TCGplayer market prices via TCGCSV. value is quantity × close, computed by PokéPrices as a decimal string; it is null when the collected snapshots hold no close for the variant, which is then never counted as zero. meta.total_value sums the priced holdings (null when none is priced), meta.priced and meta.unpriced count them, and meta.first_day and meta.last_day are the oldest and newest close days the total rests on. The answer is never cached.
+         * @description The variants the signed-in account holds, ordered by card id, then variant key, each with its quantity, its card's name from the PokéSearch catalog (as on the watchlist; meta.degraded is true while PokéSearch is unavailable) and the card page's price block from TCGplayer market prices via TCGCSV. value is quantity × close, computed by PokéPrices as a decimal string; it is null when the collected snapshots hold no close for the variant, which is then never counted as zero. meta.total_value, an estimate at daily-close market prices and not a sale value, sums the priced holdings (null when none is priced), meta.priced and meta.unpriced count them, and meta.first_day and meta.last_day are the oldest and newest close days the total rests on. meta.change is the change against the previous close: the sum of quantity × (close − previous close) over the holdings that have both, the previous close being the one each holding's price block shows (null when none has both); meta.change_pct is that change against the sum of quantity × previous close over the same holdings, × 100, rounded once to two decimals (null when that sum is 0.00 or none has both); meta.no_previous_close counts the holdings that have a close and no previous close, which are in the total and not in the change. Every amount is a decimal string computed in Postgres numeric. The answer is never cached.
          */
         get: operations["getPortfolio"];
         put?: never;
@@ -701,6 +704,23 @@ export interface components {
             email_verified: boolean;
             two_factor: boolean;
             read_only: boolean;
+            portfolio: {
+                count: number;
+                priced: number;
+                unpriced: number;
+                no_previous_close: number;
+                total_value: string | null;
+                change: string | null;
+                change_pct: string | null;
+                first_day: string | null;
+                last_day: string | null;
+                source: string;
+                feed: string;
+                /** @constant */
+                basis: "market";
+                /** @constant */
+                currency: "USD";
+            };
         };
         /** MoverResource */
         MoverResource: {
@@ -1198,6 +1218,9 @@ export interface operations {
                             total_value: string | null;
                             priced: number;
                             unpriced: number;
+                            change: string | null;
+                            change_pct: string | null;
+                            no_previous_close: number;
                             first_day: string | null;
                             last_day: string | null;
                             source: string;
@@ -1225,6 +1248,15 @@ export interface operations {
                 headers: {
                     /** @description Seconds until the limit resets. */
                     "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description An error */
+            500: {
+                headers: {
                     [name: string]: unknown;
                 };
                 content: {

@@ -38,7 +38,7 @@ it('documents each watchlist, portfolio and demo operation with exactly its stat
     ['/watchlist', 'get', ['200', '401', '429']],
     ['/watchlist/{variantKey}', 'put', ['200', '401', '403', '419', '422', '429']],
     ['/watchlist/{variantKey}', 'delete', ['204', '401', '403', '419', '429']],
-    ['/portfolio', 'get', ['200', '401', '429']],
+    ['/portfolio', 'get', ['200', '401', '429', '500']],
     ['/portfolio/{variantKey}', 'put', ['200', '401', '403', '419', '422', '429']],
     ['/portfolio/{variantKey}', 'delete', ['204', '401', '403', '419', '429']],
     ['/demo/session', 'post', ['204', '404', '419', '429']],
@@ -80,7 +80,7 @@ it('documents the closed list bodies: watchlist items, portfolio holdings and th
         ->and(array_keys($holding['properties']))->toBe([...$itemKeys, 'quantity', 'value'])
         ->and($holding['additionalProperties'])->toBeFalse()
         ->and(array_keys($watchlist['properties']['meta']['properties']))->toBe(['count', 'limit', 'degraded'])
-        ->and(array_keys($meta['properties']))->toBe(['count', 'limit', 'total_value', 'priced', 'unpriced', 'first_day', 'last_day', 'source', 'feed', 'basis', 'currency', 'degraded'])
+        ->and(array_keys($meta['properties']))->toBe(['count', 'limit', 'total_value', 'priced', 'unpriced', 'change', 'change_pct', 'no_previous_close', 'first_day', 'last_day', 'source', 'feed', 'basis', 'currency', 'degraded'])
         ->and($meta['additionalProperties'])->toBeFalse();
 });
 

@@ -180,6 +180,32 @@ may read but not write.
   `last_day` (the earliest and latest day among priced holdings, so the total names the days it rests on), `source`,
   `feed`, `basis`, `currency` and `degraded`. Worked example: one `base1-4:holo:unlimited:-` at `"968.91"` and three
   `ex5-17:reverse:-:-` at `"26.34"` give values `"968.91"` and `"79.02"` and `total_value` `"1047.93"`.
+- **The estimate and the day's change (portfolio).** The total is an estimate at daily-close market prices, not a
+  sale value. `meta` carries, beside it, the change against the previous close, computed in Postgres `numeric` in the
+  same statement as the rows (`Portfolio::figures()`), never in floats:
+  - `total_value` is the sum of quantity × latest close over the holdings that have a close (unchanged);
+  - `change` is the sum of quantity × (close − previous close) over the holdings that have **both** a close and a
+    previous close, as a string with two decimals; `null` when no holding has both. The previous close is the one
+    each row's price block shows (`price_latest`: the most recent real close on an earlier day in the same series
+    epoch, at most 14 days before), so a missing day, a filled close or a series-epoch change is handled exactly as
+    on the row;
+  - `change_pct` is `change` against the sum of quantity × previous close over the same holdings, × 100, rounded once
+    to two decimals (half away from zero); `null` when that sum is `0.00` or no holding has both. The rows' own
+    percents are never added or averaged;
+  - `no_previous_close` counts the holdings with a close and no previous close: they are in the total and not in the
+    change, so the page can say the change covers fewer cards than the total;
+  - `count`, `priced` and `unpriced` are the cards (holdings), and every figure rests on the same `first_day`,
+    `last_day`, `source`, `feed`, `basis` and `currency` as the total.
+
+  Worked example: `base1-4:holo:unlimited:-` × 1 at `"968.91"` (previous `"950.00"`), `ex5-17:reverse:-:-` × 3 at
+  `"26.34"` (previous `"27.00"`) and an unpriced first edition × 2 give `total_value` `"1047.93"`, `change`
+  `1 × 18.91 + 3 × (−0.66)` = `"16.93"` against `1 × 950.00 + 3 × 27.00` = `1031.00`, so `change_pct` `"1.64"`
+  (16.93 / 1031.00 × 100 = 1.642…), with `count` 3, `unpriced` 1 and `no_previous_close` 0.
+- **The estimate outside the portfolio page.** `GET /v1/me` carries the same figures as `data.portfolio` (`count`,
+  `priced`, `unpriced`, `no_previous_close`, `total_value`, `change`, `change_pct`, `first_day`, `last_day`, then
+  `source`, `feed`, `basis`, `currency`), from `Portfolio::summary()`: one aggregate statement over the holdings and
+  their latest closes, with no catalogue read, whatever the portfolio holds. It rides on the session read the pages
+  already make, so the header needs no request of its own. Signed out, `GET /v1/me` answers `401` as before.
 - **Not kept.** No cost basis, gain or loss, history of holdings, or per-card (rather than per-variant) watching.
   A watchlist row can carry an alert threshold (`alert_pct`, the last key of each watchlist item; portfolio holdings
   have none); how alerts work is in [`ALERTS.md`](ALERTS.md).
