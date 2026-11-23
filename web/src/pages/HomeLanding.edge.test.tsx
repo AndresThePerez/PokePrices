@@ -24,7 +24,7 @@ import {
 
 const STAMP_1012 = 'as of 2026-10-12 from TCGCSV (daily close)';
 const SCOPE =
-  'Ranked by change vs previous close among variants whose previous close was at least $2.00.';
+  'Ranked by change vs previous close among variants whose previous close was at least $2.00, that moved at least 5% and at least $1.00, had four different closes among their last five, and whose two closes each sat between half the lowest listing and 1.5 times the mid listing of their own day.';
 const FOOTNOTE = 'TCGplayer market prices via TCGCSV, collected once a day.';
 const DEGRADED = 'Catalog data may be out of date: PokéSearch is unavailable';
 
@@ -226,6 +226,7 @@ describe('movers board bar (D2-i1-T03 review)', () => {
     await screen.findByText('Market price $26.34');
     expect(screen.getAllByText(STAMP_1012)).toHaveLength(1);
     expect(calls.map((call) => call.url)).toEqual([
+      '/v1/prices/freshness',
       '/v1/movers?direction=up&limit=50',
       '/v1/movers?direction=down&limit=50',
     ]);
@@ -281,7 +282,9 @@ describe('demo entry on the home page (D2-i1-T03 review)', () => {
     visit('/');
     render(<App />);
     await screen.findByRole('link', { name: 'See all movers' });
-    expect(calls.map((call) => call.key).filter((key) => !key.includes('/v1/movers'))).toEqual([]);
+    expect(calls.map((call) => call.key).filter((key) => !key.includes('/v1/movers'))).toEqual([
+      'GET /v1/prices/freshness',
+    ]);
     const button = within(screen.getByRole('main')).getByRole('button', {
       name: 'Try the read-only demo',
     });
@@ -292,7 +295,8 @@ describe('demo entry on the home page (D2-i1-T03 review)', () => {
     });
     const keys = calls.map((call) => call.key).filter((key) => !key.includes('/v1/movers'));
     // The home page reads no session, so the first request after the click is the CSRF cookie.
-    expect(keys.slice(0, 3)).toEqual([
+    expect(keys.slice(0, 4)).toEqual([
+      'GET /v1/prices/freshness',
       'GET /sanctum/csrf-cookie',
       'POST /v1/demo/session',
       'GET /v1/me',
@@ -355,7 +359,10 @@ describe('landing and board under slow, failing and hash-bearing conditions (D2-
     expect(screen.getByRole('button', { name: 'Falls' }).getAttribute('aria-pressed')).toBe('true');
     expect(screen.getAllByText(STAMP_1012)).toHaveLength(1);
     expect(calls).toHaveLength(before);
-    expect(calls.map((call) => call.url)).toEqual(['/v1/movers?direction=down&limit=50']);
+    expect(calls.map((call) => call.url)).toEqual([
+      '/v1/prices/freshness',
+      '/v1/movers?direction=down&limit=50',
+    ]);
   });
 
   it('keeps the search form and the demo button working when both home movers requests fail', async () => {

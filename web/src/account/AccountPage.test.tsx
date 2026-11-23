@@ -153,7 +153,13 @@ describe('the account page (T03 criterion 3, D10)', () => {
     // The home page's own movers reads are not routed here; every account request is listed.
     expect(
       calls.map((call) => call.key).filter((key) => !key.startsWith('GET /v1/movers?')),
-    ).toEqual(['GET /v1/me', 'GET /sanctum/csrf-cookie', 'POST /logout', 'GET /v1/me']);
+    ).toEqual([
+      'GET /v1/me',
+      'GET /sanctum/csrf-cookie',
+      'POST /logout',
+      'GET /v1/me',
+      'GET /v1/prices/freshness',
+    ]);
     act(() => {
       navigate('/account');
     });
@@ -235,7 +241,12 @@ describe('the header Account link (T03 criterion 5)', () => {
     const link = within(screen.getByRole('banner')).getByRole('link', { name: 'Account' });
     expect(link.getAttribute('href')).toBe('/account');
     expect(link.className.split(/\s+/)).toContain('min-h-11');
-    expect(calls.every((call) => call.url.startsWith('/v1/movers?'))).toBe(true);
+    expect(
+      calls.every(
+        (call) => call.url.startsWith('/v1/movers?') || call.url === '/v1/prices/freshness',
+      ),
+    ).toBe(true);
+    expect(calls.filter((call) => call.url === '/v1/prices/freshness')).toHaveLength(1);
     expect(calls.some((call) => call.url.startsWith('/v1/me'))).toBe(false);
   });
 

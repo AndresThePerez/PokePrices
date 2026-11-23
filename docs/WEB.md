@@ -16,14 +16,28 @@ prices get into the database is in [`OPERATIONS.md`](OPERATIONS.md).
   - The catalogue details come from PokéSearch through the API. When PokéSearch is unavailable the page
     says `Catalog data may be out of date: PokéSearch is unavailable`.
   - **Prices:** one ticker per priced variant, with a small sparkline beside it.
+  - **Lowest listing.** When the snapshot a close came from lists a lowest price, the headline and that
+    variant's row show `Lowest listing $<amount>` beside the market price. When the API flags the close as
+    a thin market (a market price under half that lowest listing), a note follows, under the close's own
+    `as of` line: `Thin market: the market price is from few or old sales; the lowest listing in the same
+    snapshot is $<amount>.` Exactly half is not flagged. A variant with no close whose newest snapshot lists
+    a lowest price reads `No recent sales; lowest listing $<amount>` with
+    `Listing as of <day> from TCGCSV (daily snapshot)` under it, in place of
+    `No price in the collected snapshots`; a variant with neither keeps that line. The watchlist and the
+    portfolio rows do not carry the listing.
   - **Price history:** a chart of daily closes per variant (see Charts).
   - A card with no priced variant makes no history request and shows no history.
   - **Which variant opens.** The headline price and the chart show one variant. `?variant=<variant key>` names
     it, the key percent-encoded as one query value, for example
     `/card/ex13-3?variant=ex13-3%3Areverse%3A-%3A-`. The rows of the movers strip, the movers board, the
-    watchlist and the portfolio link this way, so a row opens on the variant it shows. Without the parameter,
-    or when it is empty or names no priced variant of the card (an unknown, malformed or unpriced key), the
-    page opens its default variant, the first priced one with history, without an error.
+    watchlist and the portfolio link this way, so a row opens on the variant it shows. A key of a variant the
+    card has opens that variant whether or not it has a close: one without a close shows its
+    `No recent sales; lowest listing $<amount>` line (or `No price in the collected snapshots`) in the
+    headline, is pressed in the chart's `Variant` group after the priced ones, and the chart shows its
+    no-close line, never another variant's series. Without the parameter, or when it is empty or names no
+    variant of the card (an unknown, malformed or another card's key), the page opens its default variant,
+    the first priced one with history, without an error. So does a variant that loses its close on a poll
+    while the page shows it.
   - **The address follows the choice.** Choosing another variant in the chart's `Variant` group replaces the
     address with that variant's `?variant=` (it adds no history step), so Back leaves the card page, Forward
     and a reload reopen the variant last chosen, and a copied address opens what was on screen.
@@ -32,8 +46,12 @@ prices get into the database is in [`OPERATIONS.md`](OPERATIONS.md).
   short row: the rank, the card's picture, the card name (or `Card <id>` while PokéSearch is unavailable),
   the set line, and the price with the short change. One
   `as of <day> from TCGCSV (daily close)` line stamps the list, and a scope line states the ranking rule:
-  `Ranked by change vs previous close among variants whose previous close was at least $<amount>.`
-  Before any day is ingested the board says `No movers yet`; a day with no ranked rows in the shown
+  `Ranked by change vs previous close among variants whose previous close was at least $<amount>, that
+  moved at least 5% and at least $1.00, had four different closes among their last five, and whose two
+  closes each sat between half the lowest listing and 1.5 times the mid listing of their own day.` The
+  amount is the answer's `min_previous_close`; the other figures are the ranking's fixed thresholds (see
+  [`OPERATIONS.md`](OPERATIONS.md), which also explains why a thin-market close is never ranked). The home
+  strip carries the same line. Before any day is ingested the board says `No movers yet`; a day with no ranked rows in the shown
   direction says `No rises ranked for <day>` or `No falls ranked for <day>`.
 - **`/sign-in`.** Email and password. When two-factor is on, a second step asks for an authentication code (or a
   recovery code). It also offers `Forgot your password?`, `Create an account` and `Try the read-only demo`. A
@@ -174,6 +192,15 @@ no new close looks exactly like the day before.
 - **When the day itself arrives.** The collector's marker lands around 20:05 UTC and the API ingests it at
   the next hourly `:40` scan (see `OPERATIONS.md`). Before that, every page keeps showing the previous day,
   stamped with its own `as of` day.
+- **Stale-prices banner.** Every page that shows a price (home, a card page, `/movers`, `/watchlist` and
+  `/portfolio`) asks `GET /v1/prices/freshness` once, polled like the page's own data. When the answer is out
+  of its freshness SLO (`within_slo: false`), one line appears under the header, outside the page's main
+  region: `Prices are out of date: the newest collected prices are as of <day>, <age_hours> hours old.`
+  (the day and the age with one decimal are the API's; the browser reads no clock). Nothing appears while
+  the answer is within the SLO, while it loads, when the request fails or is not the documented shape, or
+  before any day was ingested. The pages that show no price (`/search`, sign-in, sign-up, the password
+  pages, `/account`, `/account/verify-email`, `/alerts` and the not-found page) neither ask for it nor show the banner. The dev
+  stack, whose closes end on 2026-10-13, shows it on every page that shows a price.
 
 ## Display settings
 

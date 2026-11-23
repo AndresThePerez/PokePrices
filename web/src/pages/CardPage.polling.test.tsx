@@ -5,7 +5,9 @@ import {
   FORBIDDEN_WORDS,
   cardNotFoundPlainProblem,
   cardWithPrices,
+  freshnessBody,
   historyFor,
+  isFreshnessUrl,
   isHistoryUrl,
   jsonResponse,
   problemResponse,
@@ -68,13 +70,21 @@ function visit(path: string): void {
   window.history.replaceState(null, '', path);
 }
 
-/** Answers each request with the next reply; the last reply repeats. */
+/** The shell's freshness request, answered within its SLO so no banner shows. */
+const FRESHNESS_URL = '/v1/prices/freshness';
+
+/** Answers each card request with the next reply; the last reply repeats. */
 function replies(...answers: (() => Response)[]): string[] {
   const urls: string[] = [];
+  let cardCalls = 0;
   stubFetch((url) => {
     if (isHistoryUrl(url)) return jsonResponse(historyFor(cardWithPrices(risingPrice)));
     urls.push(url);
-    const answer = answers[Math.min(urls.length - 1, answers.length - 1)];
+    if (isFreshnessUrl(url)) {
+      return jsonResponse(freshnessBody({ within_slo: true, age_hours: 3.5 }));
+    }
+    cardCalls += 1;
+    const answer = answers[Math.min(cardCalls - 1, answers.length - 1)];
     if (answer === undefined) throw new Error('no reply configured');
     return answer();
   });
@@ -113,23 +123,23 @@ describe('card page polling (D9, T03)', () => {
     const urls = replies(() => jsonResponse(cardWithPrices(risingPrice)));
     await openCard();
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Unown');
-    expect(urls).toEqual([CARD_URL]);
+    expect(urls).toEqual([FRESHNESS_URL, CARD_URL]);
     await advance(299_999);
-    expect(urls).toEqual([CARD_URL]);
+    expect(urls).toEqual([FRESHNESS_URL, CARD_URL]);
     await advance(1);
-    expect(urls).toEqual([CARD_URL, CARD_URL]);
+    expect(urls).toEqual([FRESHNESS_URL, CARD_URL, FRESHNESS_URL, CARD_URL]);
   });
 
   it('asks nothing while the tab is hidden, then once on becoming visible with stale data', async () => {
     const urls = replies(() => jsonResponse(cardWithPrices(risingPrice)));
     await openCard();
-    expect(urls).toHaveLength(1);
+    expect(urls).toHaveLength(2);
     setVisibility('hidden');
     await advance(600_000);
-    expect(urls).toHaveLength(1);
+    expect(urls).toHaveLength(2);
     setVisibility('visible');
     await settle();
-    expect(urls).toEqual([CARD_URL, CARD_URL]);
+    expect(urls).toEqual([FRESHNESS_URL, CARD_URL, FRESHNESS_URL, CARD_URL]);
     expect(within(prices()).getByText(AS_OF_1012)).toBeTruthy();
   });
 
@@ -140,7 +150,7 @@ describe('card page polling (D9, T03)', () => {
     );
     await openCard();
     await advance(300_000);
-    expect(urls).toHaveLength(2);
+    expect(urls).toHaveLength(4);
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Unown');
     expect(within(prices()).getByText('Market price $70.81')).toBeTruthy();
     expect(
@@ -175,7 +185,7 @@ describe('card page polling (D9, T03)', () => {
       `finish0, unlimitedMarket price $70.81▲ +$1.45 (+2.09%) vs previous close (2026-10-11)${AS_OF_1012}`,
     );
     await advance(300_000);
-    expect(urls).toHaveLength(2);
+    expect(urls).toHaveLength(4);
     expect(within(prices()).getByRole('listitem').textContent).toBe(
       'finish0, unlimitedMarket price $68.06▼ -$2.75 (-3.88%) vs previous close (2026-10-12)as of 2026-10-13 from TCGCSV (daily close)',
     );

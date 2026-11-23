@@ -255,7 +255,9 @@ describe('review: each watchlist row fails on its own', () => {
     // The watchlist is refetched only by the success, and nothing but the session and the list is read.
     const reads = calls.map((call) => call.key).filter((key) => key.startsWith('GET /v1/'));
     expect(reads.filter((key) => key === 'GET /v1/watchlist')).toHaveLength(2);
-    expect(reads.filter((key) => key !== 'GET /v1/watchlist' && key !== 'GET /v1/me')).toEqual([]);
+    expect(reads.filter((key) => key !== 'GET /v1/watchlist' && key !== 'GET /v1/me')).toEqual([
+      'GET /v1/prices/freshness',
+    ]);
   });
 });
 

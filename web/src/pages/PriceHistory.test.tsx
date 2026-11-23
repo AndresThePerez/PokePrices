@@ -116,7 +116,7 @@ describe('Price history section (T05)', () => {
   it('asks for 1M by default and shows the heading, five ranges, the stamp, banner and summary', async () => {
     const urls = serve(() => jsonResponse(history));
     const section = await loaded();
-    expect(urls).toEqual([CARD_URL, HISTORY_1M]);
+    expect(urls).toEqual(['/v1/prices/freshness', CARD_URL, HISTORY_1M]);
     expect(within(section).getByRole('heading', { level: 2 }).textContent).toBe('Price history');
     const buttons = rangeButtons(section);
     expect(buttons.map((button) => button.textContent)).toEqual(['1W', '1M', '3M', 'YTD', '1Y']);
@@ -135,7 +135,12 @@ describe('Price history section (T05)', () => {
     const section = await loaded();
     fireEvent.click(within(section).getByRole('button', { name: '3M' }));
     await within(section).findByText(/^Holo, unlimited, 3M: /);
-    expect(urls).toEqual([CARD_URL, HISTORY_1M, '/v1/cards/ex10-%3F/prices?range=3M']);
+    expect(urls).toEqual([
+      '/v1/prices/freshness',
+      CARD_URL,
+      HISTORY_1M,
+      '/v1/cards/ex10-%3F/prices?range=3M',
+    ]);
     expect(pressed(rangeButtons(section))).toEqual(['3M']);
   });
 
@@ -176,7 +181,7 @@ describe('Price history section (T05)', () => {
     expect(summary(section)).toBe('Reverse, unlimited, 1M: 1 daily close, $70.81 on 2026-10-12.');
     expect(within(section).queryByRole('note')).toBeNull();
     expect(screen.getByRole('region', { name: 'Prices' }).innerHTML).toBe(pricesBefore);
-    expect(urls).toEqual([CARD_URL, HISTORY_1M]);
+    expect(urls).toEqual(['/v1/prices/freshness', CARD_URL, HISTORY_1M]);
     fireEvent.click(within(section).getByRole('button', { name: 'YTD' }));
     await within(section).findByText(/^Reverse, unlimited, YTD: /);
     expect(screen.getByRole('region', { name: 'Prices' }).innerHTML).toBe(pricesBefore);
@@ -326,7 +331,7 @@ describe('Price history section (T05)', () => {
       visit('/card/ex10-%3F');
       render(<App />);
       await screen.findByText(/No prices yet|Card not found|Could not load this card/);
-      expect(calls.map((call) => call.url)).toEqual([CARD_URL]);
+      expect(calls.map((call) => call.url)).toEqual(['/v1/prices/freshness', CARD_URL]);
       expect(screen.queryByRole('region', { name: 'Price history' })).toBeNull();
     },
   );

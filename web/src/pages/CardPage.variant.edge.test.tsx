@@ -347,17 +347,17 @@ describe('every part of the page follows the variant the link names', () => {
     },
   );
 
-  it('opens the default variant for a link naming the unpriced variant, without an error', async () => {
+  it('opens the unpriced variant a link names, without an error', async () => {
     serve();
     visit(cardVariantPath('ex10-?', UNPRICED));
     render(<App />);
-    expect(await heroLabel()).toBe('Market price · holo, unlimited');
-    expect(pressed(await historySection())).toEqual(['holo, unlimited']);
+    expect(await heroLabel()).toBe('Market price · normal, unlimited');
+    expect(pressed(await historySection())).toEqual(['normal, unlimited']);
     expect(screen.queryByRole('alert')).toBeNull();
     expect(consoleError).not.toHaveBeenCalled();
   });
 
-  it('opens the priced variant of the fixture card when the link names its unpriced reverse', async () => {
+  it('opens the unpriced reverse of the fixture card when the link names it', async () => {
     const urls: string[] = [];
     stubFetch((url) => {
       urls.push(url);
@@ -365,7 +365,7 @@ describe('every part of the page follows the variant the link names', () => {
     });
     visit(cardVariantPath('ex10-?', 'ex10-?:reverse:unlimited:-'));
     render(<App />);
-    expect(await heroLabel()).toBe('Market price · holo, unlimited');
+    expect(await heroLabel()).toBe('Market price · reverse, unlimited');
     expect(screen.queryByRole('alert')).toBeNull();
     expect(consoleError).not.toHaveBeenCalled();
   });

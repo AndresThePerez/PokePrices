@@ -17,10 +17,19 @@ import {
 } from '../api/client';
 import { DEFAULT_RANGE } from '../chart/series';
 import Sparkline from '../chart/Sparkline';
-import { PRICE_FOOTNOTE, initialOf, variantLabel } from '../format';
+import {
+  PRICE_FOOTNOTE,
+  initialOf,
+  listingAsOfText,
+  lowestListingText,
+  noRecentSalesText,
+  thinMarketText,
+  variantLabel,
+} from '../format';
 import { MUTED, TEXT_LINK } from '../ui/classes';
 import StatusLine from '../ui/StatusLine';
 import DegradedNotice from '../ui/DegradedNotice';
+import Notice from '../ui/Notice';
 import Page from '../ui/Page';
 import Panel from '../ui/Panel';
 import PriceTag, { AsOf, ChangeChip, HeroPrice } from '../ui/PriceTag';
@@ -141,9 +150,37 @@ function isPriced(variant: Variant): variant is PricedVariant {
   return variant.price !== null;
 }
 
+const NO_PRICE = 'No price in the collected snapshots';
+
+/** The lowest listing of the close's own snapshot, or null when the API sent none. */
+function lowestOf(price: Price): string | null {
+  const lowest: unknown = price.lowest_listing;
+  return typeof lowest === 'string' ? lowest : null;
+}
+
+/** "Lowest listing $X" under a close whose snapshot listed one. */
+function ListingLine({ price }: { readonly price: Price }) {
+  const lowest = lowestOf(price);
+  if (lowest === null) return null;
+  return <p className="mt-1 num text-sm text-ink-muted">{lowestListingText(lowest)}</p>;
+}
+
+/** The thin-market note, only when the API flags the close and names the listing it is under. */
+function ThinNote({ price }: { readonly price: Price }) {
+  const lowest = lowestOf(price);
+  const thin: unknown = price.thin_market;
+  if (lowest === null || thin !== true) return null;
+  return (
+    <Notice tone="warn" as="p" className="mt-2 text-sm">
+      {thinMarketText(lowest)}
+    </Notice>
+  );
+}
+
 /**
- * The headline: the chosen variant's figure, change chip and as-of line, led by its label line.
- * It sits outside the Prices region and carries no role, so the region's lines stay unique.
+ * The headline: the chosen variant's figure, change chip, lowest listing and as-of line, led by
+ * its label line, then the thin-market note when the close is flagged. It sits outside the Prices
+ * region and carries no role, so the region's lines stay unique.
  */
 function Hero({ variant }: { readonly variant: PricedVariant }) {
   return (
@@ -153,7 +190,37 @@ function Hero({ variant }: { readonly variant: PricedVariant }) {
         <HeroPrice close={variant.price.close} />
         <ChangeChip price={variant.price} />
       </div>
+      <ListingLine price={variant.price} />
       <AsOf day={variant.price.day} as="p" className="mt-1" />
+      <ThinNote price={variant.price} />
+    </div>
+  );
+}
+
+/** What a variant with no close shows in place of a price: its listing sentence, or no price. */
+function NoClose({
+  variant,
+  className,
+}: {
+  readonly variant: Variant;
+  readonly className: string;
+}) {
+  const listing = variant.listing;
+  if (listing === undefined) return <p className={className}>{NO_PRICE}</p>;
+  return (
+    <>
+      <p className={className}>{noRecentSalesText(listing.lowest_listing)}</p>
+      <p className="mt-1 text-meta text-ink-muted">{listingAsOfText(listing.day)}</p>
+    </>
+  );
+}
+
+/** The headline of a named variant with no close: its label line and what it has instead. */
+function UnpricedHero({ variant }: { readonly variant: Variant }) {
+  return (
+    <div>
+      <p className="text-sm text-ink-muted">{`Market price · ${variantLabel(variant)}`}</p>
+      <NoClose variant={variant} className="mt-1 num text-lg font-semibold" />
     </div>
   );
 }
@@ -180,10 +247,19 @@ function VariantRow({
   return (
     <li className={variant.price === null ? ROW : `${ROW} ${PRICE_WRAPS}`}>
       {variant.price === null ? (
-        <span className="flex flex-wrap items-baseline gap-x-3 text-base text-ink-muted">
-          <span className="font-semibold capitalize">{variantLabel(variant)}</span>
-          <span className="text-meta">No price in the collected snapshots</span>
-        </span>
+        variant.listing === undefined ? (
+          <span className="flex flex-wrap items-baseline gap-x-3 text-base text-ink-muted">
+            <span className="font-semibold capitalize">{variantLabel(variant)}</span>
+            <span className="text-meta">{NO_PRICE}</span>
+          </span>
+        ) : (
+          <>
+            <span className="block text-base font-semibold capitalize">
+              {variantLabel(variant)}
+            </span>
+            <NoClose variant={variant} className="mt-1 num text-base" />
+          </>
+        )
       ) : (
         <>
           <span className="block text-base font-semibold capitalize">{variantLabel(variant)}</span>
@@ -196,6 +272,8 @@ function VariantRow({
               </div>
             }
           />
+          <ListingLine price={variant.price} />
+          <ThinNote price={variant.price} />
         </>
       )}
       <AccountScope>
@@ -210,8 +288,11 @@ function VariantRow({
  * variant choice. The chosen key is the address's `variant` parameter while the page is at its own
  * card address (a list row links there with its variant; choosing another one replaces the
  * address, so Back and Forward never reopen a choice the address does not name), else the page's
- * own state. A key the card prices no variant of opens the default: the first priced variant
- * with an eligible series, in card order, else the first priced variant. The 1M history
+ * own state. A key of a variant the card has opens that variant, priced or not: one with no close
+ * shows its listing sentence (or no price) in the hero and the no-close line in the chart. Any
+ * other key, or none, opens the default: the first priced variant with an eligible series, in
+ * card order, else the first priced variant; so does a variant that loses its price on a poll
+ * while the page shows it. The 1M history
  * query is the chart's default one (same key), so the page still asks for it once; it feeds the
  * sparklines and the default choice, and nothing is drawn while it loads or after it fails.
  */
@@ -229,21 +310,39 @@ function PricedCard({ pageId, card }: { readonly pageId: string; readonly card: 
     else setOwnChoice(variantKey);
   };
   const priced = card.variants.filter(isPriced);
+  // The variants this page has shown with a price: one that loses its price on a poll is no
+  // longer opened by its key, so the page falls back to the default rather than blanking the hero.
+  const [seenPriced, setSeenPriced] = useState<ReadonlySet<string>>(
+    () => new Set(priced.map((variant) => variant.variant_key)),
+  );
+  const newlyPriced = priced.filter((variant) => !seenPriced.has(variant.variant_key));
+  if (newlyPriced.length > 0) {
+    setSeenPriced(new Set([...seenPriced, ...newlyPriced.map((variant) => variant.variant_key)]));
+  }
   const eligible = eligibleKeys(history.data);
-  const selected =
+  const named = card.variants.find((variant) => variant.variant_key === chosen);
+  const namedUnpriced =
+    named !== undefined && !isPriced(named) && !seenPriced.has(named.variant_key) ? named : null;
+  const selected: Variant | undefined =
+    namedUnpriced ??
     priced.find((variant) => variant.variant_key === chosen) ??
     priced.find((variant) => eligible.has(variant.variant_key)) ??
     priced[0];
   // Priced rows first, then the unpriced ones, each group in card order (RULING m).
   const rows = [...priced, ...card.variants.filter((variant) => variant.price === null)];
+  let hero = null;
+  if (selected !== undefined) {
+    hero = isPriced(selected) ? <Hero variant={selected} /> : <UnpricedHero variant={selected} />;
+  }
   return (
     <>
-      {selected !== undefined && <Hero variant={selected} />}
+      {hero}
       <PriceHistory
         id={card.id}
         chosen={selected?.variant_key ?? null}
         onChoose={setChosen}
         priced={priced.map((variant) => variant.variant_key)}
+        unpriced={namedUnpriced}
       />
       <PricesSection>
         <ul className="mt-4 divide-y divide-line-subtle">

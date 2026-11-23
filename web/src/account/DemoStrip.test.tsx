@@ -95,7 +95,11 @@ describe('the persistent demo strip (RULING e)', () => {
       expectStrip();
       expect(within(banner()).getByRole('button', { name: 'Sign out' })).toBeTruthy();
       expect(within(main()).queryByText(DEMO_NOTICE)).toBeNull();
-      expect(calls.map((call) => call.key)).toEqual(['GET /v1/me', key]);
+      expect(calls.map((call) => call.key)).toEqual([
+        'GET /v1/prices/freshness',
+        'GET /v1/me',
+        key,
+      ]);
     },
   );
 

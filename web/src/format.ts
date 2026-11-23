@@ -31,6 +31,26 @@ export function asOfText(day: string): string {
   return `as of ${day} from TCGCSV (daily close)`;
 }
 
+/** "Lowest listing $X": the lowest listing of the snapshot a close came from, beside that close. */
+export function lowestListingText(amount: string): string {
+  return `Lowest listing $${grouped(amount)}`;
+}
+
+/** The note under a close the API flags as a thin market (under half its lowest listing). */
+export function thinMarketText(lowest: string): string {
+  return `Thin market: the market price is from few or old sales; the lowest listing in the same snapshot is $${grouped(lowest)}.`;
+}
+
+/** What a variant with a listing and no close reads in place of a price. */
+export function noRecentSalesText(lowest: string): string {
+  return `No recent sales; lowest listing $${grouped(lowest)}`;
+}
+
+/** The source and "as of" line of a listing shown without a close: the day of its snapshot. */
+export function listingAsOfText(day: string): string {
+  return `Listing as of ${day} from TCGCSV (daily snapshot)`;
+}
+
 /**
  * The one source-and-"as of" line of a list whose prices rest on the days `first` to `last`: the
  * "as of" text of one day, or "Closes from <first> to <last> from TCGCSV (daily close)".

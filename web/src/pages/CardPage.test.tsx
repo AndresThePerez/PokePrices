@@ -64,7 +64,7 @@ describe('CardPage', () => {
     visit('/card/ex10-%3F');
     render(<App />);
     await screen.findByRole('heading', { level: 1, name: 'Unown' });
-    expect(calls.map((call) => call.url)).toEqual(['/v1/cards/ex10-%3F']);
+    expect(calls.map((call) => call.url)).toEqual(['/v1/prices/freshness', '/v1/cards/ex10-%3F']);
     expect(screen.getByText(SEEDED_LINE)).toBeTruthy();
     expect(screen.queryByText('catalog version unknown')).toBeNull();
   });
@@ -158,7 +158,7 @@ describe('CardPage', () => {
     const calls = stubFetch(() => new Error('not answered before the assertions'));
     visit('/card/ex10-%3F');
     render(<App />);
-    expect(calls).toHaveLength(1);
+    expect(calls).toHaveLength(2);
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Card ex10-?');
     expect(screen.getByRole('status').textContent).toBe('Loading card ex10-?…');
   });

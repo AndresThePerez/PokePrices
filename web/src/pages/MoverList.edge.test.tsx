@@ -16,7 +16,7 @@ import {
 } from '../test/fixtures';
 
 const SCOPE =
-  'Ranked by change vs previous close among variants whose previous close was at least $2.00.';
+  'Ranked by change vs previous close among variants whose previous close was at least $2.00, that moved at least 5% and at least $1.00, had four different closes among their last five, and whose two closes each sat between half the lowest listing and 1.5 times the mid listing of their own day.';
 const STAMP_1011 = 'as of 2026-10-11 from TCGCSV (daily close)';
 const STAMP_1012 = 'as of 2026-10-12 from TCGCSV (daily close)';
 const STAMP_1013 = 'as of 2026-10-13 from TCGCSV (daily close)';
@@ -185,7 +185,7 @@ describe('home strip stamp rule edge cases (F-P3-05)', () => {
         () => jsonResponse(moversBody('down', [nextDayFall], { limit: 5, ...newDay })),
       ],
     );
-    expect(urls).toHaveLength(2);
+    expect(urls).toHaveLength(3);
     expect(within(strip()).getAllByText(STAMP_1012)).toHaveLength(1);
     const riseRow = within(sublist('Rises')).getByRole('listitem');
 
@@ -282,14 +282,14 @@ describe('shared MoverList purity and board polling (T09 criteria 3, 4; D9)', ()
       ],
       [() => jsonResponse(moversBody('down', [fallingMover]))],
     );
-    expect(urls).toHaveLength(1);
-    await advance(300_000);
     expect(urls).toHaveLength(2);
+    await advance(300_000);
+    expect(urls).toHaveLength(4);
     expect(screen.getByRole('link', { name: 'Chimecho' })).toBeTruthy();
     expect(screen.getByText(STAMP_1012)).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
     await advance(300_000);
-    expect(urls).toHaveLength(3);
+    expect(urls).toHaveLength(6);
     expect(screen.getByText(STAMP_1013)).toBeTruthy();
     expect(screen.getByText('Market price $30.00')).toBeTruthy();
     expect(screen.queryByText(STAMP_1012)).toBeNull();
@@ -373,7 +373,7 @@ describe('shared MoverList purity and board polling (T09 criteria 3, 4; D9)', ()
     );
     expect(
       screen.getByText(
-        'Ranked by change vs previous close among variants whose previous close was at least $1,000.00.',
+        'Ranked by change vs previous close among variants whose previous close was at least $1,000.00, that moved at least 5% and at least $1.00, had four different closes among their last five, and whose two closes each sat between half the lowest listing and 1.5 times the mid listing of their own day.',
       ),
     ).toBeTruthy();
     expect(screen.getByText('Market price $1,234,567.80')).toBeTruthy();

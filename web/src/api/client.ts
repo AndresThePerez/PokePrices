@@ -21,6 +21,9 @@ export type PriceRange = NonNullable<
 
 export type MoversPage = operations['getMovers']['responses'][200]['content']['application/json'];
 export type Mover = MoversPage['data'][number];
+
+export type PriceFreshness =
+  operations['getPriceFreshness']['responses'][200]['content']['application/json'];
 /** The generated direction union: 'up' (rises) | 'down' (falls). */
 export type MoversDirection = NonNullable<
   NonNullable<operations['getMovers']['parameters']['query']>['direction']
@@ -246,6 +249,11 @@ const MOVERS = fields({
   meta: fields({ day: orNull(text), min_previous_close: text, degraded: flag }),
 });
 
+/** The freshness answer: the newest collected day, its age in hours and the SLO verdict (the banner). */
+const FRESHNESS = fields({
+  data: fields({ day: orNull(text), age_hours: orNull(whole), within_slo: flag }),
+});
+
 const ME = fields({
   data: fields({ email: text, email_verified: flag, two_factor: flag, read_only: flag }),
 });
@@ -329,6 +337,7 @@ const isCardSearchPage = (value: unknown): value is CardSearchPage => SEARCH(val
 const isCardDetail = (value: unknown): value is CardDetail => CARD(value);
 const isCardPrices = (value: unknown): value is CardPrices => pricesAnswer(value);
 const isMoversPage = (value: unknown): value is MoversPage => MOVERS(value);
+const isPriceFreshness = (value: unknown): value is PriceFreshness => FRESHNESS(value);
 const isMeBody = (value: unknown): value is MeBody => ME(value);
 const isWatchlistBody = (value: unknown): value is WatchlistBody => WATCHLIST(value);
 const isPortfolioBody = (value: unknown): value is PortfolioBody => PORTFOLIO(value);
@@ -427,6 +436,13 @@ export function getMovers(
 ): Promise<ApiResult<MoversPage>> {
   const params = new URLSearchParams({ direction, limit: String(limit) });
   return decoded(publicRead(`/movers?${params.toString()}`, options), isMoversPage);
+}
+
+/** GET /v1/prices/freshness (how old the newest collected prices are, against the SLO). */
+export function getPriceFreshness(
+  options: RequestOptions = {},
+): Promise<ApiResult<PriceFreshness>> {
+  return decoded(publicRead('/prices/freshness', options), isPriceFreshness);
 }
 
 // ---- Accounts --------------------------------------------------------------------------

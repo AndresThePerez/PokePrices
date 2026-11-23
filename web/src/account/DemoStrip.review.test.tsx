@@ -142,7 +142,14 @@ describe('the strip claims a session state only when the cache really knows it',
       const hops: readonly (readonly [string, readonly string[]])[] = [
         ['/movers', ['GET /v1/movers?direction=up&limit=50']],
         ['/search?q=unown', ['GET /v1/cards?q=unown']],
-        ['/card/ex10-%3F', ['GET /v1/cards/ex10-%3F', 'GET /v1/cards/ex10-%3F/prices?range=1M']],
+        [
+          '/card/ex10-%3F',
+          [
+            'GET /v1/prices/freshness',
+            'GET /v1/cards/ex10-%3F',
+            'GET /v1/cards/ex10-%3F/prices?range=1M',
+          ],
+        ],
       ];
       for (const [path, keys] of hops) {
         const before = calls.length;

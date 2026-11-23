@@ -25,6 +25,11 @@ export function moversKey(
   return ['movers', direction, limit];
 }
 
+/** GET /v1/prices/freshness (the shell's stale-prices banner). */
+export function freshnessKey(): readonly ['price-freshness'] {
+  return ['price-freshness'];
+}
+
 /** GET /v1/cards?q=…[&page=…] */
 export function searchKey(q: string, page: number): readonly ['search', string, number] {
   return ['search', q, page];

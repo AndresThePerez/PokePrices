@@ -90,7 +90,7 @@ describe('the portfolio page (T07 criterion 1, D9, D10)', () => {
       ['Create an account', '/sign-up'],
     ]);
     expect(within(main()).getByRole('button', { name: 'Try the read-only demo' })).toBeTruthy();
-    expect(calls.map((call) => call.key)).toEqual(['GET /v1/me']);
+    expect(calls.map((call) => call.key)).toEqual(['GET /v1/prices/freshness', 'GET /v1/me']);
   });
 
   it("renders D9's worked example: the API's values, total, days and the excluded holding", async () => {

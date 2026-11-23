@@ -183,7 +183,11 @@ describe('CardPage edge cases', () => {
     });
     expect(screen.queryByText('Unown')).toBeNull();
     expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/^Card svp-1$/);
-    expect(calls.map((call) => call.url)).toEqual(['/v1/cards/ex10-%3F', '/v1/cards/svp-1']);
+    expect(calls.map((call) => call.url)).toEqual([
+      '/v1/prices/freshness',
+      '/v1/cards/ex10-%3F',
+      '/v1/cards/svp-1',
+    ]);
   });
 
   it('survives empty and unparseable image URLs without crashing or inventing an attribution host', async () => {

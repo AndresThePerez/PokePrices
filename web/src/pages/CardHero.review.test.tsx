@@ -8,7 +8,9 @@ import {
   cardWithPrices,
   degradedCardBody,
   fallingPrice,
+  freshnessBody,
   historyBody,
+  isFreshnessUrl,
   isHistoryUrl,
   jsonResponse,
   pointOf,
@@ -168,7 +170,7 @@ describe('Card hero, review edge cases (D2-i1-T01)', () => {
       expect(pressedVariant()).toEqual([label]);
       expect(within(heroOf()).getByText(`Market price · ${label}`)).toBeTruthy();
     }
-    expect(urls).toEqual([CARD_URL, HISTORY_1M]);
+    expect(urls).toEqual(['/v1/prices/freshness', CARD_URL, HISTORY_1M]);
   });
 
   it('shows the hero figure exactly as the Prices row does, grouped from the API string and never re-rounded', async () => {
@@ -192,7 +194,7 @@ describe('Card hero, review edge cases (D2-i1-T01)', () => {
       await new Promise((resolve) => {
         setTimeout(resolve, 20);
       });
-      expect(urls).toEqual([CARD_URL]);
+      expect(urls).toEqual(['/v1/prices/freshness', CARD_URL]);
       expect(screen.queryByText(/^Market price/)).toBeNull();
       expect(screen.queryByRole('region', { name: 'Price history' })).toBeNull();
       expect(screen.queryByText(FOOTNOTE)).toBeNull();
@@ -287,7 +289,9 @@ describe('Card hero across the five-minute poll (D2-i1-T01, A1-4)', () => {
     const second = cardWithPrices(risingPrice, null);
     const cards = [first, second];
     let asked = 0;
-    stubFetch((url) => {
+    const calls = stubFetch((url) => {
+      if (isFreshnessUrl(url))
+        return jsonResponse(freshnessBody({ within_slo: true, age_hours: 3.5 }));
       if (isHistoryUrl(url)) {
         return jsonResponse(
           historyBody([
@@ -314,6 +318,7 @@ describe('Card hero across the five-minute poll (D2-i1-T01, A1-4)', () => {
     await settle();
 
     expect(asked).toBe(2);
+    expect(calls.filter((call) => isFreshnessUrl(call.url))).toHaveLength(2);
     const label = screen.getByText(/^Market price · /);
     expect(label.textContent).toBe('Market price · finish0, unlimited');
     expect(within(label.parentElement as HTMLElement).getByText('$70.81')).toBeTruthy();

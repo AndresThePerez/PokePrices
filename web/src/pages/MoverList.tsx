@@ -83,11 +83,14 @@ export function MoversStamp({
   return <AsOf day={day} as="p" id={id} className={className} />;
 }
 
-/** What the ranking counts. */
+/**
+ * What the ranking counts, as the API ranks it: the floor of the previous close from the answer,
+ * then the move, recent-activity and listing conditions the ranking applies on top of it.
+ */
 export function MoversScope({ body }: { readonly body: MoversPage }) {
   return (
     <p className={`mt-3 text-sm ${MUTED}`}>
-      {`Ranked by change vs previous close among variants whose previous close was at least $${grouped(body.meta.min_previous_close)}.`}
+      {`Ranked by change vs previous close among variants whose previous close was at least $${grouped(body.meta.min_previous_close)}, that moved at least 5% and at least $1.00, had four different closes among their last five, and whose two closes each sat between half the lowest listing and 1.5 times the mid listing of their own day.`}
     </p>
   );
 }

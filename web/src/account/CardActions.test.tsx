@@ -97,7 +97,7 @@ describe('the card-page buttons (T07 criterion 3, D10)', () => {
       expect(hold.getAttribute('aria-expanded')).toBe('false');
     }
     await new Promise((resolve) => setTimeout(resolve, 30));
-    expect(calls.map((call) => call.key)).toEqual([CARD, HISTORY]);
+    expect(calls.map((call) => call.key)).toEqual(['GET /v1/prices/freshness', CARD, HISTORY]);
     expect(within(prices()).queryByLabelText('Quantity owned')).toBeNull();
   });
 
@@ -110,7 +110,7 @@ describe('the card-page buttons (T07 criterion 3, D10)', () => {
     expect(link.getAttribute('href')).toBe('/watchlist');
     const keys = calls.map((call) => call.key);
     expect(keys.filter((key) => key === WATCH_PUT)).toHaveLength(1);
-    expect(keys.slice(2)).toEqual(['GET /sanctum/csrf-cookie', WATCH_PUT]);
+    expect(keys.slice(3)).toEqual(['GET /sanctum/csrf-cookie', WATCH_PUT]);
     expect(sentBody(calls.find((call) => call.key === WATCH_PUT))).toBeUndefined();
   });
 
@@ -184,7 +184,12 @@ describe('Add to portfolio on the card page (T07 criterion 3)', () => {
         .getAttribute('aria-expanded'),
     ).toBe('true');
     expect(calls.filter((call) => call.key === 'GET /v1/portfolio')).toHaveLength(1);
-    expect(calls.map((call) => call.key)).toEqual([CARD, HISTORY, 'GET /v1/portfolio']);
+    expect(calls.map((call) => call.key)).toEqual([
+      'GET /v1/prices/freshness',
+      CARD,
+      HISTORY,
+      'GET /v1/portfolio',
+    ]);
   });
 
   it('prefills 1 when the variant is not held, then saves and links to the portfolio', async () => {

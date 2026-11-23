@@ -119,7 +119,11 @@ describe('the alert control on each watchlist row (P5 T07 criterion 3)', () => {
     ).toBe('/alerts');
     expect(main().textContent.endsWith(FOOTNOTE)).toBe(true);
     // Criterion 5: no settings and no webhooks request on /watchlist.
-    expect(calls.map((call) => call.key)).toEqual(['GET /v1/me', 'GET /v1/watchlist']);
+    expect(calls.map((call) => call.key)).toEqual([
+      'GET /v1/prices/freshness',
+      'GET /v1/me',
+      'GET /v1/watchlist',
+    ]);
   });
 
   it('PUTs {"pct": n} once per click for a number, then refetches the watchlist', async () => {
@@ -265,7 +269,11 @@ describe('who sees the alert control (P5 T07 criterion 4)', () => {
     expect(screen.queryByText(/^Alert: /)).toBeNull();
     expect(screen.queryByText(EXPLAINER)).toBeNull();
     expect(screen.getAllByRole('button', { name: /^Remove / })).toHaveLength(3);
-    expect(calls.map((call) => call.key)).toEqual(['GET /v1/me', 'GET /v1/watchlist']);
+    expect(calls.map((call) => call.key)).toEqual([
+      'GET /v1/prices/freshness',
+      'GET /v1/me',
+      'GET /v1/watchlist',
+    ]);
   });
 
   it('an empty watchlist shows no explainer', async () => {

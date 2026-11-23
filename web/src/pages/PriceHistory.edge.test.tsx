@@ -149,7 +149,7 @@ describe('Price history edge cases (T05)', () => {
     expect(pressed(ranges())).toEqual(['1M']);
     expect(pressed(variants())).toEqual(['reverse, unlimited']);
     const urls = calls.map((call) => call.url);
-    expect(urls.filter((url) => !isHistoryUrl(url))).toEqual([CARD_URL]);
+    expect(urls.filter((url) => !isHistoryUrl(url))).toEqual(['/v1/prices/freshness', CARD_URL]);
     expect(urls.filter(isHistoryUrl)).toEqual([
       `${CARD_URL}/prices?range=1M`,
       `${CARD_URL}/prices?range=3M`,
@@ -187,7 +187,7 @@ describe('Price history edge cases (T05)', () => {
     fireEvent.click(within(section).getByRole('button', { name: '1W' }));
     await within(section).findByRole('alert');
     expect(screen.getByRole('region', { name: 'Prices' }).innerHTML).toBe(before);
-    expect(calls.filter((call) => !isHistoryUrl(call.url))).toHaveLength(1);
+    expect(calls.filter((call) => !isHistoryUrl(call.url))).toHaveLength(2);
     expect(pressed(within(section).getByRole('group', { name: 'Chart range' }))).toEqual(['1W']);
   });
 });

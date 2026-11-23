@@ -18,7 +18,7 @@ const H1 = 'Pokémon card prices at the daily close';
 const INTRO =
   'Pokémon card prices at the daily close. Every price shows its source and the date it is as of.';
 const SCOPE =
-  'Ranked by change vs previous close among variants whose previous close was at least $2.00.';
+  'Ranked by change vs previous close among variants whose previous close was at least $2.00, that moved at least 5% and at least $1.00, had four different closes among their last five, and whose two closes each sat between half the lowest listing and 1.5 times the mid listing of their own day.';
 const STAMP_1012 = 'as of 2026-10-12 from TCGCSV (daily close)';
 const FOOTNOTE = 'TCGplayer market prices via TCGCSV, collected once a day.';
 
@@ -68,12 +68,14 @@ describe('home as a landing (D2-i1-T03)', () => {
     expect(calls.map((call) => call.url).sort()).toEqual([
       '/v1/movers?direction=down&limit=5',
       '/v1/movers?direction=up&limit=5',
+      '/v1/prices/freshness',
     ]);
     fireEvent.change(box, { target: { value: '  unown ?  ' } });
     fireEvent.submit(box);
     expect(window.location.pathname + window.location.search).toBe('/search?q=unown+%3F');
     await screen.findByRole('list', { name: 'Search results' });
     expect(calls.map((call) => call.url).filter((url) => !isMoversUrl(url))).toEqual([
+      '/v1/prices/freshness',
       '/v1/cards?q=unown+%3F',
     ]);
   });

@@ -91,6 +91,7 @@ describe('a 401 write with no ["me"] observer (review)', () => {
     expect(await screen.findByText('Sign in to keep a watchlist and a portfolio.')).toBeTruthy();
     await settle();
     expect(calls.map((call) => call.key)).toEqual([
+      'GET /v1/prices/freshness',
       'GET /v1/cards/ex10-%3F',
       'GET /v1/cards/ex10-%3F/prices?range=1M',
       'GET /sanctum/csrf-cookie',

@@ -18,7 +18,7 @@ import {
 const UP_URL = '/v1/movers?direction=up&limit=50';
 const DOWN_URL = '/v1/movers?direction=down&limit=50';
 const SCOPE =
-  'Ranked by change vs previous close among variants whose previous close was at least $2.00.';
+  'Ranked by change vs previous close among variants whose previous close was at least $2.00, that moved at least 5% and at least $1.00, had four different closes among their last five, and whose two closes each sat between half the lowest listing and 1.5 times the mid listing of their own day.';
 const STAMP_1012 = 'as of 2026-10-12 from TCGCSV (daily close)';
 const FOOTNOTE = 'TCGplayer market prices via TCGCSV, collected once a day.';
 const DEGRADED = 'Catalog data may be out of date: PokéSearch is unavailable';
@@ -77,7 +77,7 @@ describe('movers board (T09 criteria 2 and 3)', () => {
       );
     }
     await screen.findByText('Market price $26.34');
-    expect(urls).toEqual([UP_URL]);
+    expect(urls).toEqual(['/v1/prices/freshness', UP_URL]);
   });
 
   it('switches to falls in place: /movers?direction=down, Falls pressed, the falls request', async () => {
@@ -94,7 +94,7 @@ describe('movers board (T09 criteria 2 and 3)', () => {
       'false',
     );
     await screen.findByText('Market price $65.11');
-    expect(urls).toEqual([UP_URL, DOWN_URL]);
+    expect(urls).toEqual(['/v1/prices/freshness', UP_URL, DOWN_URL]);
     fireEvent.click(screen.getByRole('button', { name: 'Rises' }));
     expect(window.location.pathname + window.location.search).toBe('/movers');
   });
@@ -102,7 +102,7 @@ describe('movers board (T09 criteria 2 and 3)', () => {
   it('opens on falls from /movers?direction=down', async () => {
     const urls = openBoard('/movers?direction=down', answer(moversBody('down', [fallingMover])));
     await screen.findByText('Market price $65.11');
-    expect(urls).toEqual([DOWN_URL]);
+    expect(urls).toEqual(['/v1/prices/freshness', DOWN_URL]);
   });
 
   it('reaches the board from the header Movers link', async () => {

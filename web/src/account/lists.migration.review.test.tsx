@@ -159,7 +159,7 @@ describe('the list strings stay single text nodes in their own elements (T10)', 
       expect(
         calls.map((call) => call.key),
         path,
-      ).toEqual(['GET /v1/me', key]);
+      ).toEqual(['GET /v1/prices/freshness', 'GET /v1/me', key]);
       expect(screen.getAllByText(FOOTNOTE), path).toHaveLength(1);
       unmount();
       cleanup();

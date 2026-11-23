@@ -176,8 +176,13 @@ describe('the verify-email request sequence (c1 note)', () => {
     navigate(page);
     expect(await screen.findByText('Your email address is verified.')).toBeTruthy();
     await new Promise((resolve) => setTimeout(resolve, 30));
-    // The home page in between asks only for its movers.
+    // The home page in between asks only for its movers and the prices' freshness.
     const account = calls.filter((call) => !call.key.startsWith('GET /v1/movers?'));
-    expect(account.map((call) => call.key)).toEqual(['GET /v1/me', `GET ${link}`, 'GET /v1/me']);
+    expect(account.map((call) => call.key)).toEqual([
+      'GET /v1/me',
+      `GET ${link}`,
+      'GET /v1/me',
+      'GET /v1/prices/freshness',
+    ]);
   });
 });

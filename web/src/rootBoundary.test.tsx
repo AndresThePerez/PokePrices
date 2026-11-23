@@ -74,7 +74,11 @@ describe('a wrong-shaped 200 shows the page problem block, not a blank page (pro
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toContain(`Could not load your watchlist: ${UNEXPECTED}`);
     shellIntact();
-    expect(calls.map((call) => call.key)).toEqual(['GET /v1/me', 'GET /v1/watchlist']);
+    expect(calls.map((call) => call.key)).toEqual([
+      'GET /v1/prices/freshness',
+      'GET /v1/me',
+      'GET /v1/watchlist',
+    ]);
   });
 });
 

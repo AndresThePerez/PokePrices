@@ -647,6 +647,41 @@ export function answerMovers(url: string): Response | Error {
     : jsonResponse(moversBody('up', [risingMover]));
 }
 
+type FreshnessBody =
+  operations['getPriceFreshness']['responses'][200]['content']['application/json'];
+
+/**
+ * GET /v1/prices/freshness: by default out of its 26 hour SLO, the newest collected day 2026-10-13
+ * and 950.3 hours old (dev's closes end on that day); `fields` override the data.
+ */
+export function freshnessBody(fields: Partial<FreshnessBody['data']> = {}): FreshnessBody {
+  return {
+    data: {
+      source: 'tcgplayer',
+      feed: 'tcgcsv',
+      as_of: '2026-10-13T20:05:44Z',
+      day: '2026-10-13',
+      age_hours: 950.3,
+      slo_hours: 26,
+      within_slo: false,
+      measured_at: '2026-11-22T10:23:44Z',
+      last_run: {
+        id: 41,
+        status: 'ok',
+        mode: 'sync',
+        day: '2026-10-13',
+        finished_at: '2026-10-13T20:11:02Z',
+      },
+      ...fields,
+    },
+  } satisfies FreshnessBody;
+}
+
+/** True for the GET /v1/prices/freshness URL. */
+export function isFreshnessUrl(url: string): boolean {
+  return url === '/v1/prices/freshness';
+}
+
 /** True for a GET /v1/cards/{id}/prices URL (the history request). */
 export function isHistoryUrl(url: string): boolean {
   return url.includes('/prices?range=');

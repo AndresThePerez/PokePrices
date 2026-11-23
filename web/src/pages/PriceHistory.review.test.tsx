@@ -110,7 +110,7 @@ describe('the Price history panel keeps its reading order and its one landmark (
     click('Hide data table');
     click('reverse, unlimited');
     click('holo, unlimited');
-    expect(urls()).toEqual([CARD_URL, HISTORY_1M]);
+    expect(urls()).toEqual(['/v1/prices/freshness', CARD_URL, HISTORY_1M]);
     click('3M');
     await waitFor(() => {
       expect(urls()).toContain(HISTORY_3M);
@@ -120,7 +120,7 @@ describe('the Price history panel keeps its reading order and its one landmark (
     click('3M');
     click('Show data table');
     await within(section).findByRole('table');
-    expect(urls()).toEqual([CARD_URL, HISTORY_1M, HISTORY_3M]);
+    expect(urls()).toEqual(['/v1/prices/freshness', CARD_URL, HISTORY_1M, HISTORY_3M]);
   });
 
   it('keeps the Variant group when the chosen variant has no close in the window, and charts the other', async () => {

@@ -328,7 +328,7 @@ describe('sparklines in the Prices list (T07)', () => {
     expect(reverse?.querySelector('svg')).toBeNull();
     expect(holo?.textContent).toBe(HOLO_ITEM);
     expect(reverse?.textContent).toBe(REVERSE_ITEM);
-    expect(urls).toEqual([CARD_URL, HISTORY_1M]);
+    expect(urls).toEqual(['/v1/prices/freshness', CARD_URL, HISTORY_1M]);
   });
 
   it('keeps the 1M sparkline when the chart shows another range', async () => {
@@ -340,7 +340,12 @@ describe('sparklines in the Prices list (T07)', () => {
     const before = screen.getByRole('region', { name: 'Prices' }).innerHTML;
     fireEvent.click(within(section).getByRole('button', { name: '3M' }));
     await within(section).findByText(/^No daily close for this variant between /);
-    expect(urls).toEqual([CARD_URL, HISTORY_1M, '/v1/cards/ex10-%3F/prices?range=3M']);
+    expect(urls).toEqual([
+      '/v1/prices/freshness',
+      CARD_URL,
+      HISTORY_1M,
+      '/v1/cards/ex10-%3F/prices?range=3M',
+    ]);
     expect(screen.getByRole('region', { name: 'Prices' }).innerHTML).toBe(before);
     expect(items()[0]?.querySelector('svg')).toBeTruthy();
   });

@@ -71,7 +71,7 @@ describe('the watchlist page (T07 criterion 1, D10)', () => {
     ]);
     expect(within(main()).getByRole('button', { name: 'Try the read-only demo' })).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
-    expect(calls.map((call) => call.key)).toEqual(['GET /v1/me']);
+    expect(calls.map((call) => call.key)).toEqual(['GET /v1/prices/freshness', 'GET /v1/me']);
   });
 
   it('shows each row like a movers row with its own as-of line, then the footnote', async () => {
@@ -254,6 +254,7 @@ describe('removing from the watchlist (T07 criterion 2)', () => {
     expect(await screen.findByText('Sign in to keep a watchlist.')).toBeTruthy();
     await new Promise((resolve) => setTimeout(resolve, 30));
     expect(calls.map((call) => call.key)).toEqual([
+      'GET /v1/prices/freshness',
       'GET /v1/me',
       'GET /v1/watchlist',
       'GET /sanctum/csrf-cookie',

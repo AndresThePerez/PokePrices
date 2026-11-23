@@ -23,6 +23,7 @@ import { useRoute } from './router';
 import { HOME_H1, ROUTES } from './routes';
 import { useDocumentTitle, useRouteFocus } from './title';
 import { MUTED, TEXT_LINK } from './ui/classes';
+import FreshnessBanner from './ui/FreshnessBanner';
 import Page from './ui/Page';
 import RootBoundary from './ui/RootBoundary';
 
@@ -99,12 +100,28 @@ function Routes() {
   }
 }
 
+/** The routes whose pages show a price: the stale-prices banner shows on these only. */
+const PRICED_ROUTES: ReadonlySet<string> = new Set([
+  'home',
+  'card',
+  'movers',
+  'watchlist',
+  'portfolio',
+]);
+
+/** The one stale-prices banner, under the header, on a page that shows a price. */
+function StaleBanner() {
+  const { route } = useRoute();
+  return PRICED_ROUTES.has(route.name) ? <FreshnessBanner /> : null;
+}
+
 export default function App() {
   // One client per mount: every render(<App />) starts with an empty cache.
   const [queryClient] = useState(createQueryClient);
   return (
     <QueryClientProvider client={queryClient}>
       <Header />
+      <StaleBanner />
       <div id="content" tabIndex={-1}>
         <RootBoundary>
           <Routes />

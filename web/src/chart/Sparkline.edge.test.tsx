@@ -125,6 +125,7 @@ describe('request sharing between the chart and the sparklines (D9, D12)', () =>
     fireEvent.click(within(section).getByRole('button', { name: '1M' }));
     await within(section).findByRole('link', { name: ATTRIBUTION });
     expect(urls).toEqual([
+      '/v1/prices/freshness',
       '/v1/cards/ex10-%3F',
       '/v1/cards/ex10-%3F/prices?range=1M',
       '/v1/cards/ex10-%3F/prices?range=3M',

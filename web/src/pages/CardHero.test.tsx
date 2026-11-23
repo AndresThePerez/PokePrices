@@ -104,7 +104,7 @@ describe('Card hero driven by the one variant choice', () => {
     expect(prices.contains(block)).toBe(false);
     expect(section.contains(block)).toBe(false);
     expect(summary(section)).toMatch(/^Holo, unlimited, 1M: /);
-    expect(urls).toEqual([CARD_URL, HISTORY_1M]);
+    expect(urls).toEqual(['/v1/prices/freshness', CARD_URL, HISTORY_1M]);
   });
 
   it('moves the hero figure, chip and as-of with the chart when another Variant segment is pressed, asking nothing new', async () => {
@@ -120,7 +120,7 @@ describe('Card hero driven by the one variant choice', () => {
     expect(within(block).queryByText('$70.81')).toBeNull();
     expect(within(block).queryByText(HOLO_CHANGE)).toBeNull();
     expect(summary(section)).toMatch(/^Reverse, unlimited, 1M: /);
-    expect(urls).toEqual([CARD_URL, HISTORY_1M]);
+    expect(urls).toEqual(['/v1/prices/freshness', CARD_URL, HISTORY_1M]);
   });
 
   it('never draws another variant than the hero: a range without the chosen series shows the no-close line', async () => {
@@ -138,7 +138,7 @@ describe('Card hero driven by the one variant choice', () => {
     await within(section).findByText(NO_CLOSE);
     expect(summary(section)).toBe('');
     expect(within(hero()).getByText('$68.06')).toBeTruthy();
-    expect(urls).toEqual([CARD_URL, HISTORY_1M, HISTORY_3M]);
+    expect(urls).toEqual(['/v1/prices/freshness', CARD_URL, HISTORY_1M, HISTORY_3M]);
   });
 
   it('offers no segment for an eligible variant that has no price', async () => {
