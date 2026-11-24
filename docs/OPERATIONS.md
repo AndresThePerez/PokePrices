@@ -30,9 +30,10 @@ A new day arrives in four steps, and only the third is this repository's code.
 
 1. **Collect.** The collector on the server writes the day's folder (`marker.txt`, `manifest.json`,
    `groups.json`, the per-group price files and, last, `SUCCESS`). The marker lands around 20:05 UTC.
-2. **Pull.** A separate read-only pull step copies the finished folder to the workstation's
-   `.data/snapshots/<day>/`. It is not part of the pricing code, runs at a time the collector does not
-   control, and nothing in PokéPrices fetches from the server or the network.
+2. **Pull.** On a dev machine a finished folder has to be copied to `.data/snapshots/<day>/` by hand, a
+   copy that only reads on the server. Nothing does it on a schedule: no timer, script or job on the
+   workstation pulls a day, nothing in PokéPrices fetches from the server or the network, and dev
+   therefore holds no day newer than the last copy.
 
    In production there is no pull step: the collector's day folders on the server are mounted read-only
    into the api, worker and scheduler containers, so the :40 scan ingests each new day in place. The
@@ -46,16 +47,24 @@ A new day arrives in four steps, and only the third is this repository's code.
      and only its chunks that are not done are re-dispatched;
    - a day whose newest run is `refused`, with the same marker and the same error, within the last
      24 hours is skipped, so a permanently bad folder costs one refused row a day;
-   - every other day, including a day whose last run `failed`, gets a new run. The start re-validates the
+   - a day whose marker's newest runs are two consecutive `failed` runs is held for 6 hours after the
+     newest one ended, and for 24 hours after three or more (see "A failed day");
+   - every other day, including a day whose marker failed once, gets a new run. The start re-validates the
      whole folder before anything is written.
+
+   The scheduler container only queues the scan; the scan itself, like every job below, runs on the worker.
 4. **Ingest and finalize.** The run reads the day through chunked queued jobs on the worker (3 tries per
-   chunk, backoff 10, 60 and 300 seconds). When every chunk is done, one finalize transaction rolls the
+   chunk, the second 10 seconds after the first and the third 60 seconds after the second). When every
+   chunk is done, one finalize transaction rolls the
    day up into `price_daily` (carrying a close forward at most 14 days, flagged `is_filled`), rebuilds
    `price_latest` and `price_movers`, refreshes `movement_volume`, writes any movement rows to
    `price_events` (only for an ordinary ingest of the newest day, never for a replay) and marks the run
    `ok`. Finalize is atomic: a failure leaves `price_daily` and `price_latest` as they were.
 
-The scheduler also logs the freshness once an hour (`pokeprices-freshness`, message `price_freshness`).
+The scheduler also queues the freshness line once an hour (`pokeprices-freshness`); the worker writes it
+(message `price_freshness`), so a stopped worker writes no freshness line at all. On a dev machine the
+worker stops after its maximum run time (one hour) and nothing restarts it, by design: bring it back with
+`docker compose -f compose.dev.yml up -d --wait worker`.
 
 ### Check that the day arrived
 
@@ -82,8 +91,15 @@ tcgplayer via tcgcsv: as of 2026-10-12T20:05:00Z, 3.2 h old, SLO 26 h: ok
 
 The age is judged unrounded: 25.96 hours is within the SLO and prints as `26.0`; 26.00 hours is not.
 `--json` and `GET /v1/prices/freshness` carry the same data: `as_of`, `day`, `age_hours`, `slo_hours`,
-`within_slo`, `measured_at` and `last_run` (`id`, `status`, `mode`, `day`, `finished_at`). A breach is the
-metric working, not a fault in itself: go to the freshness case in the failure runbook.
+`within_slo`, `measured_at`, `last_run` (`id`, `status`, `mode`, `day`, `finished_at`), `missing_days` and
+`missing_days_count`. A breach is the metric working, not a fault in itself: go to the freshness case in
+the failure runbook.
+
+`missing_days` lists the calendar days between the first and the newest day with an `ok` run that have no
+`ok` run of their own, as ISO dates, oldest first. At most the newest 30 are listed;
+`missing_days_count` counts them all. Both are empty and 0 when no day is missing. A missing day does not
+change `within_slo`, and the one-line output does not show it: read `--json` or the endpoint, or go to
+"A missing day" in the failure runbook.
 
 To see the latest runs:
 
@@ -98,6 +114,85 @@ old code in memory until they restart:
 ```sh
 docker compose -f compose.dev.yml restart worker scheduler
 ```
+
+### The movers board
+
+`price_movers` holds, for each collected day, the variants whose close moved most against their previous
+close, ranked once at finalize; `GET /v1/movers` reads the newest day that has rows. A variant is ranked
+on day D when all of this holds:
+
+- **A previous close.** It has a real close on D (never a carried-forward one) and a previous close: its
+  most recent real close on an earlier day in the same `series_epoch`, at most 14 days back.
+- **The floor.** The previous close is at least 2.00 USD (`pricing.movers.min_previous_close`).
+- **A material move.** The change is at least 5.00 % (as stored, two decimals) and at least 1.00 USD,
+  both. Exactly 5.00 % and exactly 1.00 count.
+- **Recent price activity.** Of the variant's five most recent real closes in the epoch, the close of D
+  included and none older than 14 days before D, at least four are distinct values. A day without a real
+  close (missing or carried forward) is no observation: it adds neither a close nor a change, and the count
+  reaches one real close further back instead. A price the series already showed is no new value, so a
+  spike that comes back the next day is ranked on neither day.
+- **In line with the listings.** Both closes of the move are held against the low and mid listing stored
+  with their own observation in `price_points`: each must be no lower than half the low listing and no
+  higher than one and a half times the mid listing, bounds included. A close whose observation is
+  missing, or lists no low or no mid, or lists either at 0.00, is not ranked; neither is a close of 0.00.
+- **Not a thin market.** The close of D is not under half the low listing of its own observation
+  (`PricingConfig::THIN_MARKET_RATIO`), the line the card page flags as a thin market (see Lowest listing
+  and thin markets). With both ratios at one half the listing bound above already keeps such a close out,
+  so on dev this removes no row; it is stated on its own so the board never ranks a close the card page
+  flags, whatever the listing bounds are set to.
+
+The ranked variants are ordered by the size of the change in percent, then by the change, then by
+`variant_key`; rises and falls are ranked apart and 50 of each are kept at most. The thresholds are the
+`MOVERS_*` constants of `PricingConfig` and the floor in `config/pricing.php`;
+`docs/measurements/movers-eligibility.md` holds the evidence for each value and what the rule cannot do.
+
+What follows from the rule:
+
+- **The board is short.** A day ranks the variants that meet the rule and no others: a few dozen out of
+  about 33,000 closes, not 50 rises and 50 falls. One direction can be empty while the other is not.
+- **A new series ranks nothing for three days.** With fewer than four real closes in its epoch no variant
+  can show four values. The first three days after collection starts, after a `replay` of fewer than four
+  days, or after a remap of a variant therefore have no movers for it.
+- **A day with no ranked variant has no rows.** `GET /v1/movers` then answers the newest day that has
+  some, with that day in `meta.day` and its marker in `meta.as_of`, so the board says which close it shows.
+- **Order of arrival does not matter.** Everything a day's movers are made of lies between 14 days before
+  it and the day itself, and ingesting a day rebuilds the movers of that day and the 14 days after it.
+
+#### Rebuild the movers of stored days
+
+`price_movers` is derived data. Its rows are rewritten when their day is in the recompute window of an
+ingest, and by a replay; a change to the thresholds does not touch the days already stored. To rank stored
+days again under the rule as it is, without ingesting anything, rebuild them from `price_daily` and
+`price_points` (here one day, 2026-10-13; give another first and last day for a range):
+
+```sh
+docker compose -f compose.dev.yml exec -T -w /workspace/api api php artisan tinker --execute='$db = Illuminate\Support\Facades\DB::connection(); if (! App\Domain\Pricing\IngestLock::tryAcquire($db)) { echo "pricing ingest lock held, nothing changed\n"; return; } try { $db->transaction(fn () => App\Domain\Pricing\Movers::rebuild($db, "2026-10-13", "2026-10-13")); echo $db->getDatabaseName(), " ", json_encode($db->select("SELECT direction, count(*) AS n FROM price_movers WHERE day BETWEEN ? AND ? GROUP BY direction ORDER BY direction", ["2026-10-13", "2026-10-13"])), "\n"; } finally { App\Domain\Pricing\IngestLock::release($db); }'
+```
+
+It takes the lock, and in one transaction deletes the `price_movers` rows of those days for the source and
+inserts the rows the rule gives; it reads the two price tables and writes nothing else. It prints the
+database name and the rows per direction it left, or `pricing ingest lock held, nothing changed` when an
+ingest or a replay is running. Running it twice gives the same rows.
+
+### Lowest listing and thin markets
+
+The market price of a variant is an average of recent sales, so a card that rarely sells can show a close
+far from what it is listed at. `price_latest` holds no listing; `GET /v1/cards/{id}` reads it from
+`price_points` with one query for all the card's variants (no index and no migration were added):
+
+- **`price.lowest_listing`** is the low listing of the observation the close came from (the `price_points`
+  row at the close's `as_of`), a decimal string with two decimals, or `null` when that observation lists
+  no low or a low of 0.00.
+- **`price.thin_market`** is `true` when that listing is present and the close is under half of it
+  (`PricingConfig::THIN_MARKET_RATIO`, 0.5). Exactly half is not thin.
+- **`listing`** is on a variant that has observations but no close (its market price was never given):
+  the low listing of its newest observation, with that observation's `day` and `as_of`, when the low is
+  above zero. `price` stays `null`, and `listing` is left out on every other variant.
+
+Only the card answer carries these fields; the watchlist and portfolio price blocks are unchanged. On dev
+(closes 2026-10-09 to 2026-10-13), 2,950 of 165,072 price points have a market under half their low
+listing, 518 of the 32,992 newest closes are flagged, and 31 variants have listings but no close on
+2026-10-13 (1st Edition Base Charizard, `base1-4:holo:1st:-`, among them).
 
 ## Ingest a day by hand
 
@@ -340,85 +435,6 @@ docker compose -f compose.dev.yml exec -T -w /workspace/api api php artisan poke
 It rewrites `movement_volume` from `price_daily` under the lock, prints a JSON summary and exits 0, or
 exits 1 when the lock is held or `price_daily` is empty.
 
-## The movers board
-
-`price_movers` holds, for each collected day, the variants whose close moved most against their previous
-close, ranked once at finalize; `GET /v1/movers` reads the newest day that has rows. A variant is ranked
-on day D when all of this holds:
-
-- **A previous close.** It has a real close on D (never a carried-forward one) and a previous close: its
-  most recent real close on an earlier day in the same `series_epoch`, at most 14 days back.
-- **The floor.** The previous close is at least 2.00 USD (`pricing.movers.min_previous_close`).
-- **A material move.** The change is at least 5.00 % (as stored, two decimals) and at least 1.00 USD,
-  both. Exactly 5.00 % and exactly 1.00 count.
-- **Recent price activity.** Of the variant's five most recent real closes in the epoch, the close of D
-  included and none older than 14 days before D, at least four are distinct values. A day without a real
-  close (missing or carried forward) is no observation: it adds neither a close nor a change, and the count
-  reaches one real close further back instead. A price the series already showed is no new value, so a
-  spike that comes back the next day is ranked on neither day.
-- **In line with the listings.** Both closes of the move are held against the low and mid listing stored
-  with their own observation in `price_points`: each must be no lower than half the low listing and no
-  higher than one and a half times the mid listing, bounds included. A close whose observation is
-  missing, or lists no low or no mid, or lists either at 0.00, is not ranked; neither is a close of 0.00.
-- **Not a thin market.** The close of D is not under half the low listing of its own observation
-  (`PricingConfig::THIN_MARKET_RATIO`), the line the card page flags as a thin market (see Lowest listing
-  and thin markets). With both ratios at one half the listing bound above already keeps such a close out,
-  so on dev this removes no row; it is stated on its own so the board never ranks a close the card page
-  flags, whatever the listing bounds are set to.
-
-The ranked variants are ordered by the size of the change in percent, then by the change, then by
-`variant_key`; rises and falls are ranked apart and 50 of each are kept at most. The thresholds are the
-`MOVERS_*` constants of `PricingConfig` and the floor in `config/pricing.php`;
-`docs/measurements/movers-eligibility.md` holds the evidence for each value and what the rule cannot do.
-
-What follows from the rule:
-
-- **The board is short.** A day ranks the variants that meet the rule and no others: a few dozen out of
-  about 33,000 closes, not 50 rises and 50 falls. One direction can be empty while the other is not.
-- **A new series ranks nothing for three days.** With fewer than four real closes in its epoch no variant
-  can show four values. The first three days after collection starts, after a `replay` of fewer than four
-  days, or after a remap of a variant therefore have no movers for it.
-- **A day with no ranked variant has no rows.** `GET /v1/movers` then answers the newest day that has
-  some, with that day in `meta.day` and its marker in `meta.as_of`, so the board says which close it shows.
-- **Order of arrival does not matter.** Everything a day's movers are made of lies between 14 days before
-  it and the day itself, and ingesting a day rebuilds the movers of that day and the 14 days after it.
-
-### Rebuild the movers of stored days
-
-`price_movers` is derived data. Its rows are rewritten when their day is in the recompute window of an
-ingest, and by a replay; a change to the thresholds does not touch the days already stored. To rank stored
-days again under the rule as it is, without ingesting anything, rebuild them from `price_daily` and
-`price_points` (here one day, 2026-10-13; give another first and last day for a range):
-
-```sh
-docker compose -f compose.dev.yml exec -T -w /workspace/api api php artisan tinker --execute='$db = Illuminate\Support\Facades\DB::connection(); if (! App\Domain\Pricing\IngestLock::tryAcquire($db)) { echo "pricing ingest lock held, nothing changed\n"; return; } try { $db->transaction(fn () => App\Domain\Pricing\Movers::rebuild($db, "2026-10-13", "2026-10-13")); echo $db->getDatabaseName(), " ", json_encode($db->select("SELECT direction, count(*) AS n FROM price_movers WHERE day BETWEEN ? AND ? GROUP BY direction ORDER BY direction", ["2026-10-13", "2026-10-13"])), "\n"; } finally { App\Domain\Pricing\IngestLock::release($db); }'
-```
-
-It takes the lock, and in one transaction deletes the `price_movers` rows of those days for the source and
-inserts the rows the rule gives; it reads the two price tables and writes nothing else. It prints the
-database name and the rows per direction it left, or `pricing ingest lock held, nothing changed` when an
-ingest or a replay is running. Running it twice gives the same rows.
-
-## Lowest listing and thin markets
-
-The market price of a variant is an average of recent sales, so a card that rarely sells can show a close
-far from what it is listed at. `price_latest` holds no listing; `GET /v1/cards/{id}` reads it from
-`price_points` with one query for all the card's variants (no index and no migration were added):
-
-- **`price.lowest_listing`** is the low listing of the observation the close came from (the `price_points`
-  row at the close's `as_of`), a decimal string with two decimals, or `null` when that observation lists
-  no low or a low of 0.00.
-- **`price.thin_market`** is `true` when that listing is present and the close is under half of it
-  (`PricingConfig::THIN_MARKET_RATIO`, 0.5). Exactly half is not thin.
-- **`listing`** is on a variant that has observations but no close (its market price was never given):
-  the low listing of its newest observation, with that observation's `day` and `as_of`, when the low is
-  above zero. `price` stays `null`, and `listing` is left out on every other variant.
-
-Only the card answer carries these fields; the watchlist and portfolio price blocks are unchanged. On dev
-(closes 2026-10-09 to 2026-10-13), 2,950 of 165,072 price points have a market under half their low
-listing, 518 of the 32,992 newest closes are flagged, and 31 variants have listings but no close on
-2026-10-13 (1st Edition Base Charizard, `base1-4:holo:1st:-`, among them).
-
 ## Partitions and retention
 
 `price_points` is partitioned by month on the observation instant (UTC), one partition per month named
@@ -440,13 +456,27 @@ A token that is still good is never touched.
 
 Each case: the symptom, where it shows, what to run. A failed or refused ingest never leaves a half-done
 day behind the daily tables: finalize is atomic, so `price_daily` and `price_latest` only change when a
-run goes `ok`.
+run goes `ok`. A queued run that fails part-way does leave the rows of its finished chunks in
+`price_points`; the rollup of another day reads another day's rows only when an `ok` run of that day and
+marker exists, so those rows reach no daily close until their own run is resumed and goes `ok`.
+
+Three warnings in the worker's log say that a day is in trouble, each once per cause:
+
+| Message | When | Context |
+|---|---|---|
+| `price_freshness` (warning) | hourly, while the SLO is breached or a day is missing | the freshness fields, plus `missing_days` and `missing_days_count` while a day is missing |
+| `ingest_refused` | a scheduled start refused a day folder; once per day, marker and reason, however often the scan retries it | `day`, `marker` (null when none was read), `error` |
+| `ingest_blocked` | a scheduled start found a run left `running` on its day; once per run | `day`, `run_id` |
+
+`price_freshness` is the hourly line itself, so it repeats every hour while its cause lasts; the other two
+are written once. `ingest_failed_repeatedly` (see "A failed day") is the fourth, older one.
 
 ### A refused day
 
 - **Symptom.** `pokeprices:prices:ingest` prints `ingest refused (run N): <reason>` and exits 1; the :40
-  scan writes an `ingest_runs` row with `status = 'refused'` and the reason in `error`. Nothing was
-  written, no chunk exists.
+  scan writes an `ingest_runs` row with `status = 'refused'` and the reason in `error`, and the worker logs
+  one `ingest_refused` warning with the day, the marker and the reason (not again for the same day, marker
+  and reason; a new marker or a new reason is logged again). Nothing was written, no chunk exists.
 - **Reasons.** The reason names the file:
   - `missing_day:<day>`, `missing_file:SUCCESS`, `missing_file:<file>`: the folder, `SUCCESS`, the
     manifest, `groups.json` or a group file is not there.
@@ -458,15 +488,15 @@ run goes `ok`.
     10000000000 or more, or is neither a number nor null. The whole day is refused; no row is skipped
     silently.
 - **What to run.** Read the reason with the `ingest_runs` query in the daily routine. The raw files are
-  never edited here; the fix is a good folder, brought by the separate pull step. Then ingest the day by
-  hand (`--sync` or `--queued`), or wait for the scan.
+  never edited here; the fix is a good folder: a new collection on the server, or on a dev machine a fresh
+  copy by hand. Then ingest the day by hand (`--sync` or `--queued`), or wait for the scan.
 - **Suppression.** The :40 scan does not retry a refusal for the same marker and the same error within
   24 hours (one refused row a day). A folder that changed, with another error or another marker, is
   retried at the next scan. `pokeprices:prices:ingest` by hand always tries.
 
 ### A failed day
 
-- **Symptom.** A chunk exhausted its 3 tries (10, 60 and 300 seconds of backoff), or finalize failed. The
+- **Symptom.** A chunk exhausted its 3 tries (10 and then 60 seconds apart), or finalize failed. The
   run is `failed`; the chunk is `failed`; `failed_jobs` has an `IngestChunk` or `FinalizeDay` row; `last_run`
   in the freshness data shows `failed`. A sync ingest exits 1 with `ingest failed (run N): <error>`.
 - **What to run.** The queries in "Resume a failed run", then fix the cause, then `--resume`.
@@ -480,7 +510,7 @@ run goes `ok`.
   marking the newest failed run `superseded`. `--resume` and `--queued` by hand do not wait for the hold.
   By design, the scan resumes a stale (> 2 h) `running` run before it reads the hold, so such a run is
   resumed even when newer `failed` runs of its marker would hold the day. To stop the retries, fix the day
-  (the cause in the error, or a good folder from the pull step) and get a run to `ok` with `--resume` or a
+  (the cause in the error, or a good folder) and get a run to `ok` with `--resume` or a
   fresh `--queued`; the scan then sees the day as done.
 
 ### A stalled or crashed run
@@ -495,6 +525,25 @@ run goes `ok`.
   (which marks every `running` run `superseded`; the only way when the marker has changed). Do not `--resume`
   while a fresh `--queued` run of the day is running, and after a map rebuild ingest the day afresh with
   `--queued` or replay instead of resuming a run from the older build (see "Map rebuild then replay").
+- **What the log says.** A scheduled start that finds a run left `running` on its day logs one
+  `ingest_blocked` warning with the day and the run id, once per run. The scan only sends a start for a day
+  whose current marker has no running run, so this warning means a run of an earlier marker of the day is
+  still `running` and nothing will resume it: the day stays blocked until a replay, while later days go on
+  ingesting and freshness stays within the SLO. The same warning can appear once, harmlessly, when two
+  starts of one day were queued behind a busy worker; then the run it names goes `ok` soon after.
+
+### A missing day
+
+- **Symptom.** `missing_days` in `/v1/prices/freshness` (or `--json`) is not empty, and the hourly
+  `price_freshness` record is a warning that carries `missing_days` and `missing_days_count`, also while
+  `within_slo` is true. A day between the first and the newest ingested day has no `ok` run: it was never
+  collected, its folder has no `SUCCESS` or is not readable, it was refused, it is held after failures, or
+  a run blocks it. Its `price_daily` rows are carried forward from an earlier close (`is_filled`).
+- **What to run.** The `ingest_runs` query in the daily routine for that day. A `refused`, `failed` or
+  `running` row leads to its case here. No row at all means the folder never arrived or holds no
+  `SUCCESS`: look in the snapshots root. Once a good folder is there, the scan ingests it, the day's rows
+  are recomputed with the days after it, and the day leaves `missing_days`. A day the source never
+  published stays listed; nothing here invents a close for it.
 
 ### A crashed replay
 
@@ -555,10 +604,13 @@ run goes `ok`.
 
 - **Symptom.** `pokeprices:prices:freshness` prints `BREACHED` or `no prices ingested` and exits 1;
   `/v1/prices/freshness` has `within_slo: false`; the hourly `price_freshness` log record is a warning.
+  The worker writes that record, so while the worker is stopped there is no hourly line at all; the
+  command and the endpoint still answer.
 - **What to run, in order.**
   1. Is a replay running? `last_run` with `mode` `replay` and `status` `running` explains it (see Replay).
   2. Was a newer day collected? Look for a `<day>/SUCCESS` newer than `as_of` in the snapshots root. If
-     there is none, the collector or the pull step is the problem and nothing here can fix it.
+     there is none, the collector is the problem (on a dev machine, nobody copied a newer day in) and
+     nothing here can fix it.
   3. Is the pipeline running? `docker compose -f compose.dev.yml ps` shows `worker` and `scheduler`
      healthy; if not, `docker compose -f compose.dev.yml up -d --wait worker scheduler`.
   4. What did the newest run say? `last_run` and the `ingest_runs` query: `refused` and `failed` runs do

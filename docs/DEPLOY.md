@@ -422,11 +422,12 @@ docker compose exec -T -u www-data scheduler php artisan schedule:list
 docker compose logs --since 2m worker
 ```
 
-Expected: `schedule:list` shows exactly eight entries, each with its cron expression. Five show by name:
+Expected: `schedule:list` shows exactly nine entries, each with its cron expression. Five show by name:
 `pokeprices-probe`, `pokeprices-ingest-pending`, `pokeprices-freshness`, `pokeprices-alerts-dispatch` and
-`pokeprices-deliveries`. The three daily prunes show as the commands they run, not by name (the "What runs where"
-table names them): `php artisan queue:prune-failed --hours=720`, `php artisan queue:prune-batches --hours=720` and
-`php artisan model:prune --model='App\Domain\Pricing\Models\IngestRunChunk'`. Within two minutes the worker log shows
+`pokeprices-deliveries`. The four daily prunes show as the commands they run, not by name (the "What runs where"
+table names them): `php artisan queue:prune-failed --hours=720`, `php artisan queue:prune-batches --hours=720`,
+`php artisan model:prune --model='App\Domain\Pricing\Models\IngestRunChunk'` and `php artisan auth:clear-resets`.
+Within two minutes the worker log shows
 `pokeprices-probe` running.
 
 After the collector timer next adds a day (the :40 scan ingests it in place), check that the real collector's files
@@ -790,6 +791,7 @@ Once the stack is up, nothing needs a person except the updates of step 14.
 | `pokeprices-prune-failed` | `scheduler` container | daily at 00:00 UTC | prunes failed queue jobs older than 30 days |
 | `pokeprices-prune-batches` | `scheduler` container | daily at 00:00 UTC | prunes job batches older than 30 days |
 | `pokeprices-prune-chunks` | `scheduler` container | daily at 00:00 UTC | prunes the chunks of superseded ingest runs, 30 days after they finished |
+| `pokeprices-prune-resets` | `scheduler` container | daily at 03:17 UTC | clears the expired password-reset tokens (`auth:clear-resets`) |
 | the queue worker | `worker` container | always | runs the queued jobs above |
 | the collector timer | the server's host, a user timer | a few times a day (UTC) | writes the day folders to `<snapshots-dir>`; the containers only read them |
 | the backup timer | the server's host, a user timer (step 15) | daily at 05:17 UTC | dumps the database to `<backup-dir>` |
