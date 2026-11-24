@@ -42,4 +42,61 @@ describe('a search answer whose page is outside its pages', () => {
       ).toHaveLength(1);
     },
   );
+
+  it.each([
+    [
+      'page 0 of 3, relevance',
+      0,
+      'relevance',
+      '/search?q=unown&page=4800',
+      '/v1/cards?q=unown&page=4800',
+    ],
+    [
+      'page -1 of 3, relevance',
+      -1,
+      'relevance',
+      '/search?q=unown&page=4800',
+      '/v1/cards?q=unown&page=4800',
+    ],
+    [
+      'page 0 of 3, price order',
+      0,
+      'price_desc',
+      '/search?q=unown&sort=price_desc&page=4800',
+      '/v1/cards?q=unown&page=4800&sort=price_desc',
+    ],
+    [
+      'page -1 of 3, price order',
+      -1,
+      'price_desc',
+      '/search?q=unown&sort=price_desc&page=4800',
+      '/v1/cards?q=unown&page=4800&sort=price_desc',
+    ],
+  ] as const)(
+    'leaves an address past the end exactly as it was for %s: one problem block, one request, no replace',
+    async (_name, page, sort, address, request) => {
+      const calls = stubFetch(() =>
+        jsonResponse(
+          searchBodyOf([unownQuestion], {
+            total: 72,
+            page,
+            pages: 3,
+            sort,
+            ordered: sort === 'relevance' ? null : 72,
+          }),
+        ),
+      );
+      visit(address);
+      const replace = vi.spyOn(window.history, 'replaceState');
+      render(<App />);
+      await screen.findByRole('alert');
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      expect(screen.getAllByRole('alert')).toHaveLength(1);
+      expect(screen.getByRole('alert').textContent).toContain('Search failed');
+      expect(window.location.pathname + window.location.search).toBe(address);
+      expect(replace).not.toHaveBeenCalled();
+      expect(calls.map((call) => call.url)).toEqual(['/v1/prices/freshness', request]);
+      replace.mockRestore();
+    },
+  );
 });

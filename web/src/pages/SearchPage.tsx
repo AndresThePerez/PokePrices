@@ -327,11 +327,12 @@ export default function SearchPage({ query }: { readonly query: URLSearchParams 
   const answer = search.data;
   // An address past the last page shows the last page the API answered: the address is corrected
   // in place (a replace, so Back never returns to it), only its page changes, and the answer is
-  // kept as that page's, so the correction asks for nothing more.
+  // kept as that page's, so the correction asks for nothing more. An answer whose page lies outside
+  // its own pages is the problem block instead, and corrects nothing.
   useEffect(() => {
     if (answer === undefined) return;
     const { meta } = answer;
-    if (meta.pages < 1 || page <= meta.pages || meta.page > meta.pages || meta.page >= page) return;
+    if (meta.pages < 1 || outsideItsPages(meta) || page <= meta.pages || meta.page >= page) return;
     client.setQueryData(searchKey(q, meta.page, sort), answer);
     replaceRoute(`${window.location.pathname}${withPage(window.location.search, meta.page)}`);
   }, [answer, client, page, q, sort]);
