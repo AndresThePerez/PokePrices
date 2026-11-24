@@ -474,7 +474,7 @@ are written once. `ingest_failed_repeatedly` (see "A failed day") is the fourth,
 ### The Discord report
 
 The same problems are posted to a Discord channel: one message when a problem starts and one when it is
-gone, never a repeat and never a reminder.
+gone, with no reminder in between.
 
 - **The job.** `pokeprices-price-problems` in the schedule runs `pokeprices:prices:report-problems` every
   hour on the hour. The scheduler runs the command itself; it is not a queued job, so a stopped worker is
@@ -487,8 +487,10 @@ gone, never a repeat and never a reminder.
   `PRICE_JOB_DISCORD_WEBHOOK_URL is not set; nothing was sent.`, exits 0 and writes nothing.
 - **The table.** What was posted is kept in `reported_price_problems` (one row per report: `key`, `kind`,
   `day`, `sentence`, `reported_at`, `cleared_at`), so a restart repeats nothing. The migration
-  `2026_11_24_000001_create_reported_price_problems_table` creates it; an update that brings this job
-  runs `migrate` before the scheduler starts. One open row per problem is enforced by a unique index.
+  `2026_11_24_000001_create_reported_price_problems_table` creates it. The update in `docs/DEPLOY.md`
+  starts the scheduler before it runs `migrate`; a report that runs in that gap with the variable set
+  fails on the missing table before it posts anything, and the next hour's run is normal. One open row
+  per problem is enforced by a unique index.
   Nothing prunes the table; it grows by two timestamps per problem.
 
 The messages, each with the day in ISO form (`<seen>` and `<over>` are UTC instants of the hourly run that
@@ -514,9 +516,13 @@ How to read them:
 - A problem that starts and ends between two hourly runs is never posted. The same problem starting again
   after it was cleared is posted again.
 - A post that fails (a timeout, a 429, a 5xx, an address the guard refuses) writes a
-  `price_problem_report_failed` warning in the scheduler's log with the problem's key, `started` or
-  `cleared`, the HTTP status and the error, records nothing, and is tried again the next hour: one attempt
-  per problem per run.
+  `price_problem_report_failed` warning with the problem's key, `started` or `cleared`, the HTTP status
+  and the error, records nothing, and is tried again the next hour: one attempt per problem per run. The
+  scheduler discards the output of the commands it runs, so that warning shows only when the command is
+  run by hand; after a scheduled run the scheduler's log says only that the command failed with exit
+  code 1.
+- Delivery is at least once. A message Discord accepted whose answer was lost, or whose row could not be
+  written, is posted again the next hour.
 
 A test by hand. The command is safe to run at any time; it posts only what the schedule would post next:
 
