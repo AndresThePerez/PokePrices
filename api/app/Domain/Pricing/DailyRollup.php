@@ -23,6 +23,10 @@ use stdClass;
  *   the real day, as_of its marker and its series_epoch;
  * - no row past the cap, before the variant's first real close, or past N.
  *
+ * Only D's own price_points and those of a day and marker that an `ok` run backs are observations. A queued run that
+ * failed or is still running has committed the rows of its finished chunks; they are not a day yet, so the rollup of
+ * another day leaves them out and that day stays filled until its own run finalizes and recomputes it.
+ *
  * The real closes a fill may repeat come from price_points inside the window and from the real price_daily rows of the
  * 14 days before it (those rows only change when their own day is ingested, which recomputes them). The target rows
  * are written with one set-based statement: rows of the window that are not in the target are deleted, the rest are
@@ -52,7 +56,13 @@ final class DailyRollup
 
         $db->statement(<<<'SQL'
             WITH params AS (
-                SELECT ?::text AS source, ?::date AS from_day, ?::date AS to_day, ?::integer AS cap
+                SELECT ?::text AS source, ?::date AS from_day, ?::date AS to_day, ?::integer AS cap, ?::date AS run_day
+            ),
+            ok_runs AS (
+                SELECT DISTINCT r.day, r.marker
+                FROM ingest_runs r, params x
+                WHERE r.source = x.source AND r.status = 'ok' AND r.marker IS NOT NULL
+                  AND r.day BETWEEN x.from_day AND x.to_day
             ),
             obs AS (
                 SELECT p.variant_key, p.source, p.day, p.series_epoch, p.market, p.observed_at,
@@ -63,6 +73,7 @@ final class DailyRollup
                 WHERE p.source = x.source AND p.market IS NOT NULL
                   AND p.observed_at >= x.from_day::timestamp AT TIME ZONE 'UTC'
                   AND p.observed_at < (x.to_day + 1)::timestamp AT TIME ZONE 'UTC'
+                  AND (p.day = x.run_day OR (p.day, p.observed_at) IN (SELECT o.day, o.marker FROM ok_runs o))
             ),
             real_rows AS (
                 SELECT o.variant_key, o.source, o.day, o.series_epoch,
@@ -125,7 +136,7 @@ final class DailyRollup
                    price_daily.n_obs, price_daily.is_filled, price_daily.filled_from, price_daily.as_of)
                 IS DISTINCT FROM (EXCLUDED.series_epoch, EXCLUDED.open, EXCLUDED.high, EXCLUDED.low, EXCLUDED.close,
                    EXCLUDED.n_obs, EXCLUDED.is_filled, EXCLUDED.filled_from, EXCLUDED.as_of)
-            SQL, [$source, $days[0], $days[1], $cap]);
+            SQL, [$source, $days[0], $days[1], $cap, $day]);
 
         $rows = $db->selectOne('SELECT count(*) AS n FROM price_daily WHERE source = ? AND day BETWEEN ?::date AND ?::date', [$source, ...$days], false);
 
