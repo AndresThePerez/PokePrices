@@ -34,10 +34,10 @@ it('documents the alert and notification operations with exactly their statuses 
 
     expect(array_keys($paths['/alerts/{variantKey}']))->toBe(['put', 'delete'])
         ->and(array_keys($paths['/me/notifications']))->toBe(['get', 'put'])
-        ->and($codes('/alerts/{variantKey}', 'put'))->toBe(['200', '401', '403', '419', '422', '429'])
-        ->and($codes('/alerts/{variantKey}', 'delete'))->toBe(['204', '401', '403', '419', '429'])
-        ->and($codes('/me/notifications', 'get'))->toBe(['200', '401', '429'])
-        ->and($codes('/me/notifications', 'put'))->toBe(['200', '401', '403', '419', '422', '429'])
+        ->and($codes('/alerts/{variantKey}', 'put'))->toBe(['200', '401', '403', '419', '422', '429', '503'])
+        ->and($codes('/alerts/{variantKey}', 'delete'))->toBe(['204', '401', '403', '419', '429', '503'])
+        ->and($codes('/me/notifications', 'get'))->toBe(['200', '401', '429', '503'])
+        ->and($codes('/me/notifications', 'put'))->toBe(['200', '401', '403', '419', '422', '429', '503'])
         ->and([
             $paths['/alerts/{variantKey}']['put']['operationId'], $paths['/alerts/{variantKey}']['delete']['operationId'],
             $paths['/me/notifications']['get']['operationId'], $paths['/me/notifications']['put']['operationId'],

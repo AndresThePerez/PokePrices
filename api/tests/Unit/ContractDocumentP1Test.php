@@ -165,7 +165,7 @@ it('documents 429 with a Retry-After header only behind throttle', function (): 
         ->and(p1Responses($spec, '/rarities'))->not->toHaveKey('429');
 });
 
-it('documents 503 upstream-unavailable with Retry-After and 502 upstream-contract only on PokéSearch-backed routes', function (): void {
+it('documents 503 with Retry-After on every rate-limited route (http-503) and every PokéSearch-backed one (upstream-unavailable), 502 upstream-contract only on the latter, and neither on a route that is neither', function (): void {
     $router = p1Router(function (Router $r): void {
         $r->group(['pokesearch' => true], function (Router $r): void {
             $r->get('v1/cards', fn (): null => null)->middleware('throttle:search');
@@ -191,8 +191,21 @@ it('documents 503 upstream-unavailable with Retry-After and 502 upstream-contrac
             ->and($responses['502']['content'])->toBe([ContractDocument::PROBLEM_JSON => ['schema' => P1_PROBLEM_REF]])
             ->and($responses['502']['description'])->toContain('https://pokeprices.andrestheperez.com/problems/upstream-contract');
     }
-    expect(p1Responses($spec, '/sets'))->not->toHaveKey('503')
-        ->and(p1Responses($spec, '/sets'))->not->toHaveKey('502')
+    // Rate-limited: /cards and /sets. PokéSearch-backed: /cards, /cards/{id} and /sets/{set}. Neither: /series.
+    $storeOutage = 'https://pokeprices.andrestheperez.com/problems/http-503';
+    foreach (['/cards', '/sets'] as $path) {
+        $unavailable = p1Responses($spec, $path)['503'];
+        expect($unavailable['description'])->toContain($storeOutage)
+            ->and($unavailable['content'])->toBe([ContractDocument::PROBLEM_JSON => ['schema' => P1_PROBLEM_REF]])
+            ->and($unavailable['headers']['Retry-After'])->toMatchArray(['required' => true, 'schema' => ['type' => 'integer']]);
+    }
+    foreach (['/cards/{id}', '/sets/{set}'] as $path) {
+        expect(p1Responses($spec, $path)['503']['description'])->not->toContain($storeOutage);
+    }
+    expect(p1Responses($spec, '/sets')['503']['description'])->not->toContain('https://pokeprices.andrestheperez.com/problems/upstream-unavailable')
+        ->and(array_keys(p1Responses($spec, '/sets')))->toBe([200, 304, 429, 503])
+        ->and(array_keys(p1Responses($spec, '/cards/{id}')))->toBe([200, 502, 503])
+        ->and(array_keys(p1Responses($spec, '/sets/{set}')))->toBe([200, 502, 503])
         ->and(array_keys(p1Responses($spec, '/series')))->toBe([200])
         ->and(array_keys(p1Responses($spec, '/cards')))->toBe([200, 429, 502, 503]);
 });
@@ -208,7 +221,7 @@ it('adds nothing, not even the Problem component, where no route asks for it, an
     expect(array_keys(p1Responses($unrouted, '/cards')))->toBe([200])
         ->and(array_keys(p1Responses($unrouted, '/elsewhere')))->toBe([200])
         ->and($unrouted)->not->toHaveKey('components')
-        ->and(array_keys(p1Responses($routed, '/sets')))->toBe([200, 429])
+        ->and(array_keys(p1Responses($routed, '/sets')))->toBe([200, 429, 503])
         ->and(array_keys($routed['components']['schemas'] ?? []))->toBe(['Problem']);
 });
 

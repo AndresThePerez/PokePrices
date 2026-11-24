@@ -97,7 +97,7 @@ it('documents the refusal and the 500 on the movers operation', function (): voi
     $spec = json_decode((string) file_get_contents(base_path('../openapi/api.json')), true, 512, JSON_THROW_ON_ERROR);
     $operation = $spec['paths']['/movers']['get'];
 
-    expect(array_keys($operation['responses']))->toBe([200, 304, 422, 429, 500])
+    expect(array_keys($operation['responses']))->toBe([200, 304, 422, 429, 500, 503])
         ->and($operation['responses'][500]['content'])->toBe(['application/problem+json' => ['schema' => ['$ref' => '#/components/schemas/Problem']]])
         ->and(array_column($operation['parameters'], 'name'))->toBe(['direction', 'limit'])
         ->and((string) $operation['description'])->toContain('any other query parameter answers 422');

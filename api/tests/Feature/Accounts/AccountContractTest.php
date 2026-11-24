@@ -23,7 +23,7 @@ it('documents GET /v1/me with 200, 401 and 429, a closed data object of the four
     $me = $spec['paths']['/me']['get'] ?? null;
 
     expect($me)->not->toBeNull()
-        ->and(array_map('strval', array_keys($me['responses'])))->toBe(['200', '401', '429'])
+        ->and(array_map('strval', array_keys($me['responses'])))->toBe(['200', '401', '429', '503'])
         ->and($me['responses']['401']['content'])->toHaveKey('application/problem+json')
         ->and($me['responses']['429']['content'])->toHaveKey('application/problem+json')
         ->and($me['responses']['429']['headers'])->toHaveKey('Retry-After');

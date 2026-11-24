@@ -904,6 +904,17 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            /** @description A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503). */
+            503: {
+                headers: {
+                    /** @description Seconds before the route is worth asking again. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     exportMe: {
@@ -939,6 +950,17 @@ export interface operations {
             429: {
                 headers: {
                     /** @description Seconds until the limit resets. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503). */
+            503: {
+                headers: {
+                    /** @description Seconds before the route is worth asking again. */
                     "Retry-After": number;
                     [name: string]: unknown;
                 };
@@ -1017,6 +1039,17 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            /** @description A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503). */
+            503: {
+                headers: {
+                    /** @description Seconds before the route is worth asking again. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     getWatchlist: {
@@ -1057,6 +1090,17 @@ export interface operations {
             429: {
                 headers: {
                     /** @description Seconds until the limit resets. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503). */
+            503: {
+                headers: {
+                    /** @description Seconds before the route is worth asking again. */
                     "Retry-After": number;
                     [name: string]: unknown;
                 };
@@ -1135,6 +1179,17 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            /** @description A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503). */
+            503: {
+                headers: {
+                    /** @description Seconds before the route is worth asking again. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     deleteWatchlistItem: {
@@ -1186,6 +1241,17 @@ export interface operations {
             429: {
                 headers: {
                     /** @description Seconds until the limit resets. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503). */
+            503: {
+                headers: {
+                    /** @description Seconds before the route is worth asking again. */
                     "Retry-After": number;
                     [name: string]: unknown;
                 };
@@ -1257,6 +1323,17 @@ export interface operations {
             /** @description An error */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503). */
+            503: {
+                headers: {
+                    /** @description Seconds before the route is worth asking again. */
+                    "Retry-After": number;
                     [name: string]: unknown;
                 };
                 content: {
@@ -1340,6 +1417,17 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            /** @description A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503). */
+            503: {
+                headers: {
+                    /** @description Seconds before the route is worth asking again. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     deleteHolding: {
@@ -1398,6 +1486,17 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            /** @description A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503). */
+            503: {
+                headers: {
+                    /** @description Seconds before the route is worth asking again. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     getWebhooks: {
@@ -1437,6 +1536,17 @@ export interface operations {
             429: {
                 headers: {
                     /** @description Seconds until the limit resets. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503). */
+            503: {
+                headers: {
+                    /** @description Seconds before the route is worth asking again. */
                     "Retry-After": number;
                     [name: string]: unknown;
                 };
@@ -1522,6 +1632,17 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            /** @description A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503). */
+            503: {
+                headers: {
+                    /** @description Seconds before the route is worth asking again. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     deleteWebhook: {
@@ -1573,6 +1694,17 @@ export interface operations {
             429: {
                 headers: {
                     /** @description Seconds until the limit resets. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503). */
+            503: {
+                headers: {
+                    /** @description Seconds before the route is worth asking again. */
                     "Retry-After": number;
                     [name: string]: unknown;
                 };
@@ -1661,6 +1793,17 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            /** @description A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503). */
+            503: {
+                headers: {
+                    /** @description Seconds before the route is worth asking again. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     putAlert: {
@@ -1738,6 +1881,17 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            /** @description A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503). */
+            503: {
+                headers: {
+                    /** @description Seconds before the route is worth asking again. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     deleteAlert: {
@@ -1796,6 +1950,17 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            /** @description A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503). */
+            503: {
+                headers: {
+                    /** @description Seconds before the route is worth asking again. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     getNotifications: {
@@ -1831,6 +1996,17 @@ export interface operations {
             429: {
                 headers: {
                     /** @description Seconds until the limit resets. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503). */
+            503: {
+                headers: {
+                    /** @description Seconds before the route is worth asking again. */
                     "Retry-After": number;
                     [name: string]: unknown;
                 };
@@ -1915,6 +2091,17 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            /** @description A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503). */
+            503: {
+                headers: {
+                    /** @description Seconds before the route is worth asking again. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     getDemoSamples: {
@@ -1975,6 +2162,17 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            /** @description A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503). */
+            503: {
+                headers: {
+                    /** @description Seconds before the route is worth asking again. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     startDemoSession: {
@@ -2015,6 +2213,17 @@ export interface operations {
             429: {
                 headers: {
                     /** @description Seconds until the limit resets. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503). */
+            503: {
+                headers: {
+                    /** @description Seconds before the route is worth asking again. */
                     "Retry-After": number;
                     [name: string]: unknown;
                 };
@@ -2098,7 +2307,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description PokéSearch did not answer (problem type https://pokeprices.andrestheperez.com/problems/upstream-unavailable). */
+            /** @description PokéSearch did not answer (problem type https://pokeprices.andrestheperez.com/problems/upstream-unavailable), or a store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503). */
             503: {
                 headers: {
                     /** @description Seconds before PokéSearch is worth asking again. */
@@ -2175,7 +2384,7 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
-            /** @description PokéSearch did not answer (problem type https://pokeprices.andrestheperez.com/problems/upstream-unavailable). */
+            /** @description PokéSearch did not answer (problem type https://pokeprices.andrestheperez.com/problems/upstream-unavailable), or a store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503). */
             503: {
                 headers: {
                     /** @description Seconds before PokéSearch is worth asking again. */
@@ -2212,6 +2421,17 @@ export interface operations {
             429: {
                 headers: {
                     /** @description Seconds until the limit resets. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503). */
+            503: {
+                headers: {
+                    /** @description Seconds before the route is worth asking again. */
                     "Retry-After": number;
                     [name: string]: unknown;
                 };
@@ -2297,6 +2517,17 @@ export interface operations {
                     "application/problem+json": components["schemas"]["Problem"];
                 };
             };
+            /** @description A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503). */
+            503: {
+                headers: {
+                    /** @description Seconds before the route is worth asking again. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
         };
     };
     getMovers: {
@@ -2370,6 +2601,17 @@ export interface operations {
             /** @description An error */
             500: {
                 headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503). */
+            503: {
+                headers: {
+                    /** @description Seconds before the route is worth asking again. */
+                    "Retry-After": number;
                     [name: string]: unknown;
                 };
                 content: {

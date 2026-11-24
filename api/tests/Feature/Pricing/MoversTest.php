@@ -523,7 +523,7 @@ it('routes the movers outside the PokéSearch group and documents no upstream er
         ->and($route->gatherMiddleware())->toContain('throttle:public-read')
         ->and($route->gatherMiddleware())->toContain('conditional-get:history')
         ->and($route->getAction('pokesearch'))->toBeNull()
-        ->and(array_keys($operation['responses']))->toBe([200, 304, 422, 429, 500])
+        ->and(array_keys($operation['responses']))->toBe([200, 304, 422, 429, 500, 503])
         ->and($parameters['direction']['schema']['enum'])->toBe(['up', 'down'])
         ->and([$parameters['limit']['schema']['minimum'], $parameters['limit']['schema']['maximum']])->toBe([1, 50])
         ->and(ForbiddenWords::payloadMatches((string) $operation['description']))->toBe([]);

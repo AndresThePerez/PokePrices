@@ -130,7 +130,7 @@ it('documents 304 and 429 together on one operation, each with its own header, s
     $spec = p1eTransform($router, p1eDocument(), [p1eOperation('v1/cards')]);
     $responses = $spec['paths']['/cards']['get']['responses'];
 
-    expect(array_keys($responses))->toBe([200, 304, 429])
+    expect(array_keys($responses))->toBe([200, 304, 429, 503])
         ->and($responses['304'])->not->toHaveKey('content')
         ->and($responses['304'])->not->toHaveKey('Retry-After')
         ->and(array_keys($responses['304']['headers']))->toBe(['ETag'])
@@ -184,7 +184,7 @@ it('reuses a response Scramble already documented under a route-driven code inst
     $spec = p1eTransform($router, p1eDocument(), [$operation]);
     $responses = $spec['paths']['/cards']['get']['responses'];
 
-    expect(array_keys($responses))->toBe([200, 304, 429])
+    expect(array_keys($responses))->toBe([200, 304, 429, 503])
         ->and($responses['429']['description'])->toBe('Scramble guess')
         ->and($responses['429']['content'])->toBe([ContractDocument::PROBLEM_JSON => ['schema' => P1E_REF]])
         ->and($responses['429']['headers']['Retry-After']['required'])->toBeTrue()

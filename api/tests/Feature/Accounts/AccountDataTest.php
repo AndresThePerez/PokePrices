@@ -392,7 +392,7 @@ it('documents POST /v1/me/deletion with a password request body, never a passwor
         ->and($deletion['parameters'] ?? [])->toBe([])
         ->and($deletion['requestBody']['content']['application/json']['schema']['properties'])->toHaveKey('password')
         ->and($deletion['requestBody']['content']['application/json']['schema']['required'])->toBe(['password'])
-        ->and(array_map('strval', array_keys($deletion['responses'])))->toBe(['204', '401', '403', '419', '422', '429']);
+        ->and(array_map('strval', array_keys($deletion['responses'])))->toBe(['204', '401', '403', '419', '422', '429', '503']);
 });
 
 it('documents GET /v1/me/export with 200, 401 and 429 and a closed body of D6\'s keys', function (): void {
@@ -400,7 +400,7 @@ it('documents GET /v1/me/export with 200, 401 and 429 and a closed body of D6\'s
     $export = $spec['paths']['/me/export']['get'] ?? null;
 
     expect($export)->not->toBeNull()
-        ->and(array_map('strval', array_keys($export['responses'])))->toBe(['200', '401', '429']);
+        ->and(array_map('strval', array_keys($export['responses'])))->toBe(['200', '401', '429', '503']);
     $schema = $export['responses']['200']['content']['application/json']['schema'];
     $ref = $schema['properties']['data']['$ref'] ?? null;
     $data = is_string($ref) ? $spec['components']['schemas'][substr($ref, strlen('#/components/schemas/'))] : $schema['properties']['data'];

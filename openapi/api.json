@@ -88,6 +88,25 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds before the route is worth asking again.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -142,6 +161,25 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds until the limit resets.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds before the route is worth asking again.",
                                 "required": true,
                                 "schema": {
                                     "type": "integer"
@@ -241,6 +279,25 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds before the route is worth asking again.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -319,6 +376,25 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds until the limit resets.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds before the route is worth asking again.",
                                 "required": true,
                                 "schema": {
                                     "type": "integer"
@@ -425,6 +501,25 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds before the route is worth asking again.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 }
             },
@@ -491,6 +586,25 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds until the limit resets.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds before the route is worth asking again.",
                                 "required": true,
                                 "schema": {
                                     "type": "integer"
@@ -656,6 +770,25 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds before the route is worth asking again.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -777,6 +910,25 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds before the route is worth asking again.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 }
             },
@@ -843,6 +995,25 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds until the limit resets.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds before the route is worth asking again.",
                                 "required": true,
                                 "schema": {
                                     "type": "integer"
@@ -923,6 +1094,25 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds until the limit resets.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds before the route is worth asking again.",
                                 "required": true,
                                 "schema": {
                                     "type": "integer"
@@ -1052,6 +1242,25 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds before the route is worth asking again.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1120,6 +1329,25 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds until the limit resets.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds before the route is worth asking again.",
                                 "required": true,
                                 "schema": {
                                     "type": "integer"
@@ -1239,6 +1467,25 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds until the limit resets.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds before the route is worth asking again.",
                                 "required": true,
                                 "schema": {
                                     "type": "integer"
@@ -1366,6 +1613,25 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds before the route is worth asking again.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 }
             },
@@ -1438,6 +1704,25 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds before the route is worth asking again.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1492,6 +1777,25 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds until the limit resets.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds before the route is worth asking again.",
                                 "required": true,
                                 "schema": {
                                     "type": "integer"
@@ -1613,6 +1917,25 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds before the route is worth asking again.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1693,6 +2016,25 @@
                                 }
                             }
                         }
+                    },
+                    "503": {
+                        "description": "A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds before the route is worth asking again.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1741,6 +2083,25 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds until the limit resets.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds before the route is worth asking again.",
                                 "required": true,
                                 "schema": {
                                     "type": "integer"
@@ -1924,7 +2285,7 @@
                         }
                     },
                     "503": {
-                        "description": "Pok\u00e9Search did not answer (problem type https://pokeprices.andrestheperez.com/problems/upstream-unavailable).",
+                        "description": "Pok\u00e9Search did not answer (problem type https://pokeprices.andrestheperez.com/problems/upstream-unavailable), or a store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503).",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -2051,7 +2412,7 @@
                         }
                     },
                     "503": {
-                        "description": "Pok\u00e9Search did not answer (problem type https://pokeprices.andrestheperez.com/problems/upstream-unavailable).",
+                        "description": "Pok\u00e9Search did not answer (problem type https://pokeprices.andrestheperez.com/problems/upstream-unavailable), or a store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503).",
                         "content": {
                             "application/problem+json": {
                                 "schema": {
@@ -2112,6 +2473,25 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds until the limit resets.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds before the route is worth asking again.",
                                 "required": true,
                                 "schema": {
                                     "type": "integer"
@@ -2275,6 +2655,25 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds until the limit resets.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds before the route is worth asking again.",
                                 "required": true,
                                 "schema": {
                                     "type": "integer"
@@ -2447,6 +2846,25 @@
                             "application/problem+json": {
                                 "schema": {
                                     "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds before the route is worth asking again.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
                                 }
                             }
                         }

@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
 use LogicException;
+use RedisException;
 
 /**
  * PokéSearch answers through the catalog cache.
@@ -201,11 +202,28 @@ final class CatalogRepository
      * not cached. degraded is true only when the seed ref, the batch or the fill lock failed (UpstreamUnavailable,
      * UpstreamContract, a lock timeout); each batched id then falls back to catalog:v1:lastgood:cardname:{id}
      * (7 days), else its stale-but-live name, else null. The card page's catalog:v1:card:* keys are never touched.
+     * While Redis itself does not answer there is nothing to read the names from: every id is null and degraded
+     * is true.
      *
      * @param  list<string>  $ids
      * @return array{cards: array<string, array{name: string, set_name: string, number: string, image_small?: string}|null>, degraded: bool}
      */
     public function cardNames(array $ids): array
+    {
+        try {
+            return $this->cardNamesThroughCache($ids);
+        } catch (RedisException) {
+            return ['cards' => array_fill_keys($ids, null), 'degraded' => true];
+        }
+    }
+
+    /**
+     * @param  list<string>  $ids
+     * @return array{cards: array<string, array{name: string, set_name: string, number: string, image_small?: string}|null>, degraded: bool}
+     *
+     * @throws RedisException when a Redis role does not answer
+     */
+    private function cardNamesThroughCache(array $ids): array
     {
         $cards = [];
         $valid = [];

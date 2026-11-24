@@ -35,13 +35,13 @@ it('documents each watchlist, portfolio and demo operation with exactly its stat
     expect($operation)->not->toBeNull()
         ->and(array_map('strval', array_keys($operation['responses'])))->toBe($codes);
 })->with([
-    ['/watchlist', 'get', ['200', '401', '429']],
-    ['/watchlist/{variantKey}', 'put', ['200', '401', '403', '419', '422', '429']],
-    ['/watchlist/{variantKey}', 'delete', ['204', '401', '403', '419', '429']],
-    ['/portfolio', 'get', ['200', '401', '429', '500']],
-    ['/portfolio/{variantKey}', 'put', ['200', '401', '403', '419', '422', '429']],
-    ['/portfolio/{variantKey}', 'delete', ['204', '401', '403', '419', '429']],
-    ['/demo/session', 'post', ['204', '404', '419', '429']],
+    ['/watchlist', 'get', ['200', '401', '429', '503']],
+    ['/watchlist/{variantKey}', 'put', ['200', '401', '403', '419', '422', '429', '503']],
+    ['/watchlist/{variantKey}', 'delete', ['204', '401', '403', '419', '429', '503']],
+    ['/portfolio', 'get', ['200', '401', '429', '500', '503']],
+    ['/portfolio/{variantKey}', 'put', ['200', '401', '403', '419', '422', '429', '503']],
+    ['/portfolio/{variantKey}', 'delete', ['204', '401', '403', '419', '429', '503']],
+    ['/demo/session', 'post', ['204', '404', '419', '429', '503']],
 ]);
 
 it('documents 403 demo-read-only as a problem on every non-GET account operation, and never on a GET', function (): void {

@@ -342,7 +342,7 @@ it('documents the operation: the range enum, no upstream errors and the data [] 
     $range = collect($operation['parameters'])->firstWhere('name', 'range');
     $description = (string) $operation['description'];
 
-    expect(array_keys($operation['responses']))->toBe([200, 304, 404, 422, 429])
+    expect(array_keys($operation['responses']))->toBe([200, 304, 404, 422, 429, 503])
         ->and($range['in'])->toBe('query')
         ->and($range['schema']['enum'])->toBe(['1W', '1M', '3M', 'YTD', '1Y'])
         ->and($description)->toContain('data: []')

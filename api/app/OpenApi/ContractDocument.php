@@ -31,7 +31,8 @@ use Illuminate\Support\Arr;
  * Every 4xx/5xx answers application/problem+json with the shared Problem schema (getReady's 503 keeps its
  * readiness body). The extra responses of an operation follow its route's metadata, never a hand list:
  * - middleware CONDITIONAL_GET (the class, or the alias CONDITIONAL_GET_ALIAS): 304 with ETag, no content;
- * - middleware `throttle` / `throttle:<tier>` (ThrottleRequests or a subclass): 429 with Retry-After;
+ * - middleware `throttle` / `throttle:<tier>` (ThrottleRequests or a subclass): 429 with Retry-After, and 503
+ *   http-503 with Retry-After for the store the limit is counted in not answering;
  * - route action attribute POKESEARCH === true, e.g. Route::group(['pokesearch' => true], ...); the innermost
  *   declaration wins: 503 upstream-unavailable with Retry-After and 502 upstream-contract;
  * - middleware resolving to Authenticate or a subclass (`auth`, `auth:<guard>`): 401 unauthenticated;
@@ -206,6 +207,19 @@ final class ContractDocument
             self::response($responses, 503, 'PokéSearch did not answer (problem type '.ProblemDetails::BASE.'upstream-unavailable).')
                 ->addHeader('Retry-After', self::header('Seconds before PokéSearch is worth asking again.', new IntegerType));
             self::response($responses, 502, 'PokéSearch answered outside its contract (problem type '.ProblemDetails::BASE.'upstream-contract).');
+        }
+
+        if ($throttled !== []) {
+            // A limit that cannot be counted is refused: the route's 503 names the store outage too. A description
+            // that names it already (a second pass over the document) is left as it is.
+            $unavailable = self::response($responses, 503, '');
+            $storeOutage = 'a store this route counts or caches in did not answer (problem type '.ProblemDetails::BASE.'http-503).';
+            if (! str_contains($unavailable->description, ProblemDetails::BASE.'http-503')) {
+                $unavailable->setDescription($unavailable->description === '' ? ucfirst($storeOutage) : rtrim($unavailable->description, '.').', or '.$storeOutage);
+            }
+            if (! isset($unavailable->headers['Retry-After'])) {
+                $unavailable->addHeader('Retry-After', self::header('Seconds before the route is worth asking again.', new IntegerType));
+            }
         }
 
         // By resolution only: `auth` / `auth:<guard>` count once the router aliases them to Authenticate.

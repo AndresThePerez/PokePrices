@@ -51,10 +51,10 @@ it('documents the four webhook operations with exactly their statuses', function
     expect(array_keys($paths['/webhooks']))->toBe(['get', 'post'])
         ->and(array_keys($paths['/webhooks/{id}']))->toBe(['delete'])
         ->and(array_keys($paths['/webhooks/{id}/test']))->toBe(['post'])
-        ->and($codes('/webhooks', 'get'))->toBe(['200', '401', '429'])
-        ->and($codes('/webhooks', 'post'))->toBe(['201', '401', '403', '419', '422', '429'])
-        ->and($codes('/webhooks/{id}', 'delete'))->toBe(['204', '401', '403', '419', '429'])
-        ->and($codes('/webhooks/{id}/test', 'post'))->toBe(['202', '401', '403', '404', '409', '419', '429'])
+        ->and($codes('/webhooks', 'get'))->toBe(['200', '401', '429', '503'])
+        ->and($codes('/webhooks', 'post'))->toBe(['201', '401', '403', '419', '422', '429', '503'])
+        ->and($codes('/webhooks/{id}', 'delete'))->toBe(['204', '401', '403', '419', '429', '503'])
+        ->and($codes('/webhooks/{id}/test', 'post'))->toBe(['202', '401', '403', '404', '409', '419', '429', '503'])
         ->and([
             $paths['/webhooks']['get']['operationId'], $paths['/webhooks']['post']['operationId'],
             $paths['/webhooks/{id}']['delete']['operationId'], $paths['/webhooks/{id}/test']['post']['operationId'],

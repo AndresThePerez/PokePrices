@@ -571,6 +571,40 @@ run goes `ok`.
 precision, so a sub-second marker is not a mismatch. The collector writes whole seconds, so this is a
 latent note only; nothing depends on it today.
 
+### A Redis outage
+
+Redis has two roles. `redis-queue` holds the job queue, the rate limiters and the catalogue's locks;
+`redis-cache` holds the catalogue's cached data. While one of them does not answer, a route answers degraded
+or the problem `http-503` (`503`, title `Service Unavailable`) with `Retry-After: 5`, never a bare `500`.
+
+- **Symptom.** `/v1/ready` answers `503` with `checks.redis_queue` or `checks.redis_cache` at `fail`.
+- **What to run.** `docker compose -f compose.dev.yml ps` shows which of the two is not healthy;
+  `docker compose -f compose.dev.yml up -d --wait redis-queue redis-cache` starts it again.
+
+A rate limit that cannot be counted is refused, never waved through: with `redis-queue` down a rate-limited
+route answers the `503`. The contract documents that `503` on every rate-limited operation, and only
+`GET /v1/ready` has no rate limit. The rows below are the routes `api/tests/Feature/CacheOutageTest.php`
+exercises (the readiness row: `ReadinessTest.php` and `ReadinessEdgeTest.php`); "not tested" means no test
+reads that cell, not that the route fails.
+
+| Route | `redis-queue` down | `redis-cache` down |
+|---|---|---|
+| `GET /v1/ready` | `503` `not-ready`, `checks.redis_queue: fail` | `503` `not-ready`, `checks.redis_cache: fail` |
+| `GET /v1/prices/freshness`, `GET /v1/cards/{id}/prices` | `503` | answers as without the outage |
+| `GET /v1/movers` | `503` | `200` degraded: every `card` is null, `meta.degraded` true, `no-store` |
+| `GET /v1/cards` (search) | `503` | `503`, also for a page past the last, which would read the catalogue twice |
+| `GET /v1/cards/{id}` | `503` | `503` |
+| `GET /v1/watchlist` | `503` | `200` degraded: every `card` is null, `meta.degraded` true |
+| `GET /v1/portfolio` | not tested | `200` degraded: every `card` is null, `meta.degraded` true |
+| `GET /v1/me` | `503`, for a guest and for a signed-in account, `no-store` | answers as without the outage |
+| `GET /v1/me/export` | not tested | answers as without the outage |
+| `GET /v1/demo/samples` | `503` | answers as without the outage |
+| `POST /v1/demo/session` | `503` | not tested |
+| `/sanctum/csrf-cookie`, `/login`, `/register`, `/forgot-password` | `503` | not tested |
+
+With `redis-cache` down while PokéSearch is up, a card and a search still answer the `503`: the catalogue is
+read through its cache and never around it.
+
 ## What never happens
 
 - **No raw file is deleted, moved or written.** The ingest, the replay and the map commands only read the
