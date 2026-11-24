@@ -56,8 +56,9 @@ described in [`WEB.md`](WEB.md).
 - **A password change ends the other sessions.** A successful `PUT /user/password` deletes, in the same transaction,
   every other `sessions` row of that person; the browser that made the change stays signed in (see
   [Changing the password](#changing-the-password)).
-- **Errors are problem documents** (`application/problem+json`), with one exception: Fortify's `423` "Password
-  confirmation required." answer, which is a plain `{"message": …}` body that the two-factor screen reads.
+- **Errors are problem documents** (`application/problem+json`). A route that needs a recently confirmed password
+  answers `423` with the problem type `password-confirmation-required` while the session has no confirmation, or one
+  older than `AUTH_PASSWORD_TIMEOUT`; the two-factor screen reads the status and asks for the password.
 
 ## Session endpoints
 

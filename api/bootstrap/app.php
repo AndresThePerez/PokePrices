@@ -8,6 +8,7 @@ use App\Http\Middleware\DemoReadOnly;
 use App\Http\Middleware\IgnoreQueryCredentials;
 use App\Http\Middleware\JsonGuest;
 use App\Http\Middleware\NoStore;
+use App\Http\Middleware\RequirePasswordConfirmation;
 use App\Http\Problems\ProblemDetails;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -30,7 +31,12 @@ return Application::configure(basePath: dirname(__DIR__))
         // on an auth route gets the 401 problem, never a redirect to a login page (the SPA owns /sign-in); every web
         // answer (Fortify, Sanctum's csrf-cookie) is no-store, and the demo can change nothing through a Fortify route
         // (DemoReadOnly, D8). The api group is not made stateful: only the /v1 account group is (routes/api.php).
-        $middleware->alias(['conditional-get' => ConditionalGet::class, 'guest' => JsonGuest::class]);
+        // A route that needs a recently confirmed password answers the 423 problem, never the framework's plain body.
+        $middleware->alias([
+            'conditional-get' => ConditionalGet::class,
+            'guest' => JsonGuest::class,
+            'password.confirm' => RequirePasswordConfirmation::class,
+        ]);
         $middleware->redirectGuestsTo(null);
         $middleware->appendToGroup('web', [NoStore::class, DemoReadOnly::class]);
         // Which proxies are trusted comes from config/trustedproxy.php (TRUSTED_PROXIES; unset = nobody), so no `at:` here (a
