@@ -13,6 +13,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\Attributes\MaxExceptions;
 use Illuminate\Queue\Attributes\Timeout;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -22,6 +23,8 @@ use Throwable;
  * DayIngest::start() in one transaction (validation, the run row, the older-marker delete and the chunk plan), then
  * dispatches the chunks as one batch. When another session holds the lock, the job releases itself for 60 s; when
  * the day already has a running run, start() writes nothing and the job is done (that run finishes or is resumed).
+ * A refused folder and a day blocked by a running run each log a warning (`ingest_refused`, `ingest_blocked`), once
+ * per cause.
  *
  * Every job of the queued path goes on $queueConnection (`redis` in production), queue PricingConfig::queue(); the
  * connection travels to the chunks and to finalize, so tests can run the same jobs on `database` or `sync`.
@@ -53,16 +56,64 @@ final class StartDayIngest implements ShouldQueue
     public function handle(): void
     {
         $result = $this->begin();
+        if ($result['status'] === 'refused' && $result['run_id'] !== null) {
+            $this->warnRefused($result['run_id'], $result['marker'], (string) $result['error']);
+
+            return;
+        }
         if ($result['status'] !== 'locked') {
             return;
         }
         if ($result['run_id'] !== null) {
-            Log::info((string) $result['error'], ['job' => 'StartDayIngest', 'day' => $this->day, 'run_id' => $result['run_id']]);
+            $this->warnBlocked($result['run_id']);
 
             return;
         }
         Log::info(IngestLock::HELD_MESSAGE, ['job' => 'StartDayIngest', 'day' => $this->day]);
         $this->release(60);
+    }
+
+    /**
+     * Logs `ingest_refused` with the day, the marker (null when none was read) and the reason, unless an earlier
+     * refused run of the day already carries the same marker and reason: the pending scan retries an unchanged refused
+     * folder once a day, and each retry writes a refused run but no second warning.
+     */
+    private function warnRefused(int $runId, ?CarbonImmutable $marker, string $error): void
+    {
+        $earlier = DB::connection($this->database)->table('ingest_runs')
+            ->where('source', PricingConfig::source())
+            ->where('day', $this->day)
+            ->where('status', 'refused')
+            ->where('id', '<', $runId)
+            ->where('error', $error);
+        $earlier = $marker === null ? $earlier->whereNull('marker') : $earlier->where('marker', $marker->utc()->format('Y-m-d H:i:sP'));
+        if ($earlier->exists()) {
+            return;
+        }
+
+        Log::warning('ingest_refused', [
+            'day' => $this->day,
+            'marker' => $marker?->utc()->format('Y-m-d\TH:i:s\Z'),
+            'error' => $error,
+        ]);
+    }
+
+    /**
+     * Logs `ingest_blocked` with the day and the running run that keeps it from starting, once per run (the cache key
+     * remembers a run for 30 days; a cache store that throws only means the warning may repeat). The pending scan only
+     * sends a start for a day whose folder's marker has no running run, so a start that finds one met a run of another
+     * marker, or a start queued twice; the first stays blocked until a replay or a repair clears that run.
+     */
+    private function warnBlocked(int $runId): void
+    {
+        try {
+            $first = Cache::add('pricing:ingest_blocked:'.$runId, true, now()->addDays(30));
+        } catch (Throwable) {
+            $first = true;
+        }
+        if ($first) {
+            Log::warning('ingest_blocked', ['day' => $this->day, 'run_id' => $runId]);
+        }
     }
 
     /** Contention releases do not use up the tries: the deadline does, and MaxExceptions counts the real failures. */
