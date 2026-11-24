@@ -605,6 +605,24 @@ reads that cell, not that the route fails.
 With `redis-cache` down while PokéSearch is up, a card and a search still answer the `503`: the catalogue is
 read through its cache and never around it.
 
+### The last good copy does not outlive the Redis cache
+
+While PokéSearch is down, a card, a search and the card names answer from their last good copy (kept 7
+days) with `meta.degraded` true. Those copies are kept on `redis-cache` only. In `compose.dev.yml` that
+service keeps nothing on disk (`--appendonly no`, `--save ""`) and evicts under memory pressure
+(`--maxmemory 96mb`, `allkeys-lru`), so a restart of `redis-cache`, or an eviction, loses them: with
+PokéSearch still down, a card read before then answers the `503` `upstream-unavailable` with `Retry-After`
+until PokéSearch answers again. `api/tests/Feature/Cards/CardLastGoodLimitTest.php` pins this.
+
+- **What to do.** Nothing here brings a lost copy back; it returns with the next answer from PokéSearch.
+  Do not restart `redis-cache` while PokéSearch is down unless the cache itself is the problem.
+- **Why the copies are not kept elsewhere.** A search copy is about 14 KB and its key is chosen by the
+  caller (the search text and the page), at up to 60 searches a minute from one address. On `redis-queue`
+  (`--maxmemory 48mb`, `noeviction`, also the job queue) that fills the store and then refuses the queue's
+  writes. In the database cache store nothing removes expired rows without a scheduled prune, and every
+  catalogue fill would add a Postgres write to a public read. A card copy is about 2 KB and a card name
+  about 0.3 KB; those are bounded by the size of the catalogue.
+
 ## What never happens
 
 - **No raw file is deleted, moved or written.** The ingest, the replay and the map commands only read the
