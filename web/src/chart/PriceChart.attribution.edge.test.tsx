@@ -171,6 +171,7 @@ describe('the attribution in every chart state that draws a chart', () => {
     );
     const section = await openCard();
     await within(section).findByRole('link', { name: ATTRIBUTION });
+    expect(within(section).getAllByRole('link', { name: ATTRIBUTION })).toHaveLength(1);
     expectCreditedOnce(section);
     expectLogoOffEverywhere();
   });
@@ -183,6 +184,7 @@ describe('the attribution in every chart state that draws a chart', () => {
     resetRecorder();
     const again = await openCard();
     await within(again).findByRole('link', { name: ATTRIBUTION });
+    expect(within(again).getAllByRole('link', { name: ATTRIBUTION })).toHaveLength(1);
     expectCreditedOnce(again);
     expectLogoOffEverywhere();
   });
