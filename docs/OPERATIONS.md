@@ -460,7 +460,7 @@ run goes `ok`. A queued run that fails part-way does leave the rows of its finis
 `price_points`; the rollup of another day reads another day's rows only when an `ok` run of that day and
 marker exists, so those rows reach no daily close until their own run is resumed and goes `ok`.
 
-Three warnings in the worker's log say that a day is in trouble, each once per cause:
+Three warnings in the worker's log say that a day is in trouble:
 
 | Message | When | Context |
 |---|---|---|
