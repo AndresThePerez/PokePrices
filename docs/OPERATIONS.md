@@ -483,8 +483,9 @@ gone, with no reminder in between.
 - **The variable.** `PRICE_JOB_DISCORD_WEBHOOK_URL`, a Discord webhook address
   (`https://discord.com/api/webhooks/<id>/<token>`), read as `alerts.discord.price_job_webhook_url`. It
   carries a token: it is set in the environment only, never committed, and the command never prints, logs
-  or stores it. While it is unset the command prints
-  `PRICE_JOB_DISCORD_WEBHOOK_URL is not set; nothing was sent.`, exits 0 and writes nothing.
+  or stores it. On the server it is a line of the `.env` beside the stack file, which passes it to the
+  `api`, `worker` and `scheduler` containers (`docs/DEPLOY.md`, step 5). While it is unset or empty the
+  command prints `PRICE_JOB_DISCORD_WEBHOOK_URL is not set; nothing was sent.`, exits 0 and writes nothing.
 - **The table.** What was posted is kept in `reported_price_problems` (one row per report: `key`, `kind`,
   `day`, `sentence`, `reported_at`, `cleared_at`), so a restart repeats nothing. The migration
   `2026_11_24_000001_create_reported_price_problems_table` creates it. The update in `docs/DEPLOY.md`

@@ -146,7 +146,7 @@ check "12 placeholders used" sh -c 'for p in "<deploy-user>" "<deploy-host>" "<d
 check "12 no server port literal :80xx and APP_PORT is not given a value" sh -c '! grep -Eq ":80[0-9][0-9]|APP_PORT=[0-9]" docs/DEPLOY.md'
 
 # 13. .env: key names only, every template variable named, no value shown
-for k in IMAGE_TAG APP_BIND APP_PORT SHARED_NET SNAPSHOTS_HOST_DIR DATASET_HOST_DIR APP_KEY DB_PASSWORD INVITE_CODE SESSION_LIFETIME LOG_LEVEL MAIL_MAILER DEMO_PASSWORD POKESEARCH_API_KEY; do
+for k in IMAGE_TAG APP_BIND APP_PORT SHARED_NET SNAPSHOTS_HOST_DIR DATASET_HOST_DIR APP_KEY DB_PASSWORD INVITE_CODE SESSION_LIFETIME LOG_LEVEL MAIL_MAILER DEMO_PASSWORD POKESEARCH_API_KEY PRICE_JOB_DISCORD_WEBHOOK_URL; do
   check "13 the .env step names $k" sh -c 'awk "/^## / { f = (\$0 ~ /^## Step 5[.]/) } f" docs/DEPLOY.md | grep -Fq -e "$0"' "$k"
 done
 check "13 every variable named in the runbook exists in deploy/.env.example" sh -c '

@@ -282,6 +282,10 @@ grep -q '^DB_PASSWORD=change-me$' .env && sed -i "s|^DB_PASSWORD=change-me\$|DB_
 [ACCOUNTS.md](ACCOUNTS.md#invite-code)). Never append a key to the file with a redirect; edit the line that exists.
 `key:generate` cannot be used here: the image holds no `.env` for it to write.
 
+`PRICE_JOB_DISCORD_WEBHOOK_URL` is the Discord webhook address the hourly price-job report posts to (it carries a
+token, so Andres sets it by editor too; see [OPERATIONS.md](OPERATIONS.md#the-discord-report)); left empty, the report
+posts nothing: each hour the command prints that the variable is not set and exits 0.
+
 `DB_PASSWORD` never changes after the first `up`: Postgres applies `POSTGRES_PASSWORD` only when it initialises its
 data directory, so a later edit of the file would lock the app out of the database.
 
