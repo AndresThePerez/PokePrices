@@ -326,7 +326,7 @@ from before accounts; the account tiers are defined in `api/config/accounts.php`
 | `login` | 5 | the lower-cased email and the IP | `POST /login` |
 | `two-factor` | 5 | the pending sign-in | `POST /two-factor-challenge` |
 | `register` | 5 | IP | `POST /register` |
-| `account-guest` | 60 | IP | first on the whole account group, and on `/sanctum/csrf-cookie`, `/forgot-password` and `/reset-password`; it runs before a session starts, so anonymous requests cannot create unmetered `sessions` rows |
+| `account-guest` | 60 | IP | requests without a signed-in session: first on the whole account group, and on `/sanctum/csrf-cookie`, `/forgot-password` and `/reset-password`; it runs before a session starts, so anonymous requests cannot create unmetered `sessions` rows |
 | `password-confirm` | 5 | the user | `/user/confirm-password`, `/user/confirmed-two-factor-authentication`, `PUT /user/password` and `POST /v1/me/deletion` |
 | `account` | 120 | the user | the signed-in account group |
 | `account-demo` | 30 | the IP | used by `account` when the user is the demo |
@@ -343,10 +343,19 @@ Fortify's two verification routes also carry its own `6` a minute.
   real client to `X-Forwarded-For`; Laravel takes the rightmost entry and each client keys its own bucket. `*` is
   never for production: it trusts every hop, so the leftmost, client-chosen `X-Forwarded-For` entry becomes the IP and
   a client could pick a fresh bucket per request. `api/tests/Feature/TrustedProxiesTest.php` proves both.
-- **`account-guest` also counts signed-in traffic.** It runs before the session starts, so a signed-in request spends
-  it too. On a one-IP topology all account traffic from everyone shares the 60 a minute, and the per-user 120 is
-  reachable only from several addresses. A busy account page can therefore meet a `429` earlier than the per-user
-  number suggests.
+- **`account-guest` counts only requests without a signed-in session.** It still runs before any session starts.
+  "Signed in" is decided there without starting one (`App\Domain\Accounts\SignedInSession`): the session cookie is
+  decrypted and the `user_id` of that one `sessions` row is read by its primary key. No cookie, a cookie that does not
+  decrypt, a value that is not a session id, an id with no row, a row idle for longer than `SESSION_LIFETIME` and a
+  session nobody signed in to are all guests, and so is every request when sessions are not kept in the database. A
+  signed-in user behind an address whose guest bucket is full therefore still gets the per-user 120 of `account`.
+  - What it costs before a request is counted: a guest without a cookie, or with one that does not decrypt, costs no
+    query; a cookie that decrypts costs one primary-key read of `sessions`, also when the answer is the `429`. A
+    signed-in request on the account group costs that read, then the session start and the user lookup, before
+    `account` counts it.
+  - On `/sanctum/csrf-cookie`, `/forgot-password` and `/reset-password` no `account` tier follows, so a signed-in
+    request is counted there, before the session starts, at the `account` number (120 a minute) in a bucket of its
+    own, keyed by the user and the client address. It spends neither the guest bucket nor the `account` bucket.
 - A reset request is never throttled in a way that reveals whether an account exists: it answers `200` with the same
   message whatever the broker did.
 
