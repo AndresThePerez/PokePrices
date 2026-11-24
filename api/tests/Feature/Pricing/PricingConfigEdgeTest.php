@@ -129,8 +129,8 @@ it('puts the jobs and every scheduled job line on pricing.queue and the redis co
     expect([$start->queue, $start->connection, $finalize->queue, $finalize->connection, $probe->queue, $probe->connection])
         ->toBe(['example-queue', 'redis', 'example-queue', 'redis', 'example-queue', 'redis'])
         ->and(array_map(fn (ScheduledEvent $e): string => (string) $e->description, $added))
-        ->toBe(['pokeprices-probe', 'pokeprices-ingest-pending', 'pokeprices-freshness', 'pokeprices-alerts-dispatch', 'pokeprices-deliveries', 'pokeprices-prune-failed', 'pokeprices-prune-batches', 'pokeprices-prune-chunks', 'pokeprices-prune-resets'])
-        ->and(array_map(fn (ScheduledEvent $e): bool => $e instanceof CallbackEvent, array_slice($added, 5)))->toBe([false, false, false, false]);
+        ->toBe(['pokeprices-probe', 'pokeprices-ingest-pending', 'pokeprices-freshness', 'pokeprices-alerts-dispatch', 'pokeprices-deliveries', 'pokeprices-prune-failed', 'pokeprices-prune-batches', 'pokeprices-prune-chunks', 'pokeprices-prune-resets', 'pokeprices-price-problems'])
+        ->and(array_map(fn (ScheduledEvent $e): bool => $e instanceof CallbackEvent, array_slice($added, 5)))->toBe([false, false, false, false, false]);
     foreach ([ProbeJob::class, IngestPending::class, LogFreshness::class, DispatchEvents::class, DeliverDue::class] as $class) {
         Queue::assertPushedOn('example-queue', $class);
     }

@@ -471,6 +471,75 @@ Three warnings in the worker's log say that a day is in trouble:
 `price_freshness` is the hourly line itself, so it repeats every hour while its cause lasts; the other two
 are written once. `ingest_failed_repeatedly` (see "A failed day") is the fourth, older one.
 
+### The Discord report
+
+The same problems are posted to a Discord channel: one message when a problem starts and one when it is
+gone, never a repeat and never a reminder.
+
+- **The job.** `pokeprices-price-problems` in the schedule runs `pokeprices:prices:report-problems` every
+  hour on the hour. The scheduler runs the command itself; it is not a queued job, so a stopped worker is
+  still reported. It reads the same list as the freshness answer's missing days and the warnings above
+  (late, a missing day, a refused day, a stuck run or a day on hold), so the three cannot disagree.
+- **The variable.** `PRICE_JOB_DISCORD_WEBHOOK_URL`, a Discord webhook address
+  (`https://discord.com/api/webhooks/<id>/<token>`), read as `alerts.discord.price_job_webhook_url`. It
+  carries a token: it is set in the environment only, never committed, and the command never prints, logs
+  or stores it. While it is unset the command prints
+  `PRICE_JOB_DISCORD_WEBHOOK_URL is not set; nothing was sent.`, exits 0 and writes nothing.
+- **The table.** What was posted is kept in `reported_price_problems` (one row per report: `key`, `kind`,
+  `day`, `sentence`, `reported_at`, `cleared_at`), so a restart repeats nothing. The migration
+  `2026_11_24_000001_create_reported_price_problems_table` creates it; an update that brings this job
+  runs `migrate` before the scheduler starts. One open row per problem is enforced by a unique index.
+  Nothing prunes the table; it grows by two timestamps per problem.
+
+The messages, each with the day in ISO form (`<seen>` and `<over>` are UTC instants of the hourly run that
+noticed, not of the cause):
+
+| Message | Meaning |
+|---|---|
+| `PokéPrices price job problem: The newest prices are from <day>, which is past the limit of 26 hours. Seen since <seen>.` | late: the SLO is breached; see "Freshness breach" |
+| `PokéPrices price job problem: No price day has been ingested yet. Seen since <seen>.` | late on an empty database |
+| `PokéPrices price job problem: No price run finished for <day>. Seen since <seen>.` | a missing day; see "A missing day" |
+| `PokéPrices price job problem: The folder of <day> was refused: <reason>. Seen since <seen>.` | a refused day; the reason is the one in `ingest_runs.error`; see "A refused day" |
+| `PokéPrices price job problem: Run <id> of <day> has not finished and blocks its day. Seen since <seen>.` | a run left `running` for three hours or longer; see "A stalled or crashed run" |
+| `PokéPrices price job problem: <day> failed twice in a row and is on hold. Seen since <seen>.` | a day on hold (or `<n> times`); see "A failed day" |
+| `PokéPrices price job problem cleared: <the sentence as it was posted> That was seen since <seen> and is over as of <over>.` | the problem is no longer listed |
+
+How to read them:
+
+- One message per problem. A refused or stuck day that lies between two ingested days is also a missing
+  day, so it gets two messages, and two "cleared" messages when its run goes `ok`.
+- "Cleared" says that this entry is gone, not that the day is in order. A hold that ends is cleared while
+  the day may still have no `ok` run; the late message names the newest day, so when a newer day arrives
+  that is itself already past the limit, the old one is cleared and a new one is posted.
+- A problem that starts and ends between two hourly runs is never posted. The same problem starting again
+  after it was cleared is posted again.
+- A post that fails (a timeout, a 429, a 5xx, an address the guard refuses) writes a
+  `price_problem_report_failed` warning in the scheduler's log with the problem's key, `started` or
+  `cleared`, the HTTP status and the error, records nothing, and is tried again the next hour: one attempt
+  per problem per run.
+
+A test by hand. The command is safe to run at any time; it posts only what the schedule would post next:
+
+```sh
+docker compose -f compose.dev.yml exec -T -w /workspace/api api php artisan pokeprices:prices:report-problems
+docker compose -f compose.dev.yml exec -T postgres psql -U pokeprices -d pokeprices -c "select key, reported_at, cleared_at from reported_price_problems order by id desc limit 20"
+```
+
+It prints `{"posted":<n>,"cleared":<n>,"failed":<n>}` and exits 1 when a post failed. With the variable set
+to the webhook of a test channel on a dev machine whose newest day is past the limit, the first run posts
+the late message and the second run prints three zeros. `Another price-job report is running; nothing was
+sent.` means the scheduled run holds the report's advisory lock; run it again a minute later.
+
+Note: a stopped scheduler is noticed by nothing in this stack. The report, the freshness line and the scan
+all stop with it, and no message is posted. Only a check from outside sees it, through the freshness that
+stops moving, for example once an hour:
+
+```sh
+curl -fsS http://pokeprices.localhost:8095/v1/prices/freshness | grep -q '"within_slo":true'
+```
+
+A non-zero exit means the prices are past the limit or the site does not answer.
+
 ### A refused day
 
 - **Symptom.** `pokeprices:prices:ingest` prints `ingest refused (run N): <reason>` and exits 1; the :40

@@ -44,7 +44,11 @@ return [
 
     // The live Discord switch: DISCORD_TEST_WEBHOOK_URL is set by Andres in the environment only,
     // never committed; unset, pokeprices:alerts:discord-test sends nothing.
-    'discord' => ['test_webhook_url' => env('DISCORD_TEST_WEBHOOK_URL')],
+    //
+    // The price-job report: PRICE_JOB_DISCORD_WEBHOOK_URL is the Discord webhook the hourly
+    // pokeprices:prices:report-problems posts to, set in the environment only and never committed; unset, it posts
+    // nothing.
+    'discord' => ['test_webhook_url' => env('DISCORD_TEST_WEBHOOK_URL'), 'price_job_webhook_url' => env('PRICE_JOB_DISCORD_WEBHOOK_URL')],
 
     // Requests per minute, per user (App\Domain\Alerts\AlertRateLimits): POST /v1/webhooks/{id}/test.
     'rate_limits' => ['webhook-test' => 5],

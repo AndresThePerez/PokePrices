@@ -18,6 +18,22 @@ use stdClass;
  */
 final class ReportedPriceProblems
 {
+    /** crc32('pricing:problem-report'): the advisory lock one report run holds from its first read to its last write. */
+    public const int LOCK_KEY = 4253178751;
+
+    /** Takes the report lock for this session unless another session holds it. */
+    public static function tryLock(ConnectionInterface $db): bool
+    {
+        $row = $db->selectOne('SELECT pg_try_advisory_lock(?) AS taken', [self::LOCK_KEY], false);
+
+        return $row instanceof stdClass && ($row->taken ?? false) === true;
+    }
+
+    public static function unlock(ConnectionInterface $db): void
+    {
+        $db->select('SELECT pg_advisory_unlock(?)', [self::LOCK_KEY], false);
+    }
+
     /**
      * The reports not yet cleared, oldest first.
      *

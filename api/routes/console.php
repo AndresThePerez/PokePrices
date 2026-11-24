@@ -37,3 +37,8 @@ Schedule::command('model:prune', ['--model' => [IngestRunChunk::class]])->daily(
 // Account bookkeeping: a password-reset token is good for 60 minutes; the expired rows are cleared once a day at 03:17
 // UTC, off the minutes the price jobs run at (:00 the freshness line, :40 the pending scan, every fifth the dispatch).
 Schedule::command('auth:clear-resets')->dailyAt('03:17')->timezone('UTC')->name('pokeprices-prune-resets');
+
+// The price-job report: hourly, a command the scheduler runs itself and not a queued job, so a stopped worker is still
+// reported. One Discord message when a problem starts and one when it clears. The overlap lock lasts 59 minutes at
+// most, so a run that was killed never holds back the next hour's.
+Schedule::command('pokeprices:prices:report-problems')->hourly()->withoutOverlapping(59)->name('pokeprices-price-problems');
