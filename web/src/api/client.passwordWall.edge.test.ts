@@ -3,7 +3,12 @@
 // The client must hand the screens the same status, with the problem's own type and request id.
 import { afterEach, describe, expect, it } from 'vitest';
 import { enableTwoFactor, hasProblemType, recoveryCodes } from './client';
-import { clearXsrfCookie, problemResponse, setXsrfCookie, stubAccountFetch } from '../test/fixtures';
+import {
+  clearXsrfCookie,
+  problemResponse,
+  setXsrfCookie,
+  stubAccountFetch,
+} from '../test/fixtures';
 
 const TYPE = 'https://pokeprices.andrestheperez.com/problems/password-confirmation-required';
 
@@ -44,7 +49,12 @@ describe('the 423 problem document of the password confirmation wall', () => {
       requestId: 'req-wall-write-0001',
       problem: wall('/user/two-factor-authentication', 'req-wall-write-0001'),
     });
-    expect(read).toMatchObject({ ok: false, status: 423, type: TYPE, requestId: 'req-wall-read-0002' });
+    expect(read).toMatchObject({
+      ok: false,
+      status: 423,
+      type: TYPE,
+      requestId: 'req-wall-read-0002',
+    });
     expect(!write.ok && hasProblemType(write, 423, 'password-confirmation-required')).toBe(true);
     expect(!read.ok && hasProblemType(read, 423, 'password-confirmation-required')).toBe(true);
     expect(calls.map((call) => call.key)).toEqual([
