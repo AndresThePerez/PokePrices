@@ -198,6 +198,7 @@ describe('the account page (T09)', () => {
     expect(outline[0]).toMatch(/^H1 /);
     expect(outline.slice(1)).toEqual([
       'H2 Profile',
+      'H2 Change password',
       'H2 Two-factor authentication',
       'H2 Notifications',
       'H2 Display',

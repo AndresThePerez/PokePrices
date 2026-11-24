@@ -21,7 +21,7 @@ import {
 } from '../api/client';
 import { Field, ProblemBlock } from './Form';
 import { PRIMARY_BUTTON, SECONDARY_BUTTON } from '../ui/classes';
-import { firstErrors } from './fields';
+import { CODE_GIVEN, PASSWORD_GIVEN, firstErrors, useFieldChecks } from './fields';
 import { useAccountWrite } from './mutations';
 import { ME_KEY, useReadOnly } from './session';
 
@@ -83,7 +83,8 @@ export default function TwoFactorSection({ me }: { readonly me: Me }) {
   const failure = write.error;
   // The step that answered 423: it runs again once the password is confirmed.
   const awaiting = useRef<Step | null>(null);
-  const errors = firstErrors(failure);
+  const checks = useFieldChecks();
+  const errors = { ...firstErrors(failure), ...checks.errors };
   const on = me.two_factor;
   // The read-only demo cannot change two-factor authentication: it sees the state and no button.
   const readOnly = useReadOnly();
@@ -158,6 +159,10 @@ export default function TwoFactorSection({ me }: { readonly me: Me }) {
   function submitPassword(event: SubmitEvent<HTMLFormElement>): void {
     event.preventDefault();
     if (pending) return;
+    if (!checks.passes(event.currentTarget, [['password', password, PASSWORD_GIVEN]])) {
+      write.reset();
+      return;
+    }
     const form = { password };
     write.run(async () => {
       const result = await confirmPassword(form);
@@ -174,6 +179,10 @@ export default function TwoFactorSection({ me }: { readonly me: Me }) {
   function submitCode(event: SubmitEvent<HTMLFormElement>): void {
     event.preventDefault();
     if (pending) return;
+    if (!checks.passes(event.currentTarget, [['code', code, CODE_GIVEN]])) {
+      write.reset();
+      return;
+    }
     const value = code;
     // The code is never kept after a submit, whatever the answer.
     setCode('');

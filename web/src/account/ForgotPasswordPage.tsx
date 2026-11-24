@@ -4,7 +4,7 @@ import { useState, type SubmitEvent } from 'react';
 import { requestPasswordReset, type MessageAnswer } from '../api/client';
 import { AccountMain, Field, ProblemBlock, StatusLine } from './Form';
 import { PRIMARY_BUTTON } from '../ui/classes';
-import { firstErrors } from './fields';
+import { EMAIL_CHECKS, firstErrors, useFieldChecks } from './fields';
 import { useAccountWrite } from './mutations';
 
 const FIELDS = ['email'] as const;
@@ -16,11 +16,16 @@ export default function ForgotPasswordPage() {
   const failure = write.error;
   // The API's message, verbatim, once the request answered.
   const message = write.data?.message ?? null;
-  const errors = firstErrors(failure);
+  const checks = useFieldChecks();
+  const errors = { ...firstErrors(failure), ...checks.errors };
 
   function submit(event: SubmitEvent<HTMLFormElement>): void {
     event.preventDefault();
     if (pending) return;
+    if (!checks.passes(event.currentTarget, [['email', email, ...EMAIL_CHECKS]])) {
+      write.reset();
+      return;
+    }
     const form = { email };
     write.run(() => requestPasswordReset(form));
   }

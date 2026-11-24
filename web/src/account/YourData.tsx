@@ -11,7 +11,7 @@ import { Button } from '../ui/Button';
 import Panel from '../ui/Panel';
 import { Field, ProblemBlock } from './Form';
 import { FOCUS, TEXT_LINK } from '../ui/classes';
-import { firstErrors } from './fields';
+import { PASSWORD_GIVEN, firstErrors, useFieldChecks } from './fields';
 import { useAccountWrite, useSessionTransition } from './mutations';
 
 const EXPORT_PATH = '/v1/me/export';
@@ -55,13 +55,19 @@ function DeleteForm({ onDeleted }: { readonly onDeleted: () => void }) {
       return transition(null);
     },
   });
+  const checks = useFieldChecks();
   const failure = write.error;
-  const errors = firstErrors(failure);
+  const errors = { ...firstErrors(failure), ...checks.errors };
   const ready = understood && password !== '' && !write.isPending;
 
   function submit(event: SubmitEvent<HTMLFormElement>): void {
     event.preventDefault();
-    if (!ready) return;
+    if (!understood || write.isPending) return;
+    // The button is off without a password; a submit that still arrives is told why.
+    if (!checks.passes(event.currentTarget, [['password', password, PASSWORD_GIVEN]])) {
+      write.reset();
+      return;
+    }
     const form = { password };
     write.run(async () => {
       const result = await deleteAccount(form);
@@ -86,6 +92,7 @@ function DeleteForm({ onDeleted }: { readonly onDeleted: () => void }) {
             onChange={(event) => {
               setUnderstood(event.target.checked);
               if (!event.target.checked) setPassword('');
+              checks.clear();
             }}
             className={CHECKBOX}
           />

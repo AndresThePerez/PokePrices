@@ -7,7 +7,7 @@ import Link from '../Link';
 import { navigate } from '../router';
 import { AccountMain, Field, ProblemBlock } from './Form';
 import { PRIMARY_BUTTON, TEXT_LINK } from '../ui/classes';
-import { firstErrors } from './fields';
+import { firstErrors, newPasswordFields, useFieldChecks } from './fields';
 import { useAccountWrite } from './mutations';
 
 const FIELDS = ['email', 'password', 'password_confirmation'] as const;
@@ -28,11 +28,18 @@ function ResetForm({ link }: { readonly link: ResetLink }) {
   });
   const pending = write.isPending;
   const failure = write.error;
-  const errors = firstErrors(failure);
+  const checks = useFieldChecks();
+  const errors = { ...firstErrors(failure), ...checks.errors };
 
   function submit(event: SubmitEvent<HTMLFormElement>): void {
     event.preventDefault();
     if (pending) return;
+    // The address comes from the link and cannot be edited here: only the passwords are checked.
+    const fields = newPasswordFields(password, confirmation, 'Enter a new password.');
+    if (!checks.passes(event.currentTarget, fields)) {
+      write.reset();
+      return;
+    }
     const form = {
       token: link.token,
       email: link.email,

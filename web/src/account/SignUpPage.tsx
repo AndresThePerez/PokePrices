@@ -9,7 +9,7 @@ import Notice from '../ui/Notice';
 import DemoButton from './DemoButton';
 import { AccountMain, Field, ProblemBlock } from './Form';
 import { PRIMARY_BUTTON, TEXT_LINK } from '../ui/classes';
-import { firstErrors } from './fields';
+import { EMAIL_CHECKS, firstErrors, newPasswordFields, required, useFieldChecks } from './fields';
 import { useAccountWrite, useSessionTransition } from './mutations';
 
 const FIELDS = ['invite_code', 'email', 'password', 'password_confirmation'] as const;
@@ -28,9 +28,10 @@ export default function SignUpPage() {
   const write = useAccountWrite<undefined>({
     onSuccess: () => transition('/account', { status: CREATED }),
   });
+  const checks = useFieldChecks();
   const pending = write.isPending;
   const failure = write.error;
-  const errors = firstErrors(failure);
+  const errors = { ...firstErrors(failure), ...checks.errors };
 
   function submit(event: SubmitEvent<HTMLFormElement>): void {
     event.preventDefault();
@@ -38,6 +39,16 @@ export default function SignUpPage() {
     // Both passwords are hidden again on every submit, whatever the answer.
     setShowPassword(false);
     setShowConfirmation(false);
+    const fields = [
+      ['invite_code', inviteCode, required('Enter your invite code.')],
+      ['email', email, ...EMAIL_CHECKS],
+      ...newPasswordFields(password, confirmation, 'Enter a password.'),
+    ] as const;
+    // Every failing field is named at once; nothing is sent and what was typed stays.
+    if (!checks.passes(event.currentTarget, fields)) {
+      write.reset();
+      return;
+    }
     const form = {
       invite_code: inviteCode,
       email,

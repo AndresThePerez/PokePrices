@@ -276,6 +276,14 @@ describe('a refused write in the demo reads as the calm sentence', () => {
     visit('/sign-up');
     render(<App />);
     fireEvent.change(within(main()).getByLabelText('Invite code'), { target: { value: 'x' } });
+    // The form checks itself before it is sent: the other fields hold values that pass.
+    for (const [label, value] of [
+      ['Email', 'newcomer@example.com'],
+      ['Password', 'fake-password-0000-ok'],
+      ['Confirm password', 'fake-password-0000-ok'],
+    ] as const) {
+      fireEvent.change(within(main()).getByLabelText(label), { target: { value } });
+    }
     fireEvent.click(within(main()).getByRole('button', { name: 'Create account' }));
     const refusal = await within(main()).findByRole('alert');
     expect(refusal.textContent).toBe(CALM);

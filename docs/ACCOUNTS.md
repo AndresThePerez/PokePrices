@@ -80,7 +80,7 @@ not a session endpoint.
 | POST | `/email/verification-notification` | none | `202` (`204` when the address is already verified) | The `Send the verification email again` button on `/account`. |
 | POST | `/user/confirm-password` | `password` | `201`, empty body | Called by the two-factor screen when a step answers `423`; the confirmation lasts three hours (`AUTH_PASSWORD_TIMEOUT`). |
 | GET | `/user/confirmed-password-status` | none | `200` `{"confirmed": <bool>}` | Not used by the app. |
-| PUT | `/user/password` | `current_password`, `password`, `password_confirmation` | `200`, empty body | Changes the signed-in person's own password; see [Changing the password](#changing-the-password). No page of the app calls it yet. |
+| PUT | `/user/password` | `current_password`, `password`, `password_confirmation` | `200`, empty body | Changes the signed-in person's own password; see [Changing the password](#changing-the-password). The `Change password` panel on `/account`. |
 | POST | `/user/two-factor-authentication` | none | `200`, empty body | `Turn on two-factor authentication`; needs a confirmed password, else `423`. |
 | POST | `/user/confirmed-two-factor-authentication` | `code` | `200`, empty body | The `Confirm` step of two-factor setup; a wrong code is `422` under `code`. |
 | GET | `/user/two-factor-qr-code` | none | `200` `{"svg": …, "url": …}` | Draws the QR code as an image in component state; `url` is not used. |
@@ -111,6 +111,28 @@ session names, and no field, header or query parameter can name another.
   deleted in the same transaction as the new password, and a remember-me cookie issued before the change no longer
   signs anyone in. The browser that made the change keeps its session and stays signed in. A reset link mailed
   before the change stops working. A refused change signs nobody out.
+- **The form.** `/account` has a `Change password` panel with three fields: `Current password`, `New password` and
+  `Confirm new password`. It sends them with `PUT /user/password`. A `422` message shows under its own field, a `429`
+  reads "Could not change the password: Too Many Requests. Wait a minute and try again.", and a success shows the
+  status line "Password changed. Your other sessions are signed out." The three fields are emptied after every
+  answer. The read-only demo has no such panel.
+
+### Checks in the browser
+
+Every account form checks itself before it is sent: sign in and its two-factor step, sign up, forgot password, reset
+password, two-factor setup, the confirm-password prompt, account deletion and change password.
+
+- **What is checked.** A required field that is empty; a new password shorter than 12 or longer than 72 characters
+  (sign up, reset password, change password); a confirmation that differs from the password; an email address with
+  nothing before its `@`, without an `@`, or with a space in it (sign in, sign up, forgot password). A current
+  password is only checked for being there. The address on the reset page comes from the link and is not checked.
+- **What the person sees.** Every failing field gets its message at once, under the field and tied to it with
+  `aria-describedby` and `aria-invalid`; focus moves to the first failing field; no request is sent, and what was
+  typed stays.
+- **The server stays the judge.** A form that passes is sent as before, and a `422` shows each field's message in the
+  same place. The email check is loose on purpose: `name@` passes it and the API refuses it.
+- **Account deletion.** `Delete my account` stays disabled until a password is typed, so the empty-password message
+  answers only a submit that arrives another way.
 
 ## Invite code
 

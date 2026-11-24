@@ -1,6 +1,6 @@
 // /account as titled panels: Profile (who is signed in, the verified chip with
 // the resend button, and Sign out at the top right; the read-only demo is named by the header's
-// strip), the two-factor section, Notifications (a static row link to /alerts),
+// strip), Change password (not for the demo), the two-factor section, Notifications (a static row link to /alerts),
 // Display (the Theme and Up/down colours selects, which the footer omits here), Your data,
 // then Delete account set apart. Signed out, it links to sign-in and sign-up; signed out,
 // loading and failed keep the Display panel after their content. A fresh mount reads the session
@@ -11,6 +11,7 @@ import { DisplaySettings } from '../Footer';
 import Link from '../Link';
 import Panel from '../ui/Panel';
 import AccountScope from './AccountScope';
+import ChangePassword from './ChangePassword';
 import { AccountMain, LoadingAccount, ProblemBlock, StatusLine } from './Form';
 import { FOCUS, MUTED, SECONDARY_BUTTON, TEXT_LINK } from '../ui/classes';
 import { useAccountWrite } from './mutations';
@@ -112,6 +113,7 @@ function SignedIn({ me, onDeleted }: { readonly me: Me; readonly onDeleted: () =
   return (
     <>
       <Profile me={me} />
+      <ChangePassword />
       {/* The two-factor section keeps its own region and h2; the panel only frames it. */}
       <Panel className="mt-6 [&>section]:mt-0 [&>section]:border-t-0 [&>section]:pt-0">
         <TwoFactorSection me={me} />

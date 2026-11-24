@@ -585,6 +585,7 @@ const SESSION_PATHS: ReadonlySet<string> = new Set([
   '/reset-password',
   '/email/verification-notification',
   '/user/confirm-password',
+  '/user/password',
   '/user/two-factor-authentication',
   '/user/confirmed-two-factor-authentication',
   '/user/two-factor-qr-code',
@@ -874,6 +875,18 @@ export function verifyEmail(
 /** POST /email/verification-notification: 202 sent, 204 when already verified. */
 export function resendVerification(): Promise<ApiResult<undefined>> {
   return accountRequest('/email/verification-notification', { method: 'POST' });
+}
+
+/**
+ * PUT /user/password: 200 with an empty body; 422 errors.current_password or errors.password. The
+ * account's other sessions are signed out and this one stays.
+ */
+export function changePassword(form: {
+  readonly current_password: string;
+  readonly password: string;
+  readonly password_confirmation: string;
+}): Promise<ApiResult<undefined>> {
+  return accountRequest('/user/password', { method: 'PUT', body: form });
 }
 
 // ---- Two-factor -----------------------------------------------------------------------

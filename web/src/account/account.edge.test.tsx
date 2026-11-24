@@ -141,6 +141,12 @@ describe('the reset token leaves the address bar and never lands anywhere else',
     const form = main.querySelector('form');
     expect(form).not.toBeNull();
     if (form === null) return;
+    // The form checks itself before it is sent: both passwords hold a value that passes.
+    for (const label of ['New password', 'Confirm new password']) {
+      fireEvent.change(within(main).getByLabelText(label), {
+        target: { value: 'fake-password-0000-ok' },
+      });
+    }
     fireEvent.submit(form);
     fireEvent.submit(form);
     await waitFor(() => {

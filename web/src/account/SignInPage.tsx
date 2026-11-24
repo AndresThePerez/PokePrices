@@ -8,7 +8,14 @@ import Link from '../Link';
 import { DemoPanel } from './DemoButton';
 import { AccountMain, Field, LoadingAccount, ProblemBlock, StatusLine } from './Form';
 import { PRIMARY_BUTTON, TEXT_LINK } from '../ui/classes';
-import { firstErrors } from './fields';
+import {
+  CODE_GIVEN,
+  EMAIL_CHECKS,
+  PASSWORD_GIVEN,
+  firstErrors,
+  required,
+  useFieldChecks,
+} from './fields';
 import { useAccountWrite, useSessionTransition } from './mutations';
 import { useArrivalStatus, useSession } from './session';
 
@@ -23,13 +30,19 @@ function TwoFactorChallenge({ next }: { readonly next: string }) {
   const [field, setField] = useState<ChallengeField>('code');
   const [value, setValue] = useState('');
   const challenge = useAccountWrite<undefined>({ onSuccess: () => transition(next) });
+  const checks = useFieldChecks();
   const pending = challenge.isPending;
   const failure = challenge.error;
-  const errors = firstErrors(failure);
+  const errors = { ...firstErrors(failure), ...checks.errors };
 
   function submit(event: SubmitEvent<HTMLFormElement>): void {
     event.preventDefault();
     if (pending) return;
+    const given = field === 'code' ? CODE_GIVEN : required('Enter a recovery code.');
+    if (!checks.passes(event.currentTarget, [[field, value, given]])) {
+      challenge.reset();
+      return;
+    }
     const form = field === 'code' ? { code: value } : { recovery_code: value };
     // The code is never kept after a submit, whatever the answer.
     setValue('');
@@ -39,6 +52,7 @@ function TwoFactorChallenge({ next }: { readonly next: string }) {
   function toggle(): void {
     setField(field === 'code' ? 'recovery_code' : 'code');
     setValue('');
+    checks.clear();
     if (challenge.isError) challenge.reset();
   }
 
@@ -107,13 +121,22 @@ function SignInForm({
       else await transition(next);
     },
   });
+  const checks = useFieldChecks();
   const pending = write.isPending;
   const failure = write.error;
-  const errors = firstErrors(failure);
+  const errors = { ...firstErrors(failure), ...checks.errors };
 
   function submit(event: SubmitEvent<HTMLFormElement>): void {
     event.preventDefault();
     if (pending) return;
+    const fields = [
+      ['email', email, ...EMAIL_CHECKS],
+      ['password', password, PASSWORD_GIVEN],
+    ] as const;
+    if (!checks.passes(event.currentTarget, fields)) {
+      write.reset();
+      return;
+    }
     const form = { email, password };
     write.run(async () => {
       const result = await signIn(form);

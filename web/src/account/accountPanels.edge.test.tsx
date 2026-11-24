@@ -135,7 +135,7 @@ describe('the footer hand-over to the Display panel (D2-i2-T07, R297)', () => {
 });
 
 describe('the Profile panel (D2-i2-T07)', () => {
-  it('names exactly six regions in order, with Sign out and a failed sign-out inside Profile', async () => {
+  it('names exactly seven regions in order, with Sign out and a failed sign-out inside Profile', async () => {
     const calls = stubAccountFetch({
       'GET /v1/me': jsonResponse(signedInMe),
       'POST /logout': problemResponse(serverErrorProblem('/logout')),
@@ -155,6 +155,7 @@ describe('the Profile panel (D2-i2-T07)', () => {
       ),
     ).toEqual([
       'Profile',
+      'Change password',
       'Two-factor authentication',
       'Notifications',
       'Display',

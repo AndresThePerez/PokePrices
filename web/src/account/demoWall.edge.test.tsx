@@ -305,6 +305,14 @@ describe('the calm sentence is for the demo refusal alone', () => {
     visit('/sign-up');
     render(<App />);
     fireEvent.change(within(main()).getByLabelText('Invite code'), { target: { value: 'x' } });
+    // The form checks itself before it is sent: the other fields hold values that pass.
+    for (const [label, value] of [
+      ['Email', 'newcomer@example.com'],
+      ['Password', 'fake-password-0000-ok'],
+      ['Confirm password', 'fake-password-0000-ok'],
+    ] as const) {
+      fireEvent.change(within(main()).getByLabelText(label), { target: { value } });
+    }
     fireEvent.click(within(main()).getByRole('button', { name: 'Create account' }));
     await within(main()).findByRole('alert');
     const text = main().textContent;
