@@ -63,7 +63,10 @@ it('answers a throttled route whose limiter store is down with the 503 problem a
     config(['cache.limiter' => 'locks']);
     outageRedisDown('default');
 
-    outageExpectUnavailable($this->withHeaders(Accounts::FIRST_PARTY)->json($method, $path), $path);
+    $response = $this->withHeaders(Accounts::FIRST_PARTY)->json($method, $path);
+
+    outageExpectUnavailable($response, $path);
+    expect($response->getStatusCode())->toBe(503);
 })->with([
     'public-read: the freshness of the prices' => ['GET', '/v1/prices/freshness'],
     'public-read: the price history of a card' => ['GET', '/v1/cards/base1-4/prices'],
@@ -111,7 +114,10 @@ it('answers a signed-in route whose limiter store is down with the 503 problem, 
 it('answers a catalogue read whose cache is down with the 503 problem and Retry-After', function (string $path): void {
     outageRedisDown('cache');
 
-    outageExpectUnavailable($this->getJson($path), $path);
+    $response = $this->getJson($path);
+
+    outageExpectUnavailable($response, $path);
+    expect($response->getStatusCode())->toBe(503);
 })->with([
     'a card' => ['/v1/cards/base1-4'],
     'a search past the last page' => ['/v1/cards?q=charizard&page=99'],
