@@ -7,13 +7,13 @@ namespace App\Http\Controllers;
 use App\Domain\Catalog\CatalogRepository;
 use App\Domain\Pricing\LatestPrices;
 use App\Http\CachePolicy;
+use App\Http\QueryParameters;
 use App\Http\Resources\CardSummaryResource;
 use Closure;
 use Dedoc\Scramble\Attributes\Group;
 use Illuminate\Database\ConnectionInterface;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Validation\ValidationException;
 
 #[Group('Cards', 'Pokémon cards from the PokéSearch catalog.')]
 final class CardSearchController
@@ -52,10 +52,7 @@ final class CardSearchController
      */
     public function __invoke(Request $request): AnonymousResourceCollection
     {
-        $unknown = array_diff(array_map('strval', array_keys($request->query())), self::PARAMETERS);
-        if ($unknown !== []) {
-            throw ValidationException::withMessages(array_fill_keys($unknown, 'This query parameter is not accepted.'));
-        }
+        QueryParameters::only($request, self::PARAMETERS);
 
         $validated = $request->validate([
             'q' => ['required', 'string', 'min:1', 'max:200', function (string $attribute, mixed $value, Closure $fail): void {

@@ -316,7 +316,7 @@ it('documents the named rows and a required boolean meta.degraded', function ():
             'required' => ['name', 'set_name', 'number'],
             'additionalProperties' => false,
         ])
-        ->and(array_keys($operation['responses']))->toBe([200, 304, 422, 429])
+        ->and(array_keys($operation['responses']))->toBe([200, 304, 422, 429, 500])
         ->and($operation['description'])->toContain('Each row names its card from the PokéSearch catalog (card is null when PokéSearch does not have the id); while PokéSearch is unavailable, names come from the last good copy or are null, and meta.degraded is true.')
         ->and($operation['description'])->not->toContain('Cards are named by card_id only.');
 });
