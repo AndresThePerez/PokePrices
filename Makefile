@@ -28,6 +28,10 @@ test: init
 	$(DC) exec -T -w /workspace/web node ./node_modules/.bin/vitest run --config vitest.config.ts
 	$(DC) exec -T -w /workspace/web node ./node_modules/.bin/tsc -b
 	$(DC) exec -T -w /workspace/web node ./node_modules/.bin/eslint -c eslint.config.js --max-warnings=0 .
+	$(DC) exec -T -w /workspace/api api php artisan scramble:export --path=/workspace/.gates/make-test.api.json
+	cmp -s openapi/api.json .gates/make-test.api.json
+	$(DC) exec -T -w /workspace/web node ./node_modules/.bin/openapi-typescript ../openapi/api.json -o /workspace/.gates/make-test.schema.d.ts
+	cmp -s web/src/api/schema.d.ts .gates/make-test.schema.d.ts
 
 gates: init
 	$(DC) up -d --wait --build

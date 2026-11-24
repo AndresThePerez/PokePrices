@@ -18,6 +18,7 @@ check "README names PokéPrices with the accent" /usr/bin/grep -q 'PokéPrices' 
 check "README has exactly one Development section" sh -c 'test "$(/usr/bin/grep -c "^## Development$" README.md)" -eq 1'
 check "README reserves the SPA auth prefix" /usr/bin/grep -q '/account/' README.md
 check "README makes no real-time claim" sh -c '! /usr/bin/grep -qiE "real-time|realtime|live prices" README.md'
+check "README says make test compares openapi/api.json and the generated types with fresh copies" /usr/bin/grep -Eq '^make test  .*openapi/api[.]json.*web/src/api/schema[.]d[.]ts' README.md
 check "S7 passes" env GATES_OUT="$OUT" sh scripts/gates/s7.sh
 check "D4 passes" env GATES_OUT="$OUT" sh scripts/gates/d4.sh
 d=$(mktemp -d "$ROOT/.gates/tmp/cis-XXXXXX"); mkdir -p "$d/.github/workflows"

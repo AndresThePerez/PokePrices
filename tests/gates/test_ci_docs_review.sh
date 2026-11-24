@@ -58,9 +58,14 @@ want = [
   "./node_modules/.bin/vitest run --config vitest.config.ts",
   "./node_modules/.bin/tsc -b",
   "./node_modules/.bin/eslint -c eslint.config.js --max-warnings=0 .",
+  "php artisan scramble:export --path=/workspace/.gates/make-test.api.json",
+  "cmp -s openapi/api.json .gates/make-test.api.json",
+  "./node_modules/.bin/openapi-typescript ../openapi/api.json -o /workspace/.gates/make-test.schema.d.ts",
+  "cmp -s web/src/api/schema.d.ts .gates/make-test.schema.d.ts",
 ]
-pre = ["$(DC) exec -T -w /workspace/api api ", "$(DC) exec -T -w /workspace/web node ", "$(DC) exec -T -w /workspace/web node ", "$(DC) exec -T -w /workspace/web node "]
-ok = len(recipe) == 4 and all(r == p + w for r, p, w in zip(recipe, pre, want))
+pre = ["$(DC) exec -T -w /workspace/api api ", "$(DC) exec -T -w /workspace/web node ", "$(DC) exec -T -w /workspace/web node ", "$(DC) exec -T -w /workspace/web node ",
+       "$(DC) exec -T -w /workspace/api api ", "", "$(DC) exec -T -w /workspace/web node ", ""]
+ok = len(recipe) == 8 and len(want) == 8 and len(pre) == 8 and all(r == p + w for r, p, w in zip(recipe, pre, want))
 ok = ok and not any(re.match(r"[-@+]", r) or re.search(r"\|\||\||;|&&|\btee\b|\btrue\b", r) for r in recipe)
 phony = set()
 for l in lines:
@@ -68,7 +73,7 @@ for l in lines:
         phony.update(l.split()[1:])
 sys.exit(0 if ok and "test" in phony else 1)
 '; }
-check "make test: four direct-binary lines in order, -T exec, 3 pest workers, no failure-swallowing syntax, test is .PHONY" mkpy
+check "make test: eight lines in order (four direct-binary suites, the contract export and its cmp, the types generation and its cmp), -T exec, 3 pest workers, no failure-swallowing syntax, test is .PHONY" mkpy
 check "make test depends on init (a fresh runner has no vendor, node_modules or api/.env)" /usr/bin/grep -qx 'test: init' Makefile
 check "Makefile keeps the pipefail shell flags" /usr/bin/grep -qx '.SHELLFLAGS := -o pipefail -c' Makefile
 

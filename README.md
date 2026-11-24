@@ -16,7 +16,7 @@ quotes: a price changes once a day, after that day's close is collected.
 
 ```sh
 make init                                  # bring up the core services, install dependencies, create api/.env once
-make test                                  # unit suites: Pest, Vitest, tsc, eslint; CI runs exactly this on every non-draft PR
+make test                                  # unit suites: Pest, Vitest, tsc, eslint; then openapi/api.json and web/src/api/schema.d.ts must equal a fresh export and a fresh generation; CI runs exactly this on every non-draft PR
 make gates                                 # run every gate in gates/manifest-P0.json (loop step, not CI)
 make verdict FINDINGS=<path/to/findings.json>   # phase verdict (loop step, not CI)
 make down                                  # stop the stack (volumes are kept)
