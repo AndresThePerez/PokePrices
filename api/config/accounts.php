@@ -19,7 +19,8 @@ declare(strict_types=1);
 |
 | demo: the read-only demo account, seeded by Database\Seeders\DemoAccountSeeder. DEMO_PASSWORD has no
 | committed default: unset, the seeder stores a random 40-character password and the demo is entered only through
-| POST /v1/demo/session; set, the normal sign-in form works too. Keys missing from card_variants are skipped.
+| POST /v1/demo/session; set, the normal sign-in form works too. The cards it watches and holds are not settings: they
+| are App\Domain\Accounts\DemoAccount::WATCHLIST and PORTFOLIO, and a key missing from card_variants is skipped.
 */
 
 return [
@@ -54,7 +55,5 @@ return [
         'enabled' => (bool) filter_var(env('DEMO_ENABLED', true), FILTER_VALIDATE_BOOL),
         'email' => env('DEMO_EMAIL', 'demo@example.com'),
         'password' => env('DEMO_PASSWORD'),
-        'watchlist' => ['base1-4:holo:unlimited:-', 'base1-4:holo:1st:-', 'ex5-17:reverse:-:-'],
-        'portfolio' => ['base1-4:holo:unlimited:-' => 1, 'ex5-17:reverse:-:-' => 3],
     ],
 ];

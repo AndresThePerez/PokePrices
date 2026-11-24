@@ -15,7 +15,7 @@ use RuntimeException;
 /**
  * The read-only demo account. config/accounts.php demo says whether it may be entered, its email
  * and its optional password (DEMO_PASSWORD, never committed); the watchlist and portfolio it is seeded with are
- * WATCHLIST and PORTFOLIO here (the config's watchlist and portfolio keys are no longer read). seed() is idempotent:
+ * WATCHLIST and PORTFOLIO here (the config holds no list of cards). seed() is idempotent:
  * one demo user (is_demo, verified, no two-factor) holding exactly those rows whose variants exist in card_variants,
  * plus the samples of App\Domain\Alerts\DemoSamples (one alert, a sample signed webhook and two delivered sample
  * messages). Nothing is sent, queued or read from the catalogue. Without DEMO_PASSWORD the demo gets a random
