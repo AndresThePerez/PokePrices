@@ -7,8 +7,10 @@ namespace App\Actions\Fortify;
 use App\Models\User;
 use Illuminate\Auth\SessionGuard;
 use Illuminate\Contracts\Session\Session;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Laravel\Fortify\Contracts\UpdatesUserPasswords;
 
@@ -38,9 +40,9 @@ final class UpdateUserPassword implements UpdatesUserPasswords
         $session = request()->hasSession() ? request()->session() : null;
 
         DB::transaction(function () use ($user, $valid, $session): void {
-            $user->forceFill(['password' => $valid['password']])->save();
+            $user->forceFill(['password' => Hash::make($valid['password'])])->save();
             DB::table('sessions')->where('user_id', $user->getKey())
-                ->when($session instanceof Session, fn ($rows) => $rows->where('id', '!=', $session?->getId()))
+                ->when($session instanceof Session, fn (Builder $rows): Builder => $rows->where('id', '!=', $session?->getId()))
                 ->delete();
         });
 
