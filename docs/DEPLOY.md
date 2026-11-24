@@ -369,11 +369,13 @@ docker compose exec -T -u www-data api php artisan pokeprices:map:audit --check 
 docker compose exec -T -u www-data api php artisan pokeprices:map:audit --check coverage
 docker compose exec -T -u www-data api php artisan pokeprices:map:audit --check ambiguity
 docker compose exec -T -u www-data api php artisan pokeprices:map:audit --check names
+docker compose exec -T -u www-data api php artisan pokeprices:map:audit --check priced
 docker compose exec -T -u www-data api php artisan pokeprices:map:golden
 ```
 
-Read the audit and golden values before the replay, as OPERATIONS says: a worse `coverage` or a new `ambiguity` is a
-STOP. Then start the replay detached. `<full-sha>` is the full commit from step 2. The `echo` writes the exit status
+Read the audit and golden values before the replay, as OPERATIONS says: a worse `coverage`, a new `ambiguity` or a
+`priced` value above 0 is a STOP (`priced` counts the floors of the priced-card share that the build misses, so 0 is
+a pass). Then start the replay detached. `<full-sha>` is the full commit from step 2. The `echo` writes the exit status
 into the log, and nothing is read from the terminal:
 
 ```sh
@@ -602,7 +604,7 @@ answers 200. Anything else: roll back (step 13).
 
    Then the product map is stale until it is rebuilt and the prices are replayed through it. On the server, in the new
    image: stop the scheduler first (item 4 started it), so nothing ingests in between (the replay holds the ingest lock too), and run step 8's
-   map sequence again, with `<day>` and `<ref>` as there: `map:build`, the four `map:audit` checks and `map:golden`, read
+   map sequence again, with `<day>` and `<ref>` as there: `map:build`, the five `map:audit` checks and `map:golden`, read
    with the same STOP rules (the rows 35 and 36 mismatches are gone once the fixed code has rebuilt the map).
 
    ```sh
@@ -610,7 +612,7 @@ answers 200. Anything else: roll back (step 13).
    docker compose exec -T -u www-data api php artisan pokeprices:map:build --day <day> --dataset /dataset/<ref>
    ```
 
-   Then the four audits and the golden command of step 8, and the replay detached, as there:
+   Then the five audits and the golden command of step 8, and the replay detached, as there:
 
    ```sh
    nohup setsid sh -c 'docker compose exec -T -u www-data api php artisan pokeprices:prices:replay --fresh --code-sha <full-sha>; echo REPLAY_EXIT $?' > replay.log 2>&1 < /dev/null &
@@ -634,9 +636,25 @@ answers 200. Anything else: roll back (step 13).
    docker compose exec -T -u www-data api php artisan pokeprices:prices:freshness
    ```
 
-   `DemoAccountSeeder --force` does not have to run again: the replay truncates only the price tables, the demo account,
-   its watchlist and portfolio rows live in other tables, and the map build only adds to `card_variants`. Run it again
-   (it is idempotent) only if the first run printed a "skipped" line, since a rebuilt map may now hold that variant.
+7. The demo account. Its watchlist, its portfolio and its alert samples live in code. On the workstation, when this is
+   not empty, the new commit changes them:
+
+   ```sh
+   git diff --name-only <old-sha> <sha> -- api/app/Domain/Accounts/DemoAccount.php api/app/Domain/Alerts/DemoSamples.php
+   ```
+
+   Then run the seeder once on the server, after the `migrate` of item 4, and after the replay of item 6 when one
+   runs (the demo points at price variants the replay's map defines). It is the command of the first seed, in step 8:
+
+   ```sh
+   docker compose exec -T -u www-data api php artisan db:seed --class=DemoAccountSeeder --force --no-interaction
+   ```
+
+   The seeder is idempotent: a second run leaves the same rows. It must print no "skipped" line: a skipped variant
+   means the map lacks it, so STOP. When neither file changed, a replay alone asks for no new seed (it truncates only
+   the price tables; the demo account and its rows live in other tables, and the map build only adds to
+   `card_variants`), except after an earlier run that printed a "skipped" line: a rebuilt map may now hold that
+   variant, so run the seeder again once the replay has ended.
 
 ## Step 15. Backup timer [server]
 

@@ -22,7 +22,8 @@ prices get into the database is in [`OPERATIONS.md`](OPERATIONS.md).
   - The "Biggest moves vs previous close" strip. The strip is static (no scrolling, no animation), each
     row is a short row (see the next section), and it links to `/movers`.
 
-  The home page asks the API for the two movers lists and the freshness answer, nothing more.
+  The home page asks the API for the two movers lists and the freshness answer, and nothing more unless the browser
+  already holds the `XSRF-TOKEN` cookie, when it also asks `GET /v1/me` once.
 - **`/search`.** Card search over the PokéSearch catalogue. Results are catalogue entries, each with the card's
   picture (see Card pictures) and its headline price: the latest close of **the first priced variant in card
   order** (the card page's variants, by variant key; not the variant the card page opens on), named on the row.

@@ -89,11 +89,11 @@ check "7 every db:seed carries --force" sh -c '! grep -F "db:seed" docs/DEPLOY.m
 check "7 SetAliasSeeder --force precedes map:build" before 'SetAliasSeeder --force' 'pokeprices:map:build'
 check "7 package:discover runs before the worker starts" before 'package:discover' 'up -d --wait worker'
 check "7 migrate --force precedes SetAliasSeeder" before 'migrate --force' 'SetAliasSeeder --force'
-check "7 map:build precedes the four map:audit checks, golden and replay" sh -c '
+check "7 map:build precedes the five map:audit checks, golden and replay" sh -c '
   . tests/p0/lib.sh >/dev/null 2>&1
   c=.gates/tmp/p6-T02-code.txt
   m=$(grep -En "map:build" $c | head -n 1 | cut -d: -f1)
-  for k in constraints coverage ambiguity names; do
+  for k in constraints coverage ambiguity names priced; do
     n=$(grep -En -e "map:audit --check $k" $c | head -n 1 | cut -d: -f1); test -n "$m" -a -n "$n" && test "$m" -lt "$n" || exit 1
   done
   g=$(grep -En "map:golden" $c | head -n 1 | cut -d: -f1); test -n "$g" && test "$m" -lt "$g"'
@@ -290,16 +290,21 @@ check "17 steps 8 and 14 run the replay under nohup setsid, with a log and a way
 check "17 the detached replay line stays a docker compose exec -T -u www-data" sh -c '! grep -F "nohup setsid" docs/DEPLOY.md | grep -F "replay --fresh" | grep -Fv "exec -T -u www-data api " | grep -q .'
 check "17 step 8 keeps the no-git golden caveat, names rows 35 and 36 and stops on any other mismatch" sh -c '
   b=$(awk "/^## / { f = (\$0 ~ /^## Step 8[.]/) } f" docs/DEPLOY.md | tr "\n" " ")
-  for p in "approval_ratified 0" "mapped_cards_regression 1" "mismatches\` and \`forbidden_hits\` must both be 0" "rows 35 and 36" "step 14"; do
+  for p in "approval_ratified 0" "mapped_cards_regression 1" "mismatches\` and \`forbidden_hits\` must both be 0" "rows 35 and 36" "step 14" "\`priced\` value above 0 is a STOP"; do
     printf "%s\n" "$b" | grep -Fq -e "$p" || { echo "missing $p"; exit 1; }
   done
   printf "%s\n" "$b" | grep -Eqi "any other mismatch[^.]*STOP"'
 check "17 step 14 has the after-a-map-fix sub-step: mapping diff, map:build, golden, replay --fresh, scheduler stopped then started" sh -c '
   b=$(awk "/^## / { f = (\$0 ~ /^## Step 14[.]/) } f" docs/DEPLOY.md)
-  for p in "api/app/Domain/Mapping" "map:build" "map:audit" "map:golden" "replay --fresh" "stop scheduler" "up -d --wait scheduler" "35 minutes"; do
+  for p in "api/app/Domain/Mapping" "map:build" "the five \`map:audit\` checks" "the five audits" "map:golden" "replay --fresh" "stop scheduler" "up -d --wait scheduler" "35 minutes"; do
     printf "%s\n" "$b" | grep -Fq -e "$p" || { echo "missing $p"; exit 1; }
   done'
-check "17 step 14 says what the demo seeder needs after a replay" sh -c 'awk "/^## / { f = (\$0 ~ /^## Step 14[.]/) } f" docs/DEPLOY.md | tr "\n" " " | grep -Fq "DemoAccountSeeder"'
+check "17 step 14 runs the demo seeder again when the demo lists or samples changed: the first seed command, both files, idempotent, the skipped note" sh -c '
+  b=$(awk "/^## / { f = (\$0 ~ /^## Step 14[.]/) } f" docs/DEPLOY.md | tr "\n" " " | tr -s " ")
+  for p in "docker compose exec -T -u www-data api php artisan db:seed --class=DemoAccountSeeder --force --no-interaction" "api/app/Domain/Accounts/DemoAccount.php" "api/app/Domain/Alerts/DemoSamples.php" "idempotent" "skipped"; do
+    printf "%s\n" "$b" | grep -Fq -e "$p" || { echo "missing $p"; exit 1; }
+  done
+  ! printf "%s\n" "$b" | grep -Fq "does not have to run again"'
 check "17 step 14 says a stack file change recreates every container once, data stays in the volumes" sh -c '
   b=$(awk "/^## / { f = (\$0 ~ /^## Step 14[.]/) } f" docs/DEPLOY.md | tr "\n" " ")
   printf "%s\n" "$b" | grep -Eqi "recreates? every container" && printf "%s\n" "$b" | grep -Fqi "postgres" && printf "%s\n" "$b" | grep -Fqi "volumes"'

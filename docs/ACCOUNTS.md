@@ -170,8 +170,8 @@ password, two-factor setup, the confirm-password prompt, account deletion and ch
     two delivered sample messages.
 
   A variant missing from the database is skipped with one console line each, so it runs on an empty database. The
-  lists live in `api/app/Domain/Accounts/DemoAccount.php`; the `watchlist` and `portfolio` keys of
-  `api/config/accounts.php` are no longer read. It refuses to touch a non-demo account that holds the demo address.
+  lists live in `api/app/Domain/Accounts/DemoAccount.php`; the `demo.watchlist` and `demo.portfolio` keys of
+  `api/config/accounts.php` were removed. It refuses to touch a non-demo account that holds the demo address.
   `DatabaseSeeder` seeds nothing (there is no default user); the demo account comes only from `DemoAccountSeeder`.
   After a deploy that changes these lists, run the same seeder once on the server.
 - **Configuration** (names only; values are set in `api/.env` or the defaults in `api/config/accounts.php`):

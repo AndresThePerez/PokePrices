@@ -390,7 +390,10 @@ docker compose -f compose.dev.yml exec -T -w /workspace/api api php artisan poke
      `map audit refused` when that day is missing. The share is computed from the map rows, not from the
      price tables, so it is already right after a rebuild and before its replay.
 3. **Replay.** Only then run `pokeprices:prices:replay --fresh`. Do not ingest new days between a rebuild
-   and its replay if you can avoid it.
+   and its replay if you can avoid it. Stop the scheduler before the replay and start it again only after
+   the replay has run to the end, as step 14, item 6 of `docs/DEPLOY.md` does: while the replay runs, the
+   earlier runs are `superseded`, and the hourly price-job report (see "The Discord report") would
+   otherwise post false messages.
 
 What a rebuild changes:
 
