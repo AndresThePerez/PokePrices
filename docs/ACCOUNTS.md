@@ -53,6 +53,9 @@ described in [`WEB.md`](WEB.md).
   use `redirect: 'error'`, so any redirect is a failure.
 - **Reset ends other sessions.** A successful password reset deletes every `sessions` row of that person in the same
   transaction.
+- **A password change ends the other sessions.** A successful `PUT /user/password` deletes, in the same transaction,
+  every other `sessions` row of that person; the browser that made the change stays signed in (see
+  [Changing the password](#changing-the-password)).
 - **Errors are problem documents** (`application/problem+json`), with one exception: Fortify's `423` "Password
   confirmation required." answer, which is a plain `{"message": …}` body that the two-factor screen reads.
 
@@ -77,6 +80,7 @@ not a session endpoint.
 | POST | `/email/verification-notification` | none | `202` (`204` when the address is already verified) | The `Send the verification email again` button on `/account`. |
 | POST | `/user/confirm-password` | `password` | `201`, empty body | Called by the two-factor screen when a step answers `423`; the confirmation lasts three hours (`AUTH_PASSWORD_TIMEOUT`). |
 | GET | `/user/confirmed-password-status` | none | `200` `{"confirmed": <bool>}` | Not used by the app. |
+| PUT | `/user/password` | `current_password`, `password`, `password_confirmation` | `200`, empty body | Changes the signed-in person's own password; see [Changing the password](#changing-the-password). No page of the app calls it yet. |
 | POST | `/user/two-factor-authentication` | none | `200`, empty body | `Turn on two-factor authentication`; needs a confirmed password, else `423`. |
 | POST | `/user/confirmed-two-factor-authentication` | `code` | `200`, empty body | The `Confirm` step of two-factor setup; a wrong code is `422` under `code`. |
 | GET | `/user/two-factor-qr-code` | none | `200` `{"svg": …, "url": …}` | Draws the QR code as an image in component state; `url` is not used. |
@@ -85,7 +89,28 @@ not a session endpoint.
 | POST | `/user/two-factor-recovery-codes` | none | `200`, empty body | `Show new recovery codes`: regenerates the codes, then reads them. |
 | DELETE | `/user/two-factor-authentication` | none | `200`, empty body | `Turn off two-factor authentication`. |
 
-Fortify's profile-update, password-update and passkey routes are not enabled, and there are no view routes.
+Fortify's profile-update and passkey routes are not enabled, and there are no view routes.
+
+### Changing the password
+
+`PUT /user/password` changes the password of the signed-in person, and only theirs: the account is the one the
+session names, and no field, header or query parameter can name another.
+
+- **Body.** `current_password`, `password` and `password_confirmation`, as JSON. A password in the query string is
+  ignored, as everywhere else.
+- **Rules.** `current_password` must be the account's current password. The new `password` follows the sign-up and
+  reset rule: 12 to 72 characters (and at most 72 bytes), with a matching `password_confirmation`.
+- **Answers.** `200` with an empty body on success. `401` when nobody is signed in. `422` with the problem type
+  `validation-failed` when a rule fails: `errors.current_password` for a missing or wrong current password,
+  `errors.password` for a new password that is too short, too long or not confirmed, each a list of messages a page
+  can show under that field. Nothing changes on a `422`. The read-only demo is refused with `403` and the problem
+  type `demo-read-only`, and its password stays as it was.
+- **Limit.** The `password-confirm` limiter: 5 a minute per person, counting every attempt, shared with the other
+  password checks (see [Rate limits](#rate-limits)). The sixth in a minute is `429` with `Retry-After`.
+- **Other sessions.** After a change, every other session of the account is signed out: its `sessions` row is
+  deleted in the same transaction as the new password, and a remember-me cookie issued before the change no longer
+  signs anyone in. The browser that made the change keeps its session and stays signed in. A reset link mailed
+  before the change stops working. A refused change signs nobody out.
 
 ## Invite code
 
@@ -134,7 +159,8 @@ Fortify's profile-update, password-update and passkey routes are not enabled, an
 - **What read-only covers.** The server refuses with `403` and the problem type `demo-read-only` every request whose
   method is not GET, HEAD or OPTIONS, except signing out, on the whole account group and on every Fortify write
   (the two-factor routes, `/email/verification-notification`, `/register` and `/login` while signed in). The
-  enumeration test walks every registered write route. A password reset can never change the demo's password (`422`).
+  enumeration test walks every registered write route. A password reset can never change the demo's password (`422`),
+  and neither can `PUT /user/password` (`403`).
   The demo may download its data (a read) but cannot delete itself. It may read its alert, its sample messages
   (`GET /v1/demo/samples`), its webhooks list and where its alerts go; creating, changing or deleting an alert, a
   webhook or the notification settings, and the webhook test send, are refused like every other write. The pages
@@ -278,7 +304,7 @@ from before accounts; the account tiers are defined in `api/config/accounts.php`
 | `two-factor` | 5 | the pending sign-in | `POST /two-factor-challenge` |
 | `register` | 5 | IP | `POST /register` |
 | `account-guest` | 60 | IP | first on the whole account group, and on `/sanctum/csrf-cookie`, `/forgot-password` and `/reset-password`; it runs before a session starts, so anonymous requests cannot create unmetered `sessions` rows |
-| `password-confirm` | 5 | the user | `/user/confirm-password`, `/user/confirmed-two-factor-authentication` and `POST /v1/me/deletion` |
+| `password-confirm` | 5 | the user | `/user/confirm-password`, `/user/confirmed-two-factor-authentication`, `PUT /user/password` and `POST /v1/me/deletion` |
 | `account` | 120 | the user | the signed-in account group |
 | `account-demo` | 30 | the IP | used by `account` when the user is the demo |
 | `demo-session` | 10 | IP | `POST /v1/demo/session` |

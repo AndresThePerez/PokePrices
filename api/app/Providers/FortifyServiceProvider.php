@@ -6,6 +6,7 @@ namespace App\Providers;
 
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
+use App\Actions\Fortify\UpdateUserPassword;
 use App\Domain\Accounts\AccountLinks;
 use App\Domain\Accounts\AccountRateLimits;
 use App\Domain\Accounts\AlertEligibility;
@@ -47,6 +48,7 @@ final class FortifyServiceProvider extends ServiceProvider
         'password.update' => [ThrottleBeforeSession::class.':account-guest', NormalizeAccountEmail::class],
         'verification.send' => [NormalizeAccountEmail::class],
         'sanctum.csrf-cookie' => [ThrottleBeforeSession::class.':account-guest'],
+        'user-password.update' => ['throttle:password-confirm'],
         'password.confirm.store' => ['throttle:password-confirm'],
         'two-factor.confirm' => ['throttle:password-confirm'],
     ];
@@ -62,6 +64,7 @@ final class FortifyServiceProvider extends ServiceProvider
     {
         Fortify::createUsersUsing(CreateNewUser::class);
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
+        Fortify::updateUserPasswordsUsing(UpdateUserPassword::class);
 
         AccountRateLimits::register();
 

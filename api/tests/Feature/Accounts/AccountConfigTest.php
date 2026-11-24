@@ -20,12 +20,13 @@ beforeEach(function (): void {
     Accounts::setUp();
 });
 
-it('configures Fortify headless with exactly the four D2 features', function (): void {
+it('configures Fortify headless with exactly the four D2 features and the password update', function (): void {
     expect(config('fortify.views'))->toBeFalse()
         ->and(config('fortify.features'))->toBe([
             Features::registration(),
             Features::resetPasswords(),
             Features::emailVerification(),
+            Features::updatePasswords(),
             Features::twoFactorAuthentication(['confirm' => true, 'confirmPassword' => true]),
         ])
         ->and(config('fortify.home'))->toBe('/account')
@@ -59,19 +60,19 @@ it('never reads an API token from the request', function (): void {
         ->and((Sanctum::$accessTokenRetrievalCallback)($request))->toBeNull();
 });
 
-it('registers no passkey, profile-update or password-update route and no passkey table (R213 a)', function (): void {
+it('registers no passkey or profile-update route and no passkey table, and the one password-update route (R213 a)', function (): void {
     $uris = collect(Route::getRoutes()->getRoutes())->map(fn ($r): string => $r->uri())->all();
     $names = collect(Route::getRoutes()->getRoutes())->map(fn ($r): ?string => $r->getName())->filter()->all();
 
     expect(array_filter($uris, fn (string $u): bool => str_contains($u, 'passkey')))->toBe([])
         ->and($uris)->not->toContain('user/profile-information')
-        ->and($uris)->not->toContain('user/password')
+        ->and(array_values(array_filter($uris, fn (string $u): bool => $u === 'user/password')))->toBe(['user/password'])
         ->and(array_filter($names, fn (string $n): bool => str_starts_with($n, 'passkey')))->toBe([])
         ->and($names)->not->toContain('user-profile-information.update')
-        ->and($names)->not->toContain('user-password.update')
+        ->and($names)->toContain('user-password.update')
         ->and(glob(database_path('migrations/*passkey*')))->toBe([])
         ->and(Schema::hasTable('passkeys'))->toBeFalse();
-    $this->putJson('/user/password', [])->assertNotFound();
+    $this->putJson('/user/password', [])->assertUnauthorized();
     $this->putJson('/user/profile-information', [])->assertNotFound();
     $this->getJson('/passkeys/login/options')->assertNotFound();
 });

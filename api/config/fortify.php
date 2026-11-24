@@ -6,7 +6,8 @@ use Laravel\Fortify\Features;
 
 /*
 | Fortify, headless. The SPA owns every page, so Fortify registers no view routes and answers JSON.
-| Email and password only; registration is invite-only (App\Actions\Fortify\CreateNewUser).
+| Email and password only; registration is invite-only (App\Actions\Fortify\CreateNewUser). A signed-in person changes
+| the password behind the current one on PUT /user/password (App\Actions\Fortify\UpdateUserPassword).
 |
 | lowercase_usernames stays false: App\Http\Middleware\NormalizeAccountEmail trims and lower-cases a string email on
 | every Fortify POST before validation, the broker and the limiter key, and leaves a non-string email to validation.
@@ -51,6 +52,7 @@ return [
         Features::registration(),
         Features::resetPasswords(),
         Features::emailVerification(),
+        Features::updatePasswords(),
         Features::twoFactorAuthentication(['confirm' => true, 'confirmPassword' => true]),
     ],
 ];
