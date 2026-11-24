@@ -31,7 +31,7 @@ final class ProblemDetails
             return self::withHeaders(self::response(429, 'too-many-requests', 'Too Many Requests', $request), is_string($retryAfter) ? ['Retry-After' => $retryAfter] : []);
         }
         if ($e instanceof ValidationException) {
-            return self::response(422, 'validation-failed', 'Validation Failed', $request, null, ['errors' => $e->errors()]);
+            return self::response(422, 'validation-failed', 'Validation Failed', $request, null, ['errors' => (object) $e->errors()]);
         }
         if ($e instanceof AuthenticationException) {
             return self::response(401, 'unauthenticated', 'Unauthenticated', $request);
