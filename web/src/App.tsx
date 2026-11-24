@@ -8,6 +8,7 @@ import PortfolioPage from './account/PortfolioPage';
 import PublicSession from './account/PublicSession';
 import ResetPasswordPage from './account/ResetPasswordPage';
 import SignInPage from './account/SignInPage';
+import { SignedOutLine } from './account/SignOut';
 import SignUpPage from './account/SignUpPage';
 import VerifyEmailPage from './account/VerifyEmailPage';
 import WatchlistPage from './account/WatchlistPage';
@@ -67,6 +68,7 @@ function Routes() {
             Each price is a TCGplayer market price collected once a day through TCGCSV, shown with
             its source and the day it is as of.
           </p>
+          <SignedOutLine />
           <SearchForm initial="" size="hero" />
           <DemoButton placement="hero" />
           <ExampleSearches />

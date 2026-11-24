@@ -213,6 +213,22 @@ export function holdsSessionCookie(): boolean {
   return false;
 }
 
+/**
+ * Whether the shell may call the visitor signed out, read passively (no observer, no request): the
+ * ['me'] cache holds a signed-out answer, or it holds no answer and the browser holds no session
+ * cookie, without which there is no session to ask about. With the cookie and no answer yet the
+ * visitor may be signed in, and an account the cache holds, even a stale one, is not signed out:
+ * both are false.
+ */
+export function useSignedOut(): boolean {
+  const cache = useQueryClient().getQueryCache();
+  const subscribe = useCacheSubscription(cache);
+  return useSyncExternalStore(subscribe, () => {
+    const data = cache.find<Me | null>({ queryKey: ME_KEY, exact: true })?.state.data;
+    return data === undefined ? !holdsSessionCookie() : data === null;
+  });
+}
+
 /** What the cache already knows about the session: 'unknown', null (signed out) or the account. */
 type KnownSession = 'unknown' | Me | null;
 

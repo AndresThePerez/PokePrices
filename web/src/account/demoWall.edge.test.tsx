@@ -282,8 +282,8 @@ describe('the calm sentence is for the demo refusal alone', () => {
     {
       name: 'another 403',
       problem: emailNotVerifiedProblem('/register'),
-      shows: ['Could not create the account: Verify Your Email First', 'req-p5-unverified-0011'],
-      hides: [CALM],
+      shows: ['Could not create the account: Verify Your Email First'],
+      hides: [CALM, 'Request ID', 'req-p5-unverified-0011'],
     },
     {
       name: 'a 422',

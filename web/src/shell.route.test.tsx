@@ -281,12 +281,12 @@ describe('the header session item (D2-i1-T04, RULING a, D0-F01)', () => {
     },
   );
 
-  it('keeps Account while the session is unknown on a public page, asking nothing', async () => {
+  it('reads Sign in while the session is unknown on a public page, asking nothing', async () => {
     const calls = stubSignedOut();
     visit('/movers');
     render(<App />);
     await settle();
-    expect(navLinks().at(-1)).toEqual(['Account', '/account', null]);
+    expect(navLinks().at(-1)).toEqual(['Sign in', '/sign-in', null]);
     expect(meCalls(calls)).toEqual([]);
   });
 

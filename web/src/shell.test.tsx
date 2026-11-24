@@ -41,7 +41,7 @@ describe('shell page honesty', () => {
       ['Movers', '/movers'],
       ['Watchlist', '/watchlist'],
       ['Portfolio', '/portfolio'],
-      ['Account', '/account'],
+      ['Sign in', '/sign-in'],
       ['lugia neo genesis', '/search?q=lugia+neo+genesis'],
       ['umbreon vmax', '/search?q=umbreon+vmax'],
       ['umbreon ex', '/search?q=umbreon+ex'],

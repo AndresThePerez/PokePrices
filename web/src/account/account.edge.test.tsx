@@ -274,13 +274,13 @@ describe('public pages make no account request', () => {
     },
   );
 
-  it('does not fetch the session when the header Account link is only rendered', () => {
+  it('does not fetch the session when the header Sign in link is only rendered', () => {
     const calls = stubAccountFetch({});
     vi.useFakeTimers();
     try {
       visit('/movers');
       render(<App />);
-      expect(screen.getByRole('link', { name: 'Account' }).getAttribute('href')).toBe('/account');
+      expect(screen.getByRole('link', { name: 'Sign in' }).getAttribute('href')).toBe('/sign-in');
       expect(calls.filter((call) => call.url === '/v1/me')).toEqual([]);
     } finally {
       vi.useRealTimers();

@@ -1,14 +1,15 @@
 // The PokéPrices header on every route: one 56 px bar with a skip link, the wordmark and the
 // main links, the current page marked by aria-current, semibold and a 2 px accent underline. Under
 // 640 px the links fold into a Menu sheet, hidden by CSS only. The display settings live in the
-// footer. The last link is Sign in once the ['me'] cache knows the visitor is signed out, else
-// Account; the header reads the session passively (useKnownSession) and sends no request. Under
+// footer. The last link is Sign in for a signed-out visitor on every route: once the ['me'] cache
+// knows it, and before any answer when the browser holds no session cookie; else it is Account.
+// The header reads the session passively (useSignedOut) and sends no request. Under
 // the bar, inside the banner and outside nav, a signed-in session's portfolio estimate links to
 // /portfolio (HeaderEstimate), and the demo strip names the read-only demo.
 import { useEffect, useId, useState } from 'react';
 import HeaderEstimate from './account/HeaderEstimate';
 import { DemoStrip } from './account/SignOut';
-import { useKnownSession } from './account/session';
+import { useSignedOut } from './account/session';
 import Link from './Link';
 import { useRoute } from './router';
 import { ROUTES } from './routes';
@@ -46,8 +47,8 @@ const LIST_WIDE =
 export default function Header() {
   const { pathname, route } = useRoute();
   const current = ROUTES[route.name].nav;
-  const session = useKnownSession();
-  const links = [...LINKS, session === null ? SIGN_IN : ACCOUNT];
+  const signedOut = useSignedOut();
+  const links = [...LINKS, signedOut ? SIGN_IN : ACCOUNT];
   const [open, setOpen] = useState(false);
   // Back/Forward changes the page without a click on a Menu link: the open sheet closes too.
   const [shownPath, setShownPath] = useState(pathname);

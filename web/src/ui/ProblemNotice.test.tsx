@@ -54,11 +54,11 @@ describe('ProblemNotice (Q1-i5-T05)', () => {
       />,
     );
     expect(screen.getByRole('alert').textContent).toBe(
-      'Could not load this card: Too Many Requests' + 'Request ID req-0429',
+      'Could not load this card: Too Many Requests',
     );
   });
 
-  it('takes a whole first line and extra lines before the request id line', () => {
+  it('takes a whole first line and extra lines, with no request id line on a 422', () => {
     render(
       <ProblemNotice
         context="Could not sign in"
@@ -76,9 +76,7 @@ describe('ProblemNotice (Q1-i5-T05)', () => {
     );
     expect(alert.querySelector('p')?.childNodes).toHaveLength(1);
     expect(alert.textContent).toBe(
-      'Could not sign in: check the fields below.' +
-        'The token field is required.' +
-        'Request ID req-0422',
+      'Could not sign in: check the fields below.' + 'The token field is required.',
     );
   });
 

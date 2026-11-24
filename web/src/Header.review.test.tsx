@@ -59,13 +59,19 @@ describe('Header and Footer, adversarial (D1-i1-T03 review)', () => {
     '/password/reset?token=abc&email=a%40example.com',
     '/account/verify-email?link=x',
     '/card/ex10-%3F',
-    '/sign-in?next=%2Fwatchlist',
     '/not/a/page',
   ])('marks no header link as the current page on %s', (path) => {
     stubShell();
     visit(path);
     render(<App />);
     expect(marked()).toEqual([]);
+  });
+
+  it('marks Sign in alone as the current page on /sign-in?next=%2Fwatchlist', () => {
+    stubShell();
+    visit('/sign-in?next=%2Fwatchlist');
+    render(<App />);
+    expect(marked()).toEqual(['Sign in=page']);
   });
 
   it('keeps exactly one link marked as history goes back and forward under the open page', () => {

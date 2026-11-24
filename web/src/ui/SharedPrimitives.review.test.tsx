@@ -177,24 +177,25 @@ describe('public problem blocks print the DOM they printed at f93f7e1 (T05 revie
   );
 
   it.each(PAGES)(
-    '$name: a 429 gets no "wait a minute" line (HG-45 #3): the title and the request id only',
+    '$name: a 429 gets no "wait a minute" line (HG-45 #3): the title only, no request id below 500',
     async (page) => {
       const throttled = tooManyRequestsProblem('/v1/x');
       stubFetch(page.answer(() => problemResponse(throttled)));
       visit(page.path);
       render(<App />);
       const alert = await screen.findByRole('alert');
-      expect(alert.textContent).toBe(
-        `${page.context}: Too Many RequestsRequest ID ${throttled.request_id}`,
-      );
+      expect(alert.textContent).toBe(`${page.context}: Too Many Requests`);
       expect(alert.textContent).not.toMatch(/wait a minute/i);
       expect(alert.textContent).not.toMatch(/try again/i);
-      expect(alert.querySelectorAll('p')).toHaveLength(2);
+      expect(alert.querySelectorAll('p')).toHaveLength(1);
     },
   );
 });
 
-/** The old account block (f93f7e1), whole: its headline is ONE text node, fields before the id. */
+/**
+ * The old account block (f93f7e1), whole: its headline is ONE text node, fields before the id.
+ * One line differs from f93f7e1: the request id is printed for a server error (5xx) only.
+ */
 function OldProblemBlock({
   context,
   failure,
@@ -225,7 +226,7 @@ function OldProblemBlock({
           ))}
         </ul>
       )}
-      {failure.requestId !== null && (
+      {failure.requestId !== null && failure.status >= 500 && (
         <p className="mt-1 text-sm">
           Request ID <code className="break-all">{failure.requestId}</code>
         </p>
@@ -294,7 +295,7 @@ describe('the account ProblemBlock keeps its 409, 422 and 429 branches (T05 revi
     const alert = screen.getByRole('alert');
     expect(alert.firstElementChild?.childNodes).toHaveLength(1);
     expect(alert.textContent).toBe(
-      'Could not sign in: Too Many Requests. Wait a minute and try again.Request ID req-p4-throttle-0005',
+      'Could not sign in: Too Many Requests. Wait a minute and try again.',
     );
     throttled.unmount();
     const invalid = render(
@@ -305,7 +306,7 @@ describe('the account ProblemBlock keeps its 409, 422 and 429 branches (T05 revi
     );
     expect(screen.getByRole('alert').firstElementChild?.childNodes).toHaveLength(1);
     expect(screen.getByRole('alert').textContent).toBe(
-      'Could not sign in: check the fields below.Bad.Request ID req-p4-validation-0002',
+      'Could not sign in: check the fields below.Bad.',
     );
     invalid.unmount();
     render(

@@ -75,7 +75,7 @@ afterEach(() => {
 
 describe('the passive session read asks nothing on any public route (A1-7, RULING a)', () => {
   it.each(['/', '/movers', '/search?q=x', '/card/ex10-%3F', '/nowhere'])(
-    'mounting on %s and walking the public routes sends no /v1/me and keeps Account',
+    'mounting on %s and walking the public routes sends no /v1/me and keeps Sign in',
     async (start) => {
       const calls = stubSignedOut();
       visit(start);
@@ -89,7 +89,7 @@ describe('the passive session read asks nothing on any public route (A1-7, RULIN
       popTo('/card/ex10-%3F');
       await settle();
       expect(calls.map((call) => call.url).filter((url) => url.startsWith('/v1/me'))).toEqual([]);
-      expect(lastNavName()).toBe('Account');
+      expect(lastNavName()).toBe('Sign in');
     },
   );
 });

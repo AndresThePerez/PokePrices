@@ -174,7 +174,9 @@ describe('the sign-in page (T03 criterion 3, D10)', () => {
     expect(alert.textContent).toContain(
       'Could not sign in: Too Many Requests. Wait a minute and try again.',
     );
-    expect(alert.textContent).toContain('Request ID req-p4-throttle-0005');
+    expect(alert.textContent).toBe(
+      'Could not sign in: Too Many Requests. Wait a minute and try again.',
+    );
     expect(domHolds(TYPED)).toBe(false);
   });
 

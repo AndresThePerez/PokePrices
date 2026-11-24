@@ -7,15 +7,18 @@ import type { ReactNode } from 'react';
 import { signOut, type ApiResult } from '../api/client';
 import { useRoute } from '../router';
 import { ROUTES } from '../routes';
-import { ProblemBlock } from './Form';
+import { ProblemBlock, StatusLine } from './Form';
 import { QUIET_BUTTON, SECONDARY_BUTTON } from '../ui/classes';
 import { DEMO_NOTICE } from './lists';
 import { useAccountWrite, useSessionTransition } from './mutations';
-import { useKnownSession } from './session';
+import { useArrivalStatus, useKnownSession } from './session';
+
+/** The line the home page shows once after a sign-out. */
+const SIGNED_OUT_LINE = 'You are signed out.';
 
 /**
  * Signs out (POST /logout; a 401 is already signed out), marks ['me'] signed out, signals the other
- * tabs, then opens /. Given a `heading`, the button sits at the right of the heading's row and a
+ * tabs, then opens / with the signed-out line as its arrival status. Given a `heading`, the button sits at the right of the heading's row and a
  * failure's problem block follows the row as a sibling, so it spans the whole panel the row is in.
  */
 export function SignOutButton({
@@ -32,7 +35,7 @@ export function SignOutButton({
   // query client hears every 401 write), so only a confirmed sign-out asks here: either way, one
   // request.
   const write = useAccountWrite<boolean>({
-    onSuccess: (confirmed) => transition('/', { reask: confirmed }),
+    onSuccess: (confirmed) => transition('/', { reask: confirmed, status: SIGNED_OUT_LINE }),
   });
   const pending = write.isPending;
   const failure = write.error;
@@ -77,6 +80,22 @@ export function SignOutButton({
       {problem}
     </div>
   );
+}
+
+function ArrivalLine() {
+  const status = useArrivalStatus();
+  return status === SIGNED_OUT_LINE ? <StatusLine>{SIGNED_OUT_LINE}</StatusLine> : null;
+}
+
+/**
+ * The home page's "You are signed out." line: the status the sign-out's navigation carried, in a
+ * status region, shown once (useArrivalStatus takes it off the history entry, so a reload, or
+ * leaving and coming back, does not show it). Keyed by the known session, so a sign-out that
+ * starts on the home page itself (the demo strip) reads the status too.
+ */
+export function SignedOutLine() {
+  const session = useKnownSession();
+  return <ArrivalLine key={session === null ? 'signed-out' : 'other'} />;
 }
 
 /**

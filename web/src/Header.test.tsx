@@ -77,7 +77,7 @@ describe('Header (T02 criterion 1; D1-T03)', () => {
       ['Movers', '/movers'],
       ['Watchlist', '/watchlist'],
       ['Portfolio', '/portfolio'],
-      ['Account', '/account'],
+      ['Sign in', '/sign-in'],
     ]);
     expect(within(banner).queryByRole('heading')).toBeNull();
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
@@ -92,9 +92,9 @@ describe('Header (T02 criterion 1; D1-T03)', () => {
     ['/movers?direction=down', 'Movers'],
     ['/watchlist', 'Watchlist'],
     ['/portfolio', 'Portfolio'],
-    ['/account', 'Account'],
-    ['/alerts', 'Account'],
-    ['/sign-in', null],
+    ['/account', null],
+    ['/alerts', null],
+    ['/sign-in', 'Sign in'],
     ['/sign-up', null],
   ] as const)('marks the current page on %s as %s, by aria-current only', (path, current) => {
     stubFetch((url) => {
@@ -175,7 +175,7 @@ describe('Header (T02 criterion 1; D1-T03)', () => {
       within(list)
         .getAllByRole('link')
         .map((link) => link.textContent),
-    ).toEqual(['Search', 'Movers', 'Watchlist', 'Portfolio', 'Account']);
+    ).toEqual(['Search', 'Movers', 'Watchlist', 'Portfolio', 'Sign in']);
 
     fireEvent.click(menu);
     expect(menu.getAttribute('aria-expanded')).toBe('true');

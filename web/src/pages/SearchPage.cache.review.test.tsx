@@ -246,7 +246,9 @@ describe('failures and the loading state (Q1-i5-T04 review)', () => {
       await settle();
       await go('/search?q=unown&page=2');
       expect(screen.getByRole('alert').textContent).toBe(
-        'Search failed: Upstream UnavailableRequest ID req-t46-upstream-0001',
+        status >= 500
+          ? 'Search failed: Upstream UnavailableRequest ID req-t46-upstream-0001'
+          : 'Search failed: Upstream Unavailable',
       );
       expect(screen.queryByRole('list', { name: 'Search results' })).toBeNull();
       expect(screen.queryByRole('status')).toBeNull();

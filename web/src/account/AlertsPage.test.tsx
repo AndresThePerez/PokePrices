@@ -31,7 +31,7 @@ const LOADING = 'Loading your alerts and webhooks…';
 const INTRO =
   'PokéPrices sends a signed message to each signed webhook when a card on your watchlist or ' +
   'portfolio moves by at least 5% and $1.00 between two daily closes. A Discord webhook receives ' +
-  'your alerts and digest when you choose Discord below.';
+  'your alerts and digest when you choose Discord under “Where alerts go” above.';
 const DEMO_LINE =
   'The read-only demo cannot set alerts or add webhooks: it has no email address or Discord of ' +
   'its own to send them to.';

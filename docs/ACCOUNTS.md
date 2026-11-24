@@ -73,7 +73,7 @@ not a session endpoint.
 | POST | `/register` | `invite_code`, `email`, `password`, `password_confirmation` | `201`, empty body | The `/sign-up` page. The new person is signed in and a verification mail is sent; the page opens `/account`. `422` carries `errors.invite_code` for a bad code. |
 | POST | `/login` | `email`, `password` | `200` `{"two_factor": false}` or `{"two_factor": true}` | The `/sign-in` page. `true` means a two-factor code is still needed; the page shows the authentication-code step. `422` is the generic wrong-sign-in message; the sixth try in a minute is `429` with `Retry-After`. |
 | POST | `/two-factor-challenge` | `code`, or `recovery_code` | `204` | The authentication-code step of `/sign-in`. Each recovery code works once. |
-| POST | `/logout` | none | `204` | The `Sign out` button on `/account`. |
+| POST | `/logout` | none | `204` | The `Sign out` button on `/account` and in the demo strip. The app then opens the home page, which shows the status line "You are signed out." once: it is gone after a reload, and after leaving the home page and coming back. |
 | POST | `/forgot-password` | `email` | `200` `{"message": …}` | The `/password/forgot` page shows the message verbatim. The answer is the same whether or not the address has an account. |
 | POST | `/reset-password` | `token`, `email`, `password`, `password_confirmation` | `200` `{"message": …}` | The `/password/reset` page. A bad token or wrong address is `422` with one generic message. |
 | GET | `/email/verify/{id}/{hash}` | none (a signed link) | `204` | The `/account/verify-email` page calls it with the link from the mail; it needs the person to be signed in. |

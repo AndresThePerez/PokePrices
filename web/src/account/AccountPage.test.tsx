@@ -238,8 +238,8 @@ describe('the header Account link (T03 criterion 5)', () => {
   it('is a static link: the home page requests only its movers', () => {
     const calls = stubFetch(answerMovers);
     render(<App />);
-    const link = within(screen.getByRole('banner')).getByRole('link', { name: 'Account' });
-    expect(link.getAttribute('href')).toBe('/account');
+    const link = within(screen.getByRole('banner')).getByRole('link', { name: 'Sign in' });
+    expect(link.getAttribute('href')).toBe('/sign-in');
     expect(link.className.split(/\s+/)).toContain('min-h-11');
     expect(
       calls.every(
@@ -255,10 +255,10 @@ describe('the header Account link (T03 criterion 5)', () => {
     visit('/nowhere');
     render(<App />);
     expect(calls).toHaveLength(0);
-    const link = within(screen.getByRole('banner')).getByRole('link', { name: 'Account' });
+    const link = within(screen.getByRole('banner')).getByRole('link', { name: 'Sign in' });
     expect(fireEvent.click(link)).toBe(false);
-    expect(window.location.pathname).toBe('/account');
-    expect(await screen.findByText('You are not signed in.')).toBeTruthy();
+    expect(window.location.pathname).toBe('/sign-in');
+    expect(await screen.findByText('Just looking?')).toBeTruthy();
     expect(calls.map((call) => call.key)).toEqual(['GET /v1/me']);
   });
 });

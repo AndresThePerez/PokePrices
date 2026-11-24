@@ -77,7 +77,7 @@ describe('Try the read-only demo (T07 criterion 4, D8, D10)', () => {
     expect(alert.querySelector('p')?.textContent).toBe(
       'Could not start the demo: Demo Account Unavailable',
     );
-    expect(alert.textContent).toContain('Request ID req-p4-demo-0009');
+    expect(alert.textContent).toBe('Could not start the demo: Demo Account Unavailable');
     expect(window.location.pathname).toBe('/sign-in');
   });
 

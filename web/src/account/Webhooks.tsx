@@ -32,10 +32,19 @@ import { MUTED, PRIMARY_BUTTON, SECONDARY_BUTTON } from '../ui/classes';
 import { firstErrors } from './fields';
 import { useAccountWrite } from './mutations';
 
-const INTRO =
+const RULE =
   `PokéPrices sends a signed message to each signed webhook when a card on your watchlist or ` +
   `portfolio moves by at least ${String(MOVEMENT_PCT)}% and $${MOVEMENT_ABS} between two daily ` +
-  `closes. A Discord webhook receives your alerts and digest when you choose Discord below.`;
+  `closes.`;
+
+/** The Discord sentence where the page shows "Where alerts go" above this section. */
+const DISCORD_POINTED =
+  'A Discord webhook receives your alerts and digest when you choose Discord under “Where alerts ' +
+  'go” above.';
+
+/** The same where the page shows no settings (the demo, an unverified account): no pointer. */
+const DISCORD_UNPOINTED =
+  'A Discord webhook receives your alerts and digest when Discord is where your alerts go.';
 
 const SECRET_LINE =
   'Copy this secret before you leave this page. PokéPrices shows it once; to change it, delete ' +
@@ -362,7 +371,7 @@ export default function Webhooks({
       <h2 id={headingId} className="text-lg font-semibold">
         Webhooks
       </h2>
-      <p className="mt-2">{INTRO}</p>
+      <p className="mt-2">{`${RULE} ${canWrite ? DISCORD_POINTED : DISCORD_UNPOINTED}`}</p>
       {body}
       {canWrite && <AddWebhook />}
     </section>

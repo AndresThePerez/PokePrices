@@ -194,7 +194,7 @@ describe('SearchPage', () => {
     render(<App />);
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toContain('Validation Failed');
-    expect(alert.textContent).toContain('req-t46-validation-0002');
+    expect(alert.textContent).not.toContain('req-t46-validation-0002');
   });
 
   it('asks for a query and sends only the freshness request while the query is empty', () => {
