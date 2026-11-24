@@ -661,5 +661,5 @@ test('the scheduler runs the pending scan hourly at :40 without overlapping, bes
         // P5-i1 T01 adds the alerts dispatch (same-commit edit, R186 class).
         // P5-i1 T02 adds the deliveries sweep (same-commit edit, R186 class).
         // Q1-i5 T06 adds the two daily queue bookkeeping prunes (same-commit edit, HG-45 #1).
-        ->and($events->keys()->sort()->values()->all())->toBe(['pokeprices-alerts-dispatch', 'pokeprices-deliveries', 'pokeprices-freshness', 'pokeprices-ingest-pending', 'pokeprices-probe', 'pokeprices-prune-batches', 'pokeprices-prune-chunks', 'pokeprices-prune-failed']);
+        ->and($events->keys()->sort()->values()->all())->toBe(['pokeprices-alerts-dispatch', 'pokeprices-deliveries', 'pokeprices-freshness', 'pokeprices-ingest-pending', 'pokeprices-probe', 'pokeprices-prune-batches', 'pokeprices-prune-chunks', 'pokeprices-prune-failed', 'pokeprices-prune-resets']);
 });

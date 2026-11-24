@@ -49,6 +49,6 @@ it('uses hostile tokens verbatim and does not hang', function (string $token): v
 // edits of this P0 count, R186). Q1-i5 T06 adds the two daily queue bookkeeping prunes (HG-45 #1).
 it('keeps a single probe schedule entry beside the pending price scan, the freshness log line, the alerts dispatch, the deliveries sweep and the two queue prunes and removes the inspire command', function (): void {
     expect(collect(app(Schedule::class)->events())->map(fn ($event): string => (string) $event->description)->sort()->values()->all())
-        ->toBe(['pokeprices-alerts-dispatch', 'pokeprices-deliveries', 'pokeprices-freshness', 'pokeprices-ingest-pending', 'pokeprices-probe', 'pokeprices-prune-batches', 'pokeprices-prune-chunks', 'pokeprices-prune-failed'])
+        ->toBe(['pokeprices-alerts-dispatch', 'pokeprices-deliveries', 'pokeprices-freshness', 'pokeprices-ingest-pending', 'pokeprices-probe', 'pokeprices-prune-batches', 'pokeprices-prune-chunks', 'pokeprices-prune-failed', 'pokeprices-prune-resets'])
         ->and(array_key_exists('inspire', Artisan::all()))->toBeFalse();
 });

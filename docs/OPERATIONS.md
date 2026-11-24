@@ -431,6 +431,11 @@ whole monthly partitions older than that. No job does it, nothing is dropped tod
 not partitioned. Until the drop exists, storage only grows; when it is built it will be a separate task
 with its own tests.
 
+Account rows are pruned too. A password-reset token is good for 60 minutes; the scheduler clears the expired
+`password_reset_tokens` rows once a day at 03:17 UTC (`pokeprices-prune-resets` in the schedule, the
+framework's `auth:clear-resets`), a minute at which neither the :40 scan nor the hourly freshness line runs.
+A token that is still good is never touched.
+
 ## Failure runbook
 
 Each case: the symptom, where it shows, what to run. A failed or refused ingest never leaves a half-done

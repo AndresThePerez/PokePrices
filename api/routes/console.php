@@ -33,3 +33,7 @@ Schedule::command('queue:prune-batches --hours=720')->daily()->name('pokeprices-
 
 // Ingest bookkeeping: a superseded run's chunks are kept 30 days (720 h) after the run finished, then pruned once a day.
 Schedule::command('model:prune', ['--model' => [IngestRunChunk::class]])->daily()->name('pokeprices-prune-chunks');
+
+// Account bookkeeping: a password-reset token is good for 60 minutes; the expired rows are cleared once a day at 03:17
+// UTC, off the minutes the price jobs run at (:00 the freshness line, :40 the pending scan, every fifth the dispatch).
+Schedule::command('auth:clear-resets')->dailyAt('03:17')->timezone('UTC')->name('pokeprices-prune-resets');
