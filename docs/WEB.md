@@ -48,7 +48,9 @@ prices get into the database is in [`OPERATIONS.md`](OPERATIONS.md).
     call, since PokéSearch answers a page past its last with no rows; a price order pages its own list),
     and the page then replaces the address's `page` with the last page, leaving `q`, `sort` and every
     other parameter exactly as they were. The replace adds no history step and sends no request. A search
-    with no matches keeps the page its address names.
+    with no matches keeps the page its address names. If the result changes between the API's two calls,
+    so that the last page's answer names a page outside its own pages, the API answers 503 and the page
+    shows its `Search failed` block; it never shows a page number past the last.
   - **Loading.** While a search loads, the page reserves one viewport of height below the search box, as
     the card page and the movers board do. A full page of results is taller than that, so the footer starts
     below the fold and the rows push nothing on screen when they arrive; a result shorter than the viewport

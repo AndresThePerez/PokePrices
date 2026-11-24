@@ -89,6 +89,24 @@ function plainClick(event: MouseEvent<HTMLAnchorElement>): boolean {
   return event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey;
 }
 
+/**
+ * What the page shows for an answer whose page lies outside its own pages: the same problem block
+ * as for any answer that is not the documented shape, never a "Page X of Y" past its end.
+ */
+const INCONSISTENT_ANSWER: ApiFailure = {
+  ok: false,
+  status: 200,
+  type: 'about:blank',
+  title: 'The PokéPrices API sent an unexpected answer (HTTP 200)',
+  requestId: null,
+  problem: null,
+};
+
+/** An answer that names a page outside its own pages (a result with matches has pages 1 and up). */
+function outsideItsPages(meta: CardSearchPage['meta']): boolean {
+  return meta.pages >= 1 && (meta.page < 1 || meta.page > meta.pages);
+}
+
 /** The API's 422 message on q (the word cap), if that is what the failure is. */
 function queryError(failure: ApiFailure | null): string | undefined {
   return failure?.status === 422 ? failure.problem?.errors?.q?.[0] : undefined;
@@ -327,6 +345,8 @@ export default function SearchPage({ query }: { readonly query: URLSearchParams 
   let body;
   if (q === '') {
     body = <p className={`mt-6 ${MUTED}`}>Type a card name, then press Search.</p>;
+  } else if (search.data !== undefined && outsideItsPages(search.data.meta)) {
+    body = <Problem failure={INCONSISTENT_ANSWER} />;
   } else if (search.data !== undefined) {
     body = <Results q={q} sort={sort} body={search.data} onTurn={onTurn} />;
   } else if (wordCap !== undefined) {

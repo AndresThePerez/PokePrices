@@ -171,6 +171,23 @@ final class CatalogRepository
     }
 
     /**
+     * The search answer as it is when its page lies within its own pages, or when it has no pages (no matches).
+     * Its rows belong to no page it could be called otherwise, so it is not answered.
+     *
+     * @throws UpstreamUnavailable when the answer has pages and names a page below 1 or past the last
+     */
+    public static function withinItsPages(CatalogResult $result): CatalogResult
+    {
+        $page = $result->data['page'] ?? null;
+        $pages = $result->data['pages'] ?? null;
+        if (is_int($page) && is_int($pages) && $pages >= 1 && ($page < 1 || $page > $pages)) {
+            throw new UpstreamUnavailable(PokeSearchClient::RETRY_AFTER_SECONDS);
+        }
+
+        return $result;
+    }
+
+    /**
      * The name, set name and number of each card id, read in one batch.
      *
      * Every distinct id maps to {name, set_name, number, and image_small when the catalog gives one} or null;

@@ -168,7 +168,7 @@ it('keeps the ETag deterministic across requests and changes it with the page', 
     $this->getJson('/v1/cards?q=a')->assertOk(); // T42: warm the cache, so a and b are both cached answers
     $a = $this->withHeader('X-Request-Id', 'edge-req-000001')->getJson('/v1/cards?q=a');
     $b = $this->withHeader('X-Request-Id', 'edge-req-000002')->getJson('/v1/cards?q=a');
-    t44eFake(t44eBody([t44eHit(2)], ['page' => 2]));
+    t44eFake(t44eBody([t44eHit(2)], ['page' => 2, 'pages' => 2, 'total' => 2]));
     $this->getJson('/v1/cards?q=a&page=2')->assertOk(); // T42: warm page 2 too, so only the page differs from a
     $c = $this->getJson('/v1/cards?q=a&page=2');
 

@@ -149,11 +149,12 @@ describe('SearchPage edge cases', () => {
     stubFetch(() => jsonResponse(beyond));
     visit('/search?q=unown&page=9');
     render(<App />);
-    const nav = await screen.findByRole('navigation', { name: 'Result pages' });
+    await screen.findByRole('alert');
     expect(screen.queryByRole('list', { name: 'Search results' })).toBeNull();
-    expect(within(nav).queryByRole('link', { name: 'Next page' })).toBeNull();
-    const previous = within(nav).getByRole('link', { name: 'Previous page' });
-    expect(previous.getAttribute('href')).toBe('/search?q=unown&page=2');
+    expect(screen.queryByRole('navigation', { name: 'Result pages' })).toBeNull();
+    const order = screen.getByRole('group', { name: 'Order' });
+    fireEvent.click(within(order).getByRole('button', { name: 'Best match' }));
+    expect(window.location.search).toBe('?q=unown');
   });
 
   it.each(['0', '-1', 'abc', '2abc', '1.5', '1e3', '12345678901', ''])(
