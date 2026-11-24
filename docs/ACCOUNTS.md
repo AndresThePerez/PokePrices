@@ -350,12 +350,14 @@ Fortify's two verification routes also carry its own `6` a minute.
   session nobody signed in to are all guests, and so is every request when sessions are not kept in the database. A
   signed-in user behind an address whose guest bucket is full therefore still gets the per-user 120 of `account`.
   - What it costs before a request is counted: a guest without a cookie, or with one that does not decrypt, costs no
-    query; a cookie that decrypts costs one primary-key read of `sessions`, also when the answer is the `429`. A
-    signed-in request on the account group costs that read, then the session start and the user lookup, before
-    `account` counts it.
-  - On `/sanctum/csrf-cookie`, `/forgot-password` and `/reset-password` no `account` tier follows, so a signed-in
-    request is counted there, before the session starts, at the `account` number (120 a minute) in a bucket of its
-    own, keyed by the user and the client address. It spends neither the guest bucket nor the `account` bucket.
+    query; a cookie that decrypts costs one primary-key read of `sessions`, also when the answer is the `429`.
+  - A signed-in request is counted there too, before the session starts, at the `account` number (120 a minute) in a
+    bucket keyed by the user and the client address. On the account group this comes before the first-party check,
+    the CSRF check and the sign-in check, so a request with a signed-in cookie that one of them refuses (a `401`
+    without a `Referer` or `Origin`, a `419` for a write without the CSRF token) is counted, and the 121st in a
+    minute is a `429`. `account` then counts the requests that get past them, per user as before.
+  - `/sanctum/csrf-cookie`, `/forgot-password` and `/reset-password`, where no `account` tier follows, share a second
+    bucket of the same kind. The two buckets are apart from each other and from the `account` bucket.
 - A reset request is never throttled in a way that reveals whether an account exists: it answers `200` with the same
   message whatever the broker did.
 

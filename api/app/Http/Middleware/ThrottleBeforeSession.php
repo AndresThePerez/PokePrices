@@ -22,9 +22,11 @@ use Symfony\Component\HttpFoundation\Response;
  * /forgot-password and /reset-password.
  *
  * account-guest counts only requests without a signed-in session (App\Domain\Accounts\SignedInSession: one cookie
- * decryption and one primary-key read, no session started). A signed-in request is left to the account tier where
- * the route carries it (the /v1 account group); on the other routes nothing would count it, so it is counted here at
- * the account tier's number, in a bucket of its own keyed by the user and the client address.
+ * decryption and one primary-key read, no session started). A signed-in request is counted here too, at the account
+ * tier's number, in a bucket keyed by the user and the client address: the first-party check, the CSRF check and the
+ * authenticator all answer before the account tier, so a request they refuse would otherwise be counted by nothing.
+ * That bucket is one for the routes the account tier follows (the /v1 account group) and another for the routes it
+ * does not; neither is the guest's bucket or the account tier's own.
  */
 final class ThrottleBeforeSession extends ThrottleRequests
 {
@@ -45,12 +47,10 @@ final class ThrottleBeforeSession extends ThrottleRequests
             return parent::handle(...func_get_args());
         }
         $route = $request->route();
-        if ($route instanceof Route && in_array(self::ACCOUNT, $route->gatherMiddleware(), true)) {
-            return $next($request);
-        }
+        $group = $route instanceof Route && in_array(self::ACCOUNT, $route->gatherMiddleware(), true) ? 'account:' : '';
 
         return $this->handleRequest($request, $next, [(object) [
-            'key' => md5(self::GUEST.':signed-in:'.$userId.'|'.$request->ip()),
+            'key' => md5(self::GUEST.':signed-in:'.$group.$userId.'|'.$request->ip()),
             'maxAttempts' => AccountRateLimits::tiers(config(AccountRateLimits::CONFIG))['account'],
             'decaySeconds' => 60,
             'afterCallback' => null,
