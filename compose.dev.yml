@@ -74,7 +74,7 @@ services:
       SANCTUM_STATEFUL_DOMAINS: pokeprices.localhost:8095
       # PokéSearch on the workstation, reached through the host gateway (R134).
       POKESEARCH_URL: ${POKESEARCH_URL:-http://host.docker.internal:8081}
-    mem_limit: 384m
+    mem_limit: 512m
     dns_opt: ["timeout:1", "attempts:1"]
     extra_hosts: ["host.docker.internal:host-gateway"]
     depends_on:

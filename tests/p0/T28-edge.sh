@@ -58,5 +58,5 @@ check "web gate image runs as non-root" sh -c 'u=$(docker inspect --format "{{.C
 
 # dns_opt is only on api.
 check "dns_opt appears on api only" sh -c '$0 config --format json | jq -e "[.services | to_entries[] | select(.value.dns_opt != null) | .key] == [\"api\"]"' "$DC"
-check "api mem_limit is still 384m" sh -c '$0 config --format json | jq -e ".services.api.mem_limit == \"402653184\" or .services.api.mem_limit == 402653184"' "$DC"
+check "api mem_limit is still 512m" sh -c '$0 config --format json | jq -e ".services.api.mem_limit == \"536870912\" or .services.api.mem_limit == 536870912"' "$DC"
 finish

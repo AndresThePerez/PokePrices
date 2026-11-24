@@ -6,7 +6,7 @@ cd "$(dirname "$0")/../.." || exit 1
 J() { docker compose -f compose.dev.yml config --format json | jq -e "$1"; }
 API="docker compose -f compose.dev.yml exec -T -w /workspace/api api"
 check "api runs as container root in dev" J '.services.api.user == "0:0"'
-check "api capped at 384m" J '(.services.api.mem_limit|tonumber) == 402653184'
+check "api capped at 512m" J '(.services.api.mem_limit|tonumber) == 536870912'
 check "api publishes no port" J '(.services.api.ports // []) | length == 0'
 check "api builds and is healthy" $DC up -d --wait --build api
 check_out "Laravel 13" 1 sh -c "$API php artisan --version | grep -c '^Laravel Framework 13\.'"
