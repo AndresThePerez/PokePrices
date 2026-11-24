@@ -15,9 +15,11 @@ each one is shown with its source and the day it is as of, and none is an intrad
 
 ## What is interesting
 
-- **Every price says where it is from and when.** A price line ends `as of <day> from TCGCSV (daily
-  close)`, and a change is always against the previous close, whose day is printed beside it. The rules
-  are in [`docs/WEB.md`](docs/WEB.md#what-every-price-shows).
+- **Every price says where it is from and when.** A card page stamps each variant's price `as of <day>
+  from TCGCSV (daily close)` and prints the day of the previous close beside the change. A list (the
+  movers board, the watchlist, the portfolio) is stamped once with the day or days of its closes and
+  their source, and says once that its changes are against the previous close. The rules are in
+  [`docs/WEB.md`](docs/WEB.md#what-every-price-shows).
 - **Marketplace products are mapped to catalogue cards, and the map is audited.** The price feed lists
   marketplace products; a product map decides which card variant each price belongs to. Five audit
   checks (`pokeprices:map:audit`: `names`, `constraints`, `coverage`, `ambiguity`, `priced`) and a
@@ -28,8 +30,10 @@ each one is shown with its source and the day it is as of, and none is an intrad
   and when both closes lie between half the low listing and one and a half times the mid listing. The
   thresholds and the measurements behind them are in
   [`docs/measurements/movers-eligibility.md`](docs/measurements/movers-eligibility.md).
-- **Alerts go out as signed webhooks, and the read-only demo shows one.** Webhooks follow the Standard
-  Webhooks signing scheme (HMAC-SHA256). The demo's Alerts page shows a sample delivery with its
+- **Price moves go out as signed webhooks, and the read-only demo shows one.** When a card on an
+  account's watchlist or portfolio moves by at least 5% and $1.00 between two daily closes, each of the
+  account's signed webhooks gets a message signed with the Standard Webhooks scheme (HMAC-SHA256);
+  per-card alerts go by email or Discord. The demo's Alerts page shows a sample delivery with its
   headers, its exact body and a published sample secret, so the signature can be checked by hand;
   nothing is ever sent from the demo. See [`docs/ALERTS.md`](docs/ALERTS.md#the-demos-samples).
 - **The API contract, the web app's types and the code cannot drift apart unnoticed.**
