@@ -733,7 +733,7 @@ type FreshnessBody =
 
 /**
  * GET /v1/prices/freshness: by default out of its 26 hour SLO, the newest collected day 2026-10-13
- * and 950.3 hours old (dev's closes end on that day); `fields` override the data.
+ * and 950.3 hours old (dev's closes end on that day), no day missing; `fields` override the data.
  */
 export function freshnessBody(fields: Partial<FreshnessBody['data']> = {}): FreshnessBody {
   return {
@@ -753,6 +753,8 @@ export function freshnessBody(fields: Partial<FreshnessBody['data']> = {}): Fres
         day: '2026-10-13',
         finished_at: '2026-10-13T20:11:02Z',
       },
+      missing_days: [],
+      missing_days_count: 0,
       ...fields,
     },
   } satisfies FreshnessBody;

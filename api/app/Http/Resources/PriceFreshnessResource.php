@@ -14,7 +14,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
 final class PriceFreshnessResource extends JsonResource
 {
     /**
-     * @param  array{source: string, feed: string, as_of: string|null, day: string|null, age_hours: float|null, slo_hours: int, within_slo: bool, measured_at: string, last_run: array{id: int, status: string, mode: string, day: string, finished_at: string|null}|null}  $freshness
+     * @param  array{source: string, feed: string, as_of: string|null, day: string|null, age_hours: float|null, slo_hours: int, within_slo: bool, measured_at: string, last_run: array{id: int, status: string, mode: string, day: string, finished_at: string|null}|null, missing_days: list<string>, missing_days_count: int}  $freshness
      */
     public function __construct(array $freshness)
     {
@@ -22,11 +22,11 @@ final class PriceFreshnessResource extends JsonResource
     }
 
     /**
-     * @return array{source: string, feed: string, as_of: string|null, day: string|null, age_hours: float|null, slo_hours: int, within_slo: bool, measured_at: string, last_run: array{id: int, status: string, mode: string, day: string, finished_at: string|null}|null}
+     * @return array{source: string, feed: string, as_of: string|null, day: string|null, age_hours: float|null, slo_hours: int, within_slo: bool, measured_at: string, last_run: array{id: int, status: string, mode: string, day: string, finished_at: string|null}|null, missing_days: list<string>, missing_days_count: int}
      */
     public function toArray(Request $request): array
     {
-        /** @var array{source: string, feed: string, as_of: string|null, day: string|null, age_hours: float|null, slo_hours: int, within_slo: bool, measured_at: string, last_run: array{id: int, status: string, mode: string, day: string, finished_at: string|null}|null} $freshness */
+        /** @var array{source: string, feed: string, as_of: string|null, day: string|null, age_hours: float|null, slo_hours: int, within_slo: bool, measured_at: string, last_run: array{id: int, status: string, mode: string, day: string, finished_at: string|null}|null, missing_days: list<string>, missing_days_count: int} $freshness */
         $freshness = $this->resource;
 
         return [
@@ -45,6 +45,10 @@ final class PriceFreshnessResource extends JsonResource
             'measured_at' => $freshness['measured_at'],
             /** @var array{id: int, status: string, mode: string, day: string, finished_at: string|null}|null */
             'last_run' => $freshness['last_run'],
+            /** @var list<string> */
+            'missing_days' => $freshness['missing_days'],
+            /** @var int */
+            'missing_days_count' => $freshness['missing_days_count'],
         ];
     }
 

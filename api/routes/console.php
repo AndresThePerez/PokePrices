@@ -16,7 +16,7 @@ Schedule::job(new ProbeJob('scheduler'), PricingConfig::queue(), 'redis')->every
 // The pending price scan: hourly at :40, a no-op unless a collected day needs work.
 Schedule::job(new IngestPending, PricingConfig::queue(), 'redis')->hourlyAt(40)->withoutOverlapping()->name('pokeprices-ingest-pending');
 
-// The freshness log line: hourly, info within the 26 h SLO, warning when breached.
+// The freshness log line: hourly, info within the 26 h SLO, warning when breached or while a day is missing.
 Schedule::job(new LogFreshness, PricingConfig::queue(), 'redis')->hourly()->name('pokeprices-freshness');
 
 // The alerts dispatch: every five minutes, price.moved deliveries of the deliverable day.

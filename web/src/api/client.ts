@@ -264,9 +264,19 @@ const MOVERS = fields({
   meta: fields({ day: orNull(text), min_previous_close: text, degraded: flag }),
 });
 
-/** The freshness answer: the newest collected day, its age in hours and the SLO verdict (the banner). */
+/**
+ * The freshness answer: the newest collected day, its age in hours and the SLO verdict (the banner),
+ * and the days without prices between the first and the newest collected day with their count,
+ * checked when they are there (an answer from before the field is still an answer).
+ */
 const FRESHNESS = fields({
-  data: fields({ day: orNull(text), age_hours: orNull(whole), within_slo: flag }),
+  data: fields({
+    day: orNull(text),
+    age_hours: orNull(whole),
+    within_slo: flag,
+    missing_days: ifPresent(listOf(text)),
+    missing_days_count: ifPresent(whole),
+  }),
 });
 
 /**

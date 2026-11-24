@@ -15,7 +15,9 @@ use Illuminate\Support\Facades\Log;
  * The hourly freshness log line (scheduled as pokeprices-freshness). One record with
  * message price_freshness and context {source, feed, as_of, age_hours, slo_hours, within_slo} through the default
  * channel's JSON formatter: info within the SLO, warning when breached or when no prices were ingested. age_hours is
- * the same one-decimal value the API and the command print.
+ * the same one-decimal value the API and the command print. While a calendar day between the first and the newest ok
+ * day has no ok run, the record is a warning whatever the age and its context also carries missing_days and
+ * missing_days_count, as the freshness answer gives them; without a missing day the two keys are absent.
  *
  * Timeout 30 s, below the redis queue's retry_after (90 s); three tries, as the worker's --tries gave it before.
  */
@@ -37,7 +39,12 @@ final class LogFreshness implements ShouldQueue
             'within_slo' => $freshness['within_slo'],
         ];
 
-        if ($freshness['within_slo']) {
+        if ($freshness['missing_days_count'] > 0) {
+            $context['missing_days'] = $freshness['missing_days'];
+            $context['missing_days_count'] = $freshness['missing_days_count'];
+        }
+
+        if ($freshness['within_slo'] && $freshness['missing_days_count'] === 0) {
             Log::info('price_freshness', $context);
         } else {
             Log::warning('price_freshness', $context);

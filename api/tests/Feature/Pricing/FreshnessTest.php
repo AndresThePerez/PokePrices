@@ -106,6 +106,8 @@ it('answers the whole closed body with no ETag and Cache-Control no-store', func
         'within_slo' => true,
         'measured_at' => '2026-10-12T21:05:44Z',
         'last_run' => ['id' => $runId, 'status' => 'ok', 'mode' => 'queued', 'day' => '2026-10-12', 'finished_at' => '2026-10-12T21:41:07Z'],
+        'missing_days' => [],
+        'missing_days_count' => 0,
     ]])
         ->and($response->headers->has('ETag'))->toBeFalse()
         ->and((string) $response->headers->get('Cache-Control'))->toContain('no-store');
@@ -132,6 +134,8 @@ it('answers nulls and within_slo false when no ok run exists', function (): void
         'within_slo' => false,
         'measured_at' => '2026-10-12T20:06:44Z',
         'last_run' => null,
+        'missing_days' => [],
+        'missing_days_count' => 0,
     ]);
     [$code, $out] = t10Command();
     expect($code)->toBe(1)
