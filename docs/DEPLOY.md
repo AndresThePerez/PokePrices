@@ -208,12 +208,13 @@ git rev-parse HEAD
 docker build -t pokeprices-api:<tag> --target runtime -f docker/api/Dockerfile .
 docker build -t pokeprices-web:<tag> --target runtime -f docker/web/Dockerfile .
 docker compose -f deploy/stack.server.yml --env-file deploy/.env.example config -q
-docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' pokeprices-api pokeprices-web
+docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' --filter 'reference=pokeprices-*:<tag>'
 ```
 
 `<tag>` is `deploy-YYYYMMDD-<sha>` with `<sha>` the short commit printed above. Keep the full commit: step 8 stamps it
 into the replay (`--code-sha`). Expected: `git status --short` prints nothing, both builds succeed, the config check
-prints nothing and exits 0, and both images are listed under the new tag. Write down both image IDs.
+prints nothing and exits 0, and the last command prints exactly two lines, `pokeprices-api:<tag> <id>` and
+`pokeprices-web:<tag> <id>` (`docker images` takes at most one repository argument, so the filter picks both). Write down both image IDs.
 
 ## Step 3. Ship the images and the stack file [workstation]
 
@@ -285,6 +286,9 @@ grep -q '^DB_PASSWORD=change-me$' .env && sed -i "s|^DB_PASSWORD=change-me\$|DB_
 `PRICE_JOB_DISCORD_WEBHOOK_URL` is the Discord webhook address the hourly price-job report posts to (it carries a
 token, so Andres sets it by editor too; see [OPERATIONS.md](OPERATIONS.md#the-discord-report)); left empty, the report
 posts nothing: each hour the command prints that the variable is not set and exits 0.
+
+`DISCORD_TEST_WEBHOOK_URL` is the address the one-off check `pokeprices:alerts:discord-test` sends to (see
+[ALERTS.md](ALERTS.md)); the stack passes it on, and left empty that command sends nothing. Leave it empty unless Andres runs the check.
 
 `DB_PASSWORD` never changes after the first `up`: Postgres applies `POSTGRES_PASSWORD` only when it initialises its
 data directory, so a later edit of the file would lock the app out of the database.
@@ -577,7 +581,47 @@ Expected: the four existing hosts answer 200; the PokéPrices host no longer ans
    git diff --name-status <old-sha> <sha> -- api/database/migrations
    ```
 
-4. Switch the tag and restart on it:
+4. Switch the tag and restart on it. Start with new variables: the `.env` is made once, at step 5, and a later deploy
+   does not recreate it from the template, so a variable the new stack file reads is missing from it until it is added.
+   Step 3 copied the new commit's `.env.example` into `<deploy-dir>`: compare against that file. This lists the names the
+   template has and the `.env` lacks, and prints no value:
+
+   ```sh
+   sed -n 's/^\([A-Z][A-Z0-9_]*\)=.*/\1/p' .env.example | while read -r k; do grep -q "^$k=" .env || echo "missing: $k"; done
+   ```
+
+   Right is no output at all (nothing is new); otherwise one `missing: <NAME>` line for each variable to add. Add each one
+   with the template's own line, guarded so that a variable already there is never touched, never with a redirect and
+   never by showing the file (never `cat` it; `docker compose config -q` is the only render). The example is
+   `PRICE_JOB_DISCORD_WEBHOOK_URL`; set `VAR` to each name in turn:
+
+   ```sh
+   VAR=PRICE_JOB_DISCORD_WEBHOOK_URL
+   grep -q "^$VAR=" .env || sed -i "\$a $(grep "^$VAR=" .env.example)" .env
+   ls -l .env
+   ```
+
+   Right: nothing is printed by the `sed`, and `ls -l` still shows `-rw-------`. The line arrives with the template's value,
+   empty for the two Discord addresses, which is the safe default. A line that arrives as `change-me` is a secret: set it
+   by editor, as in step 5, and `grep -c 'change-me' .env` must print `0` before the switch (its exit status is 1 when
+   nothing matches, which is the good case). Run the listing again: it must now print nothing.
+
+   The switch can recreate more than the three app services. When the server's Compose is newer than the one that made the
+   containers, it reads every service's definition as changed, so a plain `up -d --wait` recreates **every** service,
+   postgres, redis-queue and redis-cache included, even with an unchanged stack file. See it beforehand with a dry run,
+   which changes nothing: each `Recreate` line it prints is a container that will be replaced.
+
+   ```sh
+   docker compose up -d --wait --dry-run
+   ```
+
+   What a recreate costs: redis-cache starts empty (it keeps nothing on disk), so cached answers are rebuilt from the
+   database and the first pages are slower for a while; postgres keeps its volume (`pgdata`) and redis-queue keeps its
+   volume (`redisqueue`, an append-only file), so the data and the waiting jobs stay. Each of the three is down for the seconds its
+   replacement needs to turn healthy, and `api`, `worker` and `scheduler` wait for them, so the site answers errors in
+   that gap: run the switch away from minute :40 (step 9). It is not a fault and needs no roll-back.
+
+   Then switch:
 
    ```sh
    sed -i "s|^IMAGE_TAG=.*|IMAGE_TAG=<tag>|" .env
@@ -590,6 +634,16 @@ Expected: the four existing hosts answer 200; the PokéPrices host no longer ans
    When item 6 ("after a map fix") applies, run `docker compose stop scheduler` straight away after the `up -d --wait`
    above, before the `migrate`: the `up` has just started the scheduler on the new image, and an hourly scan in that gap
    would ingest against the old map. Item 6 repeats the stop.
+
+   Confirm that each service got the new variable, without printing it. This prints `filled`, `empty` or `missing`, one
+   line for each of the three services that read it, and never the value (leave out `scheduler` while item 6 has it stopped):
+
+   ```sh
+   for s in api worker scheduler; do docker compose exec -T -u www-data $s sh -c 'if [ -n "$(printenv "$0")" ]; then echo filled; elif printenv "$0" >/dev/null; then echo empty; else echo missing; fi' PRICE_JOB_DISCORD_WEBHOOK_URL; done
+   ```
+
+   Right is three lines: `empty` while the address is not set (the report then posts nothing), `filled` once it is. `missing` means that
+   service runs without the variable: the stack file in `<deploy-dir>` is not the new one (step 3) or the service was not recreated. STOP and report it.
 
 5. Run the public matrix of step 11b and the checks of step 12.
 

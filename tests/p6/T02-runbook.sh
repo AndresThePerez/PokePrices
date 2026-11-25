@@ -146,9 +146,19 @@ check "12 placeholders used" sh -c 'for p in "<deploy-user>" "<deploy-host>" "<d
 check "12 no server port literal :80xx and APP_PORT is not given a value" sh -c '! grep -Eq ":80[0-9][0-9]|APP_PORT=[0-9]" docs/DEPLOY.md'
 
 # 13. .env: key names only, every template variable named, no value shown
-for k in IMAGE_TAG APP_BIND APP_PORT SHARED_NET SNAPSHOTS_HOST_DIR DATASET_HOST_DIR APP_KEY DB_PASSWORD INVITE_CODE SESSION_LIFETIME LOG_LEVEL MAIL_MAILER DEMO_PASSWORD POKESEARCH_API_KEY PRICE_JOB_DISCORD_WEBHOOK_URL; do
+for k in IMAGE_TAG APP_BIND APP_PORT SHARED_NET SNAPSHOTS_HOST_DIR DATASET_HOST_DIR APP_KEY DB_PASSWORD INVITE_CODE SESSION_LIFETIME LOG_LEVEL MAIL_MAILER DEMO_PASSWORD POKESEARCH_API_KEY PRICE_JOB_DISCORD_WEBHOOK_URL DISCORD_TEST_WEBHOOK_URL; do
   check "13 the .env step names $k" sh -c 'awk "/^## / { f = (\$0 ~ /^## Step 5[.]/) } f" docs/DEPLOY.md | grep -Fq -e "$0"' "$k"
 done
+check "13 both Discord variables are in the template with an empty value and passed under x-app-env with an empty default" sh -c '
+  for k in PRICE_JOB_DISCORD_WEBHOOK_URL DISCORD_TEST_WEBHOOK_URL; do
+    grep -Fxq "$k=" deploy/.env.example || { echo "template lacks empty $k"; exit 1; }
+    awk "/^services:/ { exit } { print }" deploy/stack.server.yml | grep -Fxq "  $k: \${$k:-}" || { echo "x-app-env lacks $k"; exit 1; }
+  done'
+check "13 step 14 item 4 adds a new variable to the existing .env: compare with .env.example, guarded add by sed with no redirect, presence check that prints no value (PRICE_JOB_DISCORD_WEBHOOK_URL as the example)" sh -c '
+  b=$(awk "/^## / { f = (\$0 ~ /^## Step 14[.]/) } f" docs/DEPLOY.md | awk "/^4[.] Switch/ { f = 1 } /^5[.] Run/ { f = 0 } f" | tr "\n" " " | tr -s " ")
+  for p in ".env.example" "missing: " "grep -q \"^\$VAR=\" .env || sed -i" "PRICE_JOB_DISCORD_WEBHOOK_URL" "printenv" "never \`cat\`" "does not recreate"; do
+    printf "%s\n" "$b" | grep -Fq -e "$p" || { echo "missing $p"; exit 1; }
+  done'
 check "13 every variable named in the runbook exists in deploy/.env.example" sh -c '
   for k in $(grep -Eo "\b[A-Z][A-Z0-9]*(_[A-Z0-9]+)+=" docs/DEPLOY.md | tr -d "=" | sort -u); do
     case $k in DEPLOY_DIR|BACKUP_DIR|UNIT_DIR|TRUSTED_PROXIES|APP_PORT_UNUSED) continue ;; esac
@@ -350,6 +360,18 @@ check "19 step 14 item 6: a replay that refuses leaves the scheduler stopped, an
 check "19 step 14 item 6 names the second refusal: the replay stops while the pricing ingest lock is held (OPERATIONS), wait and run it again" sh -c '
   b=$(awk "/^## / { f = (\$0 ~ /^## Step 14[.]/) } f" docs/DEPLOY.md | awk "/^6[.] After a map fix/ { f = 1 } f" | tr "\n" " ")
   for p in "pricing ingest lock held" "OPERATIONS" "run the replay again"; do
+    printf "%s\n" "$b" | grep -Fq -e "$p" || { echo "missing $p"; exit 1; }
+  done'
+
+# 20. Gaps the last deploy met: the image-id command, and what a newer Compose does to the stack
+check "20 step 2 lists both image ids with one docker images filter, not with two repository arguments" sh -c '
+  b=$(awk "/^## / { f = (\$0 ~ /^## Step 2[.]/) } f" docs/DEPLOY.md)
+  ! printf "%s\n" "$b" | grep -Fq "pokeprices-api pokeprices-web" &&
+  printf "%s\n" "$b" | grep -F "docker images" | grep -Fq -e "--filter '"'"'reference=pokeprices-*:<tag>'"'"'" &&
+  printf "%s\n" "$b" | grep -F "docker images" | grep -Fq "{{.ID}}"'
+check "20 step 14 says a newer Compose recreates every service on a plain up, shows the dry run, and names the cost for postgres, redis-queue and redis-cache" sh -c '
+  b=$(awk "/^## / { f = (\$0 ~ /^## Step 14[.]/) } f" docs/DEPLOY.md | tr "\n" " " | tr -s " ")
+  for p in "newer than the one that made the containers" "up -d --wait --dry-run" "starts empty" "keeps its volume" "redis-queue"; do
     printf "%s\n" "$b" | grep -Fq -e "$p" || { echo "missing $p"; exit 1; }
   done'
 
