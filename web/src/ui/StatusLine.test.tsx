@@ -15,6 +15,7 @@ import {
   notificationsBody,
   pricedCardBody,
   risingPrice,
+  setXsrfCookie,
   signedInMe,
   webhooksBody,
 } from '../test/fixtures';
@@ -179,6 +180,8 @@ const SITES: readonly Site[] = [
     ),
     shared: () => <StatusLine gap="mt-6">{'Loading your watchlist…'}</StatusLine>,
     open: async () => {
+      // Only a browser that holds the cookie asks for the session, and so waits for it.
+      setXsrfCookie();
       stubPending({});
       visit('/watchlist');
       render(<App />);
@@ -194,6 +197,7 @@ const SITES: readonly Site[] = [
     ),
     shared: () => <StatusLine gap="mt-6">Loading your account…</StatusLine>,
     open: async () => {
+      setXsrfCookie();
       stubPending({});
       visit('/account');
       render(<App />);
@@ -209,6 +213,7 @@ const SITES: readonly Site[] = [
     ),
     shared: () => <StatusLine gap="mt-6">{WEBHOOKS_LOADING}</StatusLine>,
     open: async () => {
+      setXsrfCookie();
       stubPending({});
       visit('/alerts');
       render(<App />);
@@ -224,6 +229,7 @@ const SITES: readonly Site[] = [
     ),
     shared: () => <StatusLine gap="mt-4">{WEBHOOKS_LOADING}</StatusLine>,
     open: async () => {
+      setXsrfCookie();
       stubPending({
         'GET /v1/me': () => jsonResponse(signedInMe),
         'GET /v1/me/notifications': () => jsonResponse(notificationsBody()),
@@ -243,6 +249,7 @@ const SITES: readonly Site[] = [
     ),
     shared: () => <StatusLine gap="mt-4">{WEBHOOKS_LOADING}</StatusLine>,
     open: async () => {
+      setXsrfCookie();
       stubPending({
         'GET /v1/me': () => jsonResponse(signedInMe),
         'GET /v1/webhooks': () => jsonResponse(webhooksBody([])),

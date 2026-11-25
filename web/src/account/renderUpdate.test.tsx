@@ -2,7 +2,8 @@
 // a component (…) while rendering a different component" is logged when a passive ['me'] reader
 // (the header's estimate, the demo strip, the card's controls) is told of a cache change from inside
 // another component's render (a useQuery building its query). These are the flows the reviewers
-// saw it in: signing out from /account to / (with and without the cookie), the demo strip's
+// saw it in: signing out from /account to / (with the cookie; without it /account is signed out
+// at once and / follows), the demo strip's
 // sign-out, and the card page when ['me'] names another account.
 import type { QueryClient } from '@tanstack/react-query';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
@@ -92,12 +93,8 @@ const signedInWithEstimate = {
 };
 
 describe('signing out from /account to /', () => {
-  it.each([
-    ['with the cookie', true],
-    ['without the cookie', false],
-  ] as const)('logs no render-time update (%s)', async (...row) => {
-    const [, cookie] = row;
-    if (cookie) setXsrfCookie();
+  it('logs no render-time update (with the cookie)', async () => {
+    setXsrfCookie();
     stubAccountFetch({
       'GET /v1/me': [jsonResponse(signedInWithEstimate), problemResponse(unauthenticatedProblem)],
       'POST /logout': rawResponse(204, null),
@@ -110,6 +107,28 @@ describe('signing out from /account to /', () => {
     });
     await settle();
     expect(screen.queryByRole('link', { name: /^Portfolio estimate/ })).toBeNull();
+    expect(renderUpdates()).toEqual([]);
+  });
+
+  // Without the cookie nobody is signed in: /account is signed out at once and asks nothing, so
+  // there is no sign-out; going on to / logs no render-time update either.
+  it('logs no render-time update (without the cookie: signed out at once, nothing asked)', async () => {
+    const calls = stubAccountFetch({
+      'GET /v1/me': problemResponse(unauthenticatedProblem),
+      'POST /logout': rawResponse(204, null),
+    });
+    window.history.replaceState(null, '', '/account');
+    render(<App />);
+    expect(screen.getByText('You are not signed in.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Sign out' })).toBeNull();
+    act(() => {
+      navigate('/');
+    });
+    await settle();
+    expect(window.location.pathname).toBe('/');
+    expect(screen.queryByRole('link', { name: /^Portfolio estimate/ })).toBeNull();
+    const keys = calls.map((call) => call.key);
+    expect(keys.filter((key) => key === 'GET /v1/me' || key.includes('csrf'))).toEqual([]);
     expect(renderUpdates()).toEqual([]);
   });
 });

@@ -43,21 +43,21 @@ const PATHS: Readonly<Record<Route['name'], string>> = {
   'not-found': '/nowhere',
 };
 
-/** How many times each route's own page asks GET /v1/me from a browser with no cookie. */
+/** How many times each route's own page asks GET /v1/me from a browser with no cookie: never. */
 const ME_ASKS: Readonly<Record<Route['name'], number>> = {
   home: 0,
   search: 0,
   card: 0,
   movers: 0,
-  'sign-in': 1,
+  'sign-in': 0,
   'sign-up': 0,
   'forgot-password': 0,
   'reset-password': 0,
-  account: 1,
+  account: 0,
   'verify-email': 0,
-  watchlist: 1,
-  portfolio: 1,
-  alerts: 1,
+  watchlist: 0,
+  portfolio: 0,
+  alerts: 0,
   about: 0,
   'not-found': 0,
 };

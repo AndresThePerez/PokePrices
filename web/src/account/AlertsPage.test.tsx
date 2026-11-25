@@ -70,11 +70,15 @@ function open(routes: Parameters<typeof stubAccountFetch>[0]) {
 }
 
 describe('the alerts page states (P5 T04 criterion 1, D10)', () => {
-  it('shows the loading line, then the signed-out view with sign-in coming back here', async () => {
+  it('without the cookie shows the signed-out view at once, no loading line, with sign-in coming back here', async () => {
     const { calls } = open({ 'GET /v1/me': problemResponse(unauthenticatedProblem) });
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Alerts and webhooks');
-    expect(screen.getByRole('status').textContent).toBe(LOADING);
-    expect(await screen.findByText('Sign in to set up alerts and webhooks.')).toBeTruthy();
+    expect(within(main()).queryByRole('status')).toBeNull();
+    expect(main().textContent).not.toContain(LOADING);
+    expect(screen.getByText('Sign in to set up alerts and webhooks.')).toBeTruthy();
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
     const links = within(main())
       .getAllByRole('link')
       .map((link) => [link.textContent, link.getAttribute('href')]);
@@ -84,8 +88,8 @@ describe('the alerts page states (P5 T04 criterion 1, D10)', () => {
     ]);
     expect(within(main()).queryByRole('button')).toBeNull();
     expect(screen.queryByRole('alert')).toBeNull();
-    // Criterion 5: signed out, the page asks for the session only.
-    expect(calls.map((call) => call.key)).toEqual(['GET /v1/me']);
+    // Criterion 5: signed out with no cookie, the page asks for nothing, not even the session.
+    expect(calls.map((call) => call.key)).toEqual([]);
   });
 
   it('signed in with no webhooks: the intro, the empty line and the add form', async () => {

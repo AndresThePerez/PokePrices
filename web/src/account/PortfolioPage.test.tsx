@@ -77,11 +77,12 @@ function signedIn(
 }
 
 describe('the portfolio page (T07 criterion 1, D9, D10)', () => {
-  it('shows the loading line, then the signed-out view with its links and the demo button', async () => {
+  it('without the cookie shows the signed-out view at once, no loading line, with its links and the demo button', async () => {
     const calls = openPortfolio({ 'GET /v1/me': problemResponse(unauthenticatedProblem) });
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Portfolio');
-    expect(screen.getByRole('status').textContent).toBe('Loading your portfolio…');
-    expect(await screen.findByText('Sign in to keep a portfolio.')).toBeTruthy();
+    expect(within(main()).queryByRole('status')).toBeNull();
+    expect(main().textContent).not.toContain('Loading your portfolio…');
+    expect(screen.getByText('Sign in to keep a portfolio.')).toBeTruthy();
     const links = within(main())
       .getAllByRole('link')
       .map((link) => [link.textContent, link.getAttribute('href')]);
@@ -90,7 +91,9 @@ describe('the portfolio page (T07 criterion 1, D9, D10)', () => {
       ['Create an account', '/sign-up'],
     ]);
     expect(within(main()).getByRole('button', { name: 'Try the read-only demo' })).toBeTruthy();
-    expect(calls.map((call) => call.key)).toEqual(['GET /v1/prices/freshness', 'GET /v1/me']);
+    await waitFor(() => {
+      expect(calls.map((call) => call.key)).toEqual(['GET /v1/prices/freshness']);
+    });
   });
 
   it("renders D9's worked example: the API's values, total, days and the excluded holding", async () => {

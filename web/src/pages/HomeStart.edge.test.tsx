@@ -209,11 +209,15 @@ describe('the home page in every session state', () => {
       'GET /v1/movers?direction=down&limit=5': jsonResponse(moversBody('down', [fallingMover])),
       'GET /v1/prices/freshness': jsonResponse(freshnessBody()),
     });
-    // The account page asks who is signed in; the header then knows the session on the home page.
+    // The account page asks who is signed in when the browser holds the cookie (a signed-out
+    // browser holds none and is signed out at once); the header then knows the session on the home
+    // page.
     visit('/account');
     render(<App />);
     await settle();
-    expect(calls.map((call) => call.key)).toContain('GET /v1/me');
+    expect(calls.map((call) => call.key).filter((key) => key === 'GET /v1/me')).toEqual(
+      me === null ? [] : ['GET /v1/me'],
+    );
     const before = calls.length;
     act(() => {
       navigate('/');

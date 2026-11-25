@@ -1,5 +1,7 @@
 // The one rule for when a public price page asks for the session (PublicSession mounts the ask
 // from it), and what a page may read from it: whether that ask is still waiting for its answer.
+// The cookie half of the rule holds on every route (askSession in session.ts: GET /v1/me only with
+// the token cookie); this file adds which public routes ask at all.
 import { useQueryClient } from '@tanstack/react-query';
 import { useSyncExternalStore } from 'react';
 import { useRoute, type Route } from '../router';

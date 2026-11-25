@@ -95,7 +95,7 @@ describe('sign in checks itself in the browser', () => {
     expect(shown(field('Password'))).toBe(NO_PASSWORD);
     expect(document.activeElement).toBe(field('Email'));
     expect(forbidden()).toEqual([]);
-    expect(await sent(calls)).toEqual(['GET /v1/me']);
+    expect(await sent(calls)).toEqual([]);
   });
 
   it('names an email address without its shape and puts no length rule on the password', async () => {
@@ -107,7 +107,7 @@ describe('sign in checks itself in the browser', () => {
     expect(shown(field('Password'))).toBeNull();
     expect(document.activeElement).toBe(field('Email'));
     expect(field('Password').value).toBe(SHORT);
-    expect(await sent(calls)).toEqual(['GET /v1/me']);
+    expect(await sent(calls)).toEqual([]);
   });
 
   it('focuses Password when only the password is missing', async () => {
@@ -117,7 +117,7 @@ describe('sign in checks itself in the browser', () => {
     expect(shown(field('Email'))).toBeNull();
     expect(shown(field('Password'))).toBe(NO_PASSWORD);
     expect(document.activeElement).toBe(field('Password'));
-    expect(await sent(calls)).toEqual(['GET /v1/me']);
+    expect(await sent(calls)).toEqual([]);
   });
 });
 

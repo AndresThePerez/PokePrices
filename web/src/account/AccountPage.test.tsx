@@ -38,13 +38,18 @@ function main(): HTMLElement {
 }
 
 describe('the account page (T03 criterion 3, D10)', () => {
-  it('shows the loading line, then the signed-out view with its two links', async () => {
-    stubAccountFetch({ 'GET /v1/me': problemResponse(unauthenticatedProblem) });
+  it('without the cookie shows the signed-out view at once, no loading line, with its two links', async () => {
+    const calls = stubAccountFetch({ 'GET /v1/me': problemResponse(unauthenticatedProblem) });
     visit('/account');
     render(<App />);
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Account');
-    expect(screen.getByRole('status').textContent).toBe('Loading your account…');
-    expect(await screen.findByText('You are not signed in.')).toBeTruthy();
+    expect(within(main()).queryByRole('status')).toBeNull();
+    expect(main().textContent).not.toContain('Loading your account…');
+    expect(screen.getByText('You are not signed in.')).toBeTruthy();
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+    expect(calls).toEqual([]);
     const links = within(main())
       .getAllByRole('link')
       .map((link) => [link.textContent, link.getAttribute('href')]);
@@ -255,7 +260,7 @@ describe('the header Account link (T03 criterion 5)', () => {
     expect(fireEvent.click(link)).toBe(false);
     expect(window.location.pathname).toBe('/sign-in');
     expect(await screen.findByText('Just looking?')).toBeTruthy();
-    expect(calls.map((call) => call.key)).toEqual(['GET /v1/me']);
+    expect(calls.map((call) => call.key)).toEqual([]);
   });
 });
 

@@ -51,12 +51,14 @@ function submit(): void {
 }
 
 describe('the sign-in page (T03 criterion 3, D10)', () => {
-  it('shows the loading line, then the form with its exact labels, autocomplete and links', async () => {
+  it('without the cookie shows the form at once, no loading line, with its exact labels, autocomplete and links', async () => {
     stubAccountFetch({ 'GET /v1/me': problemResponse(unauthenticatedProblem) });
     visit('/sign-in');
     render(<App />);
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Sign in');
-    expect(screen.getByRole('status').textContent).toBe('Loading your account…');
+    expect(within(main()).queryByRole('status')).toBeNull();
+    expect(main().textContent).not.toContain('Loading your account…');
+    expect(within(main()).getByRole('button', { name: 'Sign in' })).toBeTruthy();
     await signedOutForm();
     const email = within(main()).getByLabelText('Email');
     expect(email.getAttribute('autocomplete')).toBe('username');
@@ -453,6 +455,8 @@ describe('the Just looking? panel on sign-in (D2-i2-T06, D0-F09)', () => {
   }
 
   it('follows the form when signed out: its heading, the sentence and the demo button', async () => {
+    // An expired session: the browser holds the cookie, so the session is asked and loads first.
+    holdSessionCookie();
     stubAccountFetch({ 'GET /v1/me': problemResponse(unauthenticatedProblem) });
     visit('/sign-in');
     render(<App />);

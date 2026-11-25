@@ -110,7 +110,7 @@ describe('sign in: one failing field, the Enter path and the server after a pass
     expect(shown(field('Password'))).toBe(NO_PASSWORD);
     expect(shown(field('Email'))).toBeNull();
     expect(document.activeElement).toBe(field('Password'));
-    expect(await sent(calls)).toEqual(['GET /v1/me']);
+    expect(await sent(calls)).toEqual([]);
     fill('Password', GOOD);
     enter(field('Password'));
     // The stale browser message leaves with the corrected submit; the server's own lands.

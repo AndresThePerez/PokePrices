@@ -134,12 +134,12 @@ describe('browsing prices asks for no session, signed out', () => {
   });
 });
 
-describe('the sign-in and account pages ask for the session, signed out', () => {
+describe('the sign-in and account pages, signed out with no cookie, ask for nothing', () => {
   it.each(['/sign-in', '/account', '/watchlist', '/portfolio', '/alerts'])(
-    '%s sends the session request once and no CSRF-cookie request on opening',
+    '%s sends no session request and no CSRF-cookie request on opening',
     async (path) => {
       const urls = await requestsOf(path);
-      expect(urls.filter((url) => url === SESSION)).toHaveLength(1);
+      expect(urls.filter((url) => url === SESSION)).toEqual([]);
       expect(urls).not.toContain(CSRF);
     },
   );

@@ -1,8 +1,9 @@
 // The PokéPrices session: the ['me'] query and the signed-in, signed-out, loading and
 // failed states every account page reads. A 401 from GET /v1/me is the signed-out state (null),
-// not a problem. The header reads it passively only (useKnownSession); a public price page asks for
-// it only when the browser already holds the CSRF cookie (holdsSessionCookie, PublicSession), so a
-// visitor without one keeps the exact request list. Every query key that holds one account's data lives under ['account', …]
+// not a problem. The header reads it passively only (useKnownSession). On every route GET /v1/me
+// is sent only when the browser already holds the CSRF cookie (holdsSessionCookie, askSession): a
+// sign-in or account page without it is signed out at once, and a public price page
+// (PublicSession) keeps the exact request list. Every query key that holds one account's data lives under ['account', …]
 // (accountKey), so a session transition forgets all of it at once (endSession); ['me'] itself is
 // outside it.
 import {
@@ -110,11 +111,26 @@ export async function fetchMe(options: RequestOptions = {}): Promise<Me | null> 
   throw failure;
 }
 
-/** The session from ['me'] (defaults: polled, retry off, the last good answer kept). */
+/**
+ * The one ask for the session, on every route: GET /v1/me is sent only while the browser holds the
+ * token cookie (holdsSessionCookie, read each time, so the ask a sign-in starts finds the cookie
+ * its write just set). Without the cookie nobody is signed in here (a write sets both cookies), so
+ * the answer is signed out (null) and no request is sent: no 401, no cookie.
+ */
+export function askSession(options: RequestOptions = {}): Promise<Me | null> {
+  return holdsSessionCookie() ? fetchMe(options) : Promise.resolve(null);
+}
+
+/**
+ * The session from ['me'] (defaults: polled, retry off, the last good answer kept), asked through
+ * askSession. In a browser without the token cookie it is signed out at once: the cache starts
+ * with that answer, so there is no loading line and the header knows it too.
+ */
 export function useSession(): Session {
   const query = useQuery<Me | null, ApiFailure>({
     queryKey: ME_KEY,
-    queryFn: ({ signal }) => fetchMe({ signal }),
+    queryFn: ({ signal }) => askSession({ signal }),
+    initialData: () => (holdsSessionCookie() ? undefined : null),
   });
   if (query.data === null) return { state: 'signed-out' };
   if (query.data !== undefined) return { state: 'signed-in', me: query.data };
@@ -200,9 +216,9 @@ export function useReadOnly(): boolean {
 
 /**
  * Whether this browser already holds the app's CSRF cookie (XSRF-TOKEN, readable by script). Only
- * a sign-in or account page, a sign-in or the demo sets it, together with the session cookie, so a
- * public page may ask GET /v1/me when it is there (the answer sets no cookie the visitor did not
- * already have) and must not when it is not: browsing prices sets no cookies.
+ * sending an account form (sign-in, sign-up, a password form) or the demo sets it, together with
+ * the session cookie, so a page may ask GET /v1/me when it is there (the answer sets no cookie the
+ * visitor did not already have) and must not when it is not: browsing sets no cookies.
  */
 export function holdsSessionCookie(): boolean {
   for (const pair of document.cookie.split(';')) {

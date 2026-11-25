@@ -209,7 +209,7 @@ describe('an answer that is not the documented JSON is a failure, never a sessio
     expect(alert.textContent).toContain('Could not sign in');
     expect(window.location.pathname).toBe('/sign-in');
     expect(domHolds(PASSWORD)).toBe(false);
-    expect(calls.filter((call) => call.key === 'GET /v1/me')).toHaveLength(1);
+    expect(calls.filter((call) => call.key === 'GET /v1/me')).toEqual([]);
   });
 
   it('keeps a refused redirect on POST /login a failure the page can show', async () => {

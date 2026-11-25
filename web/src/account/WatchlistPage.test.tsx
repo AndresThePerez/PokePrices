@@ -58,11 +58,12 @@ function openWatchlist(
 }
 
 describe('the watchlist page (T07 criterion 1, D10)', () => {
-  it('shows the loading line, then the signed-out view with its links and the demo button', async () => {
+  it('without the cookie shows the signed-out view at once, no loading line, with its links and the demo button', async () => {
     const calls = openWatchlist({ 'GET /v1/me': problemResponse(unauthenticatedProblem) });
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Watchlist');
-    expect(screen.getByRole('status').textContent).toBe('Loading your watchlist…');
-    expect(await screen.findByText('Sign in to keep a watchlist.')).toBeTruthy();
+    expect(within(main()).queryByRole('status')).toBeNull();
+    expect(main().textContent).not.toContain('Loading your watchlist…');
+    expect(screen.getByText('Sign in to keep a watchlist.')).toBeTruthy();
     const links = within(main())
       .getAllByRole('link')
       .map((link) => [link.textContent, link.getAttribute('href')]);
@@ -72,7 +73,9 @@ describe('the watchlist page (T07 criterion 1, D10)', () => {
     ]);
     expect(within(main()).getByRole('button', { name: 'Try the read-only demo' })).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
-    expect(calls.map((call) => call.key)).toEqual(['GET /v1/prices/freshness', 'GET /v1/me']);
+    await waitFor(() => {
+      expect(calls.map((call) => call.key)).toEqual(['GET /v1/prices/freshness']);
+    });
   });
 
   it('shows each row like a movers row with its own as-of line, then the footnote', async () => {
