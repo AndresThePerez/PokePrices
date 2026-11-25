@@ -332,7 +332,17 @@ describe('a form sent with no token cookie fetches the token, then writes, then 
       });
       await settle();
       expect(headerSessionLink()).toBe('Account');
-      expect(accountKeys(calls).slice(0, 3)).toEqual([TOKEN, 'POST /v1/demo/session', ME]);
+      // On the home page its three public sample reads come first, before the button is pressed.
+      const homeReads =
+        path === '/'
+          ? ['GET /v1/demo/watchlist', 'GET /v1/demo/portfolio', 'GET /v1/demo/alerts']
+          : [];
+      expect(accountKeys(calls).slice(0, homeReads.length + 3)).toEqual([
+        ...homeReads,
+        TOKEN,
+        'POST /v1/demo/session',
+        ME,
+      ]);
       expect(accountKeys(calls).filter((key) => key === ME)).toEqual([ME]);
     },
   );
@@ -470,6 +480,14 @@ describe('with the token cookie the session is asked once', () => {
     await settle();
     await settle();
     expect(headerSessionLink()).toBe('Sign in');
-    expect(accountKeys(calls)).toEqual([ME, 'POST /logout', ME]);
+    // Signing out lands on the home page, which reads the demo's three public routes (no session).
+    expect(accountKeys(calls)).toEqual([
+      ME,
+      'POST /logout',
+      ME,
+      'GET /v1/demo/watchlist',
+      'GET /v1/demo/portfolio',
+      'GET /v1/demo/alerts',
+    ]);
   });
 });

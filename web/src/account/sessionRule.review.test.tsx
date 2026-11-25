@@ -10,6 +10,7 @@ import type * as QueryModule from '../query';
 import { navigate } from '../router';
 import {
   clearXsrfCookie,
+  demoAlertsRoutes,
   demoSampleRoutes,
   demoSampleUnavailableRoutes,
   holdSessionCookie,
@@ -143,8 +144,16 @@ describe('a leftover token cookie with no session (signed out earlier)', () => {
       await settle();
       expect(headerSessionLink()).toBe('Sign in');
     }
-    // One session ask, then the public sample reads of the two list pages, each once.
-    expect(accountKeys(calls)).toEqual([ME, 'GET /v1/demo/watchlist', 'GET /v1/demo/portfolio']);
+    // One session ask, the public sample reads of the two list pages, then the home page's three
+    // (the two failed list reads are asked again there, the alerts for the first time).
+    expect(accountKeys(calls)).toEqual([
+      ME,
+      'GET /v1/demo/watchlist',
+      'GET /v1/demo/portfolio',
+      'GET /v1/demo/watchlist',
+      'GET /v1/demo/portfolio',
+      'GET /v1/demo/alerts',
+    ]);
   });
 
   it('landing on a public price page asks once, and the account pages after it ask nothing more', async () => {
@@ -163,7 +172,14 @@ describe('a leftover token cookie with no session (signed out earlier)', () => {
     expect(within(main()).getByText('Sign in to keep a watchlist.')).toBeTruthy();
     go('/sign-in');
     await settle();
-    expect(accountKeys(calls)).toEqual([ME, 'GET /v1/demo/watchlist']);
+    // The home page's three public reads come first; /watchlist then asks its own again.
+    expect(accountKeys(calls)).toEqual([
+      'GET /v1/demo/watchlist',
+      'GET /v1/demo/portfolio',
+      'GET /v1/demo/alerts',
+      ME,
+      'GET /v1/demo/watchlist',
+    ]);
   });
 });
 
@@ -174,6 +190,7 @@ describe('sign-out in this tab', () => {
       [ME]: [jsonResponse(signedInMe), problemResponse(unauthenticatedProblem)],
       'POST /logout': rawResponse(204, null),
       ...demoSampleRoutes(),
+      ...demoAlertsRoutes(),
     });
     visit('/account');
     render(<App />);

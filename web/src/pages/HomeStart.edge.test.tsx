@@ -35,7 +35,12 @@ const TILE_NAMES = [
 
 const EXAMPLES = ['lugia neo genesis', 'umbreon vmax', 'umbreon ex', 'mewtwo'];
 
+// The home page's requests, sorted: the demo's three public reads (the "See it working" section),
+// the two movers lists and the freshness answer.
 const HOME_REQUESTS = [
+  '/v1/demo/alerts',
+  '/v1/demo/portfolio',
+  '/v1/demo/watchlist',
   '/v1/movers?direction=down&limit=5',
   '/v1/movers?direction=up&limit=5',
   '/v1/prices/freshness',
@@ -231,13 +236,16 @@ describe('the home page in every session state', () => {
     const added = calls.slice(before).map((call) => call.url);
     for (const url of added) expect(HOME_REQUESTS).toContain(url);
     expect(added.filter((url) => url.startsWith('/v1/cards'))).toEqual([]);
-    expect(added.filter(isMoversUrl).sort()).toEqual(HOME_REQUESTS.slice(0, 2));
+    expect(added.filter(isMoversUrl).sort()).toEqual(HOME_REQUESTS.slice(3, 5));
+    expect(added.filter((url) => url.startsWith('/v1/demo/')).sort()).toEqual(
+      HOME_REQUESTS.slice(0, 3),
+    );
     if (me !== null) {
       expect(screen.getByRole('main').innerHTML).not.toContain(me.data.email);
     }
   });
 
-  it('sends exactly the movers and the freshness requests on a cold load, each once', async () => {
+  it("sends exactly the movers, the freshness and the demo's three public requests on a cold load, each once", async () => {
     const calls = stubFetch((url) => {
       if (url === '/v1/prices/freshness') return jsonResponse(freshnessBody());
       if (isMoversUrl(url)) return moversAnswer(url);

@@ -159,7 +159,15 @@ describe('the account page (T03 criterion 3, D10)', () => {
     // The home page's own movers reads are not routed here; every account request is listed.
     expect(
       calls.map((call) => call.key).filter((key) => !key.startsWith('GET /v1/movers?')),
-    ).toEqual(['GET /v1/me', 'POST /logout', 'GET /v1/me', 'GET /v1/prices/freshness']);
+    ).toEqual([
+      'GET /v1/me',
+      'POST /logout',
+      'GET /v1/me',
+      'GET /v1/prices/freshness',
+      'GET /v1/demo/watchlist',
+      'GET /v1/demo/portfolio',
+      'GET /v1/demo/alerts',
+    ]);
     act(() => {
       navigate('/account');
     });
@@ -236,7 +244,7 @@ describe('login persists across a reload (T03 criterion 4, D13 Vitest half)', ()
 });
 
 describe('the header Account link (T03 criterion 5)', () => {
-  it('is a static link: the home page requests only its movers', () => {
+  it('is a static link: the home page requests only its movers and the demo reads', () => {
     const calls = stubFetch(answerMovers);
     render(<App />);
     const link = within(screen.getByRole('banner')).getByRole('link', { name: 'Sign in' });
@@ -244,7 +252,10 @@ describe('the header Account link (T03 criterion 5)', () => {
     expect(link.className.split(/\s+/)).toContain('min-h-11');
     expect(
       calls.every(
-        (call) => call.url.startsWith('/v1/movers?') || call.url === '/v1/prices/freshness',
+        (call) =>
+          call.url.startsWith('/v1/movers?') ||
+          call.url === '/v1/prices/freshness' ||
+          ['/v1/demo/watchlist', '/v1/demo/portfolio', '/v1/demo/alerts'].includes(call.url),
       ),
     ).toBe(true);
     expect(calls.filter((call) => call.url === '/v1/prices/freshness')).toHaveLength(1);

@@ -272,7 +272,11 @@ describe('public pages make no account request', () => {
           call.url,
         ),
       );
-      expect(account).toEqual([]);
+      // The home page's "See it working" section reads the demo's three public routes (no
+      // cookie, no session); nothing else on this list is ever asked.
+      expect(account.map((call) => call.url)).toEqual(
+        path === '/' ? ['/v1/demo/watchlist', '/v1/demo/portfolio', '/v1/demo/alerts'] : [],
+      );
     },
   );
 

@@ -21,8 +21,14 @@ prices get into the database is in [`OPERATIONS.md`](OPERATIONS.md).
     when one fails (see Card pictures). A tile shows no price; the card page does, with its source and date.
   - The "Biggest moves vs previous close" strip. The strip is static (no scrolling, no animation), each
     row is a short row (see the next section), and it links to `/movers`.
+  - **See it working**, last on the page: the read-only demo's portfolio total with its change on the day, three of
+    its watched cards (each with its price and change, its source and `as of` day) and one alert sample, each part
+    labelled as sample data from the demo collection and linking to `/portfolio`, `/watchlist` and `/alerts`. Signed
+    in or out it is the same sample. It sits in a box that holds its height from the first frame, and it is absent
+    when any of its three reads fails.
 
-  The home page asks the API for the two movers lists and the freshness answer, and nothing more unless the browser
+  The home page asks the API for the two movers lists and the freshness answer, and for the demo's three public reads
+  (`GET /v1/demo/watchlist`, `/portfolio` and `/alerts`, no cookie and no session), and nothing more unless the browser
   already holds the `XSRF-TOKEN` cookie, when it also asks `GET /v1/me` once.
 - **`/search`.** Card search over the PokéSearch catalogue. Results are catalogue entries, each with the card's
   picture (see Card pictures) and its headline price: the latest close of **the first priced variant in card

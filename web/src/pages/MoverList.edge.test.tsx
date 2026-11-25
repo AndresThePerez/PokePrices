@@ -185,7 +185,8 @@ describe('home strip stamp rule edge cases (F-P3-05)', () => {
         () => jsonResponse(moversBody('down', [nextDayFall], { limit: 5, ...newDay })),
       ],
     );
-    expect(urls).toHaveLength(3);
+    // The movers and the freshness answer, and the three public demo reads of the home page.
+    expect(urls).toHaveLength(6);
     expect(within(strip()).getAllByText(STAMP_1012)).toHaveLength(1);
     const riseRow = within(sublist('Rises')).getByRole('listitem');
 

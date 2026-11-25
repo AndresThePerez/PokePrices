@@ -122,7 +122,14 @@ describe('home strip (T10 criterion 1)', () => {
       [() => jsonResponse(moversBody('up', [risingMover], { limit: 5 }))],
       [() => jsonResponse(moversBody('down', [fallingMover], { limit: 5 }))],
     );
-    expect([...urls].sort()).toEqual([DOWN_URL, UP_URL, '/v1/prices/freshness']);
+    expect([...urls].sort()).toEqual([
+      '/v1/demo/alerts',
+      '/v1/demo/portfolio',
+      '/v1/demo/watchlist',
+      DOWN_URL,
+      UP_URL,
+      '/v1/prices/freshness',
+    ]);
     const intro = screen.getByText(
       'Each price is a TCGplayer market price collected once a day through TCGCSV, shown with its source and the day it is as of.',
     );
@@ -274,12 +281,14 @@ describe('home strip is a static ticker (D3, D9; T10 criteria 2 and 3)', () => {
       ],
       [() => jsonResponse(moversBody('down', [fallingMover]))],
     );
-    expect(urls).toHaveLength(3);
+    // Three requests on landing (the two lists and the freshness answer), the demo's three public
+    // reads beside them, and the same six again one interval later: every query polls the same way.
+    expect(urls).toHaveLength(6);
     expect(within(strip()).getAllByText(STAMP_1012)).toHaveLength(1);
     await advance(299_999);
-    expect(urls).toHaveLength(3);
-    await advance(1);
     expect(urls).toHaveLength(6);
+    await advance(1);
+    expect(urls).toHaveLength(12);
     const rises = within(strip()).getByRole('list', { name: 'Rises' });
     expect(within(rises).getByRole('link', { name: 'Charizard' })).toBeTruthy();
     expect(within(rises).queryByRole('link', { name: 'Chimecho' })).toBeNull();
@@ -297,7 +306,7 @@ describe('home strip is a static ticker (D3, D9; T10 criteria 2 and 3)', () => {
       [() => jsonResponse(moversBody('down', [fallingMover])), () => new TypeError('network down')],
     );
     await advance(300_000);
-    expect(urls).toHaveLength(6);
+    expect(urls).toHaveLength(12);
     expect(within(strip()).getByRole('link', { name: 'Chimecho' })).toBeTruthy();
     expect(within(strip()).getByRole('link', { name: 'Cacturne ex' })).toBeTruthy();
     expect(within(strip()).getByText(STAMP_1012)).toBeTruthy();

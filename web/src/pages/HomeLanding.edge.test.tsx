@@ -290,6 +290,9 @@ describe('demo entry on the home page (D2-i1-T03 review)', () => {
     await screen.findByRole('link', { name: 'See all movers' });
     expect(calls.map((call) => call.key).filter((key) => !key.includes('/v1/movers'))).toEqual([
       'GET /v1/prices/freshness',
+      'GET /v1/demo/watchlist',
+      'GET /v1/demo/portfolio',
+      'GET /v1/demo/alerts',
     ]);
     const button = within(screen.getByRole('main')).getByRole('button', {
       name: 'Try the read-only demo',
@@ -301,8 +304,11 @@ describe('demo entry on the home page (D2-i1-T03 review)', () => {
     });
     const keys = calls.map((call) => call.key).filter((key) => !key.includes('/v1/movers'));
     // The home page reads no session, so the first request after the click is the CSRF cookie.
-    expect(keys.slice(0, 4)).toEqual([
+    expect(keys.slice(0, 7)).toEqual([
       'GET /v1/prices/freshness',
+      'GET /v1/demo/watchlist',
+      'GET /v1/demo/portfolio',
+      'GET /v1/demo/alerts',
       'GET /sanctum/csrf-cookie',
       'POST /v1/demo/session',
       'GET /v1/me',

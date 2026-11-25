@@ -66,6 +66,9 @@ describe('home as a landing (D2-i1-T03)', () => {
     expect(submits).toHaveLength(1);
     expect(submits[0]?.textContent).toBe('Search');
     expect(calls.map((call) => call.url).sort()).toEqual([
+      '/v1/demo/alerts',
+      '/v1/demo/portfolio',
+      '/v1/demo/watchlist',
       '/v1/movers?direction=down&limit=5',
       '/v1/movers?direction=up&limit=5',
       '/v1/prices/freshness',
@@ -76,6 +79,9 @@ describe('home as a landing (D2-i1-T03)', () => {
     await screen.findByRole('list', { name: 'Search results' });
     expect(calls.map((call) => call.url).filter((url) => !isMoversUrl(url))).toEqual([
       '/v1/prices/freshness',
+      '/v1/demo/watchlist',
+      '/v1/demo/portfolio',
+      '/v1/demo/alerts',
       '/v1/cards?q=unown+%3F',
     ]);
   });

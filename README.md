@@ -7,7 +7,7 @@ each one is shown with its source and the day it is as of, and none is an intrad
 - **The site:** <https://pokeprices.andrestheperez.com>
 - **The demo:** open the [home page](https://pokeprices.andrestheperez.com/) and press
   `Try the read-only demo`. That signs the browser in to a shared account with a watchlist, a
-  portfolio and a sample alert, in which nothing can be changed. No address opens the demo by itself.
+  portfolio and a sample alert, in which nothing can be changed. No address opens the demo by itself. The home page also shows a sample of the demo's collection under "See it working" with no sign-in: its portfolio total, three watched cards and an alert.
 
 PokéPrices is a personal portfolio project, not a business. It has no ads, no affiliate links and no paid features, and it sells no data. It exists to show how I build and run software.
 

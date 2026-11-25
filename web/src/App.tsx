@@ -22,6 +22,7 @@ import { BiggestMoves } from './pages/MoverList';
 import MoversPage from './pages/MoversPage';
 import SearchForm from './pages/SearchForm';
 import SearchPage from './pages/SearchPage';
+import SeeItWorking from './pages/SeeItWorking';
 import { createQueryClient } from './query';
 import { useRoute } from './router';
 import { HOME_H1, ROUTES } from './routes';
@@ -60,7 +61,8 @@ function Routes() {
   switch (route.name) {
     case 'home':
       // The landing: the job in the h1, the source sentence, then the one task (search) and
-      // the demo entry, example searches and well-known cards; the movers follow.
+      // the demo entry, example searches and well-known cards; the movers follow, then the demo's
+      // sample collection (last, so it never moves what is above it).
       return (
         <Page>
           <h1 className="text-2xl font-semibold sm:text-4xl">{HOME_H1}</h1>
@@ -74,6 +76,7 @@ function Routes() {
           <ExampleSearches />
           <CardTiles />
           <BiggestMoves />
+          <SeeItWorking />
         </Page>
       );
     case 'search':

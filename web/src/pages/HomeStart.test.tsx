@@ -117,12 +117,15 @@ describe('the home page leads with card tiles and example searches', () => {
     expect(tileList().textContent).not.toMatch(/\$|as of|price/i);
   });
 
-  it('sends no request beyond the movers and the freshness answer', async () => {
+  it('sends no request beyond the movers, the freshness answer and the demo public reads', async () => {
     const calls = stubFetch(answerHome);
     visit('/');
     render(<App />);
     await within(movers()).findByRole('link', { name: 'See all movers' });
     expect(calls.map((call) => call.url).sort()).toEqual([
+      '/v1/demo/alerts',
+      '/v1/demo/portfolio',
+      '/v1/demo/watchlist',
       '/v1/movers?direction=down&limit=5',
       '/v1/movers?direction=up&limit=5',
       '/v1/prices/freshness',
