@@ -773,6 +773,8 @@ until PokéSearch answers again. `api/tests/Feature/Cards/CardLastGoodLimitTest.
   catalogue fill would add a Postgres write to a public read. A card copy is about 2 KB and a card name
   about 0.3 KB; those are bounded by the size of the catalogue.
 
+In dev the `api` service has a 512m memory limit (`compose.dev.yml`) where production has 384m (`deploy/stack.server.yml`); the repository records the raise to 512m but gives no reason for it.
+
 ## What never happens
 
 - **No raw file is deleted, moved or written.** The ingest, the replay and the map commands only read the
