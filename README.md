@@ -149,13 +149,13 @@ Eight problems, each with the file, test or command that shows the answer. Figur
    ```
 
 5. **Rate limits that run after the session starts let a stranger fill the sessions table, so a guest is counted
-   before any session exists.** `api/app/Http/Middleware/ThrottleBeforeSession.php` runs first and counts each
-   address at 60 a minute. It decides whether a request is signed in by decrypting the session cookie and reading
-   one `sessions` row by primary key (`api/app/Domain/Accounts/SignedInSession.php`), without starting a session; a
-   request with no cookie costs no query. A guest's request to a sign-in-only route is answered `401` right after
-   it is counted, so it stores no row. On dev every visitor shares one address, so these buckets are global there;
-   production trusts the proxy's forwarded address (`api/tests/Feature/TrustedProxiesTest.php` pins both). Test:
-   `api/tests/Feature/Accounts/GuestRateLimitTest.php`; [all the limits](docs/ACCOUNTS.md#rate-limits).
+   before any session exists.** `api/app/Http/Middleware/ThrottleBeforeSession.php` runs first and counts each address
+   at 60 a minute. It decides whether a request is signed in by decrypting the session cookie and reading one
+   `sessions` row by primary key (`api/app/Domain/Accounts/SignedInSession.php`), without starting a session; a
+   request with no cookie costs no query. A guest's request to one of Fortify's signed-in routes is answered `401`
+   right after it is counted, so it stores no row. On dev every visitor shares one address, so these buckets are
+   global there; production trusts the proxy's forwarded address (`api/tests/Feature/TrustedProxiesTest.php` pins
+   both). Test: `api/tests/Feature/Accounts/GuestRateLimitTest.php`; [all the limits](docs/ACCOUNTS.md#rate-limits).
 
 6. **A Redis outage must not become a stack trace, so each role's outage has a defined answer.**
    `api/tests/Feature/CacheOutageTest.php` points each of the two Redis roles at an address nothing answers on and
