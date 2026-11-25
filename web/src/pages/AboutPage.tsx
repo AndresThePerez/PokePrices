@@ -77,8 +77,8 @@ export default function AboutPage() {
           its password, its two-factor setting, its watchlist and portfolio, its alert settings and
           webhooks, a record of the alerts sent to it, and for each signed-in session its IP
           address, browser and last activity. You can download that data or delete your account on
-          the Account page. Display settings stay in your browser. Card pictures load from a
-          third-party image host, which receives your browser’s request for each picture. The site
+          the Account page. Display settings stay in your browser. Card pictures load from two
+          third-party image hosts, which receive your browser’s request for each picture. The site
           is served through Cloudflare, which carries every request on its way to PokéPrices.
         </p>
       </Section>

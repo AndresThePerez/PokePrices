@@ -204,7 +204,7 @@ prices get into the database is in [`OPERATIONS.md`](OPERATIONS.md).
   features, no data sold; the code is published to be read and all rights are reserved), who built it
   with a link to the source code on GitHub, the affiliation disclaimer (not affiliated with or endorsed by
   Nintendo, The Pokémon Company, Game Freak, Creatures or TCGplayer; card images and names belong to their
-  owners), a privacy paragraph (the cookies, what an account stores, the third-party image host and
+  owners), a privacy paragraph (the cookies, what an account stores, the two third-party image hosts and
   Cloudflare) and the contact link to `https://andrestheperez.com`. It shows no price and sends no
   request. nginx serves it like every other app path (`/about` is not reserved). The privacy paragraph
   opens: "Opening and reading the site sets no cookies. Sending a sign-in, sign-up or password form, or
