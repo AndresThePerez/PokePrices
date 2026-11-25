@@ -86,6 +86,124 @@ The collector writes a day folder; its code is not in this repository. The hourl
   either differs from a fresh copy. `make gates` runs every gate of
   [`gates/manifest-P0.md`](gates/manifest-P0.md) into a scorecard.
 
+## Problems and how I solved them
+
+Eight problems, each with the file, test or command that shows the answer. Figures are dated; each command recounts.
+
+1. **Marketplace products have to land on the right card, and a wrong map has to be caught before history is
+   replayed onto it.** `api/app/Domain/Mapping/MapBuilder.php` assigns each TCGplayer product and subtype to one
+   card variant. `api/app/Domain/Mapping/MapAudit.php` runs five checks on the result, and a golden set of 71 rows
+   (`api/database/data/golden-set.json`) names the product each card must map to and the products it must never
+   map to. On the development data, map build 4 (the 2026-10-11 collection) maps 20,193 of 20,635 catalogue cards,
+   97.86 % against a floor of 96 %; before the rules for hyphenated EX and GX names, Prism Star, Unown and rarity
+   tags it was 89.46 %, which that check would have failed ([the steps](docs/OPERATIONS.md#map-rebuild-then-replay);
+   test: `api/tests/Feature/Mapping/MapAuditPricedTest.php`).
+
+   ```sh
+   docker compose -f compose.dev.yml exec -T -w /workspace/api api php artisan pokeprices:map:audit --check priced --json
+   ```
+
+2. **A daily job that fails quietly is the worst kind, so the price job reports on itself.** One list in
+   `api/app/Domain/Pricing/PriceJobProblems.php` holds what is wrong: prices past the 26-hour limit, a day with no
+   finished run, a refused day folder, a run stuck for three hours, a day that failed twice and is on hold. The
+   freshness answer's `missing_days` and an hourly command (`api/app/Console/Commands/PricesReportProblems.php`)
+   read that same list. The command posts one Discord message when a problem starts and one when it ends, and
+   records it in `reported_price_problems`, so a restart repeats nothing. A failed post is retried the next hour
+   and prints one line with the status, never the address. A missing day stops deciding freshness at 15 days old.
+   Tests: `api/tests/Feature/Pricing/PriceJobProblemsTest.php`, `PriceProblemReportTest.php` beside it. On
+   2026-11-25 the public site answered day 2026-11-24, `within_slo` true, no missing days:
+
+   ```sh
+   curl -s https://pokeprices.andrestheperez.com/v1/prices/freshness | jq -c '.data | {day, age_hours, slo_hours, within_slo, missing_days}'
+   ```
+
+3. **A movers board full of thin-market noise is worse than none, so it ranks only real market moves.** A variant
+   is ranked only when it moved at least 5 % and $1.00 from a previous close of at least $2.00, when four of its
+   last five closes differ, and when both closes lie between half the low listing and 1.5 times the mid listing
+   (`api/app/Domain/Pricing/Movers.php`). On the development data for 2026-10-13, 3,444 variants had a changed close
+   and a previous close of $2.00 or more; the board ranks 19 (6 rises, 13 falls). The largest rise before the rule,
+   `ex13-3` reverse, went from 5.00 to 752.00 (+14,940 %) after an earlier close at 0.009 times its low listing.
+   Each edge is pinned: 5.00 % counts, 4.99 % does not (`api/tests/Feature/Pricing/MoversEligibilityTest.php`);
+   [the measurements](docs/measurements/movers-eligibility.md).
+
+   ```sh
+   docker compose -f compose.dev.yml exec -T postgres psql -U pokeprices -d pokeprices -c "select direction, count(*) from price_movers where day = '2026-10-13' group by 1 order by 1"
+   ```
+
+4. **A webhook receiver should not have to trust me, so each delivery is signed and the signature can be checked
+   by hand.** Messages follow the Standard Webhooks scheme: `webhook-signature` is `v1,` plus the base64
+   HMAC-SHA256 of `<id>.<timestamp>.<body>` (`api/app/Domain/Alerts/WebhookSigner.php`, tested against the
+   scheme's published vector in `api/tests/Unit/Alerts/WebhookSignerTest.php`). The Alerts page shows one sample
+   delivery signed with a published sample secret; nothing is ever sent from the demo. This recomputes that
+   signature from what the dev API serves (on 2026-11-25 its two lines were identical);
+   `web/src/account/AlertsSample.review.test.tsx` does it from the rendered page; [the steps](docs/ALERTS.md#signed-webhooks).
+
+   ```sh
+   r=$(curl -s pokeprices.localhost:8095/v1/demo/alerts)
+   key=$(printf '%s' "$r" | jq -r .data.sample_secret | sed 's/^whsec_//' | base64 -d | xxd -p -c 256)
+   printf '%s' "$r" | jq -j '.data.webhook | .headers["webhook-id"], ".", .headers["webhook-timestamp"], ".", .body' |
+     openssl dgst -sha256 -mac HMAC -macopt hexkey:"$key" -binary | base64
+   printf '%s' "$r" | jq -r '.data.webhook.headers["webhook-signature"]'   # the same, after "v1,"
+   ```
+
+5. **Rate limits that run after the session starts let a stranger fill the sessions table, so a guest is counted
+   before any session exists.** `api/app/Http/Middleware/ThrottleBeforeSession.php` runs first and counts each
+   address at 60 a minute. It decides whether a request is signed in by decrypting the session cookie and reading
+   one `sessions` row by primary key (`api/app/Domain/Accounts/SignedInSession.php`), without starting a session; a
+   request with no cookie costs no query. A guest's request to a sign-in-only route is answered `401` right after
+   it is counted, so it stores no row. On dev every visitor shares one address, so these buckets are global there;
+   production trusts the proxy's forwarded address (`api/tests/Feature/TrustedProxiesTest.php` pins both). Test:
+   `api/tests/Feature/Accounts/GuestRateLimitTest.php`; [all the limits](docs/ACCOUNTS.md#rate-limits).
+
+6. **A Redis outage must not become a stack trace, so each role's outage has a defined answer.**
+   `api/tests/Feature/CacheOutageTest.php` points each of the two Redis roles at an address nothing answers on and
+   checks the answers. With `redis-queue` (queue, rate limiters, catalogue locks) down, a rate-limited route
+   answers a `503` problem with `Retry-After`: a limit that cannot be counted is refused, not waved through. With
+   `redis-cache` (catalogue data) down, the movers board and the watchlist still answer `200` with no card names
+   and `meta.degraded` true, while a card page and a search answer `503`: the catalogue is read through the cache,
+   never around it. When the catalogue itself is down, cards come from a last good copy kept 7 days, but it lives
+   only in `redis-cache` and a restart loses it (`api/tests/Feature/Cards/CardLastGoodLimitTest.php`);
+   [the table](docs/OPERATIONS.md#a-redis-outage).
+
+7. **An API and its web client drift apart without a sound, so `make test` holds the contract, the generated
+   types and the code together.** `openapi/api.json` is exported from the API code and `web/src/api/schema.d.ts`
+   is generated from it; the `test` target in `Makefile` exports and generates fresh copies and fails if either
+   committed file differs, and the Pest suite validates every `/v1` answer against the contract. On 2026-11-25
+   `make test` took 3 min 26 s here: Pest 4,428 tests (34,732 assertions), Vitest 219 files with 2,995 tests and
+   one expected failure, then `tsc`, ESLint and both comparisons. CI runs it.
+
+8. **"It passes" needs a definition, so the checks are a list and the result is a scorecard.**
+   `gates/manifest-P0.json` lists 39 gates, 34 hard and 5 soft, from static analysis and coverage to a secret scan
+   of the full history. `make gates` runs them into a scorecard (`scripts/scorecard`) and `make verdict` turns it
+   into a pass or fail; `gates/frozen.sha256` pins the files whose settings must not loosen. The full run took
+   about 34 minutes the last time I ran it (2026-11-24), so it is not part of CI. The fast tier runs 21 of the
+   gates (19 hard, 2 soft) and the tests of the gate scripts, and ends non-zero on any failure (`tests/p0/run.sh`):
+
+   ```sh
+   TIER=fast sh tests/p0/run.sh
+   ```
+
+### Decisions and trade-offs
+
+- [Day close](docs/adr/0001-day-close.md): a price is a daily close, a missing day is carried forward and marked.
+- [Daily polling and the ticker](docs/adr/0002-daily-polling-and-ticker.md): pages ask again every five minutes
+  instead of holding a push connection, and the chart is a line of closes, not candles.
+- [Accounts and sessions](docs/adr/0003-accounts-and-sessions.md): sign-up needs an invite code, sessions are
+  same-origin cookies with no tokens, and the shared demo is read-only on the server. Nobody signs up unaided.
+- [Alert delivery](docs/adr/drafts/0004-alert-delivery.md), still a draft: webhooks are delivered at least once, and
+  the receiver drops duplicates by `webhook-id`.
+
+### What I would do next
+
+- A price history backfill: a card's chart begins on the first day I collected it, and the page says so.
+- Mapping gaps: at map build 4, 442 of 20,635 catalogue cards have no mapped product (development data).
+- Card pictures come from third-party hosts (`docker/nginx/pokeprices.conf` names both); one is being retired.
+- Backups kept off the server: the nightly dump stays on the same server ([`docs/DEPLOY.md`](docs/DEPLOY.md#step-15-backup-timer-server)).
+- A mail provider, so sign-up can open: mail goes to the log today and accounts are invite-only.
+- Enforcing the content policy, which the page sends as report-only today (`docker/nginx/pokeprices.conf`).
+- A monitor that alerts on a `503`: only a check from outside notices a stopped scheduler
+  ([`docs/OPERATIONS.md`](docs/OPERATIONS.md#the-discord-report)).
+
 Built by [Andres Perez](https://andrestheperez.com).
 
 ## In this repository

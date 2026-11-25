@@ -51,6 +51,70 @@ check "README has a stack heading, a map heading and an In this repository parag
   ! sed -n "/^## In this repository$/,/^## /p" README.md | /usr/bin/grep -qiE "daily-close Pokémon card prices|intraday|every.*price.*source"'
 check "every relative link in README resolves to a path" sh -c '
   /usr/bin/grep -oE "\]\((docs|api|web|openapi|gates|scripts)/[^)#]*" README.md | sed "s/^](//" | while read -r f; do test -e "$f" || exit 1; done'
+# The README's engineering section: eight problems with their evidence, then the decisions and what comes next.
+check "README has the engineering section, then its decisions list, then its next-steps list, before Development" sh -c '
+  n() { /usr/bin/grep -n -m1 -x -F -e "$1" README.md | cut -d: -f1; }
+  e=$(n "## Problems and how I solved them"); d=$(n "### Decisions and trade-offs"); w=$(n "### What I would do next"); v=$(n "## Development")
+  for x in "$e" "$d" "$w" "$v"; do test -n "$x" || exit 1; done
+  test "$e" -lt "$d" && test "$d" -lt "$w" && test "$w" -lt "$v"'
+check "each of the engineering section's eight problems names a path that exists" python3 -I -c '
+import os, re, sys
+t = open("README.md", encoding="utf-8").read()
+m = re.search(r"^## Problems and how I solved them\n(.*?)^### Decisions and trade-offs$", t, re.S | re.M)
+if not m:
+    sys.exit(1)
+items = re.split(r"^(?=[0-9]+\. )", m.group(1), flags=re.M)[1:]
+if len(items) != 8:
+    sys.exit(1)
+for n, it in enumerate(items, 1):
+    if not it.startswith("%d. **" % n):
+        sys.exit(1)
+    paths = [p.split("::")[0] for p in re.findall(r"`([A-Za-z0-9_./-]+(?:::[^`]*)?)`", it)]
+    if not any("/" in p and os.path.exists(p) for p in paths):
+        sys.exit(1)'
+check "every relative link in the engineering section resolves to a file, and its anchor to a heading" python3 -I -c '
+import os, re, sys
+t = open("README.md", encoding="utf-8").read()
+m = re.search(r"^## Problems and how I solved them\n(.*?)^## ", t, re.S | re.M)
+if not m:
+    sys.exit(1)
+def slug(h):
+    return re.sub(r"[^a-z0-9 _-]", "", h.strip().lower()).replace(" ", "-")
+links = re.findall(r"\]\(([^)]+)\)", m.group(1))
+if not links:
+    sys.exit(1)
+for l in links:
+    if l.startswith("http"):
+        continue
+    f, _, a = l.partition("#")
+    if not os.path.isfile(f):
+        sys.exit(1)
+    if a:
+        heads = [slug(x) for x in re.findall(r"^#+ (.*)$", open(f, encoding="utf-8").read(), re.M)]
+        if a not in heads:
+            sys.exit(1)'
+check "the decisions list links at least three records and every docs/adr path it names exists" python3 -I -c '
+import os, re, sys
+t = open("README.md", encoding="utf-8").read()
+m = re.search(r"^### Decisions and trade-offs\n(.*?)^### ", t, re.S | re.M)
+if not m:
+    sys.exit(1)
+named = re.findall(r"docs/adr/[A-Za-z0-9_./-]*[A-Za-z0-9]", m.group(1))
+linked = set(re.findall(r"\]\((docs/adr/[^)#]+)", m.group(1)))
+if len(linked) < 3 or not set(named) <= linked:
+    sys.exit(1)
+sys.exit(0 if all(os.path.isfile(p) for p in linked) else 1)'
+check "the engineering section is at most 120 lines, shows no full-tier command and names no planning id" python3 -I -c '
+import re, sys
+t = open("README.md", encoding="utf-8").read()
+m = re.search(r"^(## Problems and how I solved them\n.*?)^## ", t, re.S | re.M)
+if not m or m.group(1).count("\n") > 120:
+    sys.exit(1)
+fences = re.findall(r"```[a-z]*\n(.*?)```", m.group(1), re.S)
+lines = [l for f in fences for l in f.splitlines()]
+if any("make gates" in l or ("tests/p0/run.sh" in l and "TIER=fast" not in l) for l in lines):
+    sys.exit(1)
+sys.exit(1 if re.search(r"\bPD-i[0-9]|\bP[0-9]-i[0-9]|\bT[0-9]{2}\b|\bR[0-9]{2,3}\b", t) else 0)'
 check "S7 passes" env GATES_OUT="$OUT" sh scripts/gates/s7.sh
 check "D4 passes" env GATES_OUT="$OUT" sh scripts/gates/d4.sh
 d=$(mktemp -d "$ROOT/.gates/tmp/cis-XXXXXX"); mkdir -p "$d/.github/workflows"
