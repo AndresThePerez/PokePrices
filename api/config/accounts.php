@@ -10,7 +10,7 @@ declare(strict_types=1);
 |
 | rate_limits: the account tiers, in requests per minute (each an integer >= 1; anything else fails the boot),
 | registered by App\Domain\Accounts\AccountRateLimits. The anonymous tiers stay in config/rate_limits.php.
-| IP-keyed buckets (register, account-guest, account-demo, demo-session) are keyed by the client address Laravel
+| IP-keyed buckets (login-address, register, account-guest, account-demo, demo-session) are keyed by the client address Laravel
 | resolves under TRUSTED_PROXIES (config/trustedproxy.php). With TRUSTED_PROXIES unset, every request that arrives
 | through the proxy comes from the proxy's own address and shares one bucket.
 |
@@ -29,6 +29,8 @@ return [
     'rate_limits' => [
         // Fortify's sign-in, keyed by the normalised email and the IP.
         'login' => 5,
+        // Fortify's sign-in again, keyed by IP alone: attempts from one address across all emails.
+        'login-address' => 20,
         // The two-factor challenge, keyed by the pending sign-in in the session.
         'two-factor' => 5,
         // POST /register, keyed by IP.

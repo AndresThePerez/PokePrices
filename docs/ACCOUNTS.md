@@ -27,8 +27,8 @@ described in [`WEB.md`](WEB.md).
   API tokens: an `Authorization: Bearer` header is never read.
 - **CSRF cookie.** Before its first write the app calls `GET /sanctum/csrf-cookie`, which sets an `XSRF-TOKEN`
   cookie. The app sends that cookie's decoded value as `X-XSRF-TOKEN` on every non-GET request. A missing or wrong
-  token answers `419` with the problem type `csrf-token-mismatch`; the app refreshes the cookie once and retries
-  once.
+  token answers `419` with the problem type `csrf-token-mismatch` (a signed-out request to one of Fortify's signed-in
+  routes answers `401` first, before the token is looked at); the app refreshes the cookie once and retries once.
 - **Stateful only on account routes.** Sanctum's `EnsureFrontendRequestsAreStateful` is route middleware on the
   `/v1` account group (`/v1/me`, `/v1/me/export`, `/v1/me/deletion`, `/v1/watchlist…`, `/v1/portfolio…`) and on
   `POST /v1/demo/session`; the application does not call `statefulApi()`. Laravel's own sign-in routes run in its
@@ -72,7 +72,7 @@ not a session endpoint.
 |---|---|---|---|---|
 | GET | `/sanctum/csrf-cookie` | none | `204`, sets `XSRF-TOKEN` | Called once before the first write, and again after a `419`. |
 | POST | `/register` | `invite_code`, `email`, `password`, `password_confirmation` | `201`, empty body | The `/sign-up` page. The new person is signed in and a verification mail is sent; the page opens `/account`. `422` carries `errors.invite_code` for a bad code. |
-| POST | `/login` | `email`, `password` | `200` `{"two_factor": false}` or `{"two_factor": true}` | The `/sign-in` page. `true` means a two-factor code is still needed; the page shows the authentication-code step. `422` is the generic wrong-sign-in message; the sixth try in a minute is `429` with `Retry-After`. |
+| POST | `/login` | `email`, `password` | `200` `{"two_factor": false}` or `{"two_factor": true}` | The `/sign-in` page. `true` means a two-factor code is still needed; the page shows the authentication-code step. `422` is the generic wrong-sign-in message; the sixth try in a minute for one email, or the 21st from one address across emails, is `429` with `Retry-After`. |
 | POST | `/two-factor-challenge` | `code`, or `recovery_code` | `204` | The authentication-code step of `/sign-in`. Each recovery code works once. |
 | POST | `/logout` | none | `204` | The `Sign out` button on `/account` and in the demo strip. The app then opens the home page, which shows the status line "You are signed out." once: it is gone after a reload, and after leaving the home page and coming back. |
 | POST | `/forgot-password` | `email` | `200` `{"message": …}` | The `/password/forgot` page shows the message verbatim. The answer is the same whether or not the address has an account. |
@@ -324,6 +324,7 @@ from before accounts; the account tiers are defined in `api/config/accounts.php`
 | `public-read` | 120 | IP | the public price and card reads |
 | `search` | 60 | IP | card search |
 | `login` | 5 | the lower-cased email and the IP | `POST /login` |
+| `login-address` | 20 | IP, across all emails | `POST /login`, after `login`: every attempt it lets through counts, a successful sign-in too; one `login` refuses does not. The two-factor challenge and the demo button are not counted |
 | `two-factor` | 5 | the pending sign-in | `POST /two-factor-challenge` |
 | `register` | 5 | IP | `POST /register` |
 | `account-guest` | 60 | IP | before a session starts, on the whole account group, on every Fortify route behind its sign-in check (`/logout`, `/user/password`, `/user/confirm-password`, `/user/confirmed-password-status`, the `/user/two-factor-…` and `/user/confirmed-two-factor-authentication` routes, `/email/verify/…` and `/email/verification-notification`), and on `/sanctum/csrf-cookie`, `/forgot-password` and `/reset-password`: on the account group and the Fortify routes only requests without a signed-in session, on the three others every request; so anonymous requests cannot create unmetered `sessions` rows |
@@ -337,7 +338,7 @@ Fortify's two verification routes also carry its own `6` a minute.
 - **Topology caveat.** The client address comes from `TRUSTED_PROXIES` (`api/config/trustedproxy.php`); a trusted
   proxy is believed for `X-Forwarded-For`, `-Proto` and `-Port` only, never `X-Forwarded-Host`. Dev leaves it unset,
   so nothing is trusted and the API sees one shared client address for everyone behind nginx: every IP-keyed bucket
-  (`register`, `account-guest`, `account-demo`, `demo-session`, and the two anonymous tiers) is one global bucket on
+  (`login-address`, `register`, `account-guest`, `account-demo`, `demo-session`, and the two anonymous tiers) is one global bucket on
   the dev stack. Production sets `TRUSTED_PROXIES=REMOTE_ADDR`, which trusts only the immediate peer: php-fpm admits
   only nginx (its allow-list) and nginx is published on loopback only, so that peer is the tunnel, which appends the
   real client to `X-Forwarded-For`; Laravel takes the rightmost entry and each client keys its own bucket. `*` is
@@ -354,7 +355,8 @@ Fortify's two verification routes also carry its own `6` a minute.
   - What it costs before a request is counted: a guest without a cookie, or with one that does not decrypt, costs no
     query; a cookie that decrypts costs one primary-key read of `sessions`, also when the answer is the `429`.
   - A guest's request to one of Fortify's signed-in routes is answered with the `401` problem right after it is
-    counted, before a session starts, so it stores no `sessions` row. One that carries the remember-me cookie goes on
+    counted, before a session starts, so it stores no `sessions` row, while sessions are stored in the database (as
+    dev and production do); with another session driver it is still counted and the early `401` is skipped. One that carries the remember-me cookie goes on
     to the sign-in check (which may sign it in from that cookie) and is counted all the same.
   - A signed-in request on the account group or a Fortify signed-in route is counted there too, before the session
     starts, at the `account` number (120 a minute) in a bucket keyed by the user and the client address. On the

@@ -16,7 +16,7 @@ use RuntimeException;
  * A 429 is the existing problem too-many-requests with Retry-After.
  *
  * Keys: login by the normalised email and the IP (a non-string email keys as ''); two-factor by the pending sign-in
- * in the session (Fortify's login.id); register, account-guest and demo-session by IP; password-confirm and account
+ * in the session (Fortify's login.id); login-address, register, account-guest and demo-session by IP; password-confirm and account
  * by user. The shared demo user is not one person, so on the account tier it gets the account-demo value keyed
  * demo:<ip> instead: one visitor cannot spend the demo's budget for every other visitor.
  */
@@ -24,7 +24,7 @@ final class AccountRateLimits
 {
     public const string CONFIG = 'accounts.rate_limits';
 
-    public const array TIERS = ['login', 'two-factor', 'register', 'account-guest', 'password-confirm', 'account', 'account-demo', 'demo-session'];
+    public const array TIERS = ['login', 'login-address', 'two-factor', 'register', 'account-guest', 'password-confirm', 'account', 'account-demo', 'demo-session'];
 
     /**
      * Checks the tiers now (a malformed tier fails the boot), then names the limiters on every RateLimiter the

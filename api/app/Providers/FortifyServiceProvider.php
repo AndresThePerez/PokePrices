@@ -44,7 +44,8 @@ final class FortifyServiceProvider extends ServiceProvider
     /** Route middleware added to the named package routes, after the packages register them. */
     private const array ROUTE_MIDDLEWARE = [
         'register.store' => [NormalizeAccountEmail::class, 'throttle:register'],
-        'login.store' => [NormalizeAccountEmail::class],
+        // After Fortify's own throttle:login (per email and address), so a request that limit refuses is not counted here.
+        'login.store' => [NormalizeAccountEmail::class, 'throttle:login-address'],
         'password.email' => [ThrottleBeforeSession::class.':account-guest', NormalizeAccountEmail::class],
         'password.update' => [ThrottleBeforeSession::class.':account-guest', NormalizeAccountEmail::class],
         'verification.send' => [NormalizeAccountEmail::class],
