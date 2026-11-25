@@ -20,6 +20,8 @@ return [
     ],
     'freshness' => [
         'slo_hours' => 26,
+        // A missing day older than this many calendar days (UTC) stays listed but no longer warns.
+        'missing_day_warning_days' => 14,
     ],
     'queue' => 'default',
 ];

@@ -54,8 +54,10 @@ it('lists the first day of a year and 29 February as missing, answers the newest
         ->and($all[57])->toBe('2028-02-29')
         ->and(array_intersect($all, ['2027-12-31', '2028-01-02', '2028-02-28', '2028-03-01']))->toBe([])
         ->and($all)->toBe(array_values(array_unique($all)))
-        ->and(array_column($problems, 'kind'))->toBe(array_fill(0, 58, 'missing_day'))
-        ->and(array_column($problems, 'day'))->toBe($all)
+        // Only the days of the last 14 calendar days are problems: 16 to 27 February and the leap day.
+        ->and(array_column($problems, 'kind'))->toBe(array_fill(0, 13, 'missing_day'))
+        ->and(array_column($problems, 'day'))->toBe(array_slice($all, -13))
+        ->and($problems[0]['day'])->toBe('2028-02-16')
         ->and($data['missing_days_count'])->toBe(58)
         ->and($data['missing_days'])->toBe(array_slice($all, -30))
         ->and($data['missing_days'][0])->toBe('2028-01-30')

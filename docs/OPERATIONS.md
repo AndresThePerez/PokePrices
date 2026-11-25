@@ -99,7 +99,10 @@ the failure runbook.
 `ok` run of their own, as ISO dates, oldest first. At most the newest 30 are listed;
 `missing_days_count` counts them all. Both are empty and 0 when no day is missing. A missing day does not
 change `within_slo`, and the one-line output does not show it: read `--json` or the endpoint, or go to
-"A missing day" in the failure runbook.
+"A missing day" in the failure runbook. A missing day warns (the hourly line, the Discord report) only while
+it is at most 14 calendar days before today's UTC date (`pricing.freshness.missing_day_warning_days`): on
+20 October the day of 6 October still warns and the day of 5 October no longer does, though it stays in
+`missing_days`.
 
 To see the latest runs:
 
@@ -467,7 +470,7 @@ Three warnings in the worker's log say that a day is in trouble:
 
 | Message | When | Context |
 |---|---|---|
-| `price_freshness` (warning) | hourly, while the SLO is breached or a day is missing | the freshness fields, plus `missing_days` and `missing_days_count` while a day is missing |
+| `price_freshness` (warning) | hourly, while the SLO is breached or a day of the last 14 is missing | the freshness fields, plus `missing_days` and `missing_days_count` while a day is missing (also at info) |
 | `ingest_refused` | a scheduled start refused a day folder; once per day, marker and reason, however often the scan retries it | `day`, `marker` (null when none was read), `error` |
 | `ingest_blocked` | a scheduled start found a run left `running` on its day; once per run | `day`, `run_id` |
 
@@ -516,7 +519,8 @@ How to read them:
   day, so it gets two messages, and two "cleared" messages when its run goes `ok`.
 - "Cleared" says that this entry is gone, not that the day is in order. A hold that ends is cleared while
   the day may still have no `ok` run; the late message names the newest day, so when a newer day arrives
-  that is itself already past the limit, the old one is cleared and a new one is posted.
+  that is itself already past the limit, the old one is cleared and a new one is posted. A missing day
+  is cleared once when it turns 15 days old and is never posted again, though it may still have no run.
 - A problem that starts and ends between two hourly runs is never posted. The same problem starting again
   after it was cleared is posted again.
 - A post that fails (a timeout, a 429, a 5xx, an address the guard refuses) writes a
@@ -636,7 +640,8 @@ A non-zero exit means the prices are past the limit or the site does not answer.
   `running` row leads to its case here. No row at all means the folder never arrived or holds no
   `SUCCESS`: look in the snapshots root. Once a good folder is there, the scan ingests it, the day's rows
   are recomputed with the days after it, and the day leaves `missing_days`. A day the source never
-  published stays listed; nothing here invents a close for it.
+  published stays listed; nothing here invents a close for it. Once it is more than 14 calendar days old
+  (UTC) it no longer makes the hourly record a warning and its Discord report is cleared once.
 
 ### A crashed replay
 

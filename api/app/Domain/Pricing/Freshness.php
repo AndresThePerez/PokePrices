@@ -25,7 +25,8 @@ use stdClass;
  * - missing_days are the calendar days between the source's first and newest day with an ok run that have no ok run
  *   themselves (never collected, refused, failed or blocked, and filled from an earlier close meanwhile), as ISO dates,
  *   oldest first; the answer carries the newest MISSING_DAYS_CAP of them and missing_days_count counts them all. A
- *   missing day does not change within_slo.
+ *   missing day does not change within_slo. Only a missing day of at most missingDayWarningDays() calendar days makes
+ *   the hourly line a warning and is a price-job problem (warningMissingDays()); an older one is listed all the same.
  *
  * With no ok run, as_of, day and age_hours are null, within_slo is false and no day is missing. The age is computed in
  * integer microseconds, so no float rounding can move a value across the SLO or a display boundary.
@@ -149,6 +150,29 @@ final class Freshness
     public static function sloHours(): int
     {
         return (int) config('pricing.freshness.slo_hours');
+    }
+
+    /**
+     * The missing days that still decide a warning at $now: those at most missingDayWarningDays() calendar days before
+     * $now's UTC date, in the order given. With 14, on 2026-10-20 the day 2026-10-06 still decides and 2026-10-05 no
+     * longer does. An older missing day stays in missing_days; it only stops making the hourly line a warning and stops
+     * being a price-job problem. The age counts from the clock's day, never from the newest ok day, so it only grows
+     * and a day that aged out never comes back.
+     *
+     * @param  list<string>  $missingDays  ISO dates
+     * @return list<string>
+     */
+    public static function warningMissingDays(array $missingDays, CarbonInterface $now): array
+    {
+        $oldest = CarbonImmutable::instance($now)->utc()->startOfDay()->subDays(self::missingDayWarningDays())->format('Y-m-d');
+
+        return array_values(array_filter($missingDays, fn (string $day): bool => $day >= $oldest));
+    }
+
+    /** The most calendar days a missing day keeps deciding a warning (config pricing.freshness.missing_day_warning_days). */
+    public static function missingDayWarningDays(): int
+    {
+        return (int) config('pricing.freshness.missing_day_warning_days');
     }
 
     /** The displayed age: one decimal, "26.0" for 26.0 (the command and log line print the same value as the API). */

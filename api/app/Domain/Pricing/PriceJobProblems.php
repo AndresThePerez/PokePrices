@@ -19,8 +19,10 @@ use stdClass;
  * - late: the newest ok marker is past the freshness limit (Freshness::age, the rule of the freshness answer), or no
  *   price day was ever ingested. day is the newest day with an ok run, or null when there is none.
  * - missing_day: a calendar day between the first and the newest day with an ok run that has no ok run itself
- *   (Freshness::collected). One problem per day, whatever the reason; a refused or stuck day in that span is listed
- *   under both kinds.
+ *   (Freshness::collected) and is at most pricing.freshness.missing_day_warning_days calendar days old
+ *   (Freshness::warningMissingDays). One problem per day, whatever the reason; a refused or stuck day in that span is
+ *   listed under both kinds. A day that ages past the limit leaves the list for good, so a report of it is cleared
+ *   once; the late, refused and stuck kinds have no age limit.
  * - refused: a day whose newest run is a refusal (`skipped_unchanged` runs are not runs here, as in the pending scan).
  *   A later ok run of the day ends it.
  * - stuck: a run left `running` for STUCK_AFTER_MINUTES or longer (the pending scan resumes a stalled run of the
@@ -72,7 +74,7 @@ final class PriceJobProblems
         }
 
         $byDay = [];
-        foreach ($collected['missing_days'] as $day) {
+        foreach (Freshness::warningMissingDays($collected['missing_days'], $now) as $day) {
             $byDay[] = self::problem(self::MISSING_DAY, $day, "missing_day:{$day}", "No price run finished for {$day}.");
         }
         foreach (self::unfinishedDays($db) as $state) {
