@@ -201,9 +201,10 @@ prices get into the database is in [`OPERATIONS.md`](OPERATIONS.md).
   owners), a privacy paragraph (the cookies, what an account stores, the third-party image host and
   Cloudflare) and the contact link to `https://andrestheperez.com`. It shows no price and sends no
   request. nginx serves it like every other app path (`/about` is not reserved). The privacy paragraph
-  opens: "Browsing prices sets no cookies. Opening a sign-in or account page (sign-in, account, watchlist,
-  portfolio, alerts), signing in or trying the demo sets two: a session cookie, which keeps you signed in
-  once you are, and a security token that protects the site’s forms."
+  opens: "Opening and reading the site sets no cookies. Sending a sign-in, sign-up or password form, or
+  pressing the demo button, sets two: a session cookie, which keeps you signed in once you are, and a
+  security token that protects the site’s forms. The security token is not removed when you sign out, so a
+  later visit from a browser that still holds it asks once, on opening a page, whether you are signed in."
 
 The watchlist and portfolio are filled from the card page, where each variant has `Add to watchlist` and
 `Add to portfolio` buttons. Once the tab knows who is signed in, the card page reads both lists (one
@@ -213,10 +214,13 @@ them says so for as long as it is true, after a reload too: `On your watchlist.`
 at once when both are true; the `Add` button of a list the variant is on gives way to its line and comes back,
 focused, when the variant is removed. A tab known to be signed in to the read-only demo shows the two lines and
 no `Add`, `Remove`, `Edit` or quantity form. A public page learns the session after a reload only when the
-browser already holds the app's security token cookie (`XSRF-TOKEN`, set with the session cookie by a sign-in or
-account page, a sign-in or the demo): home, `/search`, a card page and `/movers` then ask `GET /v1/me` once, when
-nothing is known yet; without that cookie they ask nothing about the session, so browsing prices still sets no
-cookies. With that cookie, until `GET /v1/me` (and, signed in, both lists) has answered, a card page shows no
+browser already holds the app's security token cookie (`XSRF-TOKEN`, set together with the `pokeprices-session`
+cookie by any account form the app sends, a sign-in, sign-up or password form, with or without the right
+credentials, or by the demo): home, `/search`, a card page and `/movers` then ask `GET /v1/me` once, when
+nothing is known yet; without that cookie they ask nothing about the session, so opening and reading the site
+sets no cookies. The cookie stays after a sign-out, so a visitor who signed out, or sent any account form, still
+holds it: a later visit (a reload or a new tab) sends `GET /v1/me` once on opening and may log one `401`. The sign-in and account pages follow the same rule: with no cookie they are signed out at once and ask
+nothing, with it they ask on opening. With that cookie, until `GET /v1/me` (and, signed in, both lists) has answered, a card page shows no
 account control on any variant and holds the space of one `Add` row, empty. When an `Add` row arrives there,
 nothing below moves; when the list lines or, for the read-only demo, no control replace it, the content below
 can shift once. A 401, a failed session read or a failed list read then shows what it would have shown (the

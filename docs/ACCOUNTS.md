@@ -36,8 +36,13 @@ described in [`WEB.md`](WEB.md).
   `pokeprices.localhost:8095`.
 - **Public reads stay cookie-free.** `/v1/cards…`, `/v1/movers`, `/v1/prices/freshness` and `/v1/ready` never
   start a session and never set a cookie, and they keep their `Cache-Control` and `ETag` behaviour, even when a
-  first-party `Referer` and a valid session cookie arrive with the request. That is why a visitor who never signs in
-  never receives a cookie, and why the header carries static links and never asks the server who you are.
+  first-party `Referer` and a valid session cookie arrive with the request. That is why a visitor who only opens and
+  reads the site never receives a cookie, and why the header carries static links and never asks the server who you
+  are. Cookies start when the browser sends an account form (a sign-in, sign-up or password form, with or without the
+  right credentials) or presses the demo button: the app's `GET /sanctum/csrf-cookie`, sent before its first write, sets both
+  `XSRF-TOKEN` and `pokeprices-session`. The `XSRF-TOKEN` cookie is not removed by a sign-out, so a visitor who signed
+  out, or sent any account form, still holds it, and a later visit asks `GET /v1/me` once on opening (the app sends it
+  only while that cookie is there) and may log one `401`.
 - **The `Referer` dependency.** Sanctum treats a request as first-party (stateful) when its `Origin` header, or
   failing that its `Referer`, names a host in `SANCTUM_STATEFUL_DOMAINS`. Browsers send `Origin` on same-origin
   writes; for account GETs the app sets `referrerPolicy: 'same-origin'` on the request so the `Referer` is present

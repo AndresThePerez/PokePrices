@@ -1,9 +1,9 @@
-// The About page's cookie sentence, pinned against what the app asks for: "Browsing prices sets no
-// cookies. Opening a sign-in or account page (sign-in, account, watchlist, portfolio, alerts),
-// signing in or trying the demo sets two". A signed-out render of a price page or the About page
-// sends no session request and no CSRF-cookie request; the sign-in and account pages ask for the
-// session. A later change that makes a price page ask for the session fails here, and the sentence
-// is revisited with it.
+// The About page's cookie sentences, pinned against what the app asks for: "Opening and reading the
+// site sets no cookies. Sending a sign-in, sign-up or password form, or pressing the demo button,
+// sets two", and a later visit that still holds the security token asks once, on opening a page.
+// A signed-out render with no cookie of a price page, the About page or an account page sends no
+// session request and no CSRF-cookie request. A later change that makes a page ask for the session
+// without the cookie fails here, and the sentence is revisited with it.
 import { act, cleanup, render, screen, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../App';
@@ -37,7 +37,9 @@ const UNAUTHENTICATED = {
 };
 
 const COOKIE_SENTENCE =
-  'Browsing prices sets no cookies. Opening a sign-in or account page (sign-in, account, watchlist, portfolio, alerts), signing in or trying the demo sets two: a session cookie, which keeps you signed in once you are, and a security token that protects the site’s forms.';
+  'Opening and reading the site sets no cookies. Sending a sign-in, sign-up or password form, or pressing the demo button, sets two: a session cookie, which keeps you signed in once you are, and a security token that protects the site’s forms. The security token is not removed when you sign out, so a later visit from a browser that still holds it asks once, on opening a page, whether you are signed in.';
+
+const OLD_OPENING = 'Opening a sign-in or account page';
 
 function visit(path: string): void {
   window.history.replaceState(null, '', path);
@@ -89,6 +91,17 @@ describe('the About page states the ruled cookie sentence', () => {
     const privacy = within(screen.getByRole('main')).getByRole('region', { name: 'Privacy' });
     expect(privacy.textContent).toContain(COOKIE_SENTENCE);
     expect(privacy.querySelector('p')?.textContent.startsWith(COOKIE_SENTENCE)).toBe(true);
+  });
+
+  it('without the sentence that said opening a sign-in or account page sets cookies', () => {
+    stubFetch(() => new Error('no request expected'));
+    visit('/about');
+    render(<App />);
+    const text = within(screen.getByRole('main')).getByRole('region', {
+      name: 'Privacy',
+    }).textContent;
+    expect(text).not.toContain(OLD_OPENING);
+    expect(text).not.toContain('Browsing prices sets no cookies');
   });
 });
 
