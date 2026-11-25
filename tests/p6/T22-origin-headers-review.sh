@@ -103,4 +103,9 @@ check "7 the served page's inline script hashes to the pin in the conf" test "sh
 sed 's/<script>/<script>\/* edited *\//' "$TMP/root.b" > "$TMP/edited.html"
 check "7 an edited inline script no longer matches the pin" test "sha256-$(hash_of "$TMP/edited.html")" != "$pin"
 
+# 8. The policy names every picture host the API's card answers really carry (newer sets come from the second one).
+for host in https://images.pokemontcg.io https://images.scrydex.com; do
+  check "8 the page policy's img-src names $host" sh -c "tr -d '\\r' < $TMP/root.h | grep -i '^content-security-policy-report-only:' | grep -Fq \"$host\""
+done
+
 finish
