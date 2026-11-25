@@ -82,4 +82,53 @@ for p in '/v1/\*' '/up' '/sanctum/\*' '/login' '/logout' '/register' '/forgot-pa
 done
 HP=$(printf '/ho%s/|/Us%s/' me ers)
 check "README has no home path, LAN address or tailnet address" sh -c '! /usr/bin/grep -qE "$0|192[.]168[.]|ts[.]net" README.md' "$HP"
+# --- T15 review pins: the README's diagram, links, picture files and stack facts stay true of the code ---
+mermaid_block() { awk '/^[`][`][`]mermaid$/{f=1;next} /^[`][`][`]$/{f=0} f' README.md; }
+diagram_names_are_real() {
+  b=$(mermaid_block)
+  /usr/bin/grep -qF "name('pokeprices-ingest-pending')" api/routes/console.php && printf '%s\n' "$b" | /usr/bin/grep -qF "pokeprices-ingest-pending" || return 1
+  for c in StartDayIngest IngestChunk FinalizeDay; do
+    printf '%s\n' "$b" | /usr/bin/grep -qF "$c" && test -f "api/app/Domain/Pricing/Jobs/$c.php" || return 1
+  done
+  for s in redis-queue redis-cache; do
+    printf '%s\n' "$b" | /usr/bin/grep -qF "$s" && /usr/bin/grep -qE "^  $s:" compose.dev.yml || return 1
+  done
+  for t in source_product_map price_daily price_latest price_movers price_points; do
+    printf '%s\n' "$b" | /usr/bin/grep -qF "$t" && /usr/bin/grep -rqE "CREATE TABLE $t( |\$)" api/database/migrations || return 1
+  done
+}
+diagram_is_plain_flowchart() {
+  b=$(mermaid_block)
+  nodes=$(printf '%s\n' "$b" | sed -n 's/^ *\([A-Za-z0-9]*\)\["[^"]*"\]$/\1/p')
+  test -n "$nodes" || return 1
+  # every non-first line is either a quoted node or an edge between two declared ids
+  printf '%s\n' "$b" | sed 1d | /usr/bin/grep -vE '^ *[A-Za-z0-9]+\["[^"]+"\]$|^ *[A-Za-z0-9]+ --> [A-Za-z0-9]+$' | /usr/bin/grep -q . && return 1
+  # no label holds a stray double quote, an HTML tag, a backtick or the reserved word end as a whole id
+  printf '%s\n' "$b" | /usr/bin/grep -qE '<|>[^ ]|[`]' && return 1
+  printf '%s\n' "$nodes" | /usr/bin/grep -qx 'end' && return 1
+  # every edge end is a declared node, and every node has an edge
+  for e in $(printf '%s\n' "$b" | sed -n 's/^ *\([A-Za-z0-9]*\) --> \([A-Za-z0-9]*\)$/\1 \2/p'); do
+    printf '%s\n' "$nodes" | /usr/bin/grep -qx "$e" || return 1
+  done
+  for n in $nodes; do printf '%s\n' "$b" | /usr/bin/grep -qE "^ *($n --> | *[A-Za-z0-9]+ --> $n\$)" || return 1; done
+}
+check "README diagram names only real things: the schedule entry, the three jobs, both Redis services and the five tables" diagram_names_are_real
+check "README diagram is plain flowchart syntax: quoted labels, alphanumeric ids, --> edges between declared nodes, none left unconnected" diagram_is_plain_flowchart
+check "README diagram runs from the collection to the page and passes through the queue and the cache" sh -c '
+  b=$(awk "/^[\`][\`][\`]mermaid\$/{f=1;next} /^[\`][\`][\`]\$/{f=0} f" README.md)
+  for e in "collection --> scheduler" "scheduler --> queue" "queue --> ingest" "productmap --> ingest" "ingest --> rollup" "cache --> api" "api --> page"; do printf "%s\n" "$b" | /usr/bin/grep -qF -- "$e" || exit 1; done'
+check "README opening links only the public site and the owner's site, and the quoted button and section names exist in the web source" sh -c '
+  top=$(sed "/^## Development\$/,\$d" README.md)
+  ! printf "%s\n" "$top" | /usr/bin/grep -oE "https?://[^ )>]+" | /usr/bin/grep -vE "^https://(pokeprices[.])?andrestheperez[.]com(/|\$)" | /usr/bin/grep -q . || exit 1
+  /usr/bin/grep -qF "Try the read-only demo" web/src/account/DemoButton.tsx && /usr/bin/grep -qF "See it working" web/src/pages/SeeItWorking.tsx'
+check "README stack facts match the manifests: query and chart versions, Node 22, two Redis 8 images, one nginx-unprivileged" sh -c '
+  /usr/bin/grep -qF "\"@tanstack/react-query\": \"5.104.2\"" web/package.json && /usr/bin/grep -qF "TanStack Query 5.104.2" README.md || exit 1
+  /usr/bin/grep -qF "\"lightweight-charts\": \"5.2.1\"" web/package.json && /usr/bin/grep -qF "lightweight-charts 5.2.1" README.md || exit 1
+  /usr/bin/grep -qF "Node 22" README.md && /usr/bin/grep -q "^FROM node:22-" docker/web/Dockerfile || exit 1
+  test "$(/usr/bin/grep -c "image: redis:8-" compose.dev.yml)" -eq 2 && /usr/bin/grep -qF "two Redis 8 instances" README.md || exit 1
+  /usr/bin/grep -q "nginx-unprivileged" docker/web/Dockerfile'
+check "README pictures are PNG files with alt text that names no address, host or email" sh -c '
+  /usr/bin/grep -oE "!\[[^]]+\]\(docs/media/[^)]+\)" README.md | sed "s/.*(\(.*\))/\1/" | while read -r f; do
+    test "$(head -c 8 "$f" | od -An -tx1 | tr -d " \n")" = "89504e470d0a1a0a" || exit 1; done
+  ! /usr/bin/grep -oE "!\[[^]]+\]" README.md | /usr/bin/grep -qiE "@|localhost|127[.]|https?:"'
 finish
