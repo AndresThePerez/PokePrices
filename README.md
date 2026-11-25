@@ -88,7 +88,7 @@ The collector writes a day folder; its code is not in this repository. The hourl
 
 ## Problems and how I solved them
 
-Eight problems, each with the file, test or command that shows the answer. Figures are dated; each command recounts.
+Eight problems, each with the file, test or command that shows the answer. Figures are dated; each command recounts. This describes the code at this commit, which the public site runs once it is deployed.
 
 1. **Marketplace products have to land on the right card, and a wrong map has to be caught before history is
    replayed onto it.** `api/app/Domain/Mapping/MapBuilder.php` assigns each TCGplayer product and subtype to one
@@ -103,15 +103,16 @@ Eight problems, each with the file, test or command that shows the answer. Figur
    docker compose -f compose.dev.yml exec -T -w /workspace/api api php artisan pokeprices:map:audit --check priced --json
    ```
 
-2. **A daily job that fails quietly is the worst kind, so the price job reports on itself.** One list in
+2. **A daily job that fails quietly goes unnoticed, so the price job reports on itself.** One list in
    `api/app/Domain/Pricing/PriceJobProblems.php` holds what is wrong: prices past the 26-hour limit, a day with no
    finished run, a refused day folder, a run stuck for three hours, a day that failed twice and is on hold. The
    freshness answer's `missing_days` and an hourly command (`api/app/Console/Commands/PricesReportProblems.php`)
-   read that same list. The command posts one Discord message when a problem starts and one when it ends, and
-   records it in `reported_price_problems`, so a restart repeats nothing. A failed post is retried the next hour
-   and prints one line with the status, never the address. A missing day stops deciding freshness at 15 days old.
-   Tests: `api/tests/Feature/Pricing/PriceJobProblemsTest.php`, `PriceProblemReportTest.php` beside it. On
-   2026-11-25 the public site answered day 2026-11-24, `within_slo` true, no missing days:
+   read the same ingest rows. The command posts one Discord message when a problem starts and one when it ends,
+   and records it in `reported_price_problems`, so a restart repeats nothing. A failed post is retried the next
+   hour and prints one line with the status, never the address. A missing day is reported for 14 days; after that
+   the freshness answer still lists it, unreported. Tests: `api/tests/Feature/Pricing/PriceJobProblemsTest.php`,
+   `PriceProblemReportTest.php` beside it. On 2026-11-25 the public site answered day 2026-11-24, `within_slo`
+   true, no missing days:
 
    ```sh
    curl -s https://pokeprices.andrestheperez.com/v1/prices/freshness | jq -c '.data | {day, age_hours, slo_hours, within_slo, missing_days}'
@@ -135,8 +136,9 @@ Eight problems, each with the file, test or command that shows the answer. Figur
    HMAC-SHA256 of `<id>.<timestamp>.<body>` (`api/app/Domain/Alerts/WebhookSigner.php`, tested against the
    scheme's published vector in `api/tests/Unit/Alerts/WebhookSignerTest.php`). The Alerts page shows one sample
    delivery signed with a published sample secret; nothing is ever sent from the demo. This recomputes that
-   signature from what the dev API serves (on 2026-11-25 its two lines were identical);
-   `web/src/account/AlertsSample.review.test.tsx` does it from the rendered page; [the steps](docs/ALERTS.md#signed-webhooks).
+   signature from what the dev API serves (on 2026-11-25 its two lines were identical; on the public site it works
+   once this commit is deployed); `web/src/account/AlertsSample.review.test.tsx` does it from the rendered page;
+   [the steps](docs/ALERTS.md#signed-webhooks).
 
    ```sh
    r=$(curl -s pokeprices.localhost:8095/v1/demo/alerts)
@@ -197,10 +199,10 @@ Eight problems, each with the file, test or command that shows the answer. Figur
 
 - A price history backfill: a card's chart begins on the first day I collected it, and the page says so.
 - Mapping gaps: at map build 4, 442 of 20,635 catalogue cards have no mapped product (development data).
-- Card pictures come from third-party hosts (`docker/nginx/pokeprices.conf` names both); one is being retired.
+- Card pictures come from two third-party hosts (`docker/nginx/pokeprices.conf` names both), so a host that changes breaks pictures until the policy is updated.
 - Backups kept off the server: the nightly dump stays on the same server ([`docs/DEPLOY.md`](docs/DEPLOY.md#step-15-backup-timer-server)).
-- A mail provider, so sign-up can open: mail goes to the log today and accounts are invite-only.
-- Enforcing the content policy, which the page sends as report-only today (`docker/nginx/pokeprices.conf`).
+- A mail provider, so sign-up can open: mail goes to the log and accounts are invite-only.
+- Enforcing the content policy, which the page sends as report-only (`docker/nginx/pokeprices.conf`).
 - A monitor that alerts on a `503`: only a check from outside notices a stopped scheduler
   ([`docs/OPERATIONS.md`](docs/OPERATIONS.md#the-discord-report)).
 

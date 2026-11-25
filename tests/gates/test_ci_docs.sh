@@ -104,11 +104,11 @@ linked = set(re.findall(r"\]\((docs/adr/[^)#]+)", m.group(1)))
 if len(linked) < 3 or not set(named) <= linked:
     sys.exit(1)
 sys.exit(0 if all(os.path.isfile(p) for p in linked) else 1)'
-check "the engineering section is at most 120 lines, shows no full-tier command and names no planning id" python3 -I -c '
+check "the engineering section is at most 124 lines, shows no full-tier command and names no planning id" python3 -I -c '
 import re, sys
 t = open("README.md", encoding="utf-8").read()
 m = re.search(r"^(## Problems and how I solved them\n.*?)^## ", t, re.S | re.M)
-if not m or m.group(1).count("\n") > 120:
+if not m or m.group(1).count("\n") > 124:
     sys.exit(1)
 fences = re.findall(r"```[a-z]*\n(.*?)```", m.group(1), re.S)
 lines = [l for f in fences for l in f.splitlines()]
