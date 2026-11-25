@@ -12,7 +12,7 @@ check "O1 ran at least 7 checks" jq -e '.denominator >= 7 and .value == 0' "$T/O
 check "X1 checked 9 services" jq -e '.denominator >= 9 and .value == 0' "$T/X1.json"
 check "O5 saw at least 3 migrations" jq -e '.denominator >= 3' "$T/O5.json"
 check "S5 inspected 2 images" jq -e '.denominator == 2' "$T/S5.json"
-printf '{"postgres":1073741824,"redis-queue":67108864,"redis-cache":134217728,"api":402653184,"worker":402653184,"scheduler":134217728,"web":1,"tools":536870912,"node":1073741824}\n' > "$T/x1-wrong.json"
+printf '{"postgres":1073741824,"redis-queue":67108864,"redis-cache":134217728,"api":536870912,"worker":402653184,"scheduler":134217728,"web":1,"tools":536870912,"node":2147483648}\n' > "$T/x1-wrong.json"
 check "X1 catches a cap that differs from the table" sh -c '! env GATES_OUT="$0" X1_TABLE="$0/x1-wrong.json" sh scripts/gates/x1.sh' "$T"
 check "O5 never touched the dev database" sh -c 'test "$(docker compose -f compose.dev.yml exec -T postgres psql -U pokeprices -d pokeprices -tAc "SELECT count(*) FROM migrations")" -ge 1'
 GATES_OUT="$T" sh scripts/gates/o1.sh > "$T/o1-term.log" 2>&1 &

@@ -33,11 +33,11 @@ check "redis-cache healthy after O1 got INT" sh -c "$DC up -d --wait redis-cache
 check "/v1/ready is 200 after the INT" curl -fsS -o /dev/null --max-time 5 --retry 30 --retry-all-errors --retry-delay 1 --resolve pokeprices.localhost:8095:127.0.0.1 http://pokeprices.localhost:8095/v1/ready
 
 # X1: one wrong value fails exactly that service; a table service that is not running is a mismatch.
-printf '{"postgres":1073741824,"redis-queue":67108864,"redis-cache":134217728,"api":402653184,"worker":402653184,"scheduler":134217728,"web":1,"tools":536870912,"node":1073741824}\n' > "$T/w.json"
+printf '{"postgres":1073741824,"redis-queue":67108864,"redis-cache":134217728,"api":536870912,"worker":402653184,"scheduler":134217728,"web":1,"tools":536870912,"node":2147483648}\n' > "$T/w.json"
 X1_TABLE="$T/w.json" GATES_OUT="$T" sh scripts/gates/x1.sh >/dev/null 2>&1
 check "X1 wrong web cap fails" test $? -ne 0
 check "X1 mismatches are only web (mem_limit and host_memory)" sh -c 'test "$(jq -s "[.[] | select(.ok == false) | .service] | unique | join(\",\")" -r "$0/X1.details.jsonl")" = web' "$T"
-printf '{"postgres":1073741824,"redis-queue":67108864,"redis-cache":134217728,"api":402653184,"worker":402653184,"scheduler":134217728,"web":67108864,"tools":536870912,"node":1073741824,"ghost":1048576}\n' > "$T/g.json"
+printf '{"postgres":1073741824,"redis-queue":67108864,"redis-cache":134217728,"api":536870912,"worker":402653184,"scheduler":134217728,"web":67108864,"tools":536870912,"node":2147483648,"ghost":1048576}\n' > "$T/g.json"
 X1_TABLE="$T/g.json" GATES_OUT="$T" sh scripts/gates/x1.sh >/dev/null 2>&1
 check "X1 table naming a service that is not running fails" test $? -ne 0
 check "X1 ghost row reports not running" jq -se 'any(.[]; .service == "ghost" and .check == "host_memory" and .got == "not running")' "$T/X1.details.jsonl"

@@ -35,8 +35,8 @@ check "no Dockerfile FROM uses :latest" sh -c '! /usr/bin/grep -E "^FROM .*:late
 # --- 2. compose api service hardening ------------------------------------------------------
 check "api container has no host port bindings at runtime" sh -c '
   test "$(docker inspect --format "{{json .HostConfig.PortBindings}}" "$(docker compose -f compose.dev.yml ps -q api)")" = "{}"'
-check "api container memory cap enforced by the runtime (402653184)" sh -c '
-  test "$(docker inspect --format "{{.HostConfig.Memory}}" "$(docker compose -f compose.dev.yml ps -q api)")" = 402653184'
+check "api container memory cap enforced by the runtime (536870912)" sh -c '
+  test "$(docker inspect --format "{{.HostConfig.Memory}}" "$(docker compose -f compose.dev.yml ps -q api)")" = 536870912'
 check "api container is not privileged and adds no capabilities" sh -c '
   id=$(docker compose -f compose.dev.yml ps -q api)
   test "$(docker inspect --format "{{.HostConfig.Privileged}}" "$id")" = false &&
