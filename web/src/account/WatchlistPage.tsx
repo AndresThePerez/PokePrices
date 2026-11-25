@@ -1,6 +1,8 @@
 // /watchlist: the signed-in account's variants over GET /v1/watchlist, each row the short movers
 // row under the list's one source-and-"as of" line (a row shows its own day only when the rows'
-// days differ). Signed out, it offers sign-in, sign-up and the demo; the demo (useReadOnly) sees
+// days differ). Signed out, it shows the demo's watchlist as read-only sample data under the sample
+// strip (public read, no session), or, when that read fails, offers sign-in, sign-up and the demo;
+// the demo account (useReadOnly) sees
 // its rows without a Remove button, and its seeded alert as a sample line. A verified account
 // that is not the demo also sets each row's alert
 // threshold here; an unverified one is told to verify first. Remove leaves "Removed." with Undo in
@@ -35,13 +37,15 @@ import {
   SignedOutList,
 } from './ListParts';
 import { useWatchlistQuery } from './listQueries';
-import { NO_PRICE, WATCHLIST_KEY, cardLabel, priceDays } from './lists';
+import { NO_PRICE, WATCHLIST_KEY, cardLabel, priceDays, useSampleWatchlistQuery } from './lists';
 import { useAccountWrite } from './mutations';
 import RemovedLine from './RemovedLine';
 import { useRemoval } from './removal';
+import SampleStrip from './SampleStrip';
 import { useReadOnly, useSession } from './session';
 
 const EMPTY = 'Your watchlist is empty. Open a card from Search and choose Add to watchlist.';
+const SAMPLE_LOADING = 'Loading the sample watchlist…';
 /** What each short row's change is measured against, printed once under the list's stamp. */
 const BASE = 'Change vs previous close.';
 const LOADING = 'Loading your watchlist…';
@@ -350,6 +354,27 @@ function Loaded({ body, access }: { readonly body: WatchlistBody; readonly acces
   );
 }
 
+/**
+ * Signed out: the demo's watchlist under the sample strip, read from the public route (no session,
+ * no cookie), as read-only rows. While it loads the page holds its loading line; when the read
+ * fails (404 demo-unavailable included) or the demo holds nothing, the visitor gets the sign-in
+ * prompt alone.
+ */
+function SignedOutWatchlist() {
+  const query = useSampleWatchlistQuery(true);
+  const sample = query.data;
+  if (sample !== undefined && sample.data.length > 0) {
+    return (
+      <>
+        <SampleStrip list="watchlist" />
+        <Loaded body={sample} access="read-only" />
+      </>
+    );
+  }
+  if (sample !== undefined || query.error !== null) return <SignedOutList list="watchlist" />;
+  return <ListLoading>{SAMPLE_LOADING}</ListLoading>;
+}
+
 export default function WatchlistPage() {
   const session = useSession();
   const signedIn = session.state === 'signed-in';
@@ -367,12 +392,12 @@ export default function WatchlistPage() {
   } else if (session.state === 'failed') {
     body = <ProblemBlock context="Could not load your account" failure={session.failure} />;
   } else if (session.state === 'signed-out') {
-    body = <SignedOutList list="watchlist" />;
+    body = <SignedOutWatchlist />;
   } else if (query.data !== undefined) {
     // A failed poll or write keeps the last good list on screen.
     body = <Loaded body={query.data} access={access} />;
   } else if (query.error?.status === 401) {
-    body = <SignedOutList list="watchlist" />;
+    body = <SignedOutWatchlist />;
   } else if (query.error !== null) {
     body = <ProblemBlock context="Could not load your watchlist" failure={query.error} />;
   } else {

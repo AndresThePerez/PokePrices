@@ -1321,6 +1321,33 @@ export const emptyPortfolioBody = portfolioBody([], {
   last_day: null,
 });
 
+/**
+ * The two public reads of the demo's collection (no session, no cookie), as stubAccountFetch
+ * routes: the demo's watchlist and portfolio, in the same shapes as the signed-in reads.
+ */
+export function demoSampleRoutes(
+  watchlist: WatchlistBody = watchlistBody(),
+  portfolio: PortfolioBody = portfolioBody(),
+): Record<'GET /v1/demo/watchlist' | 'GET /v1/demo/portfolio', Response> {
+  return {
+    'GET /v1/demo/watchlist': jsonResponse(watchlist),
+    'GET /v1/demo/portfolio': jsonResponse(portfolio),
+  };
+}
+
+/** The same two routes answering 404 demo-unavailable (the demo is off or not seeded). */
+export function demoSampleUnavailableRoutes(): Record<
+  'GET /v1/demo/watchlist' | 'GET /v1/demo/portfolio',
+  Response
+> {
+  const problem = (instance: string) =>
+    problemResponse({ ...demoUnavailableProblem, instance, request_id: 'req-sample-0001' });
+  return {
+    'GET /v1/demo/watchlist': problem('/v1/demo/watchlist'),
+    'GET /v1/demo/portfolio': problem('/v1/demo/portfolio'),
+  };
+}
+
 /** GET /v1/me for the read-only demo account (an empty portfolio estimate: none shows). */
 export const demoMe = {
   data: {

@@ -7,7 +7,8 @@
 // previous close and the card counts the API sends beside it; each row shows its quantity as an
 // "×n" chip beside the visually hidden "Quantity n" line. A saved quantity says "Saved."; Remove
 // leaves "Removed." with Undo in the row's place (RemovedLine), which puts the holding back with
-// its quantity.
+// its quantity. Signed out, it shows the demo's holdings and total as read-only sample data under
+// the sample strip (public read, no session), or, when that read fails, the sign-in prompt.
 import { useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { deleteHolding, putHolding, type Holding, type PortfolioBody } from '../api/client';
@@ -34,13 +35,15 @@ import {
   SignedOutList,
 } from './ListParts';
 import { usePortfolioQuery } from './listQueries';
-import { PORTFOLIO_KEY, cardLabel, quantityOf } from './lists';
+import { PORTFOLIO_KEY, cardLabel, quantityOf, useSamplePortfolioQuery } from './lists';
 import { useAccountWrite, useWriteGuard } from './mutations';
 import RemovedLine from './RemovedLine';
 import { useRemoval } from './removal';
+import SampleStrip from './SampleStrip';
 import { useReadOnly, useSession } from './session';
 
 const EMPTY = 'Your portfolio is empty. Open a card from Search and choose Add to portfolio.';
+const SAMPLE_LOADING = 'Loading the sample portfolio…';
 /**
  * What each short row's change is measured against, printed once under the total's days line: the
  * card's daily close against its previous close, never a gain or loss on the holding.
@@ -284,6 +287,27 @@ function Loaded({ body, readOnly }: { readonly body: PortfolioBody; readonly rea
   );
 }
 
+/**
+ * Signed out: the demo's holdings, total and day's change under the sample strip, read from the
+ * public route (no session, no cookie), as read-only rows. While it loads the page holds its
+ * loading line; when the read fails (404 demo-unavailable included) or the demo holds nothing, the
+ * visitor gets the sign-in prompt alone. The header's estimate is never touched.
+ */
+function SignedOutPortfolio() {
+  const query = useSamplePortfolioQuery(true);
+  const sample = query.data;
+  if (sample !== undefined && sample.data.length > 0) {
+    return (
+      <>
+        <SampleStrip list="portfolio" />
+        <Loaded body={sample} readOnly />
+      </>
+    );
+  }
+  if (sample !== undefined || query.error !== null) return <SignedOutList list="portfolio" />;
+  return <ListLoading>{SAMPLE_LOADING}</ListLoading>;
+}
+
 export default function PortfolioPage() {
   const session = useSession();
   const signedIn = session.state === 'signed-in';
@@ -297,12 +321,12 @@ export default function PortfolioPage() {
   } else if (session.state === 'failed') {
     body = <ProblemBlock context="Could not load your account" failure={session.failure} />;
   } else if (session.state === 'signed-out') {
-    body = <SignedOutList list="portfolio" />;
+    body = <SignedOutPortfolio />;
   } else if (query.data !== undefined) {
     // A failed poll or write keeps the last good list on screen.
     body = <Loaded body={query.data} readOnly={readOnly} />;
   } else if (query.error?.status === 401) {
-    body = <SignedOutList list="portfolio" />;
+    body = <SignedOutPortfolio />;
   } else if (query.error !== null) {
     body = <ProblemBlock context="Could not load your portfolio" failure={query.error} />;
   } else {

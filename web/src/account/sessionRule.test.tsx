@@ -10,6 +10,7 @@ import type * as QueryModule from '../query';
 import {
   accountValidationProblem,
   clearXsrfCookie,
+  demoSampleUnavailableRoutes,
   holdSessionCookie,
   jsonResponse,
   problemResponse,
@@ -120,9 +121,26 @@ afterEach(() => {
 const PAGES: readonly (readonly [string, () => HTMLElement])[] = [
   ['/sign-in', () => within(main()).getByRole('button', { name: 'Sign in' })],
   ['/account', () => within(main()).getByText('You are not signed in.')],
-  ['/watchlist', () => within(main()).getByText('Sign in to keep a watchlist.')],
-  ['/portfolio', () => within(main()).getByText('Sign in to keep a portfolio.')],
   ['/alerts', () => within(main()).getByText('Sign in to set up alerts and webhooks.')],
+];
+
+/**
+ * The two list pages: signed out they read the demo's public sample (no session) before their
+ * sign-in prompt shows, so each carries its sample route, its loading line and its prompt.
+ */
+const LIST_PAGES: readonly (readonly [string, string, string, () => HTMLElement])[] = [
+  [
+    '/watchlist',
+    'GET /v1/demo/watchlist',
+    'Loading the sample watchlist…',
+    () => within(main()).getByText('Sign in to keep a watchlist.'),
+  ],
+  [
+    '/portfolio',
+    'GET /v1/demo/portfolio',
+    'Loading the sample portfolio…',
+    () => within(main()).getByText('Sign in to keep a portfolio.'),
+  ],
 ];
 
 describe('signed out with no token cookie', () => {
@@ -140,6 +158,31 @@ describe('signed out with no token cookie', () => {
       expect(signedOut()).toBeTruthy();
       expect(screen.queryByRole('alert')).toBeNull();
       expect(accountKeys(calls)).toEqual([]);
+      expect(document.cookie).not.toContain('XSRF-TOKEN');
+    },
+  );
+
+  it.each(LIST_PAGES)(
+    '%s shows its signed-out state without asking the session or the token: the sample loading line, then the sign-in prompt',
+    async (path, sample, loading, signedOut) => {
+      const calls = stubAccountFetch({
+        [ME]: problemResponse(unauthenticatedProblem),
+        ...demoSampleUnavailableRoutes(),
+      });
+      visit(path);
+      render(<App />);
+      // The first render already reads signed out: no session loading line, only the sample's own.
+      expect(within(main()).getByRole('status').textContent).toBe(loading);
+      expect(headerSessionLink()).toBe('Sign in');
+      await waitFor(() => {
+        expect(signedOut()).toBeTruthy();
+      });
+      await settle();
+      expect(signedOut()).toBeTruthy();
+      expect(within(main()).queryByRole('status')).toBeNull();
+      expect(headerSessionLink()).toBe('Sign in');
+      expect(screen.queryByRole('alert')).toBeNull();
+      expect(accountKeys(calls)).toEqual([sample]);
       expect(document.cookie).not.toContain('XSRF-TOKEN');
     },
   );
@@ -168,8 +211,11 @@ describe('signed out with no token cookie', () => {
     expect(within(banner()).queryByRole('link', { name: 'Account' })).toBeNull();
   });
 
-  it('a poll or a refetch of the session on /watchlist still sends nothing', async () => {
-    const calls = stubAccountFetch({ [ME]: problemResponse(unauthenticatedProblem) });
+  it('a poll or a refetch of the session on /watchlist still sends no session request', async () => {
+    const calls = stubAccountFetch({
+      [ME]: problemResponse(unauthenticatedProblem),
+      ...demoSampleUnavailableRoutes(),
+    });
     visit('/watchlist');
     render(<App />);
     await settle();
@@ -181,7 +227,7 @@ describe('signed out with no token cookie', () => {
     });
     await settle();
     expect(within(main()).getByText('Sign in to keep a watchlist.')).toBeTruthy();
-    expect(accountKeys(calls)).toEqual([]);
+    expect(accountKeys(calls)).toEqual(['GET /v1/demo/watchlist']);
   });
 
   it("another tab's signal with still no cookie here sends nothing and stays signed out", async () => {
@@ -201,11 +247,12 @@ describe('a cookie that appears through another tab makes this tab ask', () => {
     const calls = stubAccountFetch({
       [ME]: () => jsonResponse(signedInMe),
       'GET /v1/watchlist': jsonResponse(watchlistBody([])),
+      ...demoSampleUnavailableRoutes(),
     });
     visit('/watchlist');
     render(<App />);
     await settle();
-    expect(accountKeys(calls)).toEqual([]);
+    expect(accountKeys(calls)).toEqual(['GET /v1/demo/watchlist']);
     expect(headerSessionLink()).toBe('Sign in');
     // The other tab signed in: the browser now holds its cookie, and its signal arrives.
     holdSessionCookie();
@@ -215,7 +262,7 @@ describe('a cookie that appears through another tab makes this tab ask', () => {
     });
     await settle();
     expect(accountKeys(calls).filter((key) => key === ME)).toEqual([ME]);
-    expect(accountKeys(calls)[0]).toBe(ME);
+    expect(accountKeys(calls).slice(0, 2)).toEqual(['GET /v1/demo/watchlist', ME]);
     expect(within(main()).queryByText('Sign in to keep a watchlist.')).toBeNull();
   });
 });
@@ -351,6 +398,27 @@ describe('with the token cookie the session is asked once', () => {
       expect(headerSessionLink()).toBe('Sign in');
       expect(screen.queryByRole('alert')).toBeNull();
       expect(accountKeys(calls)).toEqual([ME]);
+    },
+  );
+
+  it.each(LIST_PAGES)(
+    '%s: a 401 (an expired session) is asked once, then the signed-out state, the public sample read and no problem',
+    async (path, sample, _loading, signedOut) => {
+      setXsrfCookie();
+      const calls = stubAccountFetch({
+        [ME]: problemResponse(unauthenticatedProblem),
+        ...demoSampleUnavailableRoutes(),
+      });
+      visit(path);
+      render(<App />);
+      expect(within(main()).getByRole('status').textContent).toMatch(/^Loading/);
+      await waitFor(() => {
+        expect(signedOut()).toBeTruthy();
+      });
+      await settle();
+      expect(headerSessionLink()).toBe('Sign in');
+      expect(screen.queryByRole('alert')).toBeNull();
+      expect(accountKeys(calls)).toEqual([ME, sample]);
     },
   );
 

@@ -10,6 +10,8 @@ import type * as QueryModule from '../query';
 import { navigate } from '../router';
 import {
   clearXsrfCookie,
+  demoSampleRoutes,
+  demoSampleUnavailableRoutes,
   holdSessionCookie,
   jsonResponse,
   problemResponse,
@@ -101,23 +103,34 @@ describe('which cookies count as held on an account page', () => {
     ['an empty XSRF-TOKEN value', 'XSRF-TOKEN='],
     ['a name ending in XSRF-TOKEN2', 'XSRF-TOKEN2=abc'],
     ['a name that only contains XSRF-TOKEN', 'XXSRF-TOKEN=abc'],
-  ])('%s: /watchlist is signed out at once and asks nothing', async (_label, cookie) => {
+  ])('%s: /watchlist is signed out at once and asks no session', async (_label, cookie) => {
     document.cookie = `${cookie}; path=/`;
-    const calls = stubAccountFetch({ [ME]: problemResponse(unauthenticatedProblem) });
+    const calls = stubAccountFetch({
+      [ME]: problemResponse(unauthenticatedProblem),
+      ...demoSampleUnavailableRoutes(),
+    });
     visit('/watchlist');
     render(<App />);
-    expect(within(main()).getByText('Sign in to keep a watchlist.')).toBeTruthy();
+    // The first render already reads signed out: only the sample's own loading line shows.
+    expect(within(main()).getByRole('status').textContent).toBe('Loading the sample watchlist…');
+    expect(headerSessionLink()).toBe('Sign in');
+    await waitFor(() => {
+      expect(within(main()).getByText('Sign in to keep a watchlist.')).toBeTruthy();
+    });
+    await settle();
     expect(within(main()).queryByRole('status')).toBeNull();
     expect(headerSessionLink()).toBe('Sign in');
-    await settle();
-    expect(accountKeys(calls)).toEqual([]);
+    expect(accountKeys(calls)).toEqual(['GET /v1/demo/watchlist']);
   });
 });
 
 describe('a leftover token cookie with no session (signed out earlier)', () => {
   it('asks once, gets one 401 and keeps asking nothing across route changes', async () => {
     setXsrfCookie();
-    const calls = stubAccountFetch({ [ME]: problemResponse(unauthenticatedProblem) });
+    const calls = stubAccountFetch({
+      [ME]: problemResponse(unauthenticatedProblem),
+      ...demoSampleUnavailableRoutes(),
+    });
     visit('/watchlist');
     render(<App />);
     await waitFor(() => {
@@ -130,7 +143,8 @@ describe('a leftover token cookie with no session (signed out earlier)', () => {
       await settle();
       expect(headerSessionLink()).toBe('Sign in');
     }
-    expect(accountKeys(calls)).toEqual([ME]);
+    // One session ask, then the public sample reads of the two list pages, each once.
+    expect(accountKeys(calls)).toEqual([ME, 'GET /v1/demo/watchlist', 'GET /v1/demo/portfolio']);
   });
 
   it('landing on a public price page asks once, and the account pages after it ask nothing more', async () => {
@@ -138,6 +152,7 @@ describe('a leftover token cookie with no session (signed out earlier)', () => {
     const calls = stubAccountFetch({
       [ME]: problemResponse(unauthenticatedProblem),
       'GET /v1/movers?direction=up&limit=5': jsonResponse({ data: [] }),
+      ...demoSampleUnavailableRoutes(),
     });
     visit('/');
     render(<App />);
@@ -148,7 +163,7 @@ describe('a leftover token cookie with no session (signed out earlier)', () => {
     expect(within(main()).getByText('Sign in to keep a watchlist.')).toBeTruthy();
     go('/sign-in');
     await settle();
-    expect(accountKeys(calls)).toEqual([ME]);
+    expect(accountKeys(calls)).toEqual([ME, 'GET /v1/demo/watchlist']);
   });
 });
 
@@ -158,6 +173,7 @@ describe('sign-out in this tab', () => {
     const calls = stubAccountFetch({
       [ME]: [jsonResponse(signedInMe), problemResponse(unauthenticatedProblem)],
       'POST /logout': rawResponse(204, null),
+      ...demoSampleRoutes(),
     });
     visit('/account');
     render(<App />);
@@ -189,16 +205,23 @@ describe('the cookie appearing mid-life without a page load', () => {
       [ME]: () => jsonResponse({ data: { ...signedInMe.data, read_only: true } }),
       'POST /v1/demo/session': rawResponse(204, null),
       'GET /v1/watchlist': jsonResponse(watchlistBody([])),
+      ...demoSampleUnavailableRoutes(),
     });
     visit('/watchlist');
     render(<App />);
     expect(headerSessionLink()).toBe('Sign in');
-    fireEvent.click(within(main()).getByRole('button', { name: 'Try the read-only demo' }));
+    // The prompt (and its demo button) shows once the public sample read has settled.
+    fireEvent.click(await within(main()).findByRole('button', { name: 'Try the read-only demo' }));
     await waitFor(() => {
       expect(headerSessionLink()).toBe('Account');
     });
     await settle();
-    expect(accountKeys(calls).slice(0, 3)).toEqual([TOKEN, 'POST /v1/demo/session', ME]);
+    expect(accountKeys(calls).slice(0, 4)).toEqual([
+      'GET /v1/demo/watchlist',
+      TOKEN,
+      'POST /v1/demo/session',
+      ME,
+    ]);
     expect(accountKeys(calls).filter((key) => key === ME)).toEqual([ME]);
   });
 

@@ -1,11 +1,46 @@
 // Shared pieces of the watchlist and portfolio views that are not components: the strings
 // every list view prints, the row naming of the P3 movers row and the answers' refusals.
-import { hasProblemType, type ApiFailure, type WatchlistItem } from '../api/client';
+import { useQuery } from '@tanstack/react-query';
+import {
+  getDemoPortfolio,
+  getDemoWatchlist,
+  hasProblemType,
+  type ApiFailure,
+  type DemoPortfolioBody,
+  type DemoWatchlistBody,
+  type WatchlistItem,
+} from '../api/client';
+import { unwrap } from '../query';
 import { cardPath } from '../router';
 import { accountKey } from './session';
 
 export const WATCHLIST_KEY = accountKey('watchlist');
 export const PORTFOLIO_KEY = accountKey('portfolio');
+
+/**
+ * The demo's public sample lists. They belong to no account, so their keys are outside
+ * ['account', …]: a session change never forgets them, and no session is ever needed to read them.
+ */
+export const SAMPLE_WATCHLIST_KEY = ['sample', 'watchlist'] as const;
+export const SAMPLE_PORTFOLIO_KEY = ['sample', 'portfolio'] as const;
+
+/** GET /v1/demo/watchlist as a query; asked for only while `enabled` (a signed-out visitor). */
+export function useSampleWatchlistQuery(enabled: boolean) {
+  return useQuery<DemoWatchlistBody, ApiFailure>({
+    queryKey: SAMPLE_WATCHLIST_KEY,
+    queryFn: ({ signal }) => unwrap(getDemoWatchlist({ signal })),
+    enabled,
+  });
+}
+
+/** GET /v1/demo/portfolio as a query; it never touches the header's estimate. */
+export function useSamplePortfolioQuery(enabled: boolean) {
+  return useQuery<DemoPortfolioBody, ApiFailure>({
+    queryKey: SAMPLE_PORTFOLIO_KEY,
+    queryFn: ({ signal }) => unwrap(getDemoPortfolio({ signal })),
+    enabled,
+  });
+}
 
 export const DEMO_NOTICE =
   'You are signed in to the read-only demo account. Its watchlist and portfolio cannot be changed.';

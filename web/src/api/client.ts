@@ -413,6 +413,8 @@ const isPriceFreshness = (value: unknown): value is PriceFreshness => FRESHNESS(
 const isMeBody = (value: unknown): value is MeBody => ME(value);
 const isWatchlistBody = (value: unknown): value is WatchlistBody => WATCHLIST(value);
 const isPortfolioBody = (value: unknown): value is PortfolioBody => PORTFOLIO(value);
+const isDemoWatchlistBody = (value: unknown): value is DemoWatchlistBody => WATCHLIST(value);
+const isDemoPortfolioBody = (value: unknown): value is DemoPortfolioBody => PORTFOLIO(value);
 const isWebhooksBody = (value: unknown): value is WebhooksBody => WEBHOOKS(value);
 const isNotificationsBody = (value: unknown): value is NotificationsBody => NOTIFICATIONS(value);
 const isDemoSamplesBody = (value: unknown): value is DemoSamplesBody => DEMO_SAMPLES(value);
@@ -1022,6 +1024,32 @@ export function getPortfolio(options: RequestOptions = {}): Promise<ApiResult<Po
     accountAnswer('/v1/portfolio', { method: 'GET', signal: options.signal }),
     isPortfolioBody,
   );
+}
+
+/** The demo's watchlist and portfolio as the public reads answer them: the signed-in shapes. */
+export type DemoWatchlistBody =
+  operations['getDemoWatchlist']['responses'][200]['content']['application/json'];
+export type DemoPortfolioBody =
+  operations['getDemoPortfolio']['responses'][200]['content']['application/json'];
+
+/**
+ * GET /v1/demo/watchlist: the demo account's watchlist, public (no session, no cookie; 404 when
+ * the demo is off or not seeded).
+ */
+export function getDemoWatchlist(
+  options: RequestOptions = {},
+): Promise<ApiResult<DemoWatchlistBody>> {
+  return decoded(publicRead('/demo/watchlist', options), isDemoWatchlistBody);
+}
+
+/**
+ * GET /v1/demo/portfolio: the demo account's holdings and total, public (no session, no cookie;
+ * 404 when the demo is off or not seeded).
+ */
+export function getDemoPortfolio(
+  options: RequestOptions = {},
+): Promise<ApiResult<DemoPortfolioBody>> {
+  return decoded(publicRead('/demo/portfolio', options), isDemoPortfolioBody);
 }
 
 /**
