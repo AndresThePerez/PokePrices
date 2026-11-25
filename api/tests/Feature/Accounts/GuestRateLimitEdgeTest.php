@@ -211,39 +211,40 @@ it('gives the demo its own bucket behind a full address: 30 pass, the 31st is re
         ->and($ofElsewhere->json('data.read_only'))->toBeTrue();
 });
 
-it('keys the count before the session by the user and the address: on /sanctum/csrf-cookie the 121st from one address is refused while the same user passes from another', function (): void {
+it('keys the count on /sanctum/csrf-cookie by the address alone: the 61st of a signed-in user from one address is refused, a guest there too, while the same user passes from another', function (): void {
     $home = '192.0.2.77';
     $away = '192.0.2.78';
     $cookie = grleEncrypted(grleSignIn($this, 'first@example.com', $home));
 
     $passed = 0;
-    for ($i = 1; $i <= 120; $i++) {
+    for ($i = 1; $i <= 60; $i++) {
         $passed += grleRequest($this, $home, $cookie, '/sanctum/csrf-cookie')->getStatusCode() === 204 ? 1 : 0;
     }
     $over = grleRequest($this, $home, $cookie, '/sanctum/csrf-cookie');
     $fromAway = grleRequest($this, $away, $cookie, '/sanctum/csrf-cookie');
-    // The guest bucket of the address was never spent by the signed-in requests: a guest still gets all 60.
-    grleFillGuestBucket($this, $home);
-    $guestOver = grleRequest($this, $home, null);
+    $guestOver = grleRequest($this, $home, null, '/sanctum/csrf-cookie');
 
-    expect($passed)->toBe(120)
+    expect($passed)->toBe(60)
         ->and($over->getStatusCode())->toBe(429)
         ->and((int) $over->headers->get('Retry-After'))->toBeGreaterThanOrEqual(1)
         ->and($fromAway->getStatusCode())->toBe(204)
         ->and($guestOver->getStatusCode())->toBe(429);
 });
 
-it('sends no reset mail for a signed-in request to /forgot-password, behind a full address too: it is the 409 already-signed-in', function (): void {
+it('sends no reset mail for a signed-in request to /forgot-password: it is the 409 already-signed-in, and the 429 behind a full address', function (): void {
     $ip = '192.0.2.79';
     Accounts::user(['email' => 'victim@example.com']);
-    $cookie = grleEncrypted(grleSignIn($this, 'first@example.com', $ip));
+    $cookie = grleEncrypted(grleSignIn($this, 'first@example.com', '192.0.2.80'));
+    $elsewhere = grleRequest($this, '192.0.2.80', $cookie, '/forgot-password', 'POST', ['email' => 'victim@example.com']);
     grleFillGuestBucket($this, $ip);
 
     $signedIn = grleRequest($this, $ip, $cookie, '/forgot-password', 'POST', ['email' => 'victim@example.com']);
     $guest = grleRequest($this, $ip, null, '/forgot-password', 'POST', ['email' => 'victim@example.com']);
 
-    expect($signedIn->getStatusCode())->toBe(409)
-        ->and($signedIn->json('type'))->toBe(ProblemDetails::BASE.'already-signed-in')
+    expect($elsewhere->getStatusCode())->toBe(409)
+        ->and($elsewhere->json('type'))->toBe(ProblemDetails::BASE.'already-signed-in')
+        ->and($signedIn->getStatusCode())->toBe(429)
+        ->and($signedIn->json('type'))->toBe(ProblemDetails::BASE.'too-many-requests')
         ->and($guest->getStatusCode())->toBe(429);
     Notification::assertNothingSent();
 });

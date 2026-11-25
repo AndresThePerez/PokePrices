@@ -12,9 +12,9 @@ use Symfony\Component\HttpFoundation\Response;
 use Tests\Support\Accounts;
 
 // Edge cases of the count a signed-in request gets before its session starts (120 a minute per user and address):
-// what the refusal on the account group costs and carries, and that its bucket, the bucket of the three routes
-// without an account tier, the account tier's own and the guest's are four different buckets. Every request goes
-// through call() with exactly the cookies it names, on the database session driver.
+// what the refusal on the account group costs and carries, and that its bucket, the account tier's own and the guest's
+// are three different buckets; the three routes without an account tier count every request in the guest's bucket.
+// Every request goes through call() with exactly the cookies it names, on the database session driver.
 
 beforeEach(function (): void {
     Accounts::setUp();
@@ -124,25 +124,27 @@ it('keeps a flood of refused signed-in requests on the account group in its own 
         ->and($fromAway->json('data.email'))->toBe('first@example.com');
 });
 
-it('shares one count before the session between /sanctum/csrf-cookie, /forgot-password and /reset-password: 120 on the first leave a 429 on the other two for that user only', function (): void {
+it('shares the count of the address between /sanctum/csrf-cookie, /forgot-password and /reset-password, signed in or not: 60 on the first leave a 429 on the other two for every user', function (): void {
     $ip = '192.0.2.83';
     $first = sicSignIn($this, 'first@example.com', $ip);
     $second = sicSignIn($this, 'second@example.com', $ip);
 
     $passed = 0;
-    for ($i = 1; $i <= 120; $i++) {
+    for ($i = 1; $i <= 60; $i++) {
         $passed += sicRequest($this, $ip, $first, '/sanctum/csrf-cookie')->getStatusCode() === 204 ? 1 : 0;
     }
     $forgot = sicRequest($this, $ip, $first, '/forgot-password', 'POST', ['email' => 'first@example.com']);
     $reset = sicRequest($this, $ip, $first, '/reset-password', 'POST', ['email' => 'first@example.com']);
     $ofSecond = sicRequest($this, $ip, $second, '/forgot-password', 'POST', ['email' => 'second@example.com']);
+    $ofGuest = sicRequest($this, $ip, null, '/sanctum/csrf-cookie');
 
-    expect($passed)->toBe(120)
+    expect($passed)->toBe(60)
         ->and($forgot->getStatusCode())->toBe(429)
         ->and($forgot->json('type'))->toBe(ProblemDetails::BASE.'too-many-requests')
         ->and($reset->getStatusCode())->toBe(429)
         ->and($reset->json('type'))->toBe(ProblemDetails::BASE.'too-many-requests')
-        ->and($ofSecond->getStatusCode())->toBe(409)
-        ->and($ofSecond->json('type'))->toBe(ProblemDetails::BASE.'already-signed-in');
+        ->and($ofSecond->getStatusCode())->toBe(429)
+        ->and($ofSecond->json('type'))->toBe(ProblemDetails::BASE.'too-many-requests')
+        ->and($ofGuest->getStatusCode())->toBe(429);
     Notification::assertNothingSent();
 });

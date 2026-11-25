@@ -148,25 +148,20 @@ it('counts a session cookie that is not a signed-in session as a guest', functio
     }],
 ]);
 
-it('counts a signed-in request per user where no account tier follows: /sanctum/csrf-cookie passes 120 behind a full address, the 121st is refused for that user only', function (): void {
+it('counts a signed-in request per address where no account tier follows: behind a full address /sanctum/csrf-cookie is refused for every user, the account group still answers', function (): void {
     $ip = '192.0.2.62';
     $first = grlSignIn($this, 'first@example.com', $ip);
     $second = grlSignIn($this, 'second@example.com', $ip);
     grlFillGuestBucket($this, $ip);
 
-    $passed = 0;
-    for ($i = 1; $i <= 120; $i++) {
-        $passed += grlRequest($this, $ip, grlEncrypted($first), '/sanctum/csrf-cookie')->getStatusCode() === 204 ? 1 : 0;
-    }
     $over = grlRequest($this, $ip, grlEncrypted($first), '/sanctum/csrf-cookie');
     $other = grlRequest($this, $ip, grlEncrypted($second), '/sanctum/csrf-cookie');
-    // The count before the session is its own bucket: the account tier of the first user is untouched.
+    // The address's guest bucket is not the account group's count: the first user still reads the account.
     $account = grlRequest($this, $ip, grlEncrypted($first));
 
-    expect($passed)->toBe(120)
-        ->and($over->getStatusCode())->toBe(429)
+    expect($over->getStatusCode())->toBe(429)
         ->and($over->json('type'))->toBe(ProblemDetails::BASE.'too-many-requests')
-        ->and($other->getStatusCode())->toBe(204)
+        ->and($other->getStatusCode())->toBe(429)
         ->and($account->getStatusCode())->toBe(200)
         ->and($account->json('data.email'))->toBe('first@example.com');
 });

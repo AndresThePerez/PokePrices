@@ -36,7 +36,8 @@ use RuntimeException;
 /**
  * Fortify and Sanctum for PokéPrices: the actions, the account limiters, the two
  * mailed links, the enumeration-safe reset-link answer, no API tokens, the create-alerts Gate, and the limiters and
- * email normalisation on the package routes, which exist by now (package providers boot before this one).
+ * email normalisation on the package routes, which exist by now (package providers boot before this one), and the
+ * count before the session on every Fortify signed-in route.
  */
 final class FortifyServiceProvider extends ServiceProvider
 {
@@ -103,6 +104,14 @@ final class FortifyServiceProvider extends ServiceProvider
                 throw new RuntimeException("PokéPrices expects the package route {$name}; check config/fortify.php features.");
             }
             $route->middleware($middleware);
+        }
+        // Every route Fortify puts behind its sign-in middleware is counted by account-guest before a session starts,
+        // whichever features registered it.
+        foreach (Route::getRoutes()->getRoutes() as $route) {
+            if (str_starts_with($route->getActionName(), 'Laravel\\Fortify\\')
+                && in_array(ThrottleBeforeSession::fortifySignIn(), $route->middleware(), true)) {
+                $route->middleware([ThrottleBeforeSession::class.':account-guest']);
+            }
         }
     }
 }
