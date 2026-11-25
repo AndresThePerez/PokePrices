@@ -26,7 +26,7 @@ import { MUTED, TEXT_LINK } from '../ui/classes';
  * the lines wrap less. The loaded content never needs more, so the wrapper's box is the same
  * height before and after the answers.
  */
-export const SEE_IT_RESERVE = 'mt-12 min-h-[70rem] sm:min-h-[56rem]';
+export const SEE_IT_RESERVE = 'mt-12 min-h-[85rem] sm:min-h-[72rem]';
 
 const TITLE = 'See it working';
 const SAMPLE_WORDS = 'Sample data from the read-only demo collection, the same for every visitor.';
