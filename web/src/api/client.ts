@@ -418,6 +418,7 @@ const isDemoPortfolioBody = (value: unknown): value is DemoPortfolioBody => PORT
 const isWebhooksBody = (value: unknown): value is WebhooksBody => WEBHOOKS(value);
 const isNotificationsBody = (value: unknown): value is NotificationsBody => NOTIFICATIONS(value);
 const isDemoSamplesBody = (value: unknown): value is DemoSamplesBody => DEMO_SAMPLES(value);
+const isDemoAlertsBody = (value: unknown): value is DemoAlertsBody => DEMO_SAMPLES(value);
 const isMessageAnswer = (value: unknown): value is MessageAnswer => MESSAGE(value);
 const isWatchlistEntry = (value: unknown): value is WatchlistEntry => WATCHLIST_ENTRY(value);
 const isHoldingEntry = (value: unknown): value is HoldingEntry => HOLDING_ENTRY(value);
@@ -1178,6 +1179,19 @@ export function getDemoSamples(options: RequestOptions = {}): Promise<ApiResult<
     accountAnswer('/v1/demo/samples', { method: 'GET', signal: options.signal }),
     isDemoSamplesBody,
   );
+}
+
+/** The public read of the same samples: the signed-in demo's shape. */
+export type DemoAlertsBody =
+  operations['getDemoAlerts']['responses'][200]['content']['application/json'];
+
+/**
+ * GET /v1/demo/alerts: the demo's alert, sample delivered email and sample signed webhook delivery
+ * with the published sample secret, public (no session, no cookie; 404 when the demo is off or not
+ * seeded).
+ */
+export function getDemoAlerts(options: RequestOptions = {}): Promise<ApiResult<DemoAlertsBody>> {
+  return decoded(publicRead('/demo/alerts', options), isDemoAlertsBody);
 }
 
 /** PUT /v1/me/notifications { channel, digest }: 200 with the saved settings. */

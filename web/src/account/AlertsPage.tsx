@@ -1,13 +1,21 @@
 // /alerts: where a verified account manages its webhooks and, above them, where
-// alerts go and the per-card pointer. Signed out, it offers sign-in (and back here) and
-// sign-up. The demo and an unverified account read the page and are told, in words, why they cannot
-// change it: no form and no button; the demo (useReadOnly) also sees its seeded samples. Requests:
-// GET /v1/me, then GET /v1/webhooks once signed in, then GET /v1/demo/samples for the demo only, or
+// alerts go and the per-card pointer. Signed out, it shows the demo's alert, delivered message and
+// signed payload as read-only samples (GET /v1/demo/alerts, no session, no cookie) and offers
+// sign-in (and back here); when that read fails it offers sign-in and sign-up alone. The demo and
+// an unverified account read the page and are told, in words, why they cannot change it: no form
+// and no button; the demo (useReadOnly) also sees its seeded samples. Requests: GET /v1/me, then
+// GET /v1/webhooks once signed in, then GET /v1/demo/samples for the demo only, or
 // GET /v1/me/notifications only for an account that may change its settings.
 import type { ReactNode } from 'react';
 import Link from '../Link';
-import { WEBHOOKS_LOADING, useDemoSamples, useNotifications, useWebhooks } from './alerts';
-import DemoSamples, { SAMPLES_LINE } from './DemoSamples';
+import {
+  WEBHOOKS_LOADING,
+  useDemoSamples,
+  useNotifications,
+  useSampleAlerts,
+  useWebhooks,
+} from './alerts';
+import DemoSamples, { SAMPLES_LINE, SampleSections } from './DemoSamples';
 import Notice from '../ui/Notice';
 import Page from '../ui/Page';
 import StatusLine from '../ui/StatusLine';
@@ -16,12 +24,14 @@ import { ProblemBlock } from './Form';
 import { TEXT_LINK } from '../ui/classes';
 import NotificationSettings, { PerCardAlerts } from './NotificationSettings';
 import { useReadOnly, useSession } from './session';
+import SampleStrip, { SAMPLE_RESERVE } from './SampleStrip';
 import SignInPrompt from './SignInPrompt';
 import Webhooks from './Webhooks';
 
 const DEMO_LINE =
   'The read-only demo cannot set alerts or add webhooks: it has no email address or Discord of ' +
   'its own to send them to.';
+const SAMPLE_LOADING = 'Loading the sample alerts…';
 const UNVERIFIED_LINE = 'Verify your email address to set alerts or add webhooks.';
 
 function AlertsMain({ children }: { readonly children: ReactNode }) {
@@ -37,8 +47,34 @@ function Loading() {
   return <StatusLine gap="mt-6">{WEBHOOKS_LOADING}</StatusLine>;
 }
 
-function SignedOut() {
+function SignInToSetUp() {
   return <SignInPrompt sentence="Sign in to set up alerts and webhooks." next="/alerts" signUp />;
+}
+
+/**
+ * Signed out: the demo's alert, delivered message and signed payload as read-only samples under the
+ * strip, read from the public route (no session, no cookie). One wrapper holds the loading line,
+ * the samples and the sign-in prompt (SAMPLE_RESERVE), so nothing moves when the answer arrives.
+ * A failed read, a 404 or an answer with no sample at all gives the sign-in prompt alone.
+ */
+function SignedOut() {
+  const query = useSampleAlerts(true);
+  const sample = query.data;
+  let content;
+  if (sample !== undefined && (sample.data.alert ?? sample.data.message ?? sample.data.webhook)) {
+    content = (
+      <>
+        <SampleStrip list="alerts" />
+        <p className="mt-6">{SAMPLES_LINE}</p>
+        <SampleSections data={sample.data} />
+      </>
+    );
+  } else if (sample !== undefined || query.error !== null) {
+    content = <SignInToSetUp />;
+  } else {
+    content = <StatusLine gap="mt-6">{SAMPLE_LOADING}</StatusLine>;
+  }
+  return <div className={SAMPLE_RESERVE}>{content}</div>;
 }
 
 function Unverified() {

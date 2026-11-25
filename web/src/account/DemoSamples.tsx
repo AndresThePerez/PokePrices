@@ -104,6 +104,18 @@ function WebhookSample({
   );
 }
 
+/** The demo's three samples, each in its own titled section; whichever the API sent as null is absent. */
+export function SampleSections({ data }: { readonly data: Samples }) {
+  const { alert, message, webhook, sample_secret: secret } = data;
+  return (
+    <>
+      {alert !== null && <AlertSample alert={alert} />}
+      {message !== null && <EmailSample message={message} />}
+      {webhook !== null && <WebhookSample webhook={webhook} secret={secret} />}
+    </>
+  );
+}
+
 /** The demo's samples, or their loading line, or the problem block of a failed read. */
 export default function DemoSamples({
   body,
@@ -118,12 +130,10 @@ export default function DemoSamples({
     }
     return <StatusLine gap="mt-6">{LOADING}</StatusLine>;
   }
-  const { alert, message, webhook, sample_secret: secret } = body.data;
+  const { message, webhook } = body.data;
   return (
     <>
-      {alert !== null && <AlertSample alert={alert} />}
-      {message !== null && <EmailSample message={message} />}
-      {webhook !== null && <WebhookSample webhook={webhook} secret={secret} />}
+      <SampleSections data={body.data} />
       {message === null && webhook === null && <p className="mt-6">{NO_SAMPLES}</p>}
     </>
   );

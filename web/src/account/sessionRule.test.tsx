@@ -10,6 +10,7 @@ import type * as QueryModule from '../query';
 import {
   accountValidationProblem,
   clearXsrfCookie,
+  demoAlertsUnavailableRoutes,
   demoSampleUnavailableRoutes,
   holdSessionCookie,
   jsonResponse,
@@ -121,11 +122,10 @@ afterEach(() => {
 const PAGES: readonly (readonly [string, () => HTMLElement])[] = [
   ['/sign-in', () => within(main()).getByRole('button', { name: 'Sign in' })],
   ['/account', () => within(main()).getByText('You are not signed in.')],
-  ['/alerts', () => within(main()).getByText('Sign in to set up alerts and webhooks.')],
 ];
 
 /**
- * The two list pages: signed out they read the demo's public sample (no session) before their
+ * The three sample pages: signed out they read the demo's public sample (no session) before their
  * sign-in prompt shows, so each carries its sample route, its loading line and its prompt.
  */
 const LIST_PAGES: readonly (readonly [string, string, string, () => HTMLElement])[] = [
@@ -140,6 +140,12 @@ const LIST_PAGES: readonly (readonly [string, string, string, () => HTMLElement]
     'GET /v1/demo/portfolio',
     'Loading the sample portfolio…',
     () => within(main()).getByText('Sign in to keep a portfolio.'),
+  ],
+  [
+    '/alerts',
+    'GET /v1/demo/alerts',
+    'Loading the sample alerts…',
+    () => within(main()).getByText('Sign in to set up alerts and webhooks.'),
   ],
 ];
 
@@ -168,6 +174,7 @@ describe('signed out with no token cookie', () => {
       const calls = stubAccountFetch({
         [ME]: problemResponse(unauthenticatedProblem),
         ...demoSampleUnavailableRoutes(),
+        ...demoAlertsUnavailableRoutes(),
       });
       visit(path);
       render(<App />);
@@ -408,6 +415,7 @@ describe('with the token cookie the session is asked once', () => {
       const calls = stubAccountFetch({
         [ME]: problemResponse(unauthenticatedProblem),
         ...demoSampleUnavailableRoutes(),
+        ...demoAlertsUnavailableRoutes(),
       });
       visit(path);
       render(<App />);

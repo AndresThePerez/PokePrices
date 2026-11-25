@@ -1426,6 +1426,24 @@ export function demoSamplesBody(data: Partial<DemoSamplesBody['data']> = {}): De
   } satisfies DemoSamplesBody;
 }
 
+/** GET /v1/demo/alerts, the public read of the same samples (no session, no cookie). */
+export function demoAlertsRoutes(
+  body: DemoSamplesBody = demoSamplesBody(),
+): Record<'GET /v1/demo/alerts', Response> {
+  return { 'GET /v1/demo/alerts': jsonResponse(body) };
+}
+
+/** The same route answering 404 demo-unavailable (the demo is off or not seeded). */
+export function demoAlertsUnavailableRoutes(): Record<'GET /v1/demo/alerts', Response> {
+  return {
+    'GET /v1/demo/alerts': problemResponse({
+      ...demoUnavailableProblem,
+      instance: '/v1/demo/alerts',
+      request_id: 'req-sample-0002',
+    }),
+  };
+}
+
 /** The demo's sample webhook as GET /v1/webhooks lists it. */
 export const demoSampleWebhook = {
   id: 7,

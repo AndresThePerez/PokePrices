@@ -3,10 +3,12 @@
 // is the date part of a timestamp the API sent.
 import { useQuery } from '@tanstack/react-query';
 import {
+  getDemoAlerts,
   getDemoSamples,
   getNotifications,
   getWebhooks,
   type ApiFailure,
+  type DemoAlertsBody,
   type DemoSamplesBody,
   type NotificationsBody,
   type WebhooksBody,
@@ -55,6 +57,21 @@ export function useDemoSamples(enabled: boolean) {
   return useQuery<DemoSamplesBody, ApiFailure>({
     queryKey: DEMO_SAMPLES_KEY,
     queryFn: ({ signal }) => unwrap(getDemoSamples({ signal })),
+    enabled,
+  });
+}
+
+/**
+ * The demo's public sample read for a signed-out visitor. It belongs to no account, so its key is
+ * outside ['account', …]: a session change never forgets it, and no session is needed to read it.
+ */
+export const SAMPLE_ALERTS_KEY = ['sample', 'alerts'] as const;
+
+/** GET /v1/demo/alerts as a query; asked for only while `enabled` (a signed-out visitor). */
+export function useSampleAlerts(enabled: boolean) {
+  return useQuery<DemoAlertsBody, ApiFailure>({
+    queryKey: SAMPLE_ALERTS_KEY,
+    queryFn: ({ signal }) => unwrap(getDemoAlerts({ signal })),
     enabled,
   });
 }
