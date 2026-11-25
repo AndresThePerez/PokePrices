@@ -72,7 +72,8 @@ check "App.tsx h1 carries the accent as raw UTF-8 bytes C3 A9" sh -c "grep '<h1'
 check "no combining acute accent (CC 81) anywhere in the shell sources" sh -c "! od -An -tx1 -v $W/index.html $W/src/App.tsx | tr -d ' \n' | grep -q 'cc81'"
 check "App.tsx never says real-time, realtime or live price (any case)" sh -c "! grep -qiE 'real-?time|live price' $W/src/App.tsx $W/index.html"
 # T12: Prettier wraps JSX text, so the copy is whitespace-normalised before matching (rendered text is unchanged).
-check "App.tsx says daily close and mentions source and as-of" sh -c "tr -s '[:space:]' ' ' < $W/src/App.tsx | grep -qi 'daily close' && grep -qi 'source' $W/src/App.tsx && tr -s '[:space:]' ' ' < $W/src/App.tsx | grep -qi 'as of'"
+# The h1 (HOME_H1) lives in routes.ts; the source sentence under it is in App.tsx.
+check "the home page says daily close (routes.ts h1) and mentions source and as-of (App.tsx sentence)" sh -c "grep -qF 'card prices at the daily close' $W/src/routes.ts && tr -s '[:space:]' ' ' < $W/src/App.tsx | grep -qF 'its source and the day it is as of'"
 check "no Vite or React template logos or assets remain under web/src, web/public or index.html" sh -c "[ ! -e $W/src/assets ] && [ ! -e $W/src/App.css ] && [ ! -e $W/public/vite.svg ] && ! grep -qiE 'vite\\.svg|react\\.svg|hero\\.png|Vite \\+ React|count is' $W/index.html $W/src/*.tsx $W/src/*.css"
 check "production build still succeeds without the removed assets" sh -c "$NODE npm run build >$T/build.log 2>&1"
 

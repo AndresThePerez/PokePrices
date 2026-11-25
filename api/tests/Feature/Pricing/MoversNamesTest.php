@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Domain\Catalog\VerifyCatalog;
+use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiter;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Factory;
@@ -191,6 +192,9 @@ it('sends exactly one batch of the absent id plus every stale id, never a fresh 
 
 it('answers card null for a missing id, undegraded, and asks again only after 60 s', function (): void {
     t08mMover('up', 1, 'zz-404');
+    // The catalogue counts whole seconds: hold the clock still, on a whole second, from the first request on, so the 59 s
+    // below cannot carry the test across one more counted second.
+    $this->travelTo(CarbonImmutable::createFromTimestampUTC(now()->getTimestamp()));
 
     $first = $this->getJson('/v1/movers');
     t08mPrime($this);

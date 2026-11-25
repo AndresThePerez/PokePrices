@@ -253,7 +253,10 @@ describe('a variant that gains or loses its close while the page shows it', () =
     // One priced variant is left: no Variant group, and the chart draws the default's close only.
     const section = await historySection();
     expect(within(section).queryByRole('group', { name: 'Variant' })).toBeNull();
-    expect(drawnValues()).toEqual([2257.87]);
+    // The chart is a lazy component: its values are drawn after the section's text, so wait for them.
+    await vi.waitFor(() => {
+      expect(drawnValues()).toEqual([2257.87]);
+    });
     // The variant that lost its close reads as a variant with a listing and no close, with its own day.
     const lostRow = within(row('holo, unlimited'));
     expect(lostRow.getByText('No recent sales; lowest listing $275.00')).toBeTruthy();
