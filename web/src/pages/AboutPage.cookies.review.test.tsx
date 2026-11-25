@@ -161,7 +161,7 @@ describe('what a visitor who still holds the security token sends past the polli
     expect(await meAsksAfter('/sign-in', 12)).toBe(0);
   });
 
-  it('the interval is five minutes, so the sentence "asks once" is about opening, not about a page left open', async () => {
+  it('the interval is five minutes, so a sign-in page left open asks again', async () => {
     setXsrfCookie();
     const opened = await meAsksAfter('/sign-in', 0);
     expect(opened).toBe(1);

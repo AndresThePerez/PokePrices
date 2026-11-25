@@ -1,6 +1,6 @@
 // The About page's cookie sentences, pinned against what the app asks for: "Opening and reading the
 // site sets no cookies. Sending a sign-in, sign-up or password form, or pressing the demo button,
-// sets two", and a later visit that still holds the security token asks once, on opening a page.
+// sets two", and a later visit that still holds the security token asks, on opening a page.
 // A signed-out render with no cookie of a price page, the About page or an account page sends no
 // session request and no CSRF-cookie request. A later change that makes a page ask for the session
 // without the cookie fails here, and the sentence is revisited with it.
@@ -37,7 +37,7 @@ const UNAUTHENTICATED = {
 };
 
 const COOKIE_SENTENCE =
-  'Opening and reading the site sets no cookies. Sending a sign-in, sign-up or password form, or pressing the demo button, sets two: a session cookie, which keeps you signed in once you are, and a security token that protects the site’s forms. The security token is not removed when you sign out, so a later visit from a browser that still holds it asks once, on opening a page, whether you are signed in.';
+  'Opening and reading the site sets no cookies. Sending a sign-in, sign-up or password form, or pressing the demo button, sets two: a session cookie, which keeps you signed in once you are, and a security token that protects the site’s forms. The security token is not removed when you sign out, so a later visit from a browser that still holds it asks, on opening a page, whether you are signed in.';
 
 const OLD_OPENING = 'Opening a sign-in or account page';
 

@@ -204,7 +204,7 @@ prices get into the database is in [`OPERATIONS.md`](OPERATIONS.md).
   opens: "Opening and reading the site sets no cookies. Sending a sign-in, sign-up or password form, or
   pressing the demo button, sets two: a session cookie, which keeps you signed in once you are, and a
   security token that protects the site’s forms. The security token is not removed when you sign out, so a
-  later visit from a browser that still holds it asks once, on opening a page, whether you are signed in."
+  later visit from a browser that still holds it asks, on opening a page, whether you are signed in."
 
 The watchlist and portfolio are filled from the card page, where each variant has `Add to watchlist` and
 `Add to portfolio` buttons. Once the tab knows who is signed in, the card page reads both lists (one

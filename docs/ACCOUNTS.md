@@ -25,8 +25,8 @@ described in [`WEB.md`](WEB.md).
   `TRUSTED_PROXIES=REMOTE_ADDR` also makes Laravel trust the forwarded `https`, so the request and its URLs are
   `https` too. The dev site is plain `http` and leaves both unset, so its cookies carry no `Secure` flag. There are no
   API tokens: an `Authorization: Bearer` header is never read.
-- **CSRF cookie.** Before its first write the app calls `GET /sanctum/csrf-cookie`, which sets an `XSRF-TOKEN`
-  cookie. The app sends that cookie's decoded value as `X-XSRF-TOKEN` on every non-GET request. A missing or wrong
+- **CSRF cookie.** Before its first write the app calls `GET /sanctum/csrf-cookie`, which sets the `XSRF-TOKEN`
+  cookie and the `pokeprices-session` cookie. The app sends that cookie's decoded value as `X-XSRF-TOKEN` on every non-GET request. A missing or wrong
   token answers `419` with the problem type `csrf-token-mismatch` (a signed-out request to one of Fortify's signed-in
   routes answers `401` first, before the token is looked at); the app refreshes the cookie once and retries once.
 - **Stateful only on account routes.** Sanctum's `EnsureFrontendRequestsAreStateful` is route middleware on the
@@ -75,7 +75,7 @@ not a session endpoint.
 
 | Method | Path | JSON body | Success | What the app does with it |
 |---|---|---|---|---|
-| GET | `/sanctum/csrf-cookie` | none | `204`, sets `XSRF-TOKEN` | Called once before the first write, and again after a `419`. |
+| GET | `/sanctum/csrf-cookie` | none | `204`, sets `XSRF-TOKEN` and `pokeprices-session` | Called once before the first write, and again after a `419`. |
 | POST | `/register` | `invite_code`, `email`, `password`, `password_confirmation` | `201`, empty body | The `/sign-up` page. The new person is signed in and a verification mail is sent; the page opens `/account`. `422` carries `errors.invite_code` for a bad code. |
 | POST | `/login` | `email`, `password` | `200` `{"two_factor": false}` or `{"two_factor": true}` | The `/sign-in` page. `true` means a two-factor code is still needed; the page shows the authentication-code step. `422` is the generic wrong-sign-in message; the sixth try in a minute for one email, or the 21st from one address across emails, is `429` with `Retry-After`. |
 | POST | `/two-factor-challenge` | `code`, or `recovery_code` | `204` | The authentication-code step of `/sign-in`. Each recovery code works once. |
