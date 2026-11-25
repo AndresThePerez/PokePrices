@@ -40,6 +40,7 @@ RUN="/bin/sh tests/p0/run.sh"
 
 # ---- criterion 1: TIER defaults to full; full = today's loop plus tests/p1/T*.sh after tests/p0/T*.sh ----
 expect_full() {
+  printf '%s\n' 'make gates'
   for t in tests/p0/T*.sh tests/p1/T*.sh tests/p2/T03.sh tests/p2/T14.sh tests/gates/test_*.sh tests/scorecard/test_*.sh tests/verdict/test_*.sh; do
     [ -f "$t" ] && printf 'sh %s\n' "$t"
   done

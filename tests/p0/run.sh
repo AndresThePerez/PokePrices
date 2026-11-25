@@ -1,9 +1,10 @@
 #!/bin/sh
-# PokéPrices suite runner (R135). TIER=full (the default) runs every acceptance, gate, scorecard and
-# verdict test, then Pest and Vitest. TIER=fast runs the self-contained scripts in FAST, then a scorecard
-# of the quick gates in FAST_GATES; it never runs make gates, test_freeze.sh, a compose stop/restart or
-# EC-ci-parity, and scorecard refuses a dirty tree, so commit first. TIER=task runs the scripts named as
-# arguments, then the fast tier; with PS=1 it adds the PokéSearch Go checks in ${POKESEARCH_DIR:-../pokesearch}.
+# PokéPrices suite runner (R135). TIER=full (the default) runs make gates once, then every acceptance, gate,
+# scorecard and verdict test, then Pest and Vitest; T31, T34, T35 and test_freeze read that one gates run through
+# GATES_REUSE_DIR (see gates_once) instead of running the gates again. TIER=fast runs the self-contained scripts
+# in FAST, then a scorecard of the quick gates in FAST_GATES; it never runs make gates, test_freeze.sh, a compose
+# stop/restart or EC-ci-parity, and scorecard refuses a dirty tree, so commit first. TIER=task runs the scripts
+# named as arguments, then the fast tier; with PS=1 it adds the PokéSearch Go checks in ${POKESEARCH_DIR:-../pokesearch}.
 set -u
 cd "$(dirname "$0")/../.." || exit 1
 # HY-trailers and HY-hygiene scan from PHASE_BASE to HEAD; take it from gates/phase-base unless the caller set it.
@@ -57,8 +58,34 @@ fast_tier() {
   scripts/scorecard --manifest "$(head -n1 gates/current-manifest 2>/dev/null || echo gates/manifest-P0.json)" --only "$FAST_GATES" || rc=1
 }
 
+# gates_once: the full tier's one make gates run. It writes a record in .gates/acceptance-run.<pid> (start.marker,
+# make-gates.log, exit, and scorecard: the path of the scorecard that run wrote, kept because later scripts move
+# .gates/latest) and exports GATES_REUSE_DIR only when that scorecard is newer than the marker; a value inherited from
+# a caller never counts, and a runner started inside this tier (a self-test) leaves this tier's record alone. Its exit
+# status is not this runner's: the scripts judge the run (T31 and test_freeze read the recorded status). With no
+# Makefile here, or no new scorecard, nothing is exported and each script runs the gates itself, as it does alone.
+gates_once() {
+  unset GATES_REUSE_DIR
+  [ -f Makefile ] || return 0
+  g=.gates/acceptance-run.$$
+  mkdir -p "$g" || return 0
+  printf '# make gates (once for this tier)\n'
+  : > "$g/start.marker"
+  make gates > "$g/make-gates.log" 2>&1; echo "$?" > "$g/exit"
+  l=$(readlink .gates/latest 2>/dev/null) || l=
+  case $l in '') sc= ;; /*) sc=$l/scorecard.json ;; *) sc=.gates/$l/scorecard.json ;; esac
+  if [ -n "$sc" ] && [ -f "$sc" ] && [ "$sc" -nt "$g/start.marker" ]; then
+    printf '%s\n' "$sc" > "$g/scorecard"
+    GATES_REUSE_DIR=$g; export GATES_REUSE_DIR
+    printf 'gates reuse: make gates exit %s, results in %s\n' "$(cat "$g/exit")" "$sc"
+  else
+    printf 'gates reuse: make gates wrote no new scorecard; each script runs its own\n'
+  fi
+}
+
 case $TIER in
   full)
+    gates_once
     # p2 (HG-40 #12): the read-only scripts that passed the Q1-i4 T07 dry run. tests/p2/T07.sh never joins: it runs
     # replay --fresh on the dev database. T13.sh stays out (a newly pulled movement_volume day turns it red), and so
     # does T01.sh (it pins HEAD to p2-work; no p0/p1 check covers that pin).
