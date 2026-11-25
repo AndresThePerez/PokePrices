@@ -14,6 +14,8 @@ use Tests\Support\AccountRows;
 use Tests\Support\Accounts;
 use Tests\Support\CatalogCache;
 
+use function Pest\Laravel\postJson;
+
 // A password typed in the shape of a bcrypt hash is a password like any other: sign-up, reset and the demo account's
 // configured password store a hash of it, so the person signs in with exactly what they typed. The cost-4 shape is
 // one the model's hashed cast would keep as given (the test hasher's own cost); the cost-10 shape is one it would
@@ -45,7 +47,7 @@ function hashShapedSignIn(string $email, string $password): TestResponse
     Auth::guard('web')->logout();
     Accounts::forgetGuards();
 
-    return test()->withHeaders(Accounts::FIRST_PARTY)->postJson('/login', ['email' => $email, 'password' => $password]);
+    return postJson('/login', ['email' => $email, 'password' => $password], Accounts::FIRST_PARTY);
 }
 
 dataset('hash shapes', ['bcrypt at the test cost (4)' => [4], 'bcrypt at cost 10' => [10]]);
