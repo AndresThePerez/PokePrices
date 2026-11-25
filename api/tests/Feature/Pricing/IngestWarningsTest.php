@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Domain\Pricing\Jobs\StartDayIngest;
 use Carbon\CarbonImmutable;
 use Illuminate\Log\Events\MessageLogged;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
 
@@ -178,5 +179,25 @@ it('warns ingest_blocked once per running run that blocks its day, naming the da
         ])
         // The blocked start no longer speaks at info.
         ->and(array_values(array_filter(iwMessages('info'), fn (string $m): bool => str_contains($m, 'running run'))))->toBe([])
+        ->and(DB::table('price_points')->count())->toBe(0);
+});
+
+it('still warns ingest_blocked on every start when the cache store throws, and never stops the start', function (): void {
+    $root = iwCopyDay('2026-10-12');
+    $stale = DB::table('ingest_runs')->insertGetId([
+        'source' => 'tcgplayer', 'feed' => 'tcgcsv', 'day' => '2026-10-12', 'marker' => '2026-10-12T19:30:00Z', 'mode' => 'queued',
+        'status' => 'running', 'started_at' => '2026-10-12T19:40:00Z', 'counts' => '{}',
+    ]);
+    Cache::shouldReceive('add')->andThrow(new RuntimeException('cache store down'));
+
+    // Without a working cache nothing remembers the run: the warning may repeat, once per start, and no start throws.
+    iwStart($root, '2026-10-12', '2026-10-12 22:40:00');
+    iwStart($root, '2026-10-12', '2026-10-12 23:40:00');
+
+    expect(iwWarnings('ingest_blocked'))->toBe([
+        ['day' => '2026-10-12', 'run_id' => $stale],
+        ['day' => '2026-10-12', 'run_id' => $stale],
+    ])
+        ->and(DB::table('ingest_runs')->count())->toBe(1)
         ->and(DB::table('price_points')->count())->toBe(0);
 });

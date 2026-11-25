@@ -12,6 +12,7 @@ use Illuminate\Http\Client\Request as ClientRequest;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
 use Tests\Support\AlertRows;
 use Tests\Support\FakeHostResolver;
 
@@ -232,7 +233,7 @@ it('records the problem whose post was accepted and leaves the one that failed f
     ppreAt('2026-10-14T01:00:00Z');
     [, $outputThird, $third] = ppreRun();
 
-    expect([$code, $output])->toBe([1, '{"posted":1,"cleared":0,"failed":1}'])
+    expect([$code, Str::afterLast($output, "\n")])->toBe([1, '{"posted":1,"cleared":0,"failed":1}'])
         ->and($first)->toHaveCount(2)
         ->and($openAfterFirst)->toBe(['missing_day:2026-10-11'])
         ->and(array_column(AlertRows::logged('price_problem_report_failed'), 'context'))->toBe([
@@ -268,7 +269,7 @@ it('posts nothing when a problem whose cleared message failed is back before the
 
     $sentence = "Run {$run} of 2026-10-12 has not finished and blocks its day.";
     expect($started)->toBe(["PokéPrices price job problem: {$sentence} Seen since 2026-10-12T21:30:00Z."])
-        ->and([$codeLost, $outputLost])->toBe([1, '{"posted":0,"cleared":0,"failed":1}'])
+        ->and([$codeLost, Str::afterLast($outputLost, "\n")])->toBe([1, '{"posted":0,"cleared":0,"failed":1}'])
         ->and($lost)->toHaveCount(1)
         ->and([$codeBack, $outputBack, $back])->toBe([0, '{"posted":0,"cleared":0,"failed":0}', []])
         ->and($outputEnded)->toBe('{"posted":0,"cleared":1,"failed":0}')
@@ -305,7 +306,7 @@ it('holds the report lock while a message is posted and not yet recorded, and ke
     expect($takenInTheGap)->toBeFalse()
         ->and($rivalWrote)->toBeTrue()
         ->and($takenAfter)->toBeTrue()
-        ->and([$code, $output])->toBe([1, '{"posted":0,"cleared":0,"failed":1}'])
+        ->and([$code, Str::afterLast($output, "\n")])->toBe([1, '{"posted":0,"cleared":0,"failed":1}'])
         ->and($posted)->toHaveCount(1)
         ->and(ppreKeys(all: true))->toBe(['late:2026-10-12'])
         ->and([$codeNext, $outputNext, $postedNext])->toBe([0, '{"posted":0,"cleared":0,"failed":0}', []]);

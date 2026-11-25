@@ -6,6 +6,7 @@ namespace App\Console\Commands;
 
 use App\Domain\Alerts\DeliverySender;
 use App\Domain\Alerts\DiscordMessage;
+use App\Domain\Alerts\GuardError;
 use App\Domain\Pricing\PriceJobProblems;
 use App\Domain\Pricing\ReportedPriceProblems;
 use Carbon\CarbonImmutable;
@@ -31,7 +32,8 @@ use Throwable;
  * that nothing was sent and exits 0. Each message is one attempt through the alert sender's guarded, pinned Discord
  * POST. A report is written only after its message was accepted (2xx); a failed post writes a
  * price_problem_report_failed warning with the key, started or cleared, the HTTP status and the error, leaves the
- * report as it was and is tried again on the next run. It prints {"posted", "cleared", "failed"} and exits 1 when a
+ * report as it was and is tried again on the next run. It prints one line per failed post ("price_problem_report_failed
+ * key=<key> event=<started|cleared> status=<HTTP status or a word>"), then {"posted", "cleared", "failed"}, and exits 1 when a
  * post failed. One run at a time: a run that finds the report lock held prints so and exits 0. The address is never
  * printed, logged or stored.
  */
@@ -40,6 +42,9 @@ use Throwable;
 final class PricesReportProblems extends Command
 {
     public const string NOT_SET = 'PRICE_JOB_DISCORD_WEBHOOK_URL is not set; nothing was sent.';
+
+    /** The start of the line of a failed post, and the name of its log message. */
+    public const string FAILED = 'price_problem_report_failed';
 
     public const string LOCKED = 'Another price-job report is running; nothing was sent.';
 
@@ -79,7 +84,7 @@ final class PricesReportProblems extends Command
                     continue;
                 }
                 $text = sprintf(self::STARTED, $problem['sentence'], self::instant($now));
-                if (self::post($sender, $url, $text, $problem['key'], 'started') && ReportedPriceProblems::report($problem, $now, $db)) {
+                if ($this->post($sender, $url, $text, $problem['key'], 'started') && ReportedPriceProblems::report($problem, $now, $db)) {
                     $posted++;
                 } else {
                     $failed++;
@@ -90,7 +95,7 @@ final class PricesReportProblems extends Command
                     continue;
                 }
                 $text = sprintf(self::CLEARED, $report['sentence'], self::instant($report['reported_at']), self::instant($now));
-                if (self::post($sender, $url, $text, $report['key'], 'cleared') && ReportedPriceProblems::clear($report['id'], $now, $db)) {
+                if ($this->post($sender, $url, $text, $report['key'], 'cleared') && ReportedPriceProblems::clear($report['id'], $now, $db)) {
                     $cleared++;
                 } else {
                     $failed++;
@@ -105,8 +110,23 @@ final class PricesReportProblems extends Command
         return $failed === 0 ? self::SUCCESS : self::FAILURE;
     }
 
-    /** One attempt to post $text; whether Discord accepted it. A failure is logged without the address. */
-    private static function post(DeliverySender $sender, #[\SensitiveParameter] string $url, string $text, string $key, string $event): bool
+    /**
+     * The lines of a run's output that report a failed post, one per line: what the scheduler shows in its own output,
+     * because it keeps the output of the command it runs and shows none of it.
+     */
+    public static function failureLines(string $output): string
+    {
+        $lines = array_filter(preg_split('/\R/', $output) ?: [], fn (string $line): bool => str_starts_with($line, self::FAILED));
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * One attempt to post $text; whether Discord accepted it. A failure is logged without the address and printed as
+     * one line: the log message, the key, started or cleared, and the HTTP status or a short word (timeout,
+     * connection, refused, unresolvable, internal). Neither the address nor an exception's message is ever used.
+     */
+    private function post(DeliverySender $sender, #[\SensitiveParameter] string $url, string $text, string $key, string $event): bool
     {
         $exception = null;
         try {
@@ -123,7 +143,14 @@ final class PricesReportProblems extends Command
         if ($exception !== null) {
             $context['exception'] = $exception;
         }
-        Log::warning('price_problem_report_failed', $context);
+        Log::warning(self::FAILED, $context);
+
+        // The key is cut to one run of plain characters, so it can never break the line.
+        $word = $status !== null ? (string) $status : match ($context['error']) {
+            GuardError::BlockedAddress->value => 'refused',
+            default => (string) $context['error'],
+        };
+        $this->line(sprintf('%s key=%s event=%s status=%s', self::FAILED, (string) preg_replace('/[^A-Za-z0-9:._-]/', '_', $key), $event, $word));
 
         return false;
     }

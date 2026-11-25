@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Str;
 use Tests\Support\AlertRows;
 use Tests\Support\FakeHostResolver;
 
@@ -224,7 +225,7 @@ it('keeps a report open when its cleared message fails, and posts the cleared me
     pprAt('2026-10-13T00:00:00Z');
     [, , $cleared] = pprRun();
 
-    expect([$code, $output])->toBe([1, '{"posted":0,"cleared":0,"failed":1}'])
+    expect([$code, Str::afterLast($output, "\n")])->toBe([1, '{"posted":0,"cleared":0,"failed":1}'])
         ->and($tried)->toHaveCount(1)
         ->and($openAfterFailure)->toBe(['missing_day:2026-10-11'])
         ->and(AlertRows::logged('price_problem_report_failed')[0]['context'])->toBe(['key' => 'missing_day:2026-10-11', 'event' => 'cleared', 'status' => 500, 'error' => 'http_status'])
@@ -322,7 +323,7 @@ it('records nothing when a post fails, warns without the address, and posts on t
     pprAt('2026-10-14T00:00:00Z');
     [$codeNext, $outputNext, $postedNext] = pprRun();
 
-    expect([$code, $output])->toBe([1, '{"posted":0,"cleared":0,"failed":2}'])
+    expect([$code, Str::afterLast($output, "\n")])->toBe([1, '{"posted":0,"cleared":0,"failed":2}'])
         ->and($tried)->toHaveCount($requests)
         ->and($recordedAfterFailure)->toBe(0)
         ->and(array_column($warnings, 'level'))->toBe(['warning', 'warning'])

@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use App\Console\Commands\PricesReportProblems;
 use App\Domain\Alerts\Jobs\DeliverDue;
 use App\Domain\Alerts\Jobs\DispatchEvents;
 use App\Domain\Pricing\Jobs\IngestPending;
@@ -10,6 +11,7 @@ use App\Domain\Pricing\Models\IngestRunChunk;
 use App\Domain\Pricing\PricingConfig;
 use App\Jobs\ProbeJob;
 use Illuminate\Support\Facades\Schedule;
+use Illuminate\Support\Stringable;
 
 Schedule::job(new ProbeJob('scheduler'), PricingConfig::queue(), 'redis')->everyMinute()->name('pokeprices-probe');
 
@@ -40,5 +42,15 @@ Schedule::command('auth:clear-resets')->dailyAt('03:17')->timezone('UTC')->name(
 
 // The price-job report: hourly, a command the scheduler runs itself and not a queued job, so a stopped worker is still
 // reported. One Discord message when a problem starts and one when it clears. The overlap lock lasts 59 minutes at
-// most, so a run that was killed never holds back the next hour's.
-Schedule::command('pokeprices:prices:report-problems')->hourly()->withoutOverlapping(59)->name('pokeprices-price-problems');
+// most, so a run that was killed never holds back the next hour's. The scheduler keeps a command's output in a file and
+// shows none of it, so when the run fails (a post did) its failure lines are printed in the scheduler's own output.
+Schedule::command('pokeprices:prices:report-problems')
+    ->hourly()
+    ->withoutOverlapping(59)
+    ->onFailureWithOutput(function (Stringable $output): void {
+        $lines = PricesReportProblems::failureLines((string) $output);
+        if ($lines !== '') {
+            echo $lines.PHP_EOL;
+        }
+    })
+    ->name('pokeprices-price-problems');

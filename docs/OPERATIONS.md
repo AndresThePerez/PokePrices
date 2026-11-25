@@ -522,9 +522,23 @@ How to read them:
 - A post that fails (a timeout, a 429, a 5xx, an address the guard refuses) writes a
   `price_problem_report_failed` warning with the problem's key, `started` or `cleared`, the HTTP status
   and the error, records nothing, and is tried again the next hour: one attempt per problem per run. The
-  scheduler discards the output of the commands it runs, so that warning shows only when the command is
-  run by hand; after a scheduled run the scheduler's log says only that the command failed with exit
-  code 1.
+  scheduler keeps the output of the commands it runs in a file and shows none of it, except for this
+  command: when a run fails, the scheduler prints one line per failed post in its own output, which is the
+  log of the `scheduler` service (the stack's `logs` command for that service, on a dev machine and on the
+  server alike). It shows
+
+  ```text
+  price_problem_report_failed key=<key> event=<started|cleared> status=<status>
+  ```
+
+  with the problem's key, `started` or `cleared`, and the HTTP status (`429`, `500`), or a word when
+  there was none: `timeout`, `connection`, `refused` (the address guard refused the address or it is not
+  a Discord webhook address), `unresolvable` or `internal`. The line never holds the address. What to
+  do: a status of 4xx (other than 429) means Discord refused the message, so check that the webhook still
+  exists and that `PRICE_JOB_DISCORD_WEBHOOK_URL` is the whole address; `429` and `5xx` are Discord's and
+  clear on their own; `timeout` and `connection` point at the network of the host; `refused` points at
+  the variable (a wrong or truncated address). Nothing needs resetting: the next hour's run tries the
+  same posts again, and the lines stop when a run posts them all.
 - Delivery is at least once. A message Discord accepted whose answer was lost, or whose row could not be
   written, is posted again the next hour.
 
