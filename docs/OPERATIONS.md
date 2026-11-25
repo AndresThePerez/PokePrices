@@ -775,6 +775,17 @@ until PokéSearch answers again. `api/tests/Feature/Cards/CardLastGoodLimitTest.
 
 In dev the `api` service has a 512m memory limit (`compose.dev.yml`) where production has 384m (`deploy/stack.server.yml`); the repository records the raise to 512m but gives no reason for it.
 
+### A browser shows an old page
+
+The `web` container's nginx (`docker/nginx/pokeprices.conf`) sets the cache rules. The app's page (`/`, every
+client route such as `/about` or `/card/<id>`, and `index.html`) answers `Cache-Control: no-cache`: a browser
+keeps a copy but asks again on every visit, so a deploy shows at once and no hard refresh is needed. Vite's
+files under `/assets/` carry a content hash in the name, so they answer `public, max-age=31536000, immutable`;
+the favicon, `robots.txt` and the other loose files keep `max-age=3600`. `/v1/` answers keep the `Cache-Control`
+the API sets. The page also carries a `Content-Security-Policy-Report-Only` header: it blocks nothing, and a
+violation shows in the browser console. If it names the inline theme script, update the `sha256-` hash in the
+conf's second `map`.
+
 ## What never happens
 
 - **No raw file is deleted, moved or written.** The ingest, the replay and the map commands only read the

@@ -57,7 +57,7 @@ check "HSTS has no includeSubDomains (sibling subdomains are other apps)" sh -c 
 check "HSTS has no preload" sh -c "! grep -E '^[[:space:]]*add_header[[:space:]]' $CONF | grep -qi preload"
 check "Referrer-Policy is never no-referrer or strict-origin (Sanctum reads the same-origin Referer)" sh -c "! grep -Ei 'add_header[[:space:]]+Referrer-Policy' $CONF | grep -Eqi 'no-referrer|strict-origin'"
 check "CSP carries frame-ancestors 'none'" grep -Fq "frame-ancestors 'none'" "$CONF"
-check "CSP sets no script-src or style-src (deferred)" sh -c "! grep -Eq 'script-src|style-src' $CONF"
+check "the enforced CSP sets no script-src or style-src (the page's source policy is the report-only header)" sh -c "! grep -E '^[[:space:]]*add_header[[:space:]]+Content-Security-Policy[[:space:]]' $CONF | grep -Eq 'script-src|style-src'"
 
 # The rest of the conf is unchanged: the two static JSON bodies, the request-id lines, routing basics.
 check "503 problem body is byte-identical" grep -Fxq "        return 503 '{\"type\":\"https://pokeprices.andrestheperez.com/problems/api-unavailable\",\"title\":\"API Unavailable\",\"status\":503,\"request_id\":\"\$pp_request_id\"}';" "$CONF"
