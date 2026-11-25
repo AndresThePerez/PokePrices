@@ -115,6 +115,6 @@ final class DemoPublicReadsController
             throw new DemoUnavailable;
         }
 
-        return DemoAccount::user()?->id ?? throw new DemoUnavailable;
+        return DemoAccount::user()->id ?? throw new DemoUnavailable;
     }
 }
