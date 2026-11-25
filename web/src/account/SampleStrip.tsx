@@ -11,6 +11,13 @@ import DemoButton from './DemoButton';
 /** The strip's region name. */
 export const SAMPLE_LABEL = 'Sample data';
 
+/**
+ * The class of the wrapper a signed-out list page keeps through its loading line, its sample and
+ * its sign-in prompt: one viewport (svh) minimum, so the page is taller than the screen from the
+ * first frame and the footer below it never moves into view, whatever the sample's row count.
+ */
+export const SAMPLE_RESERVE = 'min-h-svh';
+
 export default function SampleStrip({ list }: { readonly list: 'watchlist' | 'portfolio' }) {
   return (
     <section aria-label={SAMPLE_LABEL} className="mt-6">

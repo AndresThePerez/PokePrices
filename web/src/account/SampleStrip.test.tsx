@@ -207,6 +207,57 @@ describe('the signed-out portfolio (sample)', () => {
   });
 });
 
+// The reserved size: a signed-out list page holds one viewport (min-h-svh) in one wrapper that
+// stays the same node through the loading line, the sample and the sign-in prompt, whatever the
+// row count, so the footer starts below the fold and nothing under the rows moves into view.
+describe('the signed-out list pages reserve one viewport', () => {
+  const PAGES = [
+    ['/watchlist', 'Watchlist'],
+    ['/portfolio', 'Portfolio'],
+  ] as const;
+
+  function reserved(): HTMLElement {
+    const found = main().querySelector<HTMLElement>('.min-h-svh');
+    if (found === null) throw new Error('no reserved wrapper');
+    return found;
+  }
+
+  it.each(PAGES)(
+    '%s: the loading line and the sample share one reserved wrapper',
+    async (path, name) => {
+      open(path, demoSampleRoutes());
+      const loading = reserved();
+      expect(within(loading).getByRole('status').textContent).toMatch(/^Loading the sample/);
+      await screen.findByRole('list', { name });
+      expect(reserved()).toBe(loading);
+      expect(within(loading).getByRole('region', { name: 'Sample data' })).toBeTruthy();
+      expect(within(loading).getByRole('list', { name })).toBeTruthy();
+    },
+  );
+
+  it.each(PAGES)(
+    '%s: the loading line and the sign-in prompt share one reserved wrapper',
+    async (path) => {
+      open(path, demoSampleUnavailableRoutes());
+      const loading = reserved();
+      expect(within(loading).getByRole('status').textContent).toMatch(/^Loading the sample/);
+      await screen.findByText(/^Sign in to keep a /);
+      expect(reserved()).toBe(loading);
+      expect(within(loading).getByText(/^Sign in to keep a /)).toBeTruthy();
+    },
+  );
+
+  it.each(PAGES)('%s: a signed-in page has no reserved wrapper', async (path, name) => {
+    open(path, {
+      'GET /v1/me': jsonResponse(signedInMe),
+      'GET /v1/watchlist': jsonResponse(watchlistBody()),
+      'GET /v1/portfolio': jsonResponse(portfolioBody()),
+    });
+    await screen.findByRole('list', { name });
+    expect(main().querySelector('.min-h-svh')).toBeNull();
+  });
+});
+
 describe('the sample strip (one component, both pages)', () => {
   it('is a labelled region, not a live region, with the same words on both pages', async () => {
     const words: string[] = [];

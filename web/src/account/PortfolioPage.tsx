@@ -39,7 +39,7 @@ import { PORTFOLIO_KEY, cardLabel, quantityOf, useSamplePortfolioQuery } from '.
 import { useAccountWrite, useWriteGuard } from './mutations';
 import RemovedLine from './RemovedLine';
 import { useRemoval } from './removal';
-import SampleStrip from './SampleStrip';
+import SampleStrip, { SAMPLE_RESERVE } from './SampleStrip';
 import { useReadOnly, useSession } from './session';
 
 const EMPTY = 'Your portfolio is empty. Open a card from Search and choose Add to portfolio.';
@@ -291,21 +291,28 @@ function Loaded({ body, readOnly }: { readonly body: PortfolioBody; readonly rea
  * Signed out: the demo's holdings, total and day's change under the sample strip, read from the
  * public route (no session, no cookie), as read-only rows. While it loads the page holds its
  * loading line; when the read fails (404 demo-unavailable included) or the demo holds nothing, the
- * visitor gets the sign-in prompt alone. The header's estimate is never touched.
+ * visitor gets the sign-in prompt alone. The header's estimate is never touched. All three states
+ * sit in one wrapper that holds one viewport (SampleStrip's SAMPLE_RESERVE), whatever the row
+ * count, so the footer starts below the fold and nothing moves into view when the rows or the
+ * prompt replace the loading line.
  */
 function SignedOutPortfolio() {
   const query = useSamplePortfolioQuery(true);
   const sample = query.data;
+  let content;
   if (sample !== undefined && sample.data.length > 0) {
-    return (
+    content = (
       <>
         <SampleStrip list="portfolio" />
         <Loaded body={sample} readOnly />
       </>
     );
+  } else if (sample !== undefined || query.error !== null) {
+    content = <SignedOutList list="portfolio" />;
+  } else {
+    content = <ListLoading>{SAMPLE_LOADING}</ListLoading>;
   }
-  if (sample !== undefined || query.error !== null) return <SignedOutList list="portfolio" />;
-  return <ListLoading>{SAMPLE_LOADING}</ListLoading>;
+  return <div className={SAMPLE_RESERVE}>{content}</div>;
 }
 
 export default function PortfolioPage() {

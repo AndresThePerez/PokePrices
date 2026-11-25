@@ -41,7 +41,7 @@ import { NO_PRICE, WATCHLIST_KEY, cardLabel, priceDays, useSampleWatchlistQuery 
 import { useAccountWrite } from './mutations';
 import RemovedLine from './RemovedLine';
 import { useRemoval } from './removal';
-import SampleStrip from './SampleStrip';
+import SampleStrip, { SAMPLE_RESERVE } from './SampleStrip';
 import { useReadOnly, useSession } from './session';
 
 const EMPTY = 'Your watchlist is empty. Open a card from Search and choose Add to watchlist.';
@@ -358,21 +358,27 @@ function Loaded({ body, access }: { readonly body: WatchlistBody; readonly acces
  * Signed out: the demo's watchlist under the sample strip, read from the public route (no session,
  * no cookie), as read-only rows. While it loads the page holds its loading line; when the read
  * fails (404 demo-unavailable included) or the demo holds nothing, the visitor gets the sign-in
- * prompt alone.
+ * prompt alone. All three states sit in one wrapper that holds one viewport (SampleStrip's
+ * SAMPLE_RESERVE), whatever the row count, so the footer starts below the fold and nothing moves
+ * into view when the rows or the prompt replace the loading line.
  */
 function SignedOutWatchlist() {
   const query = useSampleWatchlistQuery(true);
   const sample = query.data;
+  let content;
   if (sample !== undefined && sample.data.length > 0) {
-    return (
+    content = (
       <>
         <SampleStrip list="watchlist" />
         <Loaded body={sample} access="read-only" />
       </>
     );
+  } else if (sample !== undefined || query.error !== null) {
+    content = <SignedOutList list="watchlist" />;
+  } else {
+    content = <ListLoading>{SAMPLE_LOADING}</ListLoading>;
   }
-  if (sample !== undefined || query.error !== null) return <SignedOutList list="watchlist" />;
-  return <ListLoading>{SAMPLE_LOADING}</ListLoading>;
+  return <div className={SAMPLE_RESERVE}>{content}</div>;
 }
 
 export default function WatchlistPage() {
