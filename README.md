@@ -1,21 +1,61 @@
 # PokéPrices
 
-PokéPrices is a daily-close Pokémon card price tracker: search a card, see what it closed at, how
-that compares with the previous close and how its price has moved. Prices are collected once a day;
-each one is shown with its source and the day it is as of, and none is an intraday quote.
-
-- **The site:** <https://pokeprices.andrestheperez.com>
-- **The demo:** open the [home page](https://pokeprices.andrestheperez.com/) and press
-  `Try the read-only demo`. That signs the browser in to a shared account with a watchlist, a
-  portfolio and a sample alert, in which nothing can be changed. No address opens the demo by itself. The home page also shows a sample of the demo's collection under "See it working" with no sign-in: its portfolio total, three watched cards and an alert.
+PokéPrices is a Pokémon card price tracker, live at <https://pokeprices.andrestheperez.com>: search a card, see what it closed at, how that compares with the previous close and how its price has moved. Prices are collected once a day; each one is shown with its source and the day it is as of, and none is an intraday quote.
 
 PokéPrices is a personal portfolio project, not a business. It has no ads, no affiliate links and no paid features, and it sells no data. It exists to show how I build and run software.
 
 The code is published to be read, and all rights are reserved.
 
-![The PokéPrices home page: the card search box, the "Try the read-only demo" button, four example searches, six well-known cards as picture tiles and the start of the "Biggest moves vs previous close" strip](docs/media/home.png)
+## See it working
+
+You do not need an account. Open the [home page](https://pokeprices.andrestheperez.com/) and scroll to "See it working". The Watchlist, Portfolio and Alerts pages also open without signing in, and each says it shows sample data. For what needs a session, press `Try the read-only demo` on the home page. That signs the browser in to a shared account with a watchlist, a portfolio and a sample alert, in which nothing can be changed. No address opens the demo by itself. The home page also shows a sample of the demo's collection under "See it working" with no sign-in: its portfolio total, three watched cards and an alert.
+
+![The home page's "See it working" section: a sample portfolio with its total value and change, three watched cards with their prices, and one sample alert, each stamped as sample data](docs/media/home.png)
 
 ![The card page of Lugia from Neo Genesis: the card's picture, its market price with the change vs the previous close, the lowest listing, the line "as of 2026-11-24 from TCGCSV (daily close)" and the price history chart](docs/media/card-page.png)
+
+![The movers board, "Biggest moves": the six largest rises against the previous close, each with the card's picture, its price and its change](docs/media/movers.png)
+
+![The sample portfolio: a note that it is sample data, the total value with its change vs the previous close, and five cards with their prices and quantities](docs/media/portfolio.png)
+
+![The sample alert: a note that it is sample data, then an alert at 10% on one card of the demo's watchlist](docs/media/alerts.png)
+
+## What it is built with
+
+- **API:** PHP 8.5 and Laravel 13, with Fortify and Sanctum for accounts and sessions, served under `/v1`. Tests run with Pest.
+- **Web:** React 19.3.0, TypeScript 6.0.3, Vite 8.3.4 and Tailwind CSS 4.3.3, with TanStack Query 5.104.2 for reads and lightweight-charts 5.2.1 for the price chart. Tests run with Vitest 5.0.3.
+- **Data:** PostgreSQL 17 for prices and accounts; two Redis 8 instances, one for the job queue and one for the cache.
+- **Run:** Docker Compose, with the built app served by unprivileged nginx. Node 22 builds the web app.
+- **Where the data comes from:** TCGplayer market prices, collected once a day through TCGCSV; card names and pictures from the PokéSearch catalogue, a separate project.
+
+## How a price gets to the page
+
+```mermaid
+flowchart LR
+    collection["Daily collection: a day folder of TCGCSV prices, marked SUCCESS"]
+    scheduler["Scheduler: pokeprices-ingest-pending, hourly at :40"]
+    queue["Queue: redis-queue"]
+    ingest["Ingest: StartDayIngest and IngestChunk jobs on the worker"]
+    productmap["Product map: table source_product_map"]
+    rollup["Rollup: FinalizeDay builds price_daily, price_latest and price_movers"]
+    postgres["PostgreSQL: price_points and the rollup tables"]
+    api["API: Laravel, /v1"]
+    catalogue["Catalogue: PokéSearch"]
+    cache["Cache: redis-cache"]
+    page["Page: the React app"]
+    collection --> scheduler
+    scheduler --> queue
+    queue --> ingest
+    productmap --> ingest
+    ingest --> rollup
+    rollup --> postgres
+    postgres --> api
+    catalogue --> cache
+    cache --> api
+    api --> page
+```
+
+The collector writes a day folder; its code is not in this repository. The hourly scan at :40 queues an ingest for each new day. The product map says which card variant each marketplace product belongs to. When every chunk of a day is in, the rollup writes the day's closes and the movers board. The API reads those tables, and reads card names and pictures from the catalogue through the cache.
 
 ## What is interesting
 
@@ -50,25 +90,23 @@ Built by [Andres Perez](https://andrestheperez.com).
 
 ## In this repository
 
-PokéPrices shows daily-close Pokémon card prices on top of the PokéSearch card catalogue. Every
-price shows its source and the "as of" date of the close it came from. There are no intraday
-quotes: a price changes once a day, after that day's close is collected.
+The card catalogue itself lives in PokéSearch; this repository holds the prices, the accounts and the alerts built on top of it.
 
 ## Layout
 
 - `api/`: the Laravel 13 API, served under `/v1`.
 - `web/`: the single-page app (React 19 + Vite + TypeScript + Tailwind v4).
 - `compose.dev.yml`: the whole development runtime.
-- `gates/`: the phase manifest and its freeze records.
-- `scripts/`: the scorecard, the verdict and the single-gate scripts.
+- `gates/`: the list of checks `make gates` runs, with the records that pin their settings so they are not loosened by accident.
+- `scripts/`: the script that sums the gate results into a scorecard, the one that turns a scorecard into a pass or fail for a phase, and one script per gate.
 
 ## Development
 
 ```sh
 make init                                  # bring up the core services, install dependencies, create api/.env once
 make test                                  # unit suites: Pest, Vitest, tsc, eslint; then openapi/api.json and web/src/api/schema.d.ts must equal a fresh export and a fresh generation; CI runs exactly this on every non-draft PR
-make gates                                 # run every gate in gates/manifest-P0.json (loop step, not CI)
-make verdict FINDINGS=<path/to/findings.json>   # phase verdict (loop step, not CI)
+make gates                                 # run every gate in gates/manifest-P0.json (the full check run; not part of CI)
+make verdict FINDINGS=<path/to/findings.json>   # turn a scorecard into a pass or fail for a phase (not part of CI)
 make down                                  # stop the stack (volumes are kept)
 ```
 
