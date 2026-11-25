@@ -6,6 +6,7 @@ namespace App\Actions\Fortify;
 
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
@@ -33,7 +34,7 @@ final class ResetUserPassword implements ResetsUserPasswords
         $valid = Validator::make($input, ['password' => $this->passwordRules()])->validate();
 
         DB::transaction(function () use ($user, $valid): void {
-            $user->forceFill(['password' => $valid['password']])->save();
+            $user->forceFill(['password' => Hash::make($valid['password'])])->save();
             DB::table('sessions')->where('user_id', $user->getKey())->delete();
         });
     }

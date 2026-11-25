@@ -8,6 +8,7 @@ use App\Domain\Accounts\InviteCode;
 use App\Models\User;
 use Closure;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Laravel\Fortify\Contracts\CreatesNewUsers;
@@ -34,7 +35,7 @@ final class CreateNewUser implements CreatesNewUsers
 
         $user = new User;
         try {
-            $user->forceFill(['email' => $valid['email'], 'password' => $valid['password']])->save();
+            $user->forceFill(['email' => $valid['email'], 'password' => Hash::make($valid['password'])])->save();
         } catch (UniqueConstraintViolationException) {
             throw ValidationException::withMessages(['email' => ['The email has already been taken.']]);
         }

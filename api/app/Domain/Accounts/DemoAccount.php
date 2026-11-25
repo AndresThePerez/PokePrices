@@ -189,7 +189,7 @@ final class DemoAccount
                 throw new RuntimeException("The demo email {$email} belongs to an account that is not the demo; set DEMO_EMAIL to another address.");
             }
             $demo = new User;
-            $demo->forceFill(['email' => $email, 'password' => self::password(), 'is_demo' => true, 'email_verified_at' => now()]);
+            $demo->forceFill(['email' => $email, 'password' => Hash::make(self::password()), 'is_demo' => true, 'email_verified_at' => now()]);
         } else {
             $demo->forceFill([
                 'email' => $email,
@@ -200,7 +200,7 @@ final class DemoAccount
             ]);
             $configured = self::configuredPassword();
             if ($configured !== null && ! Hash::check($configured, $demo->password)) {
-                $demo->forceFill(['password' => $configured]);
+                $demo->forceFill(['password' => Hash::make($configured)]);
             }
         }
         $demo->save();
