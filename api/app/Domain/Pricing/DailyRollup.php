@@ -54,15 +54,10 @@ final class DailyRollup
         $source = PricingConfig::source();
         $days = [$from->format('Y-m-d'), $to->format('Y-m-d')];
 
-        $db->statement(<<<'SQL'
+        $observed = ObservedRows::condition('p', 'x.run_day');
+        $db->statement(<<<SQL
             WITH params AS (
                 SELECT ?::text AS source, ?::date AS from_day, ?::date AS to_day, ?::integer AS cap, ?::date AS run_day
-            ),
-            ok_runs AS (
-                SELECT DISTINCT r.day, r.marker
-                FROM ingest_runs r, params x
-                WHERE r.source = x.source AND r.status = 'ok' AND r.marker IS NOT NULL
-                  AND r.day BETWEEN x.from_day AND x.to_day
             ),
             obs AS (
                 SELECT p.variant_key, p.source, p.day, p.series_epoch, p.market, p.observed_at,
@@ -73,7 +68,7 @@ final class DailyRollup
                 WHERE p.source = x.source AND p.market IS NOT NULL
                   AND p.observed_at >= x.from_day::timestamp AT TIME ZONE 'UTC'
                   AND p.observed_at < (x.to_day + 1)::timestamp AT TIME ZONE 'UTC'
-                  AND (p.day = x.run_day OR (p.day, p.observed_at) IN (SELECT o.day, o.marker FROM ok_runs o))
+                  AND {$observed}
             ),
             real_rows AS (
                 SELECT o.variant_key, o.source, o.day, o.series_epoch,
@@ -136,7 +131,7 @@ final class DailyRollup
                    price_daily.n_obs, price_daily.is_filled, price_daily.filled_from, price_daily.as_of)
                 IS DISTINCT FROM (EXCLUDED.series_epoch, EXCLUDED.open, EXCLUDED.high, EXCLUDED.low, EXCLUDED.close,
                    EXCLUDED.n_obs, EXCLUDED.is_filled, EXCLUDED.filled_from, EXCLUDED.as_of)
-            SQL, [$source, $days[0], $days[1], $cap, $day]);
+            SQL, [$source, $days[0], $days[1], $cap, $day, $source]);
 
         $rows = $db->selectOne('SELECT count(*) AS n FROM price_daily WHERE source = ? AND day BETWEEN ?::date AND ?::date', [$source, ...$days], false);
 

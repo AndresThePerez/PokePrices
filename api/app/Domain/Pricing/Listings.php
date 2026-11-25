@@ -16,6 +16,11 @@ use Illuminate\Support\Facades\DB;
  * - A variant without a close: the low of its newest observation, with that observation's day and marker, when it is
  *   above zero; the variant still has no price.
  *
+ * Only rows ObservedRows counts are read (an `ok` run backs their day and marker, or their day has a running run), the
+ * same rows DailyRollup reads, so a row a failed or superseded run left behind is never a listing. A row an `ok` run
+ * wrote itself is read too: an ingest writes its rows at its own day and marker, so this adds no row the ingest writes,
+ * and it keeps rows written by hand against an existing `ok` run readable.
+ *
  * A low that is null or 0.00 is no listing: lowest is null and the market is not thin. All variants are read with one
  * statement, one primary-key probe per variant and monthly partition, so a card costs one query whatever its size.
  */
@@ -42,7 +47,9 @@ final class Listings
             ];
         }
 
-        $found = DB::select(<<<'SQL'
+        $observed = ObservedRows::condition('p', ObservedRows::RUNNING_DAY);
+        $source = PricingConfig::source();
+        $found = DB::select(<<<SQL
             SELECT v.variant_key,
                    CASE WHEN o.low > 0 THEN o.low::text END AS lowest,
                    coalesce(o.low > 0 AND v.close < o.low * ?::numeric, false) AS thin,
@@ -54,10 +61,12 @@ final class Listings
                 FROM price_points p
                 WHERE p.variant_key = v.variant_key AND p.source = ?
                   AND p.observed_at <= coalesce(v.as_of, 'infinity'::timestamptz)
+                  AND ({$observed}
+                       OR p.ingest_run_id IN (SELECT r.id FROM ingest_runs r WHERE r.source = ? AND r.status = 'ok'))
                 ORDER BY p.observed_at DESC
                 LIMIT 1
             ) o ON v.as_of IS NULL OR o.observed_at = v.as_of
-            SQL, [PricingConfig::THIN_MARKET_RATIO, json_encode($rows, JSON_THROW_ON_ERROR), PricingConfig::source()]);
+            SQL, [PricingConfig::THIN_MARKET_RATIO, json_encode($rows, JSON_THROW_ON_ERROR), $source, $source, $source, $source]);
 
         $listings = [];
         foreach ($found as $row) {
