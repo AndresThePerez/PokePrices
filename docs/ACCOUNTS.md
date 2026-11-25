@@ -200,6 +200,23 @@ password, two-factor setup, the confirm-password prompt, account deletion and ch
   account control on any variant (holding the space of one Add row) until the session and the lists have answered, then shows
   the list lines without a write control, so no Add button shows at any moment. Only a tab with no such cookie
   and nothing cached shows the Add buttons.
+- **Public sample reads.** A signed-out visitor can see the demo's lists as sample data without entering the demo.
+  Three public `GET` routes answer with no session and no cookie (no `Set-Cookie`, no `sessions` row), and the same
+  body for every caller, signed in or not:
+  - `GET /v1/demo/watchlist`: the demo's watchlist, in exactly the shape `GET /v1/watchlist` answers the demo;
+  - `GET /v1/demo/portfolio`: the demo's portfolio, in exactly the shape `GET /v1/portfolio` answers the demo, with
+    its total and the day's change in `meta`;
+  - `GET /v1/demo/alerts`: the demo's alert, sample delivered message and sample signed payload, in exactly the shape
+    `GET /v1/demo/samples` answers the demo. The payload is signed with the published sample secret
+    (`DemoSamples::KEY` in `api/app/Domain/Alerts/DemoSamples.php`), which belongs to no account and is never read
+    from the environment.
+
+  No answer carries the demo's email, user id, a webhook address or a stored secret. Prices come with their source
+  and an "as of" date, as on the signed-in pages. They answer `404` with the problem type `demo-unavailable` when the
+  demo is disabled or has not been seeded. They share the guest read limit `public-read` (120 a minute per IP) and the
+  daily price reads' cache policy (`public, max-age=300, stale-while-revalidate=600`, an ETag, `304` on a matching
+  `If-None-Match`): the demo's rows are seeded and their closes change at most once per ingested day. While
+  PokéSearch is unavailable the card names come from the last good copy and the answer is `no-store`.
 - **Limits.** The entry is 10 a minute per IP; the demo's account API is 30 a minute keyed by IP, so one visitor
   cannot spend it for everyone. Both are global on the dev topology (see [Rate limits](#rate-limits)).
 
@@ -326,7 +343,7 @@ from before accounts; the account tiers are defined in `api/config/accounts.php`
 
 | Limiter | Per minute | Keyed by | Where |
 |---|---|---|---|
-| `public-read` | 120 | IP | the public price and card reads |
+| `public-read` | 120 | IP | the public price and card reads, and the demo's three public sample reads |
 | `search` | 60 | IP | card search |
 | `login` | 5 | the lower-cased email and the IP | `POST /login` |
 | `login-address` | 20 | IP, across all emails | `POST /login`, after `login`: every attempt it lets through counts, a successful sign-in too; one `login` refuses does not. The two-factor challenge and the demo button are not counted |

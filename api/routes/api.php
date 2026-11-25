@@ -6,6 +6,7 @@ use App\Http\Controllers\AlertController;
 use App\Http\Controllers\CardController;
 use App\Http\Controllers\CardPricesController;
 use App\Http\Controllers\CardSearchController;
+use App\Http\Controllers\DemoPublicReadsController;
 use App\Http\Controllers\DemoSamplesController;
 use App\Http\Controllers\DemoSessionController;
 use App\Http\Controllers\MeController;
@@ -101,6 +102,15 @@ Route::middleware([
 Route::post('/demo/session', DemoSessionController::class)
     ->middleware([ThrottleBeforeSession::class.':demo-session', EnsureFrontendRequestsAreStateful::class, NoStore::class])
     ->name('demo.session');
+
+// The read-only demo's watchlist, portfolio and alert sample for a signed-out visitor: outside the account group and
+// any session or stateful middleware (no cookie, no sessions row), the guest read limit, and the daily price reads'
+// cache policy, since the demo's rows are seeded and their closes change at most once per ingested day.
+Route::middleware(['throttle:public-read', 'conditional-get:history'])->group(function (): void {
+    Route::get('/demo/watchlist', [DemoPublicReadsController::class, 'watchlist'])->name('demo.watchlist.public');
+    Route::get('/demo/portfolio', [DemoPublicReadsController::class, 'portfolio'])->name('demo.portfolio.public');
+    Route::get('/demo/alerts', [DemoPublicReadsController::class, 'alerts'])->name('demo.alerts.public');
+});
 
 // Routes that call PokéSearch; the contract documents their 503 upstream-unavailable and 502 upstream-contract.
 Route::group(['pokesearch' => true], function (): void {

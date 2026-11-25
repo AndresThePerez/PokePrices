@@ -362,6 +362,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/demo/watchlist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the demo's watchlist
+         * @description The demo account's watchlist in exactly the shape GET /v1/watchlist answers the signed-in demo: each variant with its card's name from the PokéSearch catalog and the card page's price block (the newest daily close from TCGplayer market prices via TCGCSV with source, feed, day and as_of; price is null when the collected snapshots hold no close for it), and the demo's alert threshold. Public: no session, no cookie, and the same answer for every caller. A degraded answer (meta.degraded, while PokéSearch is unavailable) is never cached. When the demo is switched off or has not been seeded, the answer is 404 demo-unavailable.
+         */
+        get: operations["getDemoWatchlist"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/demo/portfolio": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the demo's portfolio
+         * @description The demo account's holdings in exactly the shape GET /v1/portfolio answers the signed-in demo: each with its quantity, card name and price block from TCGplayer market prices via TCGCSV, value (quantity × close, null without a close), and meta with total_value (an estimate at daily-close market prices, not a sale value), the change against the previous close (change, change_pct), priced, unpriced, no_previous_close, first_day and last_day, as GET /v1/portfolio describes them. Every amount is a decimal string computed in Postgres numeric. Public: no session, no cookie, and the same answer for every caller. A degraded answer is never cached. When the demo is switched off or has not been seeded, the answer is 404 demo-unavailable.
+         */
+        get: operations["getDemoPortfolio"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/demo/alerts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Read the demo's alert sample
+         * @description The demo account's seeded alert (the watchlist card and threshold), a sample delivered alert email (subject and text) and a sample signed webhook delivery (price.moved: the exact body, the webhook-id, webhook-timestamp and webhook-signature headers and the webhook's url_hint), in exactly the shape GET /v1/demo/samples answers the signed-in demo. sample_secret is the fixed, published sample signing secret the signature verifies with; it belongs to no account and is never read from the environment. Nothing is ever sent for the demo. alert, message and webhook are null when the demo has none. Public: no session, no cookie, and the same answer for every caller. When the demo is switched off or has not been seeded, the answer is 404 demo-unavailable.
+         */
+        get: operations["getDemoAlerts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/prices/freshness": {
         parameters: {
             query?: never;
@@ -2390,6 +2450,234 @@ export interface operations {
             503: {
                 headers: {
                     /** @description Seconds before PokéSearch is worth asking again. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getDemoWatchlist: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of `WatchlistItemResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["WatchlistItemResource"][];
+                        meta: {
+                            count: number;
+                            limit: number;
+                            degraded: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Not Modified: the If-None-Match validator matches the current representation. */
+            304: {
+                headers: {
+                    /** @description The validator of the current representation. */
+                    ETag: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Too Many Requests: the rate limit of this route is spent. */
+            429: {
+                headers: {
+                    /** @description Seconds until the limit resets. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503). */
+            503: {
+                headers: {
+                    /** @description Seconds before the route is worth asking again. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getDemoPortfolio: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Array of `HoldingResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["HoldingResource"][];
+                        meta: {
+                            count: number;
+                            limit: number;
+                            total_value: string | null;
+                            priced: number;
+                            unpriced: number;
+                            change: string | null;
+                            change_pct: string | null;
+                            no_previous_close: number;
+                            first_day: string | null;
+                            last_day: string | null;
+                            source: string;
+                            feed: string;
+                            /** @constant */
+                            basis: "market";
+                            /** @constant */
+                            currency: "USD";
+                            degraded: boolean;
+                        };
+                    };
+                };
+            };
+            /** @description Not Modified: the If-None-Match validator matches the current representation. */
+            304: {
+                headers: {
+                    /** @description The validator of the current representation. */
+                    ETag: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Too Many Requests: the rate limit of this route is spent. */
+            429: {
+                headers: {
+                    /** @description Seconds until the limit resets. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description An error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503). */
+            503: {
+                headers: {
+                    /** @description Seconds before the route is worth asking again. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+        };
+    };
+    getDemoAlerts: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description `DemoSamplesResource` */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["DemoSamplesResource"];
+                    };
+                };
+            };
+            /** @description Not Modified: the If-None-Match validator matches the current representation. */
+            304: {
+                headers: {
+                    /** @description The validator of the current representation. */
+                    ETag: string;
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description An error */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description Too Many Requests: the rate limit of this route is spent. */
+            429: {
+                headers: {
+                    /** @description Seconds until the limit resets. */
+                    "Retry-After": number;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description An error */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["Problem"];
+                };
+            };
+            /** @description A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503). */
+            503: {
+                headers: {
+                    /** @description Seconds before the route is worth asking again. */
                     "Retry-After": number;
                     [name: string]: unknown;
                 };

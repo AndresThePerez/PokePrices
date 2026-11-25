@@ -27,6 +27,10 @@
             "description": "The signed-in Pok\u00e9Prices account (cookie session; sign in through the session endpoints first)."
         },
         {
+            "name": "Demo",
+            "description": "The read-only demo account's sample data, public and the same for every visitor."
+        },
+        {
             "name": "Cards",
             "description": "Pok\u00e9mon cards from the Pok\u00e9Search catalog."
         }
@@ -2423,6 +2427,412 @@
                         "headers": {
                             "Retry-After": {
                                 "description": "Seconds before Pok\u00e9Search is worth asking again.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/demo/watchlist": {
+            "get": {
+                "operationId": "getDemoWatchlist",
+                "description": "The demo account's watchlist in exactly the shape GET /v1/watchlist answers the signed-in demo: each variant with its card's name from the Pok\u00e9Search catalog and the card page's price block (the newest daily close from TCGplayer market prices via TCGCSV with source, feed, day and as_of; price is null when the collected snapshots hold no close for it), and the demo's alert threshold. Public: no session, no cookie, and the same answer for every caller. A degraded answer (meta.degraded, while Pok\u00e9Search is unavailable) is never cached. When the demo is switched off or has not been seeded, the answer is 404 demo-unavailable.",
+                "summary": "Read the demo's watchlist",
+                "tags": [
+                    "Demo"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `WatchlistItemResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/WatchlistItemResource"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "count": {
+                                                    "type": "integer"
+                                                },
+                                                "limit": {
+                                                    "type": "integer"
+                                                },
+                                                "degraded": {
+                                                    "type": "boolean"
+                                                }
+                                            },
+                                            "required": [
+                                                "count",
+                                                "limit",
+                                                "degraded"
+                                            ],
+                                            "additionalProperties": false
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ],
+                                    "additionalProperties": false
+                                }
+                            }
+                        }
+                    },
+                    "304": {
+                        "description": "Not Modified: the If-None-Match validator matches the current representation.",
+                        "headers": {
+                            "ETag": {
+                                "description": "The validator of the current representation.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "An error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests: the rate limit of this route is spent.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds until the limit resets.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds before the route is worth asking again.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/demo/portfolio": {
+            "get": {
+                "operationId": "getDemoPortfolio",
+                "description": "The demo account's holdings in exactly the shape GET /v1/portfolio answers the signed-in demo: each with its quantity, card name and price block from TCGplayer market prices via TCGCSV, value (quantity \u00d7 close, null without a close), and meta with total_value (an estimate at daily-close market prices, not a sale value), the change against the previous close (change, change_pct), priced, unpriced, no_previous_close, first_day and last_day, as GET /v1/portfolio describes them. Every amount is a decimal string computed in Postgres numeric. Public: no session, no cookie, and the same answer for every caller. A degraded answer is never cached. When the demo is switched off or has not been seeded, the answer is 404 demo-unavailable.",
+                "summary": "Read the demo's portfolio",
+                "tags": [
+                    "Demo"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Array of `HoldingResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/HoldingResource"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "count": {
+                                                    "type": "integer"
+                                                },
+                                                "limit": {
+                                                    "type": "integer"
+                                                },
+                                                "total_value": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "priced": {
+                                                    "type": "integer"
+                                                },
+                                                "unpriced": {
+                                                    "type": "integer"
+                                                },
+                                                "change": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "change_pct": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "no_previous_close": {
+                                                    "type": "integer"
+                                                },
+                                                "first_day": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "last_day": {
+                                                    "type": [
+                                                        "string",
+                                                        "null"
+                                                    ]
+                                                },
+                                                "source": {
+                                                    "type": "string"
+                                                },
+                                                "feed": {
+                                                    "type": "string"
+                                                },
+                                                "basis": {
+                                                    "type": "string",
+                                                    "const": "market"
+                                                },
+                                                "currency": {
+                                                    "type": "string",
+                                                    "const": "USD"
+                                                },
+                                                "degraded": {
+                                                    "type": "boolean"
+                                                }
+                                            },
+                                            "required": [
+                                                "count",
+                                                "limit",
+                                                "total_value",
+                                                "priced",
+                                                "unpriced",
+                                                "change",
+                                                "change_pct",
+                                                "no_previous_close",
+                                                "first_day",
+                                                "last_day",
+                                                "source",
+                                                "feed",
+                                                "basis",
+                                                "currency",
+                                                "degraded"
+                                            ],
+                                            "additionalProperties": false
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ],
+                                    "additionalProperties": false
+                                }
+                            }
+                        }
+                    },
+                    "304": {
+                        "description": "Not Modified: the If-None-Match validator matches the current representation.",
+                        "headers": {
+                            "ETag": {
+                                "description": "The validator of the current representation.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "An error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests: the rate limit of this route is spent.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds until the limit resets.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "An error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds before the route is worth asking again.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/demo/alerts": {
+            "get": {
+                "operationId": "getDemoAlerts",
+                "description": "The demo account's seeded alert (the watchlist card and threshold), a sample delivered alert email (subject and text) and a sample signed webhook delivery (price.moved: the exact body, the webhook-id, webhook-timestamp and webhook-signature headers and the webhook's url_hint), in exactly the shape GET /v1/demo/samples answers the signed-in demo. sample_secret is the fixed, published sample signing secret the signature verifies with; it belongs to no account and is never read from the environment. Nothing is ever sent for the demo. alert, message and webhook are null when the demo has none. Public: no session, no cookie, and the same answer for every caller. When the demo is switched off or has not been seeded, the answer is 404 demo-unavailable.",
+                "summary": "Read the demo's alert sample",
+                "tags": [
+                    "Demo"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "`DemoSamplesResource`",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/DemoSamplesResource"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ],
+                                    "additionalProperties": false
+                                }
+                            }
+                        }
+                    },
+                    "304": {
+                        "description": "Not Modified: the If-None-Match validator matches the current representation.",
+                        "headers": {
+                            "ETag": {
+                                "description": "The validator of the current representation.",
+                                "required": true,
+                                "schema": {
+                                    "type": "string"
+                                }
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "An error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "429": {
+                        "description": "Too Many Requests: the rate limit of this route is spent.",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds until the limit resets.",
+                                "required": true,
+                                "schema": {
+                                    "type": "integer"
+                                }
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "An error",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "A store this route counts or caches in did not answer (problem type https://pokeprices.andrestheperez.com/problems/http-503).",
+                        "content": {
+                            "application/problem+json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/Problem"
+                                }
+                            }
+                        },
+                        "headers": {
+                            "Retry-After": {
+                                "description": "Seconds before the route is worth asking again.",
                                 "required": true,
                                 "schema": {
                                     "type": "integer"

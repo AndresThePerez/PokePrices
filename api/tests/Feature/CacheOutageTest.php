@@ -210,5 +210,5 @@ it('documents the 503 http-503 with Retry-After on every rate-limited operation 
     }
 
     expect($unlimited)->toBe(['getReady'])
-        ->and($limited)->toBe(24);
+        ->and($limited)->toBe(27);
 });
