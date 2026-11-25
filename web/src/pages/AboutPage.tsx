@@ -1,5 +1,5 @@
-// The About page (/about): what PokéPrices is, where its prices come from, who built it, the
-// source, the affiliation disclaimer, the privacy paragraph and the contact link. It shows no
+// The About page (/about): what PokéPrices is, where its prices come from, that it is a personal
+// portfolio project, who built it, the source, the affiliation disclaimer, the privacy paragraph and the contact link. It shows no
 // price and sends no request. The privacy paragraph states only what the code does.
 import { useId, type ReactNode } from 'react';
 import { TEXT_LINK } from '../ui/classes';
@@ -36,6 +36,16 @@ export default function AboutPage() {
           </a>
           , which publishes them once a day. Thank you to TCGCSV for making the price data
           available. Card names, details and pictures come from a card catalogue.
+        </p>
+      </Section>
+      <Section title="A personal portfolio project, not a business">
+        <p className="mt-2 text-base">
+          PokéPrices is a personal portfolio project, not a business. It has no ads, no affiliate
+          links and no paid features, and it sells no data. It exists to show how I build and run
+          software.
+        </p>
+        <p className="mt-2 text-base">
+          The code is published to be read, and all rights are reserved.
         </p>
       </Section>
       <Section title="Who built it">

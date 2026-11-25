@@ -9,6 +9,10 @@ each one is shown with its source and the day it is as of, and none is an intrad
   `Try the read-only demo`. That signs the browser in to a shared account with a watchlist, a
   portfolio and a sample alert, in which nothing can be changed. No address opens the demo by itself.
 
+PokéPrices is a personal portfolio project, not a business. It has no ads, no affiliate links and no paid features, and it sells no data. It exists to show how I build and run software.
+
+The code is published to be read, and all rights are reserved.
+
 ![The PokéPrices home page: the card search box, the "Try the read-only demo" button, four example searches, six well-known cards as picture tiles and the start of the "Biggest moves vs previous close" strip](docs/media/home.png)
 
 ![The card page of Lugia from Neo Genesis: the card's picture, its market price with the change vs the previous close, the lowest listing, the line "as of 2026-11-24 from TCGCSV (daily close)" and the price history chart](docs/media/card-page.png)

@@ -13,6 +13,9 @@ const DISCLAIMER =
 const PRIVACY =
   'Browsing prices sets no cookies. Opening a sign-in or account page (sign-in, account, watchlist, portfolio, alerts), signing in or trying the demo sets two: a session cookie, which keeps you signed in once you are, and a security token that protects the site’s forms. An account stores its email address, a hash of its password, its two-factor setting, its watchlist and portfolio, its alert settings and webhooks, a record of the alerts sent to it, and for each signed-in session its IP address, browser and last activity. You can download that data or delete your account on the Account page. Display settings stay in your browser. Card pictures load from a third-party image host, which receives your browser’s request for each picture. The site is served through Cloudflare, which carries every request on its way to PokéPrices.';
 
+const PROJECT_STATEMENT =
+  'PokéPrices is a personal portfolio project, not a business. It has no ads, no affiliate links and no paid features, and it sells no data. It exists to show how I build and run software.';
+
 function visit(path: string): void {
   window.history.replaceState(null, '', path);
 }
@@ -89,6 +92,23 @@ describe('the About page', () => {
     visit('/about');
     render(<App />);
     expect(within(section('Privacy')).getByText(PRIVACY).tagName).toBe('P');
+  });
+
+  it('says in its own section that it is a personal portfolio project, not a business, word for word', () => {
+    stubFetch(() => new Error('no request expected'));
+    visit('/about');
+    render(<App />);
+    const project = section('A personal portfolio project, not a business');
+    expect(within(project).getByText(PROJECT_STATEMENT).tagName).toBe('P');
+  });
+
+  it('says the code is published to be read and all rights are reserved', () => {
+    stubFetch(() => new Error('no request expected'));
+    visit('/about');
+    render(<App />);
+    const text = section('A personal portfolio project, not a business').textContent;
+    expect(text).toContain('published to be read');
+    expect(text).toContain('all rights are reserved');
   });
 
   it('links to the contact website and has no mailto link or email address', () => {

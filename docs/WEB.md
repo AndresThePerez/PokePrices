@@ -193,7 +193,9 @@ prices get into the database is in [`OPERATIONS.md`](OPERATIONS.md).
 
   The messages themselves, who gets them and the delivery rules are in [`ALERTS.md`](ALERTS.md).
 - **`/about`.** `About`: what PokéPrices is (daily closes from TCGplayer, collected once a day, not a running
-  quote), a linked thank-you to TCGCSV (`https://tcgcsv.com`) as the source of the price data, who built it
+  quote), a linked thank-you to TCGCSV (`https://tcgcsv.com`) as the source of the price data, a section
+  saying it is a personal portfolio project and not a business (no ads, no affiliate links, no paid
+  features, no data sold; the code is published to be read and all rights are reserved), who built it
   with a link to the source code on GitHub, the affiliation disclaimer (not affiliated with or endorsed by
   Nintendo, The Pokémon Company, Game Freak, Creatures or TCGplayer; card images and names belong to their
   owners), a privacy paragraph (the cookies, what an account stores, the third-party image host and
