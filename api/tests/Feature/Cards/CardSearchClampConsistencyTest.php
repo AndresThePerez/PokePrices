@@ -118,13 +118,13 @@ it('answers page 54 with its rows, in two calls, when the result grows between t
         ->and(consistAsked())->toBe(['4800', '54']);
 });
 
-it('answers the 503 problem in one call when the out-of-range entry is cached and the last-page entry was refreshed with fewer pages', function (): void {
+it('answers the 503 problem in two calls when the last-page entry was refreshed with fewer pages and the out-of-range read is fresh', function (): void {
     consistFake(consistBody(1286, 54));
     $this->getJson('/v1/cards?q=card&page=4800')->assertOk();
     expect(consistAsked())->toBe(['4800', '54']);
 
-    // The last page's entry ends its window and is filled again from a catalogue that now holds 10 pages; the
-    // out-of-range entry, still in its window, says 54.
+    // The last page's entry ends its window and is filled again from a catalogue whose page 54 now says 10 pages;
+    // the out-of-range answer is never stored, so it is read again and the two calls agree with the catalogue.
     $segment = app(CatalogRepository::class)->seedRef()->segment();
     Cache::store(CatalogRepository::STORE)->forget("catalog:v1:search:{$segment}:".sha1('card|54|'));
     consistFake(['total' => 240, 'page' => 54, 'pages' => 10, 'page_size' => 24, 'took_ms' => 3, 'results' => []]);
@@ -132,7 +132,7 @@ it('answers the 503 problem in one call when the out-of-range entry is cached an
     $response = $this->getJson('/v1/cards?q=card&page=4800');
 
     consistExpectUnavailable($response);
-    expect(consistAsked())->toBe(['54']);
+    expect(consistAsked())->toBe(['4800', '54']);
 });
 
 it('answers the 503 problem in one call when the catalogue names page 0 of a result with pages', function (): void {

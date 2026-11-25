@@ -113,7 +113,7 @@ it('clamps with the page size the request names', function (): void {
         ->and(Http::recorded())->toHaveCount(2);
 });
 
-it('answers a cached out-of-range page from the cache, with no catalogue call', function (): void {
+it('answers an out-of-range page from the cached last page, with one catalogue call for the out-of-range read', function (): void {
     clampCatalogue(1286);
     $this->getJson('/v1/cards?q=card&page=4800')->assertOk();
     $before = count(Http::recorded());
@@ -122,7 +122,8 @@ it('answers a cached out-of-range page from the cache, with no catalogue call', 
 
     $again->assertOk();
     expect($before)->toBe(2)
-        ->and(count(Http::recorded()))->toBe(2)
+        ->and(count(Http::recorded()))->toBe(3)
+        ->and(clampAskedPages())->toBe(['4800', '54', '4800'])
         ->and($again->json('meta.page'))->toBe(54)
         ->and($again->json('meta.cached'))->toBeTrue()
         ->and($again->json('data'))->toHaveCount(14);

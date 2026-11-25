@@ -435,53 +435,33 @@ it('answers a 200 only when its page lies within its pages, else the 503 problem
     return $cases;
 });
 
-it('is stuck on the 503 no longer than the cache window, writes nothing for it and leaves an in-range page answering 200', function (): void {
+it('answers the last page, not a 503, when the last-page entry was refreshed with fewer pages, and stores nothing for the out-of-range page', function (): void {
     $store = Cache::store('redis');
     clampEdgeCatalogue(1286);
     clampEdgeGet($this, '/v1/cards?q=card&page=4800')->assertOk();
-    // The last-page entry is refreshed with a result that has shrunk to 10 pages; the out-of-range entry is not.
+    // The last-page entry is refreshed with a result that has shrunk to 10 pages. The out-of-range answer was never
+    // stored, so it cannot say 54: it is read again, and so is the last page it names.
     $segment = app(CatalogRepository::class)->seedRef()->segment();
-    $lastPageHash = sha1('card|54|');
     $outHash = sha1('card|4800|');
-    $store->forget("catalog:v1:search:{$segment}:{$lastPageHash}");
+    $store->forget("catalog:v1:search:{$segment}:".sha1('card|54|'));
     Http::swap(new Factory);
     Http::preventStrayRequests();
     clampEdgeCatalogue(240);
-    $lastGoodBefore = $store->get("catalog:v1:lastgood:search:{$outHash}");
-    $calls = count(Http::recorded());
 
     $first = clampEdgeGet($this, '/v1/cards?q=card&page=4800');
 
-    expect($first->getStatusCode())->toBe(503)
-        ->and((int) $first->headers->get('Retry-After'))->toBeGreaterThanOrEqual(1)->toBeLessThanOrEqual(60)
-        ->and($first->headers->get('Content-Type'))->toStartWith('application/problem+json')
-        ->and(count(Http::recorded()))->toBe($calls + 1);
-    // The 503 is worked out each time from the two cached answers, never stored as an answer, and never touches a copy.
-    $keys = CatalogCache::keys('cache', $this->catalogPrefix);
-    $again = clampEdgeGet($this, '/v1/cards?q=card&page=4800');
-    expect($again->getStatusCode())->toBe(503)
-        ->and(count(Http::recorded()))->toBe($calls + 1)
-        ->and(CatalogCache::keys('cache', $this->catalogPrefix))->toBe($keys)
-        ->and($store->get("catalog:v1:lastgood:search:{$outHash}"))->toBe($lastGoodBefore);
+    $first->assertOk();
+    expect($first->json('meta.page'))->toBe(10)
+        ->and($first->json('meta.pages'))->toBe(10)
+        ->and(clampEdgeAsked())->toBe(['4800', '10'])
+        ->and(CatalogCache::keys('cache', $this->catalogPrefix))->not->toContain($this->catalogPrefix."catalog:v1:search:{$segment}:{$outHash}");
 
-    // An in-range page of the same query answers 200 meanwhile, and the answer's own cache is untouched.
+    // An in-range page of the same query answers 200 too, and the out-of-range read stays uncached.
     $inRange = clampEdgeGet($this, '/v1/cards?q=card&page=2');
     $inRange->assertOk();
     expect($inRange->json('meta.page'))->toBe(2)->and($inRange->json('meta.pages'))->toBe(10);
-    expect(clampEdgeGet($this, '/v1/cards?q=card&page=4800')->getStatusCode())->toBe(503);
-
-    // The out-of-range entry cannot outlive its hard window (CatalogRepository::SEARCH_TTL[1], 900 s).
-    Carbon::setTestNow(Carbon::now()->addSeconds(CatalogRepository::SEARCH_TTL[1] + 1));
-    Http::swap(new Factory);
-    Http::preventStrayRequests();
-    clampEdgeCatalogue(240);
-    Http::fake([CLAMPEDGE_BASE.'/api/meta' => Http::response([
-        'version' => 'test', 'commit' => '0000000', 'built' => '', 'docs' => 1,
-        'seed' => ['ref' => '0123456789abcdef0123456789abcdef01234567', 'seeded_at' => '2026-10-11T20:05:45Z'], 'request_id' => 'r',
-    ])]);
-    $healed = clampEdgeGet($this, '/v1/cards?q=card&page=4800');
-    $healed->assertOk();
-    expect($healed->json('meta.page'))->toBe(10)->and($healed->json('meta.pages'))->toBe(10);
+    expect(clampEdgeGet($this, '/v1/cards?q=card&page=4800')->getStatusCode())->toBe(200)
+        ->and(CatalogCache::keys('cache', $this->catalogPrefix))->not->toContain($this->catalogPrefix."catalog:v1:search:{$segment}:{$outHash}");
 });
 
 it('keeps the window of a stuck 503 at the documented lifetime in the code', function (): void {

@@ -82,8 +82,8 @@ final class CardSearchController
             $result = $this->catalog->search($q, $last, $pageSize);
         }
         if (! $byPrice) {
-            // An answer still naming a page outside its own pages (the result changed between the two calls, or the
-            // two cache entries differ in age) is not answered: a later try reads a consistent pair.
+            // An answer still naming a page outside its own pages (the result changed between the two calls) is not
+            // answered: a later try reads a consistent pair. A page past the end is never cached, so it is always fresh.
             $result = CatalogRepository::withinItsPages($result);
         }
         // PokeSearchClient::search() checked this shape before the answer was cached; the casts are no-ops that

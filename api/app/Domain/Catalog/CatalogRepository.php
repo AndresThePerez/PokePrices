@@ -28,7 +28,8 @@ use RedisException;
  * - Card names (the movers, the watchlist, the portfolio): catalog:v1:cardname:{seedRef}:{id}, each value
  *   {name, set_name, number} plus image_small when the catalog gave one, judged against [3600, 86400] by
  *   fetched_at and filled in one batch (cardNames()); …:none for 60 s, last-good catalog:v1:lastgood:cardname:{id}.
- * - Search: catalog:v1:search:{seedRef}:{sha1(normalised q|page|page_size)}, flexible [300, 900].
+ * - Search: catalog:v1:search:{seedRef}:{sha1(normalised q|page|page_size)}, flexible [300, 900]. An answer whose
+ *   page is past its own last page is returned once and not stored there (its last-good copy is still kept).
  * - Every upstream success also writes a last-good copy, catalog:v1:lastgood:{card|search}:…, for 7 days.
  *   A 5xx, a timeout or a contract violation is never cached.
  * - A cold key is filled under the lock catalog:v1:fill:{key} (5 s), waiting at most 2 s for another filler.
@@ -160,15 +161,38 @@ final class CatalogRepository
 
         try {
             $key = "catalog:v1:search:{$this->seedRef()->segment()}:{$hash}";
-            [$envelope, $fetched] = $this->remember($key, self::SEARCH_TTL, fn (): array => $this->keepLastGood(
-                $lastGood,
-                $this->client->search($q, $page, $pageSize),
-            ));
+            [$envelope, $fetched] = $this->remember($key, self::SEARCH_TTL, function () use ($lastGood, $q, $page, $pageSize): array {
+                $answer = $this->client->search($q, $page, $pageSize);
+                $envelope = $this->keepLastGood($lastGood, $answer);
+                if (self::pastItsLastPage($answer)) {
+                    // Handed back once, never stored under the search key: a page past the end must be read fresh,
+                    // so it cannot be older than the last page it points the caller at. The last-good copy above
+                    // is kept, so an outage answers as it did.
+                    throw new PastTheLastPage($answer);
+                }
+
+                return $envelope;
+            });
+        } catch (PastTheLastPage $past) {
+            return new CatalogResult($past->data, cached: false);
         } catch (UpstreamUnavailable $e) {
             return $this->lastGood($lastGood, $e);
         }
 
         return new CatalogResult($envelope['data'], cached: ! $fetched);
+    }
+
+    /**
+     * True when the answer has pages and names a page after the last. An empty result (pages 0, page 1) is not past its end.
+     *
+     * @param  array<mixed>  $answer
+     */
+    private static function pastItsLastPage(array $answer): bool
+    {
+        $page = $answer['page'] ?? null;
+        $pages = $answer['pages'] ?? null;
+
+        return is_int($page) && is_int($pages) && $pages >= 1 && $page > $pages;
     }
 
     /**
