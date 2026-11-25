@@ -1332,5 +1332,116 @@
     ],
     "oracle": "no-key",
     "why": "The other side of row 50: the Staff stamp keeps its own key."
+  },
+  {
+    "row": 67,
+    "variant_key": "sm115-9:holo:-:-",
+    "expect": {
+      "group_id": 2480,
+      "product_id": 197651,
+      "sub_type_name": "Holofoil"
+    },
+    "forbid": [
+      {
+        "group_id": 2686,
+        "product_id": 219059
+      },
+      {
+        "group_id": 2594,
+        "product_id": 197780
+      }
+    ],
+    "classes": [
+      "name_alias",
+      "hyphen_gx",
+      "wrong_group_trap"
+    ],
+    "oracle": "yes (holofoil)",
+    "why": "Hidden Fates Charizard-GX: the catalogue's hyphenated -GX meets TCGplayer's Charizard GX; the Battle Academy stamped 9/68 and the Shiny Vault SV49 are other products."
+  },
+  {
+    "row": 68,
+    "variant_key": "xy2-108:holo:-:-",
+    "expect": {
+      "group_id": 1464,
+      "product_id": 91246,
+      "sub_type_name": "Holofoil"
+    },
+    "forbid": [
+      {
+        "group_id": 1464,
+        "product_id": 91245
+      }
+    ],
+    "classes": [
+      "name_alias",
+      "hyphen_ex",
+      "rarity_tag"
+    ],
+    "oracle": "yes (holofoil)",
+    "why": "Flashfire M Charizard-EX (X) secret: hyphenated -EX and a (Secret) tag; the (Y) secret 107 is the other card."
+  },
+  {
+    "row": 69,
+    "variant_key": "xy2-107:holo:-:-",
+    "expect": {
+      "group_id": 1464,
+      "product_id": 91245,
+      "sub_type_name": "Holofoil"
+    },
+    "forbid": [
+      {
+        "group_id": 1464,
+        "product_id": 91246
+      }
+    ],
+    "classes": [
+      "name_alias",
+      "hyphen_ex",
+      "rarity_tag"
+    ],
+    "oracle": "yes (holofoil)",
+    "why": "The other side of row 68: the (Y) secret 107 keeps its own key."
+  },
+  {
+    "row": 70,
+    "variant_key": "swsh7-215:holo:-:-",
+    "expect": {
+      "group_id": 2848,
+      "product_id": 246723,
+      "sub_type_name": "Holofoil"
+    },
+    "forbid": [
+      {
+        "group_id": 2848,
+        "product_id": 246720
+      }
+    ],
+    "classes": [
+      "rarity_tag"
+    ],
+    "oracle": "yes (holofoil)",
+    "why": "Evolving Skies Umbreon VMAX alternate art secret 215: the (Alternate Art Secret) tag is a descriptor; the regular Umbreon VMAX 95 is another card."
+  },
+  {
+    "row": 71,
+    "variant_key": "hgss4-91:holo:-:-",
+    "expect": {
+      "group_id": 1381,
+      "product_id": 83454,
+      "sub_type_name": "Holofoil"
+    },
+    "forbid": [
+      {
+        "group_id": 1381,
+        "product_id": 84148
+      }
+    ],
+    "classes": [
+      "rarity_tag",
+      "prime"
+    ],
+    "oracle": "yes (holofoil)",
+    "why": "Triumphant Absol Prime 91: the (Prime) tag is a descriptor; Celebi (Prime) 92 beside it is another card."
   }
 ]
