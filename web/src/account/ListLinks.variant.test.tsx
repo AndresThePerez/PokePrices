@@ -4,6 +4,7 @@ import App from '../App';
 import {
   type AccountAnswer,
   clearXsrfCookie,
+  holdSessionCookie,
   deoxysCard,
   deoxysCardBody,
   historyFor,
@@ -45,6 +46,7 @@ afterEach(() => {
 function routes(
   extra: Readonly<Record<string, AccountAnswer>>,
 ): Readonly<Record<string, AccountAnswer>> {
+  holdSessionCookie();
   return {
     'GET /v1/me': () => jsonResponse(signedInMe),
     'GET /v1/cards/ex13-3': () => jsonResponse(deoxysCardBody),

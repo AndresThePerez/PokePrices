@@ -12,6 +12,7 @@ import { navigate } from '../router';
 import {
   FORBIDDEN_WORDS,
   clearXsrfCookie,
+  holdSessionCookieFor,
   holdingOf,
   jsonResponse,
   portfolioBody,
@@ -80,6 +81,7 @@ function stubDeferred(
 ): string[] {
   const names: string[] = [];
   const used = new Map<string, number>();
+  holdSessionCookieFor(routes['GET /v1/me']?.[0]);
   vi.stubGlobal('fetch', (input: string | URL, init?: RequestInit): Promise<Response> => {
     const name = `${init?.method ?? 'GET'} ${String(input)}`;
     names.push(name);

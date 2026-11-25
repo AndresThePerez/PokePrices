@@ -6,6 +6,7 @@ import {
   FORBIDDEN_WORDS,
   answerMovers,
   clearXsrfCookie,
+  holdSessionCookie,
   demoMe,
   jsonResponse,
   lightOnlyClasses,
@@ -153,13 +154,7 @@ describe('the account page (T03 criterion 3, D10)', () => {
     // The home page's own movers reads are not routed here; every account request is listed.
     expect(
       calls.map((call) => call.key).filter((key) => !key.startsWith('GET /v1/movers?')),
-    ).toEqual([
-      'GET /v1/me',
-      'GET /sanctum/csrf-cookie',
-      'POST /logout',
-      'GET /v1/me',
-      'GET /v1/prices/freshness',
-    ]);
+    ).toEqual(['GET /v1/me', 'POST /logout', 'GET /v1/me', 'GET /v1/prices/freshness']);
     act(() => {
       navigate('/account');
     });
@@ -168,6 +163,7 @@ describe('the account page (T03 criterion 3, D10)', () => {
   });
 
   it('shows a failed first load as the problem block', async () => {
+    holdSessionCookie();
     stubAccountFetch({ 'GET /v1/me': problemResponse(serverErrorProblem('/v1/me')) });
     visit('/account');
     render(<App />);
@@ -309,6 +305,7 @@ describe('the Display panel on /account (D2-i2-T07, R297)', () => {
       [jsonResponse(demoMe), 'Signed in as demo@example.com'],
       [problemResponse(serverErrorProblem('/v1/me')), /Could not load your account/],
     ] as const;
+    holdSessionCookie();
     for (const [answer, expected] of states) {
       const calls = stubAccountFetch({ 'GET /v1/me': answer });
       visit('/account');

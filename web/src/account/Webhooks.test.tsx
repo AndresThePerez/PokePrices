@@ -371,7 +371,6 @@ describe('test message and delete (P5 T04 criterion 3)', () => {
       'GET /v1/me',
       'GET /v1/webhooks',
       'GET /v1/me/notifications',
-      'GET /sanctum/csrf-cookie',
       'DELETE /v1/webhooks/41',
       'GET /v1/webhooks',
     ]);

@@ -7,6 +7,7 @@ import { cardVariantPath } from './routes';
 import {
   type AccountAnswer,
   clearXsrfCookie,
+  holdSessionCookie,
   holdingOf,
   isMoversUrl,
   jsonResponse,
@@ -207,6 +208,7 @@ describe('every list row links to its own variant', () => {
       { variant_key: 'base1-4:holo:unlimited:-', edition: 'unlimited' },
       { variant_key: 'base1-4:holo:unlimited:δ #1&2', edition: 'unlimited', treatment: 'δ #1&2' },
     ];
+    holdSessionCookie();
     const routes: Record<string, AccountAnswer> = {
       'GET /v1/me': () => jsonResponse(signedInMe),
       'GET /v1/watchlist': () => jsonResponse(watchlistBody(rows.map((row) => watchItemOf(row)))),

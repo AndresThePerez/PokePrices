@@ -8,6 +8,7 @@ import {
   FAKE_SIGNING_SECRET,
   FORBIDDEN_WORDS,
   clearXsrfCookie,
+  holdSessionCookie,
   demoMe,
   demoSamplesBody,
   discordWebhook,
@@ -234,6 +235,7 @@ describe('the alerts page states (P5 T04 criterion 1, D10)', () => {
   });
 
   it('shows a failed session load as the problem block', async () => {
+    holdSessionCookie();
     open({ 'GET /v1/me': problemResponse(serverErrorProblem('/v1/me')) });
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toContain('Could not load your account: Internal Server Error');

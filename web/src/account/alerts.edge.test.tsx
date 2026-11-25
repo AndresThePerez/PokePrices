@@ -11,6 +11,7 @@ import AlertsPage from './AlertsPage';
 import {
   FAKE_SIGNING_SECRET,
   clearXsrfCookie,
+  holdSessionCookie,
   demoMe,
   demoSamplesBody,
   domHolds,
@@ -167,6 +168,7 @@ describe('the signing secret on every exit path (P5 T04 criterion 2, D10 "shown 
 
 describe('nothing of one account shows under the next one (P4 pattern, P5 data rule 4)', () => {
   it('never shows account A webhooks or its secret to B signing in on the same tab', async () => {
+    holdSessionCookie();
     let me: Response = jsonResponse(signedInMe);
     let list: Response = jsonResponse(webhooksBody([webhookOf({ url_hint: ALPHA })]));
     const calls = stubAccountFetch({
@@ -218,6 +220,7 @@ describe('nothing of one account shows under the next one (P4 pattern, P5 data r
   });
 
   it('never shows account A webhooks to the demo that starts after A signs out', async () => {
+    holdSessionCookie();
     let me: Response = jsonResponse(signedInMe);
     let list: Response = jsonResponse(webhooksBody([webhookOf({ url_hint: ALPHA })]));
     stubAccountFetch({

@@ -9,6 +9,7 @@ import type * as QueryModule from '../query';
 import {
   accountValidationProblem,
   clearXsrfCookie,
+  holdSessionCookie,
   demoMe,
   domHolds,
   jsonResponse,
@@ -170,6 +171,7 @@ describe('the Show toggles of the sign-up panel (review, D2-i2-T06)', () => {
 
 describe('the sign-in page keeps one two-factor state per visit (review, D2-i2-T06)', () => {
   it('returns to the password form, not a stale two-factor step, after the session came and went', async () => {
+    holdSessionCookie();
     stubAccountFetch({
       'GET /v1/me': [
         problemResponse(unauthenticatedProblem),

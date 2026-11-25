@@ -7,6 +7,7 @@ import {
   alreadySignedInProblem,
   clearXsrfCookie,
   domHolds,
+  holdSessionCookie,
   jsonResponse,
   lightOnlyClasses,
   problemResponse,
@@ -77,6 +78,7 @@ describe('the sign-in page (T03 criterion 3, D10)', () => {
   });
 
   it('signs in, refetches the session and lands on /account', async () => {
+    holdSessionCookie();
     const calls = stubAccountFetch({
       'GET /v1/me': [problemResponse(unauthenticatedProblem), jsonResponse(signedInMe)],
       'POST /login': jsonResponse({ two_factor: false }),
@@ -99,6 +101,7 @@ describe('the sign-in page (T03 criterion 3, D10)', () => {
   });
 
   it('follows a valid next after signing in', async () => {
+    holdSessionCookie();
     stubAccountFetch({
       'GET /v1/me': [problemResponse(unauthenticatedProblem), jsonResponse(signedInMe)],
       'POST /login': jsonResponse({ two_factor: false }),
@@ -116,6 +119,7 @@ describe('the sign-in page (T03 criterion 3, D10)', () => {
   });
 
   it('ignores a next that leaves the site and lands on /account', async () => {
+    holdSessionCookie();
     stubAccountFetch({
       'GET /v1/me': [problemResponse(unauthenticatedProblem), jsonResponse(signedInMe)],
       'POST /login': jsonResponse({ two_factor: false }),
@@ -267,6 +271,7 @@ describe('the two-factor challenge step (T04 criterion 1, D10)', () => {
     routes: Parameters<typeof stubAccountFetch>[0],
     path = '/sign-in',
   ): Promise<ReturnType<typeof stubAccountFetch>> {
+    holdSessionCookie();
     const calls = stubAccountFetch({
       'GET /v1/me': [problemResponse(unauthenticatedProblem), jsonResponse(signedInMe)],
       'POST /login': jsonResponse({ two_factor: true }),

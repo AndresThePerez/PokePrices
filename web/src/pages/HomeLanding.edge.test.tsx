@@ -283,6 +283,8 @@ describe('demo entry on the home page (D2-i1-T03 review)', () => {
       'POST /v1/demo/session': rawResponse(204, null),
       'GET /v1/watchlist': jsonResponse(watchlistBody()),
     });
+    // The visitor holds no token cookie: the 200 above is the answer after the demo starts.
+    clearXsrfCookie();
     visit('/');
     render(<App />);
     await screen.findByRole('link', { name: 'See all movers' });

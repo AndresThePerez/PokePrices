@@ -13,6 +13,7 @@ import {
   FORBIDDEN_WORDS,
   accountValidationProblem,
   clearXsrfCookie,
+  holdSessionCookie,
   demoMe,
   demoReadOnlyProblem,
   demoSampleWebhook,
@@ -119,6 +120,7 @@ function textOutsidePayload(): string {
 
 describe('useReadOnly through a page life', () => {
   it('shows no write control while the session loads, on any account page', async () => {
+    holdSessionCookie();
     for (const path of ['/account', '/watchlist', '/portfolio', '/alerts']) {
       vi.stubGlobal('fetch', () => new Promise<Response>(() => undefined));
       visit(path);
@@ -135,6 +137,7 @@ describe('useReadOnly through a page life', () => {
   });
 
   it('shows a failed /v1/me as a problem and no two-factor control', async () => {
+    holdSessionCookie();
     stubAccountFetch({ 'GET /v1/me': problemResponse(serverErrorProblem('/v1/me')) });
     visit('/account');
     render(<App />);
@@ -484,6 +487,8 @@ describe('the sign-up page and its demo button', () => {
       'GET /v1/me': jsonResponse(demoMe),
       'GET /v1/watchlist': jsonResponse(watchlistBody()),
     });
+    // The visitor holds no token cookie yet: the 200 is the answer after the demo starts.
+    clearXsrfCookie();
     visit('/sign-up');
     render(<App />);
     const demo = within(main()).getByRole<HTMLButtonElement>('button', { name: DEMO });

@@ -7,6 +7,7 @@ import App from '../App';
 import {
   answerMovers,
   clearXsrfCookie,
+  holdSessionCookie,
   demoMe,
   isMoversUrl,
   jsonResponse,
@@ -127,6 +128,7 @@ describe('the persistent demo strip (RULING e)', () => {
   });
 
   it('follows the demo onto a public page, then leaves after another tab signals (A1-7), asking nothing', async () => {
+    holdSessionCookie();
     const calls = stubFetch((url) => {
       if (url === '/v1/me') return jsonResponse(demoMe);
       if (url === '/v1/webhooks') return jsonResponse(webhooksBody());

@@ -4,7 +4,7 @@
 // on any per-user request sends the session back through GET /v1/me.
 import type { QueryClient } from '@tanstack/react-query';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../App';
 import type * as QueryModule from '../query';
 import { navigate } from '../router';
@@ -14,6 +14,7 @@ import {
   clearXsrfCookie,
   domHolds,
   emptyJsonResponse,
+  holdSessionCookie,
   invalidSignatureProblem,
   jsonResponse,
   notificationsBody,
@@ -49,6 +50,11 @@ vi.mock('../query', async (importOriginal) => {
 function visit(path: string): void {
   window.history.replaceState(null, '', path);
 }
+
+// Every test here starts signed in as A: the browser holds the token cookie from the first render.
+beforeEach(() => {
+  holdSessionCookie();
+});
 
 afterEach(() => {
   cleanup();

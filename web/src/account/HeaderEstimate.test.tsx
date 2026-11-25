@@ -12,6 +12,7 @@ import {
   demoMe,
   estimateOf,
   historyFor,
+  holdSessionCookie,
   jsonResponse,
   portfolioBody,
   pricedCardBody,
@@ -152,12 +153,14 @@ describe('no header estimate', () => {
   });
 
   it('when the session request fails', async () => {
+    holdSessionCookie();
     await openWatchlist(problemResponse(serverErrorProblem('/v1/me')));
     await screen.findByText(/Could not load your account/);
     expect(estimateLink()).toBeNull();
   });
 
   it('while the session is loading', async () => {
+    holdSessionCookie();
     vi.stubGlobal('fetch', () => new Promise<Response>(() => undefined));
     window.history.replaceState(null, '', '/watchlist');
     render(<App />);

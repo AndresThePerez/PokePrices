@@ -5,6 +5,7 @@ import {
   FORBIDDEN_WORDS,
   clearXsrfCookie,
   domHolds,
+  holdSessionCookie,
   invalidSignatureProblem,
   jsonResponse,
   lightOnlyClasses,
@@ -106,6 +107,7 @@ describe('the verify-email page (T03 criterion 3, D10)', () => {
   });
 
   it('asks a signed-out visitor to sign in, with a next that comes back here', async () => {
+    holdSessionCookie();
     const calls = stubAccountFetch({
       'GET /v1/me': [
         problemResponse(unauthenticatedProblem),

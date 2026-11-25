@@ -4,6 +4,7 @@ import App from '../App';
 import {
   FORBIDDEN_WORDS,
   clearXsrfCookie,
+  holdSessionCookie,
   demoMe,
   demoUnavailableProblem,
   jsonResponse,
@@ -40,6 +41,7 @@ function main(): HTMLElement {
 
 describe('Try the read-only demo (T07 criterion 4, D8, D10)', () => {
   it('posts /v1/demo/session after the CSRF cookie, refetches the session and opens /watchlist', async () => {
+    holdSessionCookie();
     const calls = stubAccountFetch({
       'GET /v1/me': [problemResponse(unauthenticatedProblem), jsonResponse(demoMe)],
       'POST /v1/demo/session': rawResponse(204, null),
@@ -54,12 +56,7 @@ describe('Try the read-only demo (T07 criterion 4, D8, D10)', () => {
     expect(await screen.findByText(DEMO_NOTICE)).toBeTruthy();
     expect(await screen.findByText('Market price $968.91')).toBeTruthy();
     const keys = calls.map((call) => call.key);
-    expect(keys.slice(0, 4)).toEqual([
-      'GET /v1/me',
-      'GET /sanctum/csrf-cookie',
-      'POST /v1/demo/session',
-      'GET /v1/me',
-    ]);
+    expect(keys.slice(0, 3)).toEqual(['GET /v1/me', 'POST /v1/demo/session', 'GET /v1/me']);
     expect(keys.filter((key) => key === 'POST /v1/demo/session')).toHaveLength(1);
     const post = calls.find((call) => call.key === 'POST /v1/demo/session');
     expect(new Headers(post?.init?.headers).get('X-XSRF-TOKEN')).toBe('fake-xsrf+0000=');
@@ -96,6 +93,7 @@ describe('Try the read-only demo (T07 criterion 4, D8, D10)', () => {
   });
 
   it('is offered on the signed-out watchlist and portfolio pages, and opens the demo from there', async () => {
+    holdSessionCookie();
     stubAccountFetch({
       'GET /v1/me': [problemResponse(unauthenticatedProblem), jsonResponse(demoMe)],
       'POST /v1/demo/session': rawResponse(204, null),

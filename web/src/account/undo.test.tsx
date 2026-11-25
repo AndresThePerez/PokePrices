@@ -125,11 +125,7 @@ describe('the watchlist: Removed. Undo', () => {
     expect(items('Watchlist')).toEqual(['Charizard', 'Removed.', 'Chimecho']);
     expect(undo.textContent).toBe('Undo');
     for (const word of FORBIDDEN_WORDS) expect(list('Watchlist').textContent).not.toMatch(word);
-    expect(keysAfter(calls, start)).toEqual([
-      'GET /sanctum/csrf-cookie',
-      `DELETE /v1/watchlist/${CHARIZARD}`,
-      WATCHLIST,
-    ]);
+    expect(keysAfter(calls, start)).toEqual([`DELETE /v1/watchlist/${CHARIZARD}`, WATCHLIST]);
 
     const before = calls.length;
     fireEvent.click(undo);
@@ -346,7 +342,6 @@ describe('the portfolio: Removed. Undo restores the quantity', () => {
     expect(within(list('Portfolio')).getByText('Quantity 3')).toBeTruthy();
     expect(document.activeElement).toBe(list('Portfolio').children[2]?.querySelector('a'));
     expect(keysAfter(calls, start)).toEqual([
-      'GET /sanctum/csrf-cookie',
       `DELETE /v1/portfolio/${CHIMECHO}`,
       PORTFOLIO,
       `PUT /v1/portfolio/${CHIMECHO}`,

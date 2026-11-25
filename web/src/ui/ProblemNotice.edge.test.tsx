@@ -8,6 +8,7 @@ import App from '../App';
 import {
   answerMovers,
   clearXsrfCookie,
+  holdSessionCookie,
   isMoversUrl,
   jsonResponse,
   notificationsBody,
@@ -130,6 +131,7 @@ describe('Try again on the pages (review)', () => {
   });
 
   it('shows the id of a 503 session read, then the 429 its repeat got without one, then the account', async () => {
+    holdSessionCookie();
     const calls = stubAccountFetch({
       'GET /v1/me': [
         problemResponse(serviceUnavailableProblem('/v1/me')),

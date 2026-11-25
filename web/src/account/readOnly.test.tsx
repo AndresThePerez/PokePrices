@@ -143,6 +143,10 @@ describe('controls a read-only session cannot use', () => {
       const prices = screen.getByRole('region', { name: 'Prices' });
       const row = within(prices).getByText('holo, unlimited').closest('li');
       if (row === null) throw new Error('no holo row');
+      // The row holds its controls' space until the session's two lists have answered.
+      await waitFor(() => {
+        expect(row.querySelector('[data-held]')).toBeNull();
+      });
       expect(
         within(row).queryAllByRole('button', { name: /^Add holo, unlimited to your/ }),
       ).toHaveLength(count);

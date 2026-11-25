@@ -8,6 +8,7 @@ import { HOME_H1 } from '../routes';
 import {
   answerMovers,
   clearXsrfCookie,
+  holdSessionCookie,
   demoMe,
   isMoversUrl,
   jsonResponse,
@@ -91,6 +92,7 @@ describe('the signed-out line at its edges (review)', () => {
   });
 
   it('is not shown again when Back and then Forward return to the home entry that showed it', async () => {
+    holdSessionCookie();
     let me: Response = jsonResponse(signedInMe);
     stub({
       'GET /v1/me': () => me,

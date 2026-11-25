@@ -11,6 +11,7 @@ import App from '../App';
 import type * as QueryModule from '../query';
 import {
   clearXsrfCookie,
+  holdSessionCookie,
   demoMe,
   jsonResponse,
   problemResponse,
@@ -185,6 +186,7 @@ async function reachChallenge(): Promise<AccountCall[]> {
 }
 
 async function openSignUp(routes: Parameters<typeof stubAccountFetch>[0]): Promise<AccountCall[]> {
+  holdSessionCookie();
   const calls = stubAccountFetch({
     'GET /v1/me': [SIGNED_OUT(), jsonResponse(signedInMe)],
     'POST /register': rawResponse(201, '""', 'application/json'),

@@ -9,6 +9,7 @@ import {
   alertBody,
   pricedCardBody,
   clearXsrfCookie,
+  holdSessionCookie,
   demoMe,
   demoSamplesBody,
   emptyPortfolioBody,
@@ -84,6 +85,7 @@ describe('the strip claims a session state only when the cache really knows it',
     ['signed out (401)', problemResponse(unauthenticatedProblem)],
     ['failed (500)', problemResponse(serverErrorProblem('/v1/me'))],
   ] as const)('is absent while the session is %s', async (_name, answer) => {
+    holdSessionCookie();
     if (answer === null) hangingFetch();
     else stubAccountFetch({ 'GET /v1/me': answer });
     visit('/watchlist');
@@ -121,6 +123,7 @@ describe('the strip claims a session state only when the cache really knows it',
   ] as const)(
     'a demo sign-in from %s shows the strip and keeps it over /movers, /search and /card with each route its own requests',
     async (start, meAnswers) => {
+      holdSessionCookie();
       const calls = stubAccountFetch({
         'GET /v1/me': [...meAnswers],
         'POST /v1/demo/session': rawResponse(204, null),
@@ -270,6 +273,7 @@ describe('no decorative div[aria-hidden] on the list pages, in any state', () =>
   it.each(['/watchlist', '/portfolio'] as const)(
     '%s: the loading skeleton is the only aria-hidden div; failed and signed out have none',
     async (path) => {
+      holdSessionCookie();
       const states = [
         null,
         problemResponse(serverErrorProblem('/v1/me')),

@@ -7,6 +7,7 @@ import App from '../App';
 import { navigate } from '../router';
 import {
   clearXsrfCookie,
+  holdSessionCookie,
   emptyPortfolioBody,
   historyFor,
   invalidSignatureProblem,
@@ -147,6 +148,7 @@ describe('the verify-email page and the one session refresh', () => {
   });
 
   it('refreshes nothing when the page is left before the link answers', async () => {
+    holdSessionCookie();
     const calls: string[] = [];
     let release: (response: Response) => void = () => undefined;
     const linkAnswer = new Promise<Response>((resolve) => {

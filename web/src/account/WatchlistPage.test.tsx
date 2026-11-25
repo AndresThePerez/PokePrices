@@ -5,6 +5,7 @@ import {
   FORBIDDEN_WORDS,
   type AccountAnswer,
   clearXsrfCookie,
+  holdSessionCookie,
   demoMe,
   jsonResponse,
   lightOnlyClasses,
@@ -185,6 +186,7 @@ describe('the watchlist page (T07 criterion 1, D10)', () => {
   });
 
   it('shows the problem block when the session cannot be loaded', async () => {
+    holdSessionCookie();
     openWatchlist({ 'GET /v1/me': problemResponse(serverErrorProblem('/v1/me')) });
     const alert = await screen.findByRole('alert');
     expect(alert.textContent).toContain('Could not load your account: Internal Server Error');
@@ -241,6 +243,7 @@ describe('removing from the watchlist (T07 criterion 2)', () => {
   });
 
   it('asks GET /v1/me once more when the removal answers 401, then shows the signed-out view', async () => {
+    holdSessionCookie();
     let me: Response = jsonResponse(signedInMe);
     const calls = openWatchlist({
       'GET /v1/me': () => me,
@@ -262,7 +265,6 @@ describe('removing from the watchlist (T07 criterion 2)', () => {
       'GET /v1/prices/freshness',
       'GET /v1/me',
       'GET /v1/watchlist',
-      'GET /sanctum/csrf-cookie',
       `DELETE ${CHARIZARD_KEY}`,
       'GET /v1/me',
     ]);

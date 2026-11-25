@@ -13,6 +13,7 @@ import {
   cardBody,
   cardNotFoundProblem,
   demoMe,
+  holdSessionCookie,
   isHistoryUrl,
   isMoversUrl,
   jsonResponse,
@@ -69,6 +70,7 @@ function stubSignedOut() {
 
 /** Signed in as `me` (signedInMe or demoMe); the account pages get what they read. */
 function stubSignedIn(me: unknown = signedInMe) {
+  holdSessionCookie();
   return stubFetch((url) => {
     if (url === '/v1/me') return jsonResponse(me);
     if (url === '/v1/webhooks') return jsonResponse(webhooksBody());

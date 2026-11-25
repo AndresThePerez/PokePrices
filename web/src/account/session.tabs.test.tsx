@@ -4,12 +4,13 @@
 // another tab switched accounts asks for the list once.
 import type { QueryClient } from '@tanstack/react-query';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../App';
 import type * as QueryModule from '../query';
 import { navigate } from '../router';
 import {
   clearXsrfCookie,
+  holdSessionCookie,
   historyFor,
   holdingOf,
   jsonResponse,
@@ -46,6 +47,11 @@ vi.mock('../query', async (importOriginal) => {
 function visit(path: string): void {
   window.history.replaceState(null, '', path);
 }
+
+// Every test here starts signed in: the browser holds the token cookie from the first render.
+beforeEach(() => {
+  holdSessionCookie();
+});
 
 afterEach(() => {
   cleanup();

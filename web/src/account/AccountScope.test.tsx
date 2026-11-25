@@ -10,6 +10,7 @@ import type * as QueryModule from '../query';
 import { navigate } from '../router';
 import {
   clearXsrfCookie,
+  holdSessionCookie,
   historyFor,
   jsonResponse,
   portfolioBody,
@@ -97,6 +98,7 @@ function holoRow(): HTMLElement {
 
 describe('the card page outcome line belongs to one account (c9)', () => {
   async function watchedAsA() {
+    holdSessionCookie();
     let me: Response = jsonResponse(signedInMe);
     // The card page of a known session reads both lists: A's watchlist holds the variant once
     // the PUT is answered; B's is empty; neither holds a portfolio.
@@ -117,6 +119,9 @@ describe('the card page outcome line belongs to one account (c9)', () => {
     visit('/account');
     render(<App />);
     await screen.findByText(`Signed in as ${signedInMe.data.email}`);
+    // The card page below is read with no cookie again: it has no session observer of its own,
+    // so the poll of ['me'] in these tests refetches the cached answer.
+    clearXsrfCookie();
     act(() => {
       navigate('/card/ex10-%3F');
     });
@@ -160,6 +165,7 @@ describe('the card page outcome line belongs to one account (c9)', () => {
 
 describe('a watchlist row alert draft belongs to one account (c9)', () => {
   async function draftAsA() {
+    holdSessionCookie();
     let me: Response = jsonResponse(signedInMe);
     stubAccountFetch({
       'GET /v1/me': () => me,

@@ -20,6 +20,7 @@ import {
   problemResponse,
   rawResponse,
   setXsrfCookie,
+  holdSessionCookie,
   signedInMe,
   stubAccountFetch,
   unauthenticatedProblem,
@@ -135,6 +136,7 @@ describe("the demo strip's sign-out", () => {
 
 describe("the card page when ['me'] names another account", () => {
   it('logs no render-time update', async () => {
+    holdSessionCookie();
     let me: Response = jsonResponse(signedInMe);
     const holo = watchItemOf({ variant_key: 'ex10-?:holo:unlimited:-', card_id: 'ex10-?' });
     let watched: readonly (typeof holo)[] = [holo];
@@ -148,6 +150,9 @@ describe("the card page when ['me'] names another account", () => {
     window.history.replaceState(null, '', '/account');
     render(<App />);
     await screen.findByText(`Signed in as ${signedInMe.data.email}`);
+    // The card page below is read with no cookie again: it has no session observer of its own,
+    // so the poll of ['me'] in this test refetches the cached answer.
+    clearXsrfCookie();
     act(() => {
       navigate('/card/ex10-%3F');
     });

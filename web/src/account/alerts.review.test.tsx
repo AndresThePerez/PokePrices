@@ -11,6 +11,7 @@ import {
   accountValidationProblem,
   alertBody,
   clearXsrfCookie,
+  holdSessionCookie,
   emailNotVerifiedProblem,
   jsonResponse,
   lightOnlyClasses,
@@ -65,6 +66,7 @@ async function signOut(): Promise<void> {
 
 describe('review: one account settings never show under the next (D8, privacy)', () => {
   it('does not render the first account settings when the next account settings cannot load', async () => {
+    holdSessionCookie();
     let me: Response = jsonResponse(signedInMe);
     let settings: Response = jsonResponse(A_SETTINGS);
     stubAccountFetch({
@@ -98,6 +100,7 @@ describe('review: one account settings never show under the next (D8, privacy)',
   });
 
   it('does not let a save that lands after the sign-out put the first account settings in the cache', async () => {
+    holdSessionCookie();
     let me: Response = jsonResponse(signedInMe);
     let settings: Response = jsonResponse(A_SETTINGS);
     const calls = stubAccountFetch({

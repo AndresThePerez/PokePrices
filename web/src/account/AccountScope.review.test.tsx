@@ -11,6 +11,7 @@ import type * as QueryModule from '../query';
 import { navigate } from '../router';
 import {
   clearXsrfCookie,
+  holdSessionCookie,
   historyFor,
   jsonResponse,
   portfolioBody,
@@ -215,6 +216,7 @@ describe('the watchlist rows under the scope', () => {
   });
 
   it('keeps an unsaved threshold when the page opens while ["me"] is stale and the refresh names the same account', async () => {
+    holdSessionCookie();
     let releaseMe: (() => void) | undefined;
     let meCalls = 0;
     vi.stubGlobal('fetch', (input: string | URL, init?: RequestInit): Promise<Response> => {
@@ -261,6 +263,7 @@ describe('the watchlist rows under the scope', () => {
 
 describe('the card page controls across an account change (R221)', () => {
   it('closes an opened portfolio form for B and shows B the buttons only', async () => {
+    holdSessionCookie();
     let me = jsonResponse(signedInMe);
     const calls = stubAccountFetch({
       'GET /v1/me': () => me,
@@ -272,6 +275,9 @@ describe('the card page controls across an account change (R221)', () => {
     visit('/account');
     render(<App />);
     await screen.findByText(`Signed in as ${signedInMe.data.email}`);
+    // The card page below is read with no cookie again: it has no session observer of its own,
+    // so the poll of ['me'] in this test refetches the cached answer.
+    clearXsrfCookie();
     act(() => {
       navigate('/card/ex10-%3F');
     });

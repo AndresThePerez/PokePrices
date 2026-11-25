@@ -6,6 +6,7 @@ import {
   FORBIDDEN_WORDS,
   accountValidationProblem,
   clearXsrfCookie,
+  holdSessionCookie,
   demoMe,
   demoReadOnlyProblem,
   emptyPortfolioBody,
@@ -47,6 +48,7 @@ afterEach(() => {
 
 describe('T07 edge: nothing of one account shows under the next one (D8, D9, privacy)', () => {
   it('does not show the first account watchlist rows to the account that signs in after it', async () => {
+    holdSessionCookie();
     let me: Response = jsonResponse(signedInMe);
     let list: Response = jsonResponse(watchlistBody());
     stubAccountFetch({
@@ -193,7 +195,8 @@ describe('T07 edge: the card-page controls (R221, D10)', () => {
 
   it('answers a demo write on the card page with the read-only line and nothing else', async () => {
     const calls = await openCard({
-      'GET /v1/me': jsonResponse(demoMe),
+      // A function answer: the visitor holds no token cookie, so this page never asks.
+      'GET /v1/me': () => jsonResponse(demoMe),
       [WATCH_PUT]: problemResponse(demoReadOnlyProblem('/v1/watchlist/x')),
     });
     fireEvent.click(

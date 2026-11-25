@@ -5,12 +5,13 @@
 // so later invalidations still ask and an open form never keeps the last account's values.
 import type { QueryClient } from '@tanstack/react-query';
 import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import App from '../App';
 import type * as QueryModule from '../query';
 import { navigate } from '../router';
 import {
   clearXsrfCookie,
+  holdSessionCookie,
   historyFor,
   holdingOf,
   jsonResponse,
@@ -122,6 +123,10 @@ function quantityShown(): string {
 }
 
 describe('the one-time verification GET survives an identity change while its page shows it', () => {
+  beforeEach(() => {
+    holdSessionCookie();
+  });
+
   it('A verified the link, then ["me"] says B: the link was asked once and the page still says verified', async () => {
     let me: Response = jsonResponse(signedInMe);
     const calls = stubAccountFetch({
@@ -167,6 +172,10 @@ describe('the one-time verification GET survives an identity change while its pa
 });
 
 describe('an ["me"] request in flight when another tab signals is never the new account', () => {
+  beforeEach(() => {
+    holdSessionCookie();
+  });
+
   it('first load: the pre-switch answer (A) is dropped and the page ends on B', async () => {
     // Every GET /v1/me after the first is sent with B's cookie.
     const calls = stubAccountFetch({ 'GET /v1/me': jsonResponse(B_ME) });
@@ -221,13 +230,17 @@ describe('a tab that never read ["me"] drops what it cached before the first acc
     expect(quantityShown()).toBe('7');
     expect(count(calls, 'GET /v1/me')).toBe(0);
 
-    // Another tab signs A out and B in; no signal reaches this tab (storage blocked).
+    // Another tab signs A out and B in (its sign-in set the token cookie, which this tab shares);
+    // no signal reaches this tab (storage blocked).
+    holdSessionCookie();
     me = jsonResponse(B_ME);
     portfolio = portfolioHolding(2);
     act(() => {
       navigate('/account');
     });
     expect(await screen.findByText(`Signed in as ${B_EMAIL}`)).toBeTruthy();
+    // The card page below is read with no cookie again, so its Add control shows at once.
+    clearXsrfCookie();
     act(() => {
       navigate(CARD);
     });
@@ -276,6 +289,9 @@ describe('a forget reaches every mounted reader', () => {
       'GET /v1/portfolio': () => portfolio,
       ...CARD_ROUTES,
     });
+    // This tab holds no token cookie yet (the form is opened with no ["me"] reader): the stub's
+    // cookie goes, and the other tab's sign-in brings it back.
+    clearXsrfCookie();
     visit(CARD);
     render(<App />);
     await screen.findByRole('heading', { level: 1, name: 'Unown' });
@@ -283,6 +299,7 @@ describe('a forget reaches every mounted reader', () => {
     expect(quantityShown()).toBe('7');
 
     portfolio = portfolioHolding(2);
+    holdSessionCookie();
     otherTabSignals();
     await settle();
     await waitFor(() => {

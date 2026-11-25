@@ -5,6 +5,7 @@ import { safeNext } from '../router';
 import {
   accountValidationProblem,
   clearXsrfCookie,
+  holdSessionCookie,
   domHolds,
   jsonResponse,
   problemResponse,
@@ -179,6 +180,7 @@ describe('an answer that is not the documented JSON is a failure, never a sessio
   });
 
   it('shows the Problem block, not signed-out, for a 500 on GET /v1/me', async () => {
+    holdSessionCookie();
     const calls = stubAccountFetch({
       'GET /v1/me': problemResponse(serverErrorProblem('/v1/me')),
     });

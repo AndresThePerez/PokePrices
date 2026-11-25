@@ -9,6 +9,7 @@ import {
   FORBIDDEN_WORDS,
   answerMovers,
   clearXsrfCookie,
+  holdSessionCookie,
   demoMe,
   isMoversUrl,
   jsonResponse,
@@ -59,6 +60,7 @@ afterEach(() => {
 
 describe('the signed-out line on the home page', () => {
   it('shows once in a status region after Sign out on the account page, and not after a reload', async () => {
+    holdSessionCookie();
     let me: Response = jsonResponse(signedInMe);
     stub({
       'GET /v1/me': () => me,
@@ -91,6 +93,7 @@ describe('the signed-out line on the home page', () => {
   });
 
   it('shows after the demo signs out from the strip while already on the home page', async () => {
+    holdSessionCookie();
     let me: Response = jsonResponse(demoMe);
     stub({
       'GET /v1/me': () => me,
@@ -114,6 +117,7 @@ describe('the signed-out line on the home page', () => {
   });
 
   it('is gone when the visitor leaves the home page and comes back', async () => {
+    holdSessionCookie();
     let me: Response = jsonResponse(signedInMe);
     stub({
       'GET /v1/me': () => me,

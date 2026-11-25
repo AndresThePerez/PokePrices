@@ -162,6 +162,8 @@ describe('the account request layer (T03 criterion 1, D11)', () => {
       'POST /email/verification-notification': rawResponse(202, '""', 'application/json'),
       [`GET ${LINK}`]: rawResponse(204, null),
     });
+    // The request layer starts with no token cookie; the 200 above is only what getMe reads.
+    clearXsrfCookie();
     await getMe();
     await signIn({ email: 'collector@example.com', password: TYPED });
     await signUp({

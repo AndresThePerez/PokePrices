@@ -423,6 +423,8 @@ describe('the card page form after a refused hold', () => {
   it('a 409 keeps the typed 7 and the message, and reopening the form starts from the server value', async () => {
     const variant = pricedCardBody.data.variants[0]?.variant_key ?? '';
     const { calls, path } = stubCardPage({
+      // A function answer: this visitor holds no token cookie, so the page never asks for it.
+      'GET /v1/me': () => jsonResponse(signedInMe),
       'GET /v1/portfolio': jsonResponse(
         portfolioBody([holdingOf({ variant_key: variant, quantity: 2 })]),
       ),

@@ -955,6 +955,25 @@ export function clearXsrfCookie(): void {
   document.cookie = 'XSRF-TOKEN=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
 }
 
+/**
+ * A faked signed-in browser holds the token cookie: set it now (before render) and clear it when
+ * the test ends. For a signed-in fake that does not go through stubAccountFetch's own rule.
+ */
+export function holdSessionCookie(): void {
+  setXsrfCookie();
+  onTestFinished(() => {
+    clearXsrfCookie();
+  });
+}
+
+/**
+ * holdSessionCookie for a fake of its own: only when the first GET /v1/me answer it gives is a 2xx
+ * Response or a function (a signed-in fake); a 401 first answer, the signed-out visit, sets none.
+ */
+export function holdSessionCookieFor(first: unknown): void {
+  if (typeof first === 'function' || (first instanceof Response && first.ok)) holdSessionCookie();
+}
+
 /** One stubbed answer: a Response, an Error (network failure) or a function of the request. */
 export type AccountAnswer =
   Response | Error | ((init: RequestInit | undefined) => Response | Error);
@@ -968,13 +987,24 @@ export interface AccountCall extends FetchCall {
  * The Fortify-answer stub router: answers `METHOD url` keys from `routes` (an array answers its
  * entries in order and then repeats its last one). GET /sanctum/csrf-cookie is routed by default
  * (204, and it sets the XSRF-TOKEN cookie like the real answer does). Any other request is a
- * network failure. Restored when the test finishes; returns the recorded calls.
+ * network failure. A faked signed-in browser holds what a real one holds: when the first GET /v1/me
+ * answer given is a 2xx Response, the XSRF-TOKEN cookie is set here, before the page renders (a
+ * 401 or a function answer sets none; a test of an expired session sets the cookie itself).
+ * Restored when the test finishes, a cookie this stub set cleared with it; returns the recorded
+ * calls.
  */
 export function stubAccountFetch(
   routes: Readonly<Record<string, AccountAnswer | readonly AccountAnswer[]>>,
 ): AccountCall[] {
   const calls: AccountCall[] = [];
   const used = new Map<string, number>();
+  let setCookie = false;
+  const me = routes['GET /v1/me'];
+  const firstMe: unknown = Array.isArray(me) ? (me as readonly AccountAnswer[])[0] : me;
+  if (firstMe instanceof Response && firstMe.ok) {
+    setXsrfCookie();
+    setCookie = true;
+  }
   vi.stubGlobal('fetch', (input: string | URL, init?: RequestInit): Promise<Response> => {
     const url = String(input);
     const key = `${init?.method ?? 'GET'} ${url}`;
@@ -983,6 +1013,7 @@ export function stubAccountFetch(
     if (route === undefined && key === 'GET /sanctum/csrf-cookie') {
       route = () => {
         setXsrfCookie();
+        setCookie = true;
         return rawResponse(204, null);
       };
     }
@@ -1004,6 +1035,7 @@ export function stubAccountFetch(
   });
   onTestFinished(() => {
     vi.unstubAllGlobals();
+    if (setCookie) clearXsrfCookie();
   });
   return calls;
 }

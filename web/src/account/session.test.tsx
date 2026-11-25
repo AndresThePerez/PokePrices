@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createQueryClient } from '../query';
 import {
+  holdSessionCookie,
   jsonResponse,
   problemResponse,
   serverErrorProblem,
@@ -66,6 +67,7 @@ describe('useSession', () => {
   });
 
   it('reports a first failure, and keeps the last good answer when a later poll fails', async () => {
+    holdSessionCookie();
     stubAccountFetch({
       'GET /v1/me': [problemResponse(serverErrorProblem('/v1/me')), jsonResponse(signedInMe)],
     });

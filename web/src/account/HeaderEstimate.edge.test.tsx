@@ -13,6 +13,7 @@ import {
   demoMe,
   estimateOf,
   freshnessBody,
+  holdSessionCookieFor,
   isFreshnessUrl,
   isMoversUrl,
   jsonResponse,
@@ -56,6 +57,7 @@ type Answer = Response | Promise<Response> | (() => Response);
 function stub(routes: Readonly<Record<string, readonly Answer[]>>): string[] {
   const names: string[] = [];
   const used = new Map<string, number>();
+  holdSessionCookieFor(routes['GET /v1/me']?.[0]);
   vi.stubGlobal('fetch', (input: string | URL, init?: RequestInit): Promise<Response> => {
     const url = String(input);
     const name = `${init?.method ?? 'GET'} ${url}`;
